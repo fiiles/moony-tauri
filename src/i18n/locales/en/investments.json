@@ -1,0 +1,130 @@
+{
+    "title": "Investments",
+    "subtitle": "Track your stocks and commodities portfolio",
+    "loading": "Loading your investment portfolio...",
+    "addInvestment": "Add Investment",
+    "refreshPrices": "Refresh Prices",
+    "refreshing": "Refreshing...",
+    "importCSV": "Import CSV",
+    "summary": {
+        "totalValue": "Total Value",
+        "totalGainLoss": "Overall Gain/Loss",
+        "estimatedDividend": "Estimated Dividend Yield",
+        "topPerformer": "Top Performer",
+        "basedOnLastYear": "Based on last year dividends",
+        "lastUpdated": "Last updated: {{date}}"
+    },
+    "table": {
+        "title": "All Holdings",
+        "search": "Search investment...",
+        "investment": "Investment",
+        "quantity": "Quantity",
+        "avgCost": "Avg Cost",
+        "marketPrice": "Market Price",
+        "marketValue": "Market Value",
+        "totalGainLoss": "Total Gain/Loss",
+        "estDividend": "Est. Dividend",
+        "actions": "Actions",
+        "noHoldings": "No holdings found. Add your first investment to get started."
+    },
+    "actions": {
+        "viewTransactions": "View Transactions",
+        "buy": "Buy",
+        "sell": "Sell",
+        "updatePrice": "Update Price Manually",
+        "updateDividend": "Update Dividend Estimate",
+        "delete": "Delete"
+    },
+    "badges": {
+        "manual": "Manual"
+    },
+    "tooltips": {
+        "manualPrice": "Manually overwritten price",
+        "manualDividend": "Manually overwritten dividend estimate"
+    },
+    "modals": {
+        "add": {
+            "title": "Add New Investment",
+            "searchLabel": "Search for a stock",
+            "searchPlaceholder": "e.g., AAPL or Apple",
+            "quantity": "Quantity",
+            "purchasePrice": "Purchase Price",
+            "purchaseDate": "Purchase Date",
+            "notes": "Notes"
+        },
+        "buy": {
+            "title": "Buy More Shares",
+            "quantity": "Quantity",
+            "price": "Price per Share",
+            "date": "Purchase Date",
+            "fee": "Transaction Fee"
+        },
+        "sell": {
+            "title": "Sell Shares",
+            "quantityToSell": "Quantity to Sell",
+            "availableQuantity": "Available: {{quantity}} shares",
+            "price": "Sale Price per Share",
+            "date": "Sale Date",
+            "fee": "Transaction Fee"
+        },
+        "updatePrice": {
+            "title": "Update Price Manually",
+            "currentPrice": "Current Price",
+            "newPrice": "New Price"
+        },
+        "updateDividend": {
+            "title": "Update Dividend Estimate",
+            "annualDividend": "Annual Dividend per Share"
+        },
+        "transactions": {
+            "title": "Transaction History",
+            "noTransactions": "No transactions found"
+        }
+    },
+    "confirmDelete": {
+        "title": "Delete Investment",
+        "description": "Are you sure you want to delete {{name}}? This will remove all associated transactions. This action cannot be undone."
+    },
+    "modal": {
+        "add": {
+            "title": "Add New Investment",
+            "description": "Add a new stock or ETF to your portfolio.",
+            "companyDetails": "Company Details",
+            "companyName": "Company Name",
+            "ticker": "Ticker",
+            "financialDetails": "Financial Details",
+            "pricePerShare": "Price per Share",
+            "quantity": "Quantity",
+            "selectTicker": "Select Ticker",
+            "multipleResults": "Multiple results found. Please select the correct ticker symbol:",
+            "noTickerFound": "No ticker symbols found for this company name",
+            "searchError": "Failed to search for ticker symbol",
+            "selected": "Selected"
+        },
+        "buy": {
+            "title": "Buy",
+            "description": "Record a purchase transaction for",
+            "quantity": "Quantity",
+            "pricePerShare": "Price per Share",
+            "addPurchase": "Add Purchase"
+        },
+        "sell": {
+            "title": "Sell",
+            "description": "Record a sale transaction for this investment.",
+            "transactionDetails": "Transaction Details",
+            "pricePerShare": "Price per Share",
+            "quantity": "Quantity",
+            "sellInvestment": "Sell Investment"
+        }
+    },
+    "toast": {
+        "added": "Investment added successfully",
+        "updated": "Investment updated successfully",
+        "deleted": "Investment deleted successfully",
+        "pricesRefreshed": "Updated {{count}} stock prices from MarketStack",
+        "refreshFailed": "Price refresh failed",
+        "noResults": "No results found",
+        "tickerFound": "Ticker found",
+        "searchFailed": "Search failed"
+    }
+}

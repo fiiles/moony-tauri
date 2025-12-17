@@ -1,0 +1,130 @@
+{
+    "title": "Investice",
+    "subtitle": "Sledujte své portfolio akcií a komodit",
+    "loading": "Načítání vašeho investičního portfolia...",
+    "addInvestment": "Přidat investici",
+    "refreshPrices": "Aktualizovat ceny",
+    "refreshing": "Aktualizuji...",
+    "importCSV": "Importovat CSV",
+    "summary": {
+        "totalValue": "Celková hodnota",
+        "totalGainLoss": "Celkový zisk/ztráta",
+        "estimatedDividend": "Odhadovaný výnos z dividend",
+        "topPerformer": "Nejvýkonnější",
+        "basedOnLastYear": "Na základě dividend z minulého roku",
+        "lastUpdated": "Naposledy aktualizováno: {{date}}"
+    },
+    "table": {
+        "title": "Všechny pozice",
+        "search": "Hledat investici...",
+        "investment": "Investice",
+        "quantity": "Množství",
+        "avgCost": "Prům. cena",
+        "marketPrice": "Tržní cena",
+        "marketValue": "Tržní hodnota",
+        "totalGainLoss": "Celkový zisk/ztráta",
+        "estDividend": "Odh. dividenda",
+        "actions": "Akce",
+        "noHoldings": "Žádné pozice nenalezeny. Přidejte svou první investici."
+    },
+    "actions": {
+        "viewTransactions": "Zobrazit transakce",
+        "buy": "Koupit",
+        "sell": "Prodat",
+        "updatePrice": "Ručně aktualizovat cenu",
+        "updateDividend": "Aktualizovat odhad dividendy",
+        "delete": "Smazat"
+    },
+    "badges": {
+        "manual": "Ručně"
+    },
+    "tooltips": {
+        "manualPrice": "Ručně přepsaná cena",
+        "manualDividend": "Ručně přepsaný odhad dividendy"
+    },
+    "modals": {
+        "add": {
+            "title": "Přidat novou investici",
+            "searchLabel": "Vyhledat akcii",
+            "searchPlaceholder": "např. AAPL nebo Apple",
+            "quantity": "Množství",
+            "purchasePrice": "Nákupní cena",
+            "purchaseDate": "Datum nákupu",
+            "notes": "Poznámky"
+        },
+        "buy": {
+            "title": "Dokoupit akcie",
+            "quantity": "Množství",
+            "price": "Cena za akcii",
+            "date": "Datum nákupu",
+            "fee": "Transakční poplatek"
+        },
+        "sell": {
+            "title": "Prodat akcie",
+            "quantityToSell": "Množství k prodeji",
+            "availableQuantity": "Dostupné: {{quantity}} akcií",
+            "price": "Prodejní cena za akcii",
+            "date": "Datum prodeje",
+            "fee": "Transakční poplatek"
+        },
+        "updatePrice": {
+            "title": "Ručně aktualizovat cenu",
+            "currentPrice": "Aktuální cena",
+            "newPrice": "Nová cena"
+        },
+        "updateDividend": {
+            "title": "Aktualizovat odhad dividendy",
+            "annualDividend": "Roční dividenda na akcii"
+        },
+        "transactions": {
+            "title": "Historie transakcí",
+            "noTransactions": "Žádné transakce nenalezeny"
+        }
+    },
+    "confirmDelete": {
+        "title": "Smazat investici",
+        "description": "Opravdu chcete smazat {{name}}? Tím odstraníte všechny související transakce. Tuto akci nelze vrátit zpět."
+    },
+    "modal": {
+        "add": {
+            "title": "Přidat novou investici",
+            "description": "Přidejte novou akcii nebo ETF do svého portfolia.",
+            "companyDetails": "Údaje o společnosti",
+            "companyName": "Název společnosti",
+            "ticker": "Ticker",
+            "financialDetails": "Finanční údaje",
+            "pricePerShare": "Cena za akcii",
+            "quantity": "Množství",
+            "selectTicker": "Vyberte ticker",
+            "multipleResults": "Bylo nalezeno více výsledků. Vyberte správný ticker:",
+            "noTickerFound": "Pro tento název společnosti nebyly nalezeny žádné tickery",
+            "searchError": "Hledání tickeru se nezdařilo",
+            "selected": "Vybráno"
+        },
+        "buy": {
+            "title": "Koupit",
+            "description": "Zaznamenejte nákupní transakci pro",
+            "quantity": "Množství",
+            "pricePerShare": "Cena za akcii",
+            "addPurchase": "Přidat nákup"
+        },
+        "sell": {
+            "title": "Prodat",
+            "description": "Zaznamenejte prodejní transakci pro tuto investici.",
+            "transactionDetails": "Detaily transakce",
+            "pricePerShare": "Cena za akcii",
+            "quantity": "Množství",
+            "sellInvestment": "Prodat investici"
+        }
+    },
+    "toast": {
+        "added": "Investice úspěšně přidána",
+        "updated": "Investice úspěšně aktualizována",
+        "deleted": "Investice úspěšně smazána",
+        "pricesRefreshed": "Aktualizováno {{count}} cen akcií z MarketStack",
+        "refreshFailed": "Aktualizace cen selhala",
+        "noResults": "Žádné výsledky",
+        "tickerFound": "Ticker nalezen",
+        "searchFailed": "Hledání selhalo"
+    }
+}

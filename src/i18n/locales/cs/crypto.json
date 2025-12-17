@@ -1,0 +1,121 @@
+{
+    "title": "Kryptoměny",
+    "subtitle": "Sledujte a spravujte své krypto portfolio.",
+    "loading": "Načítání vašeho krypto portfolia...",
+    "addCrypto": "Přidat kryptoměnu",
+    "refreshPrices": "Aktualizovat ceny",
+    "refreshing": "Aktualizuji...",
+    "summary": {
+        "totalValue": "Celková hodnota",
+        "totalGainLoss": "Celkový zisk/ztráta",
+        "cryptoCount": "Počet kryptoměn"
+    },
+    "table": {
+        "title": "Všechny pozice",
+        "search": "Hledat kryptoměnu...",
+        "crypto": "Kryptoměna",
+        "quantity": "Množství",
+        "avgCost": "Prům. cena",
+        "currentPrice": "Aktuální cena",
+        "marketValue": "Tržní hodnota",
+        "totalGainLoss": "Celkový zisk/ztráta",
+        "actions": "Akce",
+        "noHoldings": "Žádné pozice nenalezeny. Přidejte svou první kryptoměnu."
+    },
+    "actions": {
+        "viewTransactions": "Zobrazit transakce",
+        "buy": "Koupit",
+        "sell": "Prodat",
+        "updatePrice": "Ručně aktualizovat cenu",
+        "delete": "Smazat"
+    },
+    "badges": {
+        "manual": "Ručně"
+    },
+    "tooltips": {
+        "manualPrice": "Ručně přepsaná cena"
+    },
+    "tooltip": {
+        "manualPrice": "Ručně přepsaná cena"
+    },
+    "modals": {
+        "add": {
+            "title": "Přidat kryptoměnu",
+            "searchLabel": "Vyhledat kryptoměnu",
+            "searchPlaceholder": "např. BTC nebo Bitcoin",
+            "quantity": "Množství",
+            "purchasePrice": "Nákupní cena (USD)",
+            "purchaseDate": "Datum nákupu",
+            "notes": "Poznámky"
+        },
+        "buy": {
+            "title": "Dokoupit",
+            "quantity": "Množství",
+            "price": "Cena za jednotku",
+            "date": "Datum nákupu",
+            "fee": "Transakční poplatek"
+        },
+        "sell": {
+            "title": "Prodat",
+            "quantityToSell": "Množství k prodeji",
+            "availableQuantity": "Dostupné: {{quantity}}",
+            "price": "Prodejní cena za jednotku",
+            "date": "Datum prodeje",
+            "fee": "Transakční poplatek"
+        },
+        "updatePrice": {
+            "title": "Ručně aktualizovat cenu",
+            "currentPrice": "Aktuální cena",
+            "newPrice": "Nová cena (USD)"
+        },
+        "transactions": {
+            "title": "Historie transakcí",
+            "noTransactions": "Žádné transakce nenalezeny"
+        }
+    },
+    "confirmDelete": {
+        "title": "Smazat kryptoměnu",
+        "description": "Opravdu chcete smazat {{name}}? Tím odstraníte všechny související transakce. Tuto akci nelze vrátit zpět."
+    },
+    "modal": {
+        "add": {
+            "title": "Přidat novou kryptoměnu",
+            "description": "Vyhledejte kryptoměnu podle názvu pro automatické vyplnění údajů přes CoinGecko.",
+            "cryptoDetails": "Údaje o kryptoměně",
+            "name": "Název (např. Bitcoin)",
+            "ticker": "Ticker / Symbol",
+            "purchaseDetails": "Údaje o nákupu",
+            "pricePerUnit": "Cena za jednotku",
+            "quantity": "Množství",
+            "selectCrypto": "Vyberte kryptoměnu",
+            "multipleResults": "Bylo nalezeno více výsledků. Vyberte správnou minci (seřazeno dle tržní kapitalizace):",
+            "noResults": "Pro tento vyhledávací výraz nebyly nalezeny žádné kryptoměny."
+        },
+        "buy": {
+            "title": "Koupit",
+            "description": "Zaznamenejte nákupní transakci pro",
+            "quantity": "Množství",
+            "pricePerUnit": "Cena za jednotku",
+            "addPurchase": "Přidat nákup"
+        },
+        "sell": {
+            "title": "Prodat",
+            "description": "Zaznamenejte prodejní transakci pro tuto kryptoměnu.",
+            "transactionDetails": "Detaily transakce",
+            "pricePerUnit": "Cena za jednotku",
+            "quantity": "Množství",
+            "sellCrypto": "Prodat kryptoměnu"
+        }
+    },
+    "toast": {
+        "added": "Kryptoměna úspěšně přidána",
+        "updated": "Kryptoměna úspěšně aktualizována",
+        "deleted": "Kryptoměna úspěšně smazána",
+        "pricesRefreshed": "Aktualizováno {{count}} cen kryptoměn z CoinGecko",
+        "refreshFailed": "Aktualizace cen selhala",
+        "noResults": "Žádné výsledky",
+        "searchFailed": "Hledání selhalo",
+        "cryptoAdded": "Kryptoměna úspěšně přidána",
+        "addFailed": "Přidání kryptoměny selhalo"
+    }
+}

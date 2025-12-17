@@ -1,0 +1,121 @@
+{
+    "title": "Cryptocurrencies",
+    "subtitle": "Track and manage your crypto portfolio.",
+    "loading": "Loading your crypto portfolio...",
+    "addCrypto": "Add Crypto",
+    "refreshPrices": "Refresh Prices",
+    "refreshing": "Refreshing...",
+    "summary": {
+        "totalValue": "Total Value",
+        "totalGainLoss": "Overall Gain/Loss",
+        "cryptoCount": "Cryptocurrencies"
+    },
+    "table": {
+        "title": "All Holdings",
+        "search": "Search crypto...",
+        "crypto": "Cryptocurrency",
+        "quantity": "Quantity",
+        "avgCost": "Avg Cost",
+        "currentPrice": "Current Price",
+        "marketValue": "Market Value",
+        "totalGainLoss": "Total Gain/Loss",
+        "actions": "Actions",
+        "noHoldings": "No holdings found. Add your first cryptocurrency to get started."
+    },
+    "actions": {
+        "viewTransactions": "View Transactions",
+        "buy": "Buy",
+        "sell": "Sell",
+        "updatePrice": "Update Price Manually",
+        "delete": "Delete"
+    },
+    "badges": {
+        "manual": "Manual"
+    },
+    "tooltips": {
+        "manualPrice": "Manually overwritten price"
+    },
+    "tooltip": {
+        "manualPrice": "Manually overwritten price"
+    },
+    "modals": {
+        "add": {
+            "title": "Add Cryptocurrency",
+            "searchLabel": "Search for a cryptocurrency",
+            "searchPlaceholder": "e.g., BTC or Bitcoin",
+            "quantity": "Quantity",
+            "purchasePrice": "Purchase Price (USD)",
+            "purchaseDate": "Purchase Date",
+            "notes": "Notes"
+        },
+        "buy": {
+            "title": "Buy More",
+            "quantity": "Quantity",
+            "price": "Price per Unit",
+            "date": "Purchase Date",
+            "fee": "Transaction Fee"
+        },
+        "sell": {
+            "title": "Sell",
+            "quantityToSell": "Quantity to Sell",
+            "availableQuantity": "Available: {{quantity}}",
+            "price": "Sale Price per Unit",
+            "date": "Sale Date",
+            "fee": "Transaction Fee"
+        },
+        "updatePrice": {
+            "title": "Update Price Manually",
+            "currentPrice": "Current Price",
+            "newPrice": "New Price (USD)"
+        },
+        "transactions": {
+            "title": "Transaction History",
+            "noTransactions": "No transactions found"
+        }
+    },
+    "confirmDelete": {
+        "title": "Delete Cryptocurrency",
+        "description": "Are you sure you want to delete {{name}}? This will remove all associated transactions. This action cannot be undone."
+    },
+    "modal": {
+        "add": {
+            "title": "Add New Cryptocurrency",
+            "description": "Search for a cryptocurrency by name to auto-fill details using CoinGecko.",
+            "cryptoDetails": "Crypto Details",
+            "name": "Name (e.g. Bitcoin)",
+            "ticker": "Ticker / Symbol",
+            "purchaseDetails": "Purchase Details",
+            "pricePerUnit": "Price per Unit",
+            "quantity": "Quantity",
+            "selectCrypto": "Select Cryptocurrency",
+            "multipleResults": "Multiple results found. Please select the correct coin (Ranked by Market Cap):",
+            "noResults": "No cryptocurrencies found for that search term."
+        },
+        "buy": {
+            "title": "Buy",
+            "description": "Record a purchase transaction for",
+            "quantity": "Quantity",
+            "pricePerUnit": "Price per Unit",
+            "addPurchase": "Add Purchase"
+        },
+        "sell": {
+            "title": "Sell",
+            "description": "Record a sale transaction for this cryptocurrency.",
+            "transactionDetails": "Transaction Details",
+            "pricePerUnit": "Price per Unit",
+            "quantity": "Quantity",
+            "sellCrypto": "Sell Crypto"
+        }
+    },
+    "toast": {
+        "added": "Cryptocurrency added successfully",
+        "updated": "Cryptocurrency updated successfully",
+        "deleted": "Cryptocurrency deleted successfully",
+        "pricesRefreshed": "Updated {{count}} crypto prices from CoinGecko",
+        "refreshFailed": "Price refresh failed",
+        "noResults": "No results",
+        "searchFailed": "Search failed",
+        "cryptoAdded": "Crypto added successfully",
+        "addFailed": "Failed to add crypto"
+    }
+}

@@ -1,0 +1,74 @@
+{
+    "title": "Loans",
+    "subtitle": "Track and manage your loans and mortgages.",
+    "loading": "Loading your loans...",
+    "addLoan": "Add New Loan",
+    "summary": {
+        "totalOutstanding": "Total Outstanding",
+        "monthlyPayments": "Monthly Payments",
+        "loanCount": "Active Loans",
+        "avgInterestRate": "Avg. Interest Rate"
+    },
+    "table": {
+        "title": "All Loans",
+        "search": "Search loan...",
+        "name": "Loan Name",
+        "lender": "Lender",
+        "principal": "Principal",
+        "originalAmount": "Original Amount",
+        "outstanding": "Outstanding",
+        "interestRate": "Interest Rate",
+        "monthlyPayment": "Monthly Payment",
+        "rateValidity": "Rate Validity",
+        "endDate": "End Date",
+        "actions": "Actions",
+        "noLoans": "No loans found. Add your first loan to get started."
+    },
+    "types": {
+        "mortgage": "Mortgage",
+        "personal": "Personal Loan",
+        "auto": "Auto Loan",
+        "student": "Student Loan",
+        "credit": "Credit Line",
+        "other": "Other"
+    },
+    "form": {
+        "addTitle": "Add Loan",
+        "editTitle": "Edit Loan",
+        "name": "Loan Name",
+        "namePlaceholder": "e.g., Home Mortgage",
+        "lender": "Lender",
+        "lenderPlaceholder": "e.g., Bank Name",
+        "type": "Loan Type",
+        "originalAmount": "Original Amount",
+        "outstandingAmount": "Outstanding Amount",
+        "interestRate": "Interest Rate (%)",
+        "monthlyPayment": "Monthly Payment",
+        "currency": "Currency",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "notes": "Notes"
+    },
+    "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+    },
+    "confirmDelete": {
+        "title": "Delete Loan",
+        "description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
+    },
+    "toast": {
+        "added": "Loan added successfully",
+        "updated": "Loan updated successfully",
+        "deleted": "Loan deleted successfully"
+    },
+    "modal": {
+        "addDescription": "Add a new loan to track principal, interest, and payments.",
+        "editDescription": "Update loan details and payment information.",
+        "basicInfo": "Basic Information",
+        "financialDetails": "Financial Details",
+        "endDateHelp": "When the loan will be fully paid off",
+        "rateValidity": "Rate Validity (Optional)",
+        "rateValidityHelp": "When the current rate expires"
+    }
+}

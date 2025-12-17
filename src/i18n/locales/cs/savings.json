@@ -1,0 +1,85 @@
+{
+    "title": "Spoření a vklady",
+    "subtitle": "Spravujte své spořicí a výnosové účty.",
+    "loading": "Načítání vašich spořicích účtů...",
+    "addAccount": "Přidat nový účet",
+    "summary": {
+        "totalBalance": "Celkový zůstatek",
+        "totalInterest": "Celková úroková sazba",
+        "accountCount": "Počet účtů",
+        "avgInterestRate": "Prům. úroková sazba"
+    },
+    "table": {
+        "title": "Všechny účty",
+        "search": "Hledat účet...",
+        "name": "Název účtu",
+        "accountName": "Název účtu",
+        "bank": "Banka",
+        "balance": "Zůstatek",
+        "interestRate": "Úroková sazba (APY)",
+        "type": "Typ",
+        "zones": "Úročení",
+        "zoned": "Pásmové",
+        "simple": "Jednoduché",
+        "effective": "efektivní",
+        "actions": "Akce",
+        "noAccounts": "Žádné účty nenalezeny. Přidejte svůj první spořicí účet."
+    },
+    "types": {
+        "savings": "Spořicí",
+        "termDeposit": "Termínovaný vklad",
+        "moneyMarket": "Peněžní trh",
+        "checking": "Běžný"
+    },
+    "form": {
+        "addTitle": "Přidat spořicí účet",
+        "editTitle": "Upravit spořicí účet",
+        "name": "Název účtu",
+        "namePlaceholder": "např. Nouzová rezerva",
+        "bank": "Banka/Instituce",
+        "bankPlaceholder": "např. Česká spořitelna",
+        "balance": "Aktuální zůstatek",
+        "interestRate": "Úroková sazba (%)",
+        "currency": "Měna",
+        "type": "Typ účtu",
+        "notes": "Poznámky",
+        "hasZones": "Tento účet má označení zón",
+        "zonesDescription": "Rozdělte své úspory do různých cílů"
+    },
+    "zones": {
+        "title": "Zóny spoření",
+        "description": "Organizujte své úspory do různých cílů",
+        "addZone": "Přidat zónu",
+        "zoneName": "Název zóny",
+        "targetAmount": "Cílová částka",
+        "currentAmount": "Aktuální částka",
+        "progress": "Průběh",
+        "remaining": "Zbývá",
+        "noZones": "Žádné zóny definovány"
+    },
+    "actions": {
+        "edit": "Upravit",
+        "viewZones": "Zobrazit zóny",
+        "delete": "Smazat"
+    },
+    "confirmDelete": {
+        "title": "Smazat účet",
+        "description": "Opravdu chcete smazat \"{{name}}\"? Všechny přidružené zóny budou také smazány. Tuto akci nelze vrátit zpět."
+    },
+    "toast": {
+        "added": "Účet úspěšně přidán",
+        "updated": "Účet úspěšně aktualizován",
+        "deleted": "Účet úspěšně smazán"
+    },
+    "modal": {
+        "addDescription": "Přidejte nový spořicí účet pro sledování svých úspor.",
+        "editDescription": "Aktualizujte detaily spořicího účtu.",
+        "basicInfo": "Základní informace",
+        "interestConfig": "Konfigurace úrokové sazby",
+        "useZones": "Použít zóny (odstupňované úrokové sazby)",
+        "zonesHelp": "Povolit různé úrokové sazby pro různé rozsahy zůstatku, podobně jako progresivní daňové pásma",
+        "apyHelp": "Roční procentní výnos pro tento účet",
+        "zonesLabel": "Zóny úrokových sazeb",
+        "zonesDescription": "Definujte různé úrokové sazby pro různé rozsahy zůstatku. Efektivní sazba bude vypočítána automaticky."
+    }
+}

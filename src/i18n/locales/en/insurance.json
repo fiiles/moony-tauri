@@ -1,0 +1,90 @@
+{
+    "title": "Insurance",
+    "subtitle": "Manage your insurance policies.",
+    "loading": "Loading your insurance policies...",
+    "addPolicy": "Add New Policy",
+    "summary": {
+        "totalPremium": "Annual Premium",
+        "policyCount": "Active Policies",
+        "totalCoverage": "Total Coverage"
+    },
+    "table": {
+        "title": "All Policies",
+        "search": "Search policy...",
+        "name": "Policy Name",
+        "provider": "Provider",
+        "type": "Type",
+        "premium": "Premium",
+        "coverage": "Coverage",
+        "expiryDate": "Expiry Date",
+        "actions": "Actions",
+        "noPolicies": "No policies found. Add your first insurance policy to get started."
+    },
+    "types": {
+        "life": "Life Insurance",
+        "health": "Health Insurance",
+        "property": "Property Insurance",
+        "vehicle": "Vehicle Insurance",
+        "travel": "Travel Insurance",
+        "liability": "Liability Insurance",
+        "accident": "Accident Insurance",
+        "other": "Other"
+    },
+    "form": {
+        "addTitle": "Add Insurance Policy",
+        "editTitle": "Edit Insurance Policy",
+        "name": "Policy Name",
+        "namePlaceholder": "e.g., Home Insurance",
+        "provider": "Insurance Provider",
+        "providerPlaceholder": "e.g., Insurance Company",
+        "type": "Policy Type",
+        "premium": "Annual Premium",
+        "coverage": "Coverage Amount",
+        "currency": "Currency",
+        "startDate": "Start Date",
+        "expiryDate": "Expiry Date",
+        "policyNumber": "Policy Number",
+        "notes": "Notes"
+    },
+    "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+    },
+    "confirmDelete": {
+        "title": "Delete Policy",
+        "description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
+    },
+    "toast": {
+        "added": "Policy added successfully",
+        "updated": "Policy updated successfully",
+        "deleted": "Policy deleted successfully"
+    },
+    "modal": {
+        "selectType": "Select type",
+        "selectStatus": "Select status",
+        "policyNamePlaceholder": "e.g. Home Insurance 2024",
+        "providerPlaceholder": "e.g. Allianz",
+        "policyNumberPlaceholder": "Contract number",
+        "paymentFrequency": "Payment Frequency",
+        "selectFrequency": "Select frequency",
+        "oneTimePayment": "One-Time Payment (Optional)",
+        "regularPayment": "Regular Payment",
+        "endDateOptional": "End Date (Optional)",
+        "coverageLimits": "Coverage Limits",
+        "addLimit": "Add Limit",
+        "limitTitle": "Limit Title",
+        "notesPlaceholder": "Special conditions, contacts...",
+        "createPolicy": "Create Policy",
+        "updatePolicy": "Update Policy",
+        "status": {
+            "active": "Active",
+            "inactive": "Inactive"
+        },
+        "frequency": {
+            "monthly": "Monthly",
+            "quarterly": "Quarterly",
+            "yearly": "Yearly",
+            "oneTime": "One Time"
+        }
+    }
+}

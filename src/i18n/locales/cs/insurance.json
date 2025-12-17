@@ -1,0 +1,90 @@
+{
+    "title": "Pojištění",
+    "subtitle": "Spravujte své pojistné smlouvy.",
+    "loading": "Načítání vašich pojistných smluv...",
+    "addPolicy": "Přidat novou pojistku",
+    "summary": {
+        "totalPremium": "Roční pojistné",
+        "policyCount": "Aktivní pojistky",
+        "totalCoverage": "Celkové krytí"
+    },
+    "table": {
+        "title": "Všechny pojistky",
+        "search": "Hledat pojistku...",
+        "name": "Název pojistky",
+        "provider": "Pojišťovna",
+        "type": "Typ",
+        "premium": "Pojistné",
+        "coverage": "Krytí",
+        "expiryDate": "Datum expirace",
+        "actions": "Akce",
+        "noPolicies": "Žádné pojistky nenalezeny. Přidejte svou první pojistku."
+    },
+    "types": {
+        "life": "Životní pojištění",
+        "health": "Zdravotní pojištění",
+        "property": "Pojištění majetku",
+        "vehicle": "Pojištění vozidla",
+        "travel": "Cestovní pojištění",
+        "liability": "Pojištění odpovědnosti",
+        "accident": "Úrazové pojištění",
+        "other": "Jiné"
+    },
+    "form": {
+        "addTitle": "Přidat pojistku",
+        "editTitle": "Upravit pojistku",
+        "name": "Název pojistky",
+        "namePlaceholder": "např. Pojištění domácnosti",
+        "provider": "Pojišťovna",
+        "providerPlaceholder": "např. Název pojišťovny",
+        "type": "Typ pojistky",
+        "premium": "Roční pojistné",
+        "coverage": "Výše krytí",
+        "currency": "Měna",
+        "startDate": "Datum zahájení",
+        "expiryDate": "Datum expirace",
+        "policyNumber": "Číslo pojistky",
+        "notes": "Poznámky"
+    },
+    "actions": {
+        "edit": "Upravit",
+        "delete": "Smazat"
+    },
+    "confirmDelete": {
+        "title": "Smazat pojistku",
+        "description": "Opravdu chcete smazat \"{{name}}\"? Tuto akci nelze vrátit zpět."
+    },
+    "toast": {
+        "added": "Pojistka úspěšně přidána",
+        "updated": "Pojistka úspěšně aktualizována",
+        "deleted": "Pojistka úspěšně smazána"
+    },
+    "modal": {
+        "selectType": "Vyberte typ",
+        "selectStatus": "Vyberte stav",
+        "policyNamePlaceholder": "např. Pojištění domova 2024",
+        "providerPlaceholder": "např. Allianz",
+        "policyNumberPlaceholder": "Číslo smlouvy",
+        "paymentFrequency": "Frekvence platby",
+        "selectFrequency": "Vyberte frekvenci",
+        "oneTimePayment": "Jednorázová platba (volitelné)",
+        "regularPayment": "Pravidelná platba",
+        "endDateOptional": "Datum ukončení (volitelné)",
+        "coverageLimits": "Limity krytí",
+        "addLimit": "Přidat limit",
+        "limitTitle": "Název limitu",
+        "notesPlaceholder": "Speciální podmínky, kontakty...",
+        "createPolicy": "Vytvořit pojistku",
+        "updatePolicy": "Aktualizovat pojistku",
+        "status": {
+            "active": "Aktivní",
+            "inactive": "Neaktivní"
+        },
+        "frequency": {
+            "monthly": "Měsíčně",
+            "quarterly": "Čtvrtletně",
+            "yearly": "Ročně",
+            "oneTime": "Jednorázově"
+        }
+    }
+}

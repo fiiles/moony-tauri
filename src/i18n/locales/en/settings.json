@@ -1,0 +1,83 @@
+{
+    "title": "Settings",
+    "profile": {
+        "title": "Profile Settings",
+        "description": "Update your personal information"
+    },
+    "password": {
+        "title": "Change Password",
+        "description": "Update your password to keep your account secure",
+        "current": "Current Password",
+        "new": "New Password",
+        "confirm": "Confirm New Password",
+        "update": "Update Password",
+        "updating": "Updating..."
+    },
+    "apiKeys": {
+        "title": "API Keys",
+        "description": "Configure API keys for stock and cryptocurrency price fetching.",
+        "marketstack": {
+            "label": "MarketStack API Key",
+            "getFreeKey": "Get free key",
+            "placeholder": "Enter MarketStack API key",
+            "hint": "Used for real-time stock price updates"
+        },
+        "coingecko": {
+            "label": "CoinGecko API Key (optional)",
+            "getDemoKey": "Get demo key",
+            "placeholder": "Optional - free tier works without key",
+            "hint": "Used for crypto prices and search (free tier has rate limits)"
+        },
+        "save": "Save API Keys",
+        "saving": "Saving...",
+        "saved": "API keys saved",
+        "savedDescription": "Your API keys have been updated."
+    },
+    "currency": {
+        "title": "Currency",
+        "description": "Choose which currency should be used across the app.",
+        "example": "Example"
+    },
+    "language": {
+        "title": "Language",
+        "description": "Choose your preferred language for the application."
+    },
+    "menuVisibility": {
+        "title": "Menu Visibility",
+        "description": "Customize which items appear in your sidebar."
+    },
+    "dashboardPreferences": {
+        "title": "Dashboard Preferences",
+        "description": "Customize what appears in your dashboard overview.",
+        "excludeRealEstate": "Exclude personal real estate from overviews",
+        "excludeRealEstateHint": "Personal properties won't be included in Net Worth and Total Assets calculations"
+    },
+    "dangerZone": {
+        "title": "Danger Zone",
+        "description": "Irreversible actions regarding your account.",
+        "deleteAccount": "Delete Account",
+        "confirmTitle": "Are you absolutely sure?",
+        "confirmDescription": "This action cannot be undone. This will permanently delete your account and remove all your data from this device. Since Moony is a local-only app, there is no data on our servers to delete.",
+        "deleting": "Deleting..."
+    },
+    "toast": {
+        "profileUpdated": "Profile updated",
+        "profileUpdatedDescription": "Your profile details have been saved.",
+        "passwordUpdated": "Password updated",
+        "passwordUpdatedDescription": "Your password has been changed successfully.",
+        "preferencesUpdated": "Preferences updated",
+        "preferencesUpdatedDescription": "Menu visibility settings saved.",
+        "updateFailed": "Update failed",
+        "deletionFailed": "Deletion failed"
+    },
+    "menuItems": {
+        "savings": "Savings and Deposits",
+        "loans": "Loans",
+        "insurance": "Insurance",
+        "investments": "Investments",
+        "crypto": "Cryptocurrencies",
+        "bonds": "Bonds and Deposits",
+        "realEstate": "Real Estate",
+        "otherAssets": "Other Assets"
+    }
+}

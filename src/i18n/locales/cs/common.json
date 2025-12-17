@@ -1,0 +1,143 @@
+{
+    "nav": {
+        "dashboard": "Přehled",
+        "platform": "Platforma",
+        "portfolio": "Portfolio",
+        "savings": "Spoření a vklady",
+        "loans": "Úvěry",
+        "insurance": "Pojištění",
+        "investments": "Investice",
+        "crypto": "Kryptoměny",
+        "bonds": "Dluhopisy",
+        "realEstate": "Nemovitosti",
+        "otherAssets": "Ostatní aktiva",
+        "settings": "Nastavení",
+        "lockApp": "Zamknout aplikaci"
+    },
+    "app": {
+        "name": "Moony",
+        "tagline": "Osobní finance",
+        "userAccount": "Uživatelský účet"
+    },
+    "buttons": {
+        "save": "Uložit",
+        "saveChanges": "Uložit změny",
+        "cancel": "Zrušit",
+        "delete": "Smazat",
+        "edit": "Upravit",
+        "add": "Přidat",
+        "confirm": "Potvrdit",
+        "close": "Zavřít",
+        "back": "Zpět",
+        "next": "Další",
+        "submit": "Odeslat",
+        "refresh": "Obnovit",
+        "refreshing": "Obnovuji...",
+        "search": "Hledat",
+        "filter": "Filtrovat",
+        "export": "Exportovat",
+        "import": "Importovat",
+        "viewDetails": "Zobrazit detaily →",
+        "viewTransactions": "Zobrazit transakce",
+        "buy": "Koupit",
+        "sell": "Prodat",
+        "updatePrice": "Ručně aktualizovat cenu",
+        "updateDividend": "Aktualizovat odhad dividendy",
+        "addNew": "Přidat nový"
+    },
+    "labels": {
+        "name": "Jméno",
+        "surname": "Příjmení",
+        "email": "E-mail",
+        "password": "Heslo",
+        "amount": "Částka",
+        "date": "Datum",
+        "description": "Popis",
+        "notes": "Poznámky",
+        "currency": "Měna",
+        "status": "Stav",
+        "type": "Typ",
+        "total": "Celkem",
+        "balance": "Zůstatek",
+        "quantity": "Množství",
+        "price": "Cena",
+        "value": "Hodnota",
+        "change": "Změna",
+        "actions": "Akce",
+        "manual": "Ručně",
+        "lastUpdated": "Naposledy aktualizováno",
+        "search": "Hledat...",
+        "selectCurrency": "Vyberte měnu",
+        "max": "Max",
+        "rank": "Pozice",
+        "asset": "Aktivum",
+        "gainLoss": "Celkový zisk/ztráta",
+        "estimatedTotal": "Odhadovaný celkem:"
+    },
+    "status": {
+        "loading": "Načítání...",
+        "saving": "Ukládání...",
+        "deleting": "Mazání...",
+        "updating": "Aktualizace...",
+        "error": "Chyba",
+        "success": "Úspěch",
+        "adding": "Přidávání...",
+        "selling": "Prodej..."
+    },
+    "validation": {
+        "required": "Toto pole je povinné",
+        "invalidEmail": "Neplatná e-mailová adresa",
+        "minLength": "Musí obsahovat alespoň {{count}} znaků",
+        "maxLength": "Může obsahovat maximálně {{count}} znaků",
+        "passwordMismatch": "Hesla se neshodují"
+    },
+    "time": {
+        "today": "Dnes",
+        "yesterday": "Včera",
+        "thisWeek": "Tento týden",
+        "thisMonth": "Tento měsíc",
+        "thisYear": "Tento rok",
+        "allTime": "Celé období"
+    },
+    "periods": {
+        "7D": "7D",
+        "30D": "30D",
+        "90D": "90D",
+        "YTD": "YTD",
+        "All": "Vše",
+        "last7Days": "Posledních 7 dní",
+        "last30Days": "Posledních 30 dní",
+        "last90Days": "Posledních 90 dní"
+    },
+    "table": {
+        "noData": "Žádná data k zobrazení",
+        "noResults": "Žádné výsledky",
+        "actions": "Akce",
+        "showing": "Zobrazeno {{from}} až {{to}} z {{total}} výsledků",
+        "allHoldings": "Všechny pozice",
+        "searchPlaceholder": "Hledat..."
+    },
+    "confirm": {
+        "title": "Jste si jisti?",
+        "deleteDescription": "Tuto akci nelze vrátit zpět."
+    },
+    "charts": {
+        "netWorthTrend": "Vývoj čistého jmění",
+        "assetAllocation": "Alokace aktiv",
+        "assetsVsLiabilities": "Aktiva vs závazky",
+        "noHistoricalData": "Žádná historická data k dispozici"
+    },
+    "tooltips": {
+        "manualPrice": "Ručně přepsaná cena",
+        "manualDividend": "Ručně přepsaný odhad dividendy"
+    },
+    "summary": {
+        "totalValue": "Celková hodnota",
+        "totalBalance": "Celkový zůstatek",
+        "overallGainLoss": "Celkový zisk/ztráta",
+        "estimatedDividend": "Odhadovaný výnos z dividend",
+        "topPerformer": "Nejvýkonnější",
+        "basedOnLastYear": "Na základě dividend z minulého roku",
+        "na": "N/A"
+    }
+}

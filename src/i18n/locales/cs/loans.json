@@ -1,0 +1,74 @@
+{
+    "title": "Úvěry",
+    "subtitle": "Sledujte a spravujte své úvěry a hypotéky.",
+    "loading": "Načítání vašich úvěrů...",
+    "addLoan": "Přidat nový úvěr",
+    "summary": {
+        "totalOutstanding": "Celkový nesplacený zůstatek",
+        "monthlyPayments": "Měsíční splátky",
+        "loanCount": "Aktivní úvěry",
+        "avgInterestRate": "Prům. úroková sazba"
+    },
+    "table": {
+        "title": "Všechny úvěry",
+        "search": "Hledat úvěr...",
+        "name": "Název úvěru",
+        "lender": "Poskytovatel",
+        "principal": "Jistina",
+        "originalAmount": "Původní částka",
+        "outstanding": "Nesplaceno",
+        "interestRate": "Úroková sazba",
+        "monthlyPayment": "Měsíční splátka",
+        "rateValidity": "Platnost sazby",
+        "endDate": "Datum ukončení",
+        "actions": "Akce",
+        "noLoans": "Žádné úvěry nenalezeny. Přidejte svůj první úvěr."
+    },
+    "types": {
+        "mortgage": "Hypotéka",
+        "personal": "Osobní úvěr",
+        "auto": "Autopůjčka",
+        "student": "Studentská půjčka",
+        "credit": "Úvěrová linka",
+        "other": "Jiné"
+    },
+    "form": {
+        "addTitle": "Přidat úvěr",
+        "editTitle": "Upravit úvěr",
+        "name": "Název úvěru",
+        "namePlaceholder": "např. Hypotéka na byt",
+        "lender": "Poskytovatel",
+        "lenderPlaceholder": "např. Název banky",
+        "type": "Typ úvěru",
+        "originalAmount": "Původní částka",
+        "outstandingAmount": "Nesplacená částka",
+        "interestRate": "Úroková sazba (%)",
+        "monthlyPayment": "Měsíční splátka",
+        "currency": "Měna",
+        "startDate": "Datum zahájení",
+        "endDate": "Datum ukončení",
+        "notes": "Poznámky"
+    },
+    "actions": {
+        "edit": "Upravit",
+        "delete": "Smazat"
+    },
+    "confirmDelete": {
+        "title": "Smazat úvěr",
+        "description": "Opravdu chcete smazat \"{{name}}\"? Tuto akci nelze vrátit zpět."
+    },
+    "toast": {
+        "added": "Úvěr úspěšně přidán",
+        "updated": "Úvěr úspěšně aktualizován",
+        "deleted": "Úvěr úspěšně smazán"
+    },
+    "modal": {
+        "addDescription": "Přidejte nový úvěr pro sledování jistiny, úroků a splátek.",
+        "editDescription": "Aktualizujte detaily úvěru a informace o splátkách.",
+        "basicInfo": "Základní informace",
+        "financialDetails": "Finanční údaje",
+        "endDateHelp": "Kdy bude úvěr plně splacen",
+        "rateValidity": "Platnost sazby (volitelné)",
+        "rateValidityHelp": "Kdy vyprší platná sazba"
+    }
+}

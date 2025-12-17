@@ -1,0 +1,92 @@
+{
+    "title": "Other Assets",
+    "subtitle": "Track collectibles, precious metals, and other valuables.",
+    "loading": "Loading your other assets...",
+    "addAsset": "Add New Asset",
+    "summary": {
+        "totalValue": "Total Value",
+        "assetCount": "Assets",
+        "totalGainLoss": "Overall Gain/Loss"
+    },
+    "table": {
+        "title": "All Assets",
+        "search": "Search asset...",
+        "name": "Name",
+        "category": "Category",
+        "purchasePrice": "Purchase Price",
+        "marketPrice": "Market Price",
+        "avgPurchasePrice": "Avg. Purchase Price",
+        "totalValue": "Total Value",
+        "currentValue": "Current Value",
+        "purchaseDate": "Purchase Date",
+        "gainLoss": "Gain/Loss",
+        "actions": "Actions",
+        "noAssets": "No assets found. Add your first asset to get started."
+    },
+    "categories": {
+        "collectibles": "Collectibles",
+        "preciousMetals": "Precious Metals",
+        "art": "Art",
+        "jewelry": "Jewelry",
+        "vehicles": "Vehicles",
+        "wine": "Wine & Spirits",
+        "watches": "Watches",
+        "other": "Other"
+    },
+    "form": {
+        "addTitle": "Add Asset",
+        "editTitle": "Edit Asset",
+        "name": "Asset Name",
+        "namePlaceholder": "e.g., Gold Bar 100g",
+        "category": "Category",
+        "purchasePrice": "Purchase Price",
+        "currentValue": "Current Value",
+        "currency": "Currency",
+        "purchaseDate": "Purchase Date",
+        "location": "Storage Location",
+        "locationPlaceholder": "e.g., Safe deposit box",
+        "notes": "Notes"
+    },
+    "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+    },
+    "confirmDelete": {
+        "title": "Delete Asset",
+        "description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
+    },
+    "toast": {
+        "added": "Asset added successfully",
+        "updated": "Asset updated successfully",
+        "deleted": "Asset deleted successfully"
+    },
+    "modal": {
+        "add": {
+            "title": "Add Other Asset",
+            "assetName": "Asset Name",
+            "assetNamePlaceholder": "e.g. Gold Bars",
+            "marketPrice": "Current Market Price (per unit)",
+            "initialPurchase": "Initial Purchase (Optional)",
+            "pricePerUnit": "Price / Unit",
+            "initialPurchaseHint": "If filled, this will add a 'Buy' transaction.",
+            "yieldConfig": "Yield Config (Optional)",
+            "submit": "Add Asset"
+        },
+        "buy": {
+            "title": "Buy More",
+            "description": "Add more quantity to your asset.",
+            "pricePerUnit": "Price per Unit",
+            "submit": "Add Transaction"
+        },
+        "sell": {
+            "title": "Sell",
+            "description": "Record a sale transaction for this asset.",
+            "pricePerUnit": "Price per Unit",
+            "submit": "Sell Asset"
+        },
+        "transactions": {
+            "title": "Transaction History",
+            "noTransactions": "No transactions found"
+        }
+    }
+}

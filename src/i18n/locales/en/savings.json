@@ -1,0 +1,85 @@
+{
+    "title": "Savings and Deposits",
+    "subtitle": "Manage your savings and high-yield accounts.",
+    "loading": "Loading your savings accounts...",
+    "addAccount": "Add New Account",
+    "summary": {
+        "totalBalance": "Total Balance",
+        "totalInterest": "Total Interest Rate",
+        "accountCount": "Accounts",
+        "avgInterestRate": "Avg. Interest Rate"
+    },
+    "table": {
+        "title": "All Accounts",
+        "search": "Search account...",
+        "name": "Account Name",
+        "accountName": "Account Name",
+        "bank": "Bank",
+        "balance": "Balance",
+        "interestRate": "Interest Rate (APY)",
+        "type": "Type",
+        "zones": "Zones",
+        "zoned": "Zoned",
+        "simple": "Simple",
+        "effective": "effective",
+        "actions": "Actions",
+        "noAccounts": "No accounts found. Add your first savings account to get started."
+    },
+    "types": {
+        "savings": "Savings",
+        "termDeposit": "Term Deposit",
+        "moneyMarket": "Money Market",
+        "checking": "Checking"
+    },
+    "form": {
+        "addTitle": "Add Savings Account",
+        "editTitle": "Edit Savings Account",
+        "name": "Account Name",
+        "namePlaceholder": "e.g., Emergency Fund",
+        "bank": "Bank/Institution",
+        "bankPlaceholder": "e.g., Czech Savings Bank",
+        "balance": "Current Balance",
+        "interestRate": "Interest Rate (%)",
+        "currency": "Currency",
+        "type": "Account Type",
+        "notes": "Notes",
+        "hasZones": "This account has zone designations",
+        "zonesDescription": "Divide your savings into different goals"
+    },
+    "zones": {
+        "title": "Savings Zones",
+        "description": "Organize your savings into different goals",
+        "addZone": "Add Zone",
+        "zoneName": "Zone Name",
+        "targetAmount": "Target Amount",
+        "currentAmount": "Current Amount",
+        "progress": "Progress",
+        "remaining": "Remaining",
+        "noZones": "No zones defined"
+    },
+    "actions": {
+        "edit": "Edit",
+        "viewZones": "View Zones",
+        "delete": "Delete"
+    },
+    "confirmDelete": {
+        "title": "Delete Account",
+        "description": "Are you sure you want to delete \"{{name}}\"? All associated zones will also be deleted. This action cannot be undone."
+    },
+    "toast": {
+        "added": "Account added successfully",
+        "updated": "Account updated successfully",
+        "deleted": "Account deleted successfully"
+    },
+    "modal": {
+        "addDescription": "Add a new savings account to track your savings.",
+        "editDescription": "Update the savings account details.",
+        "basicInfo": "Basic Information",
+        "interestConfig": "Interest Rate Configuration",
+        "useZones": "Use zone designation (tiered interest rates)",
+        "zonesHelp": "Enable different interest rates for different balance ranges, similar to progressive tax brackets",
+        "apyHelp": "Annual percentage yield for this account",
+        "zonesLabel": "Interest Rate Zones",
+        "zonesDescription": "Define different interest rates for different balance ranges. The effective rate will be calculated automatically."
+    }
+}

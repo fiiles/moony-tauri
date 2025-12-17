@@ -1,0 +1,30 @@
+{
+    "welcome": "Vítejte zpět, {{name}}!",
+    "overview": "Zde je váš finanční přehled pro dnešní den.",
+    "loading": "Načítání vašeho portfolia...",
+    "stats": {
+        "netWorth": "Čisté jmění",
+        "totalAssets": "Celková aktiva",
+        "totalLiabilities": "Celkové závazky"
+    },
+    "cards": {
+        "investments": "Investice",
+        "savings": "Spoření a vklady",
+        "bonds": "Dluhopisy",
+        "liabilities": "Závazky",
+        "crypto": "Kryptoměny",
+        "realEstate": "Nemovitosti",
+        "otherAssets": "Ostatní aktiva"
+    },
+    "charts": {
+        "netWorthTrend": "Vývoj čistého jmění",
+        "assetAllocation": "Alokace aktiv",
+        "assetsVsLiabilities": "Aktiva vs závazky",
+        "noHistoricalData": "Žádná historická data k dispozici"
+    },
+    "tooltips": {
+        "netWorth": "Čisté jmění",
+        "totalAssets": "Celková aktiva",
+        "totalLiabilities": "Celkové závazky"
+    }
+}
