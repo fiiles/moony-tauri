@@ -27,19 +27,31 @@ export function useSavingsAccounts() {
     0
   );
 
-  const averageInterestRate =
-    accounts.length > 0
-      ? accounts.reduce(
-        (sum, account: any) => {
-          // Use effective rate if available (for zoned accounts), otherwise simple rate
-          const rate = account.effectiveInterestRate !== undefined
-            ? account.effectiveInterestRate
-            : parseFloat(account.interestRate || "0");
-          return sum + rate;
-        },
-        0
-      ) / accounts.length
-      : 0;
+  // Calculate weighted average interest rate (weighted by balance in CZK)
+  const averageInterestRate = (() => {
+    if (accounts.length === 0) return 0;
+
+    const { weightedSum, totalWeight } = accounts.reduce(
+      (acc, account: any) => {
+        const balance = parseFloat(account.balance || "0");
+        const currency = account.currency || "CZK";
+        const balanceInCzk = convertToCzK(balance, currency as CurrencyCode);
+
+        // Use effective rate if available (for zoned accounts), otherwise simple rate
+        const rate = account.effectiveInterestRate !== undefined
+          ? account.effectiveInterestRate
+          : parseFloat(account.interestRate || "0");
+
+        return {
+          weightedSum: acc.weightedSum + (balanceInCzk * rate),
+          totalWeight: acc.totalWeight + balanceInCzk,
+        };
+      },
+      { weightedSum: 0, totalWeight: 0 }
+    );
+
+    return totalWeight > 0 ? weightedSum / totalWeight : 0;
+  })();
 
   // Calculate projected yearly earnings in CZK
   const projectedYearlyEarnings = accounts.reduce(

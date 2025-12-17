@@ -5,7 +5,7 @@
     "addAccount": "Add New Account",
     "summary": {
         "totalBalance": "Total Balance",
-        "totalInterest": "Total Interest Rate",
+        "totalInterest": "Yearly Interest",
         "accountCount": "Accounts",
         "avgInterestRate": "Avg. Interest Rate"
     },
@@ -22,6 +22,7 @@
         "zoned": "Zoned",
         "simple": "Simple",
         "effective": "effective",
+        "terminationDate": "Termination Date",
         "actions": "Actions",
         "noAccounts": "No accounts found. Add your first savings account to get started."
     },
@@ -44,7 +45,9 @@
         "type": "Account Type",
         "notes": "Notes",
         "hasZones": "This account has zone designations",
-        "zonesDescription": "Divide your savings into different goals"
+        "zonesDescription": "Divide your savings into different goals",
+        "terminationDate": "Termination Date (Optional)",
+        "terminationDateHelp": "Leave empty if this is a regular savings account without a fixed term."
     },
     "zones": {
         "title": "Savings Zones",

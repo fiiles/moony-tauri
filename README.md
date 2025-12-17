@@ -56,7 +56,7 @@ A modern, privacy-focused personal finance management application built with Tau
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/moony-tauri.git
+   git clone https://github.com/fiiles/moony-tauri.git
    cd moony-tauri
    ```
 

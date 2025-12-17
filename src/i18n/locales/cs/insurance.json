@@ -86,5 +86,53 @@
             "yearly": "Ročně",
             "oneTime": "Jednorázově"
         }
+    },
+    "detail": {
+        "backToList": "Zpět na pojištění",
+        "basicInfo": "Základní informace",
+        "paymentInfo": "Informace o platbách",
+        "coverageLimits": "Limity krytí",
+        "noLimits": "Žádné limity krytí nejsou definovány",
+        "documents": "Dokumenty",
+        "notes": "Poznámky",
+        "noNotes": "Žádné poznámky",
+        "details": "Detaily",
+        "regularPayment": "Pravidelná platba",
+        "yearlyCost": "Roční náklady",
+        "perYear": "ročně",
+        "startDate": "Datum zahájení",
+        "until": "do",
+        "oneTimePayment": "Jednorázová platba",
+        "paidOnce": "zaplaceno jednorázově"
+    },
+    "documents": {
+        "description": "Přiložte smlouvy, certifikáty a další dokumenty",
+        "add": "Přidat dokument",
+        "addFirst": "Přidat první dokument",
+        "addTitle": "Přidat dokument",
+        "noDocuments": "Zatím nejsou přiloženy žádné dokumenty",
+        "file": "Soubor",
+        "clickToSelect": "Klikněte pro výběr souboru",
+        "type": "Typ dokumentu",
+        "selectType": "Vyberte typ",
+        "namePlaceholder": "např. Pojistná smlouva 2024",
+        "descriptionPlaceholder": "Další poznámky k tomuto dokumentu...",
+        "uploading": "Nahrávám...",
+        "upload": "Nahrát dokument",
+        "open": "Otevřít",
+        "delete": "Smazat",
+        "added": "Dokument úspěšně přidán",
+        "deleted": "Dokument úspěšně smazán",
+        "optional": "volitelné",
+        "types": {
+            "contract": "Smlouva",
+            "certificate": "Certifikát",
+            "claim": "Pojistná událost",
+            "other": "Jiný"
+        },
+        "deleteConfirm": {
+            "title": "Smazat dokument",
+            "description": "Opravdu chcete smazat \"{{name}}\"? Soubor bude trvale odstraněn."
+        }
     }
 }

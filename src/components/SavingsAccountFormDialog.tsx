@@ -31,6 +31,7 @@ type UpdateSavingsAccountData = {
   balance?: string;
   interestRate?: string;
   hasZoneDesignation?: boolean;
+  terminationDate?: number | null;
 };
 
 interface ZoneData {
@@ -67,6 +68,7 @@ export function SavingsAccountFormDialog({
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(userCurrency);
   const [hasZoneDesignation, setHasZoneDesignation] = useState(false);
   const [zones, setZones] = useState<ZoneData[]>([]);
+  const [terminationDate, setTerminationDate] = useState<string>("");
 
   useEffect(() => {
     if (open) {
@@ -77,6 +79,11 @@ export function SavingsAccountFormDialog({
         setInterestRate(account.interestRate.toString());
         setSelectedCurrency((account as any).currency || "CZK"); // Use stored currency
         setHasZoneDesignation(account.hasZoneDesignation || false);
+        setTerminationDate(
+          account.terminationDate
+            ? new Date(account.terminationDate * 1000).toISOString().split('T')[0]
+            : ""
+        );
 
         // Fetch zones if the account has zone designation
         if (account.hasZoneDesignation) {
@@ -105,11 +112,16 @@ export function SavingsAccountFormDialog({
         setSelectedCurrency(userCurrency);
         setHasZoneDesignation(false);
         setZones([]);
+        setTerminationDate("");
       }
     }
   }, [account, open, userCurrency]);
 
   const handleSubmit = () => {
+    const terminationTimestamp = terminationDate
+      ? Math.floor(new Date(terminationDate).getTime() / 1000)
+      : null;
+
     // Send balance in ORIGINAL currency (no conversion)
     if (isEditMode && account) {
       onSubmit({
@@ -119,6 +131,7 @@ export function SavingsAccountFormDialog({
         currency: selectedCurrency,
         interestRate: hasZoneDesignation ? "0" : interestRate,
         hasZoneDesignation,
+        terminationDate: terminationTimestamp,
       }, hasZoneDesignation ? zones : undefined);
     } else {
       onSubmit({
@@ -127,6 +140,7 @@ export function SavingsAccountFormDialog({
         currency: selectedCurrency,
         interestRate: hasZoneDesignation ? "0" : interestRate,
         hasZoneDesignation,
+        terminationDate: terminationTimestamp,
       } as any, hasZoneDesignation ? zones : undefined);
     }
   };
@@ -139,6 +153,7 @@ export function SavingsAccountFormDialog({
       setInterestRate("0");
       setHasZoneDesignation(false);
       setZones([]);
+      setTerminationDate("");
     }
   };
 
@@ -204,6 +219,19 @@ export function SavingsAccountFormDialog({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="terminationDate">{t('form.terminationDate')}</Label>
+                <Input
+                  id="terminationDate"
+                  type="date"
+                  value={terminationDate}
+                  onChange={(e) => setTerminationDate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('form.terminationDateHelp')}
+                </p>
               </div>
             </div>
           </div>

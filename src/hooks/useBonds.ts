@@ -27,9 +27,27 @@ export function useBonds() {
     0
   );
 
-  const averageYield = bonds.length > 0
-    ? bonds.reduce((sum, bond: any) => sum + parseFloat(bond.interestRate || "0"), 0) / bonds.length
-    : 0;
+  // Calculate weighted average yield (weighted by coupon value in CZK)
+  const averageYield = (() => {
+    if (bonds.length === 0) return 0;
+
+    const { weightedSum, totalWeight } = bonds.reduce(
+      (acc, bond: any) => {
+        const value = parseFloat(bond.couponValue || "0");
+        const currency = bond.currency || "CZK";
+        const valueInCzk = convertToCzK(value, currency as CurrencyCode);
+        const rate = parseFloat(bond.interestRate || "0");
+
+        return {
+          weightedSum: acc.weightedSum + (valueInCzk * rate),
+          totalWeight: acc.totalWeight + valueInCzk,
+        };
+      },
+      { weightedSum: 0, totalWeight: 0 }
+    );
+
+    return totalWeight > 0 ? weightedSum / totalWeight : 0;
+  })();
 
   const projectedYearlyIncome = bonds.reduce(
     (sum, bond: any) => {

@@ -27,9 +27,27 @@ export function useLoans() {
         0
     );
 
-    const averageInterestRate = loans.length > 0
-        ? loans.reduce((sum, loan: any) => sum + parseFloat(loan.interestRate || "0"), 0) / loans.length
-        : 0;
+    // Calculate weighted average interest rate (weighted by principal in CZK)
+    const averageInterestRate = (() => {
+        if (loans.length === 0) return 0;
+
+        const { weightedSum, totalWeight } = loans.reduce(
+            (acc, loan: any) => {
+                const principal = parseFloat(loan.principal || "0");
+                const currency = loan.currency || "CZK";
+                const principalInCzk = convertToCzK(principal, currency as CurrencyCode);
+                const rate = parseFloat(loan.interestRate || "0");
+
+                return {
+                    weightedSum: acc.weightedSum + (principalInCzk * rate),
+                    totalWeight: acc.totalWeight + principalInCzk,
+                };
+            },
+            { weightedSum: 0, totalWeight: 0 }
+        );
+
+        return totalWeight > 0 ? weightedSum / totalWeight : 0;
+    })();
 
     return {
         loans,

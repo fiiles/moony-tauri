@@ -40,6 +40,7 @@ export interface SavingsAccount {
     updatedAt: number;
     effectiveInterestRate?: number;
     projectedEarnings?: number;
+    terminationDate?: number | null;
 }
 
 export interface SavingsAccountZone {
@@ -191,7 +192,7 @@ export interface InsurancePolicy {
     type: string;
     provider: string;
     policyName: string;
-    policyNumber: string;
+    policyNumber: string | null;
     startDate: number;
     endDate: number | null;
     paymentFrequency: string;
@@ -204,6 +205,18 @@ export interface InsurancePolicy {
     status: string;
     createdAt: number;
     updatedAt: number;
+}
+
+// Insurance Document
+export interface InsuranceDocument {
+    id: string;
+    insuranceId: string;
+    name: string;
+    description: string | null;
+    filePath: string;
+    fileType: string;  // 'contract' | 'certificate' | 'claim' | 'other'
+    fileSize: number | null;
+    uploadedAt: number;
 }
 
 // Other Assets
@@ -319,7 +332,7 @@ export const insertInsurancePolicySchema = z.object({
     type: z.string().min(1),
     provider: z.string().min(1),
     policyName: z.string().min(1),
-    policyNumber: z.string().min(1),
+    policyNumber: z.string().optional(),
     startDate: z.number(),
     endDate: z.number().optional(),
     paymentFrequency: z.string(),

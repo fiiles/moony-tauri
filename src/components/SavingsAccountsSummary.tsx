@@ -1,7 +1,7 @@
 import { SummaryCard } from "@/components/SummaryCard";
 import type { SavingsAccountsMetrics } from "@/hooks/useSavingsAccounts";
 import { useCurrency } from "@/lib/currency";
-import { TrendingUp, Percent, Coins } from "lucide-react";
+import { TrendingUp, Percent, Banknote } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface SavingsAccountsSummaryProps {
@@ -31,7 +31,7 @@ export function SavingsAccountsSummary({
       <SummaryCard
         title={t('summary.totalInterest')}
         value={formatCurrency(metrics.projectedYearlyEarnings)}
-        icon={<Coins className="h-4 w-4" />}
+        icon={<Banknote className="h-4 w-4" />}
       />
     </div>
   );

@@ -171,7 +171,14 @@ export default function Crypto() {
                 metrics={metrics}
                 latestFetchedAt={holdings.reduce((latest, h) => {
                     if (!h.fetchedAt) return latest;
-                    const date = new Date(h.fetchedAt);
+                    // Handle both seconds (Unix timestamp) and ISO strings/Dates
+                    // If it's a number and small (less than year 1973 in ms), assume seconds
+                    const value = h.fetchedAt;
+                    const date = new Date(
+                        typeof value === 'number' && value < 100000000000
+                            ? value * 1000
+                            : value
+                    );
                     return !latest || date > latest ? date : latest;
                 }, undefined as Date | undefined)}
             />
