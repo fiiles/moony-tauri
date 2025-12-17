@@ -1,0 +1,76 @@
+{
+    "title": "Dluhopisy",
+    "subtitle": "Sledujte své dluhopisy a investice s pevným výnosem.",
+    "loading": "Načítání vašich dluhopisů...",
+    "addBond": "Přidat nový dluhopis",
+    "summary": {
+        "totalValue": "Celková hodnota",
+        "totalInterest": "Roční úrok",
+        "bondCount": "Aktivní dluhopisy",
+        "avgYield": "Prům. výnos"
+    },
+    "table": {
+        "title": "Všechny dluhopisy",
+        "search": "Hledat dluhopis...",
+        "name": "Název",
+        "bondName": "Název dluhopisu",
+        "issuer": "Emitent",
+        "isin": "ISIN",
+        "faceValue": "Nominální hodnota",
+        "couponValue": "Hodnota kupónu",
+        "currentValue": "Aktuální hodnota",
+        "interestRate": "Úroková sazba",
+        "maturityDate": "Datum splatnosti",
+        "type": "Typ",
+        "actions": "Akce",
+        "noBonds": "Žádné dluhopisy nenalezeny. Přidejte svůj první dluhopis."
+    },
+    "types": {
+        "government": "Státní dluhopis",
+        "corporate": "Podnikový dluhopis",
+        "municipal": "Komunální dluhopis",
+        "treasury": "Státní pokladniční poukázka",
+        "savings": "Spořící dluhopis",
+        "other": "Jiné"
+    },
+    "form": {
+        "addTitle": "Přidat dluhopis",
+        "editTitle": "Upravit dluhopis",
+        "name": "Název dluhopisu",
+        "namePlaceholder": "např. Český státní dluhopis",
+        "issuer": "Emitent",
+        "issuerPlaceholder": "např. Ministerstvo financí",
+        "type": "Typ dluhopisu",
+        "faceValue": "Nominální hodnota",
+        "purchasePrice": "Nákupní cena",
+        "interestRate": "Úroková sazba (%)",
+        "currency": "Měna",
+        "purchaseDate": "Datum nákupu",
+        "maturityDate": "Datum splatnosti",
+        "notes": "Poznámky"
+    },
+    "actions": {
+        "edit": "Upravit",
+        "delete": "Smazat"
+    },
+    "confirmDelete": {
+        "title": "Smazat dluhopis",
+        "description": "Opravdu chcete smazat \"{{name}}\"? Tuto akci nelze vrátit zpět."
+    },
+    "toast": {
+        "added": "Dluhopis úspěšně přidán",
+        "updated": "Dluhopis úspěšně aktualizován",
+        "deleted": "Dluhopis úspěšně smazán"
+    },
+    "modal": {
+        "addDescription": "Přidejte nový dluhopis pro sledování kuponů a výnosů.",
+        "editDescription": "Aktualizujte detaily dluhopisu.",
+        "basicInfo": "Základní informace",
+        "financialDetails": "Finanční údaje",
+        "isin": "ISIN",
+        "isinPlaceholder": "např. CZ0001005516",
+        "isinHelp": "Mezinárodní identifikační číslo cenného papíru",
+        "couponValue": "Hodnota kupónu",
+        "apyHelp": "Roční procentní výnos"
+    }
+}

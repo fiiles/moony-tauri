@@ -1,0 +1,534 @@
+import React, { useEffect, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { currencies, useCurrency } from "@/lib/currency";
+import { useAuth } from "@/hooks/use-auth";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { authApi, priceApi, type ApiKeys } from "@/lib/tauri-api";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Eye, EyeOff, ExternalLink } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/i18n/I18nProvider";
+import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type SupportedLanguage } from "@/i18n/index";
+
+
+const profileSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  surname: z.string().min(1, "Surname is required"),
+  email: z.string().email("Invalid email address"),
+});
+
+type ProfileData = z.infer<typeof profileSchema>;
+
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+type PasswordData = z.infer<typeof passwordSchema>;
+
+function ChangePasswordForm() {
+  const { toast } = useToast();
+  const form = useForm<PasswordData>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: PasswordData) => {
+      await authApi.changePassword({
+        newPassword: data.newPassword,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Password updated", description: "Your password has been changed successfully." });
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit((data) => changePasswordMutation.mutate(data))} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="currentPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Current Password</FormLabel>
+              <FormControl>
+                <Input type="password" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="newPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>New Password</FormLabel>
+                <FormControl>
+                  <Input type="password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirm New Password</FormLabel>
+                <FormControl>
+                  <Input type="password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <Button type="submit" disabled={changePasswordMutation.isPending}>
+          {changePasswordMutation.isPending ? "Updating..." : "Update Password"}
+        </Button>
+      </form>
+    </Form>
+  );
+}
+
+function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
+  const [showMarketstack, setShowMarketstack] = useState(false);
+  const [showCoingecko, setShowCoingecko] = useState(false);
+  const [marketstackKey, setMarketstackKey] = useState("");
+  const [coingeckoKey, setCoingeckoKey] = useState("");
+
+  const { data: apiKeys, isLoading } = useQuery({
+    queryKey: ["api-keys"],
+    queryFn: () => priceApi.getApiKeys(),
+  });
+
+  // Update local state when API keys are loaded
+  useEffect(() => {
+    if (apiKeys) {
+      setMarketstackKey(apiKeys.marketstack || "");
+      setCoingeckoKey(apiKeys.coingecko || "");
+    }
+  }, [apiKeys]);
+
+  const saveApiKeysMutation = useMutation({
+    mutationFn: async () => {
+      await priceApi.setApiKeys({
+        marketstack: marketstackKey || undefined,
+        coingecko: coingeckoKey || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+      toast({ title: "API keys saved", description: "Your API keys have been updated." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>API Keys</CardTitle>
+        <CardDescription>
+          Configure API keys for stock and cryptocurrency price fetching.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            MarketStack API Key
+            <a
+              href="https://marketstack.com/signup"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-2 text-primary text-xs hover:underline inline-flex items-center gap-1"
+            >
+              Get free key <ExternalLink className="h-3 w-3" />
+            </a>
+          </label>
+          <div className="flex gap-2">
+            <Input
+              type={showMarketstack ? "text" : "password"}
+              value={marketstackKey}
+              onChange={(e) => setMarketstackKey(e.target.value)}
+              placeholder="Enter MarketStack API key"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setShowMarketstack(!showMarketstack)}
+            >
+              {showMarketstack ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Used for real-time stock price updates</p>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            CoinGecko API Key (optional)
+            <a
+              href="https://www.coingecko.com/en/api"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-2 text-primary text-xs hover:underline inline-flex items-center gap-1"
+            >
+              Get demo key <ExternalLink className="h-3 w-3" />
+            </a>
+          </label>
+          <div className="flex gap-2">
+            <Input
+              type={showCoingecko ? "text" : "password"}
+              value={coingeckoKey}
+              onChange={(e) => setCoingeckoKey(e.target.value)}
+              placeholder="Optional - free tier works without key"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setShowCoingecko(!showCoingecko)}
+            >
+              {showCoingecko ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Used for crypto prices and search (free tier has rate limits)</p>
+        </div>
+
+        <Button
+          onClick={() => saveApiKeysMutation.mutate()}
+          disabled={saveApiKeysMutation.isPending}
+        >
+          {saveApiKeysMutation.isPending ? "Saving..." : "Save API Keys"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function SettingsPage() {
+  const { t } = useTranslation('settings');
+  const { t: tc } = useTranslation('common');
+  const { language, setLanguage } = useLanguage();
+  const { currencyCode, setCurrency } = useCurrency();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const form = useForm<ProfileData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      name: user?.name || "",
+      surname: user?.surname || "",
+      email: user?.email || "",
+    },
+  });
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await authApi.updateProfile(data);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      // Invalidate portfolio metrics if excludePersonalRealEstate changed
+      if (variables && 'excludePersonalRealEstate' in variables) {
+        queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+        queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
+      }
+      toast({ title: "Profile updated", description: "Your profile details have been saved." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+
+  const updateMenuMutation = useMutation({
+    mutationFn: async (menuPreferences: any) => {
+      await authApi.updateProfile({ menuPreferences });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      toast({ title: "Preferences updated", description: "Menu visibility settings saved." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      await authApi.deleteAccount();
+    },
+    onSuccess: () => {
+      window.location.reload();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Deletion failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const menuItems = [
+    { key: "savings", label: t('menuItems.savings') },
+    { key: "loans", label: t('menuItems.loans') },
+    { key: "insurance", label: t('menuItems.insurance') },
+    { key: "investments", label: t('menuItems.investments') },
+    { key: "crypto", label: t('menuItems.crypto') },
+    { key: "bonds", label: t('menuItems.bonds') },
+    { key: "realEstate", label: t('menuItems.realEstate') },
+    { key: "otherAssets", label: t('menuItems.otherAssets') },
+  ];
+
+  const handleMenuToggle = (key: string, checked: boolean) => {
+    if (!user?.menuPreferences) return;
+    const newPreferences = { ...user.menuPreferences, [key]: checked };
+    updateMenuMutation.mutate(newPreferences);
+  };
+
+  return (
+    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      <h2 className="text-2xl font-semibold mb-4">{t('title')}</h2>
+
+      {/* Profile Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('profile.title')}</CardTitle>
+          <CardDescription>{t('profile.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit((data) => updateProfileMutation.mutate(data))} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="surname"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Surname</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" disabled={updateProfileMutation.isPending}>
+                {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+
+      {/* Change Password */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('password.title')}</CardTitle>
+          <CardDescription>{t('password.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm />
+        </CardContent>
+      </Card>
+
+      {/* API Keys */}
+      <ApiKeysCard toast={toast} />
+
+      {/* Currency Settings */}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('currency.title')}</CardTitle>
+          <CardDescription>{t('currency.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup
+            value={currencyCode}
+            onValueChange={(value: string) => {
+              setCurrency(value as any);
+              updateProfileMutation.mutate({ currency: value });
+            }}
+            className="flex flex-col gap-2"
+          >
+            {currencies.map((c) => (
+              <div key={c.code} className="flex items-center space-x-3 p-2 rounded hover:bg-accent cursor-pointer" onClick={() => {
+                setCurrency(c.code as any);
+                updateProfileMutation.mutate({ currency: c.code });
+              }}>
+                <RadioGroupItem value={c.code} id={c.code} />
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{c.label}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Example: {c.position === "before" ? `${c.symbol}1,234.56` : `1,234.56 ${c.symbol}`}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </RadioGroup>
+        </CardContent>
+
+      </Card>
+
+      {/* Language Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings:language.title')}</CardTitle>
+          <CardDescription>{t('settings:language.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup
+            value={language}
+            onValueChange={(value: string) => {
+              setLanguage(value as SupportedLanguage);
+              updateProfileMutation.mutate({ language: value });
+            }}
+            className="flex flex-col gap-2"
+          >
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <div key={lang} className="flex items-center space-x-3 p-2 rounded hover:bg-accent cursor-pointer" onClick={() => {
+                setLanguage(lang);
+                updateProfileMutation.mutate({ language: lang });
+              }}>
+                <RadioGroupItem value={lang} id={`lang-${lang}`} />
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{LANGUAGE_NAMES[lang].native}</div>
+                  <div className="text-xs text-muted-foreground">{LANGUAGE_NAMES[lang].english}</div>
+                </div>
+              </div>
+            ))}
+          </RadioGroup>
+        </CardContent>
+      </Card>
+
+      {/* Menu Visibility */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('menuVisibility.title')}</CardTitle>
+          <CardDescription>{t('menuVisibility.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {menuItems.map((item) => (
+              <div key={item.key} className="flex items-center justify-between p-2 border rounded">
+                <span className="text-sm font-medium">{item.label}</span>
+                <Switch
+                  checked={user?.menuPreferences?.[item.key as keyof typeof user.menuPreferences] ?? true}
+                  onCheckedChange={(checked) => handleMenuToggle(item.key, checked)}
+                />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dashboard Preferences */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('dashboardPreferences.title')}</CardTitle>
+          <CardDescription>{t('dashboardPreferences.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-2 border rounded">
+            <div>
+              <span className="text-sm font-medium">{t('dashboardPreferences.excludeRealEstate')}</span>
+              <p className="text-xs text-muted-foreground">{t('dashboardPreferences.excludeRealEstateHint')}</p>
+            </div>
+            <Switch
+              checked={user?.excludePersonalRealEstate ?? false}
+              onCheckedChange={(checked) => {
+                updateProfileMutation.mutate({ excludePersonalRealEstate: checked });
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Danger Zone */}
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <CardTitle className="text-destructive">{t('dangerZone.title')}</CardTitle>
+          <CardDescription>{t('dangerZone.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">{t('dangerZone.deleteAccount')}</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t('dangerZone.confirmTitle')}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('dangerZone.confirmDescription')}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{tc('buttons.cancel')}</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => deleteAccountMutation.mutate()}
+                >
+                  {deleteAccountMutation.isPending ? t('dangerZone.deleting') : t('dangerZone.deleteAccount')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

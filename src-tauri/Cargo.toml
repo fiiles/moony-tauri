@@ -1,0 +1,66 @@
+[package]
+name = "moony-tauri"
+version = "0.1.0"
+description = "Moony - Personal Finance Manager"
+authors = ["you"]
+edition = "2021"
+default-run = "moony-tauri"
+
+[lib]
+name = "moony_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Database with SQLCipher encryption
+rusqlite = { version = "0.32", features = ["bundled-sqlcipher"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP client for API calls (ECB rates, Marketstack)
+reqwest = { version = "0.12", features = ["json"] }
+
+# UUID generation
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Date/time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Cryptography - compatible with Node.js crypto
+ring = "0.17"
+hex = "0.4"
+base64 = "0.22"
+rand = "0.8"
+scrypt = "0.11"      # For scrypt key derivation (matches Node.js)
+aes-gcm = "0.10"     # For AES-256-GCM encryption (matches Node.js)
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Lazy static for globals (exchange rates cache)
+lazy_static = "1.5"
+
+# URL encoding for API queries
+urlencoding = "2"
+yahoo_finance_api = "4.1.0"
+
+# Image processing for photo gallery
+image = "0.25"

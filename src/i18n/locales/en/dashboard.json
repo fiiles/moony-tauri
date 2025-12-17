@@ -1,0 +1,30 @@
+{
+    "welcome": "Welcome back, {{name}}!",
+    "overview": "Here's your financial overview for today.",
+    "loading": "Loading your portfolio...",
+    "stats": {
+        "netWorth": "Net Worth",
+        "totalAssets": "Total Assets",
+        "totalLiabilities": "Total Liabilities"
+    },
+    "cards": {
+        "investments": "Investments",
+        "savings": "Savings and Deposits",
+        "bonds": "Bonds",
+        "liabilities": "Liabilities",
+        "crypto": "Crypto",
+        "realEstate": "Real Estate",
+        "otherAssets": "Other Assets"
+    },
+    "charts": {
+        "netWorthTrend": "Net Worth Trend",
+        "assetAllocation": "Asset Allocation",
+        "assetsVsLiabilities": "Assets vs Liabilities",
+        "noHistoricalData": "No historical data available"
+    },
+    "tooltips": {
+        "netWorth": "Net Worth",
+        "totalAssets": "Total Assets",
+        "totalLiabilities": "Total Liabilities"
+    }
+}

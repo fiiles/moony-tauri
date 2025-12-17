@@ -1,0 +1,92 @@
+{
+    "title": "Ostatní aktiva",
+    "subtitle": "Sledujte sběratelské předměty, drahé kovy a další cennosti.",
+    "loading": "Načítání vašich ostatních aktiv...",
+    "addAsset": "Přidat nové aktivum",
+    "summary": {
+        "totalValue": "Celková hodnota",
+        "assetCount": "Počet aktiv",
+        "totalGainLoss": "Celkový zisk/ztráta"
+    },
+    "table": {
+        "title": "Všechna aktiva",
+        "search": "Hledat aktivum...",
+        "name": "Název",
+        "category": "Kategorie",
+        "purchasePrice": "Nákupní cena",
+        "marketPrice": "Tržní cena",
+        "avgPurchasePrice": "Prům. nákupní cena",
+        "totalValue": "Celková hodnota",
+        "currentValue": "Aktuální hodnota",
+        "purchaseDate": "Datum nákupu",
+        "gainLoss": "Zisk/ztráta",
+        "actions": "Akce",
+        "noAssets": "Žádná aktiva nenalezena. Přidejte své první aktivum."
+    },
+    "categories": {
+        "collectibles": "Sběratelské předměty",
+        "preciousMetals": "Drahé kovy",
+        "art": "Umění",
+        "jewelry": "Šperky",
+        "vehicles": "Vozidla",
+        "wine": "Víno a lihoviny",
+        "watches": "Hodinky",
+        "other": "Jiné"
+    },
+    "form": {
+        "addTitle": "Přidat aktivum",
+        "editTitle": "Upravit aktivum",
+        "name": "Název aktiva",
+        "namePlaceholder": "např. Zlatý slitek 100g",
+        "category": "Kategorie",
+        "purchasePrice": "Nákupní cena",
+        "currentValue": "Aktuální hodnota",
+        "currency": "Měna",
+        "purchaseDate": "Datum nákupu",
+        "location": "Místo uložení",
+        "locationPlaceholder": "např. Bankovní sejf",
+        "notes": "Poznámky"
+    },
+    "actions": {
+        "edit": "Upravit",
+        "delete": "Smazat"
+    },
+    "confirmDelete": {
+        "title": "Smazat aktivum",
+        "description": "Opravdu chcete smazat \"{{name}}\"? Tuto akci nelze vrátit zpět."
+    },
+    "toast": {
+        "added": "Aktivum úspěšně přidáno",
+        "updated": "Aktivum úspěšně aktualizováno",
+        "deleted": "Aktivum úspěšně smazáno"
+    },
+    "modal": {
+        "add": {
+            "title": "Přidat ostatní aktivum",
+            "assetName": "Název aktiva",
+            "assetNamePlaceholder": "např. Zlaté slitky",
+            "marketPrice": "Aktuální tržní cena (za jednotku)",
+            "initialPurchase": "Počáteční nákup (volitelné)",
+            "pricePerUnit": "Cena / Jednotka",
+            "initialPurchaseHint": "Pokud vyplníte, bude přidána transakce 'Nákup'.",
+            "yieldConfig": "Nastavení výnosu (volitelné)",
+            "submit": "Přidat aktivum"
+        },
+        "buy": {
+            "title": "Dokoupit",
+            "description": "Přidejte další množství k vašemu aktivu.",
+            "pricePerUnit": "Cena za jednotku",
+            "submit": "Přidat transakci"
+        },
+        "sell": {
+            "title": "Prodat",
+            "description": "Zaznamenejte prodejní transakci pro toto aktivum.",
+            "pricePerUnit": "Cena za jednotku",
+            "submit": "Prodat aktivum"
+        },
+        "transactions": {
+            "title": "Historie transakcí",
+            "noTransactions": "Žádné transakce nenalezeny"
+        }
+    }
+}

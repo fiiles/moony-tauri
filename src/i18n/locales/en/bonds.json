@@ -1,0 +1,76 @@
+{
+    "title": "Bonds",
+    "subtitle": "Track your bonds and fixed income investments.",
+    "loading": "Loading your bonds...",
+    "addBond": "Add New Bond",
+    "summary": {
+        "totalValue": "Total Value",
+        "totalInterest": "Annual Interest",
+        "bondCount": "Active Bonds",
+        "avgYield": "Avg. Yield"
+    },
+    "table": {
+        "title": "All Bonds",
+        "search": "Search bond...",
+        "name": "Name",
+        "bondName": "Bond Name",
+        "issuer": "Issuer",
+        "isin": "ISIN",
+        "faceValue": "Face Value",
+        "couponValue": "Coupon Value",
+        "currentValue": "Current Value",
+        "interestRate": "Interest Rate",
+        "maturityDate": "Maturity Date",
+        "type": "Type",
+        "actions": "Actions",
+        "noBonds": "No bonds found. Add your first bond to get started."
+    },
+    "types": {
+        "government": "Government Bond",
+        "corporate": "Corporate Bond",
+        "municipal": "Municipal Bond",
+        "treasury": "Treasury Bond",
+        "savings": "Savings Bond",
+        "other": "Other"
+    },
+    "form": {
+        "addTitle": "Add Bond",
+        "editTitle": "Edit Bond",
+        "name": "Bond Name",
+        "namePlaceholder": "e.g., Czech Government Bond",
+        "issuer": "Issuer",
+        "issuerPlaceholder": "e.g., Ministry of Finance",
+        "type": "Bond Type",
+        "faceValue": "Face Value",
+        "purchasePrice": "Purchase Price",
+        "interestRate": "Interest Rate (%)",
+        "currency": "Currency",
+        "purchaseDate": "Purchase Date",
+        "maturityDate": "Maturity Date",
+        "notes": "Notes"
+    },
+    "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+    },
+    "confirmDelete": {
+        "title": "Delete Bond",
+        "description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
+    },
+    "toast": {
+        "added": "Bond added successfully",
+        "updated": "Bond updated successfully",
+        "deleted": "Bond deleted successfully"
+    },
+    "modal": {
+        "addDescription": "Add a new bond to track coupon values and yields.",
+        "editDescription": "Update bond details.",
+        "basicInfo": "Basic Information",
+        "financialDetails": "Financial Details",
+        "isin": "ISIN",
+        "isinPlaceholder": "e.g., US9128285Q88",
+        "isinHelp": "International Securities Identification Number",
+        "couponValue": "Coupon Value",
+        "apyHelp": "Annual percentage yield"
+    }
+}

@@ -1,0 +1,143 @@
+{
+    "nav": {
+        "dashboard": "Dashboard",
+        "platform": "Platform",
+        "portfolio": "Portfolio",
+        "savings": "Savings and Deposits",
+        "loans": "Loans",
+        "insurance": "Insurance",
+        "investments": "Investments",
+        "crypto": "Cryptocurrencies",
+        "bonds": "Bonds",
+        "realEstate": "Real Estates",
+        "otherAssets": "Other Assets",
+        "settings": "Settings",
+        "lockApp": "Lock Application"
+    },
+    "app": {
+        "name": "Moony",
+        "tagline": "Personal Wealth Manager",
+        "userAccount": "User Account"
+    },
+    "buttons": {
+        "save": "Save",
+        "saveChanges": "Save Changes",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "add": "Add",
+        "confirm": "Confirm",
+        "close": "Close",
+        "back": "Back",
+        "next": "Next",
+        "submit": "Submit",
+        "refresh": "Refresh",
+        "refreshing": "Refreshing...",
+        "search": "Search",
+        "filter": "Filter",
+        "export": "Export",
+        "import": "Import",
+        "viewDetails": "View Details →",
+        "viewTransactions": "View Transactions",
+        "buy": "Buy",
+        "sell": "Sell",
+        "updatePrice": "Update Price Manually",
+        "updateDividend": "Update Dividend Estimate",
+        "addNew": "Add New"
+    },
+    "labels": {
+        "name": "Name",
+        "surname": "Surname",
+        "email": "Email",
+        "password": "Password",
+        "amount": "Amount",
+        "date": "Date",
+        "description": "Description",
+        "notes": "Notes",
+        "currency": "Currency",
+        "status": "Status",
+        "type": "Type",
+        "total": "Total",
+        "balance": "Balance",
+        "quantity": "Quantity",
+        "price": "Price",
+        "value": "Value",
+        "change": "Change",
+        "actions": "Actions",
+        "manual": "Manual",
+        "lastUpdated": "Last updated",
+        "search": "Search...",
+        "selectCurrency": "Select currency",
+        "max": "Max",
+        "rank": "Rank",
+        "asset": "Asset",
+        "gainLoss": "Total Gain/Loss",
+        "estimatedTotal": "Estimated Total:"
+    },
+    "status": {
+        "loading": "Loading...",
+        "saving": "Saving...",
+        "deleting": "Deleting...",
+        "updating": "Updating...",
+        "error": "Error",
+        "success": "Success",
+        "adding": "Adding...",
+        "selling": "Selling..."
+    },
+    "validation": {
+        "required": "This field is required",
+        "invalidEmail": "Invalid email address",
+        "minLength": "Must be at least {{count}} characters",
+        "maxLength": "Must be at most {{count}} characters",
+        "passwordMismatch": "Passwords do not match"
+    },
+    "time": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "thisWeek": "This Week",
+        "thisMonth": "This Month",
+        "thisYear": "This Year",
+        "allTime": "All Time"
+    },
+    "periods": {
+        "7D": "7D",
+        "30D": "30D",
+        "90D": "90D",
+        "YTD": "YTD",
+        "All": "All",
+        "last7Days": "Last 7 Days",
+        "last30Days": "Last 30 Days",
+        "last90Days": "Last 90 Days"
+    },
+    "table": {
+        "noData": "No data available",
+        "noResults": "No results found",
+        "actions": "Actions",
+        "showing": "Showing {{from}} to {{to}} of {{total}} results",
+        "allHoldings": "All Holdings",
+        "searchPlaceholder": "Search..."
+    },
+    "confirm": {
+        "title": "Are you sure?",
+        "deleteDescription": "This action cannot be undone."
+    },
+    "charts": {
+        "netWorthTrend": "Net Worth Trend",
+        "assetAllocation": "Asset Allocation",
+        "assetsVsLiabilities": "Assets vs Liabilities",
+        "noHistoricalData": "No historical data available"
+    },
+    "tooltips": {
+        "manualPrice": "Manually overwritten price",
+        "manualDividend": "Manually overwritten dividend estimate"
+    },
+    "summary": {
+        "totalValue": "Total Value",
+        "totalBalance": "Total Balance",
+        "overallGainLoss": "Overall Gain/Loss",
+        "estimatedDividend": "Estimated Dividend Yield",
+        "topPerformer": "Top Performer",
+        "basedOnLastYear": "Based on last year dividends",
+        "na": "N/A"
+    }
+}

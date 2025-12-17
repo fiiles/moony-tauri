@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "moony-tauri",
+  "version": "0.1.0",
+  "identifier": "com.filipkral.moony-tauri",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Moony - Personal Wealth Manager",
+        "width": 1400,
+        "height": 850,
+        "minWidth": 1400,
+        "minHeight": 850
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "$APPDATA/**",
+          "$APPDATA/real_estate_photos/**",
+          "$RESOURCE/**",
+          "/Users/**"
+        ]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
