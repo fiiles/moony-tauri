@@ -30,6 +30,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("002_add_bond_currency", MIGRATION_002),
         ("003_add_other_assets_history", MIGRATION_003),
         ("004_add_photo_batches", MIGRATION_004),
+        ("005_add_insurance_documents", MIGRATION_005),
+        ("006_add_savings_termination_date", MIGRATION_006),
     ];
 
     for (name, sql) in migrations {
@@ -363,4 +365,26 @@ CREATE TABLE IF NOT EXISTS real_estate_photos (
 
 CREATE INDEX IF NOT EXISTS idx_batches_real_estate ON real_estate_photo_batches(real_estate_id);
 CREATE INDEX IF NOT EXISTS idx_photos_batch ON real_estate_photos(batch_id);
+"#;
+
+/// Migration 005: Add insurance documents table
+const MIGRATION_005: &str = r#"
+-- Insurance documents (contracts, certificates, claims, etc.)
+CREATE TABLE IF NOT EXISTS insurance_documents (
+    id TEXT PRIMARY KEY,
+    insurance_id TEXT NOT NULL REFERENCES insurance_policies(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    file_path TEXT NOT NULL,
+    file_type TEXT NOT NULL DEFAULT 'other',
+    file_size INTEGER,
+    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_insurance_documents ON insurance_documents(insurance_id);
+"#;
+
+/// Migration 006: Add termination date to savings accounts
+const MIGRATION_006: &str = r#"
+ALTER TABLE savings_accounts ADD COLUMN termination_date INTEGER;
 "#;

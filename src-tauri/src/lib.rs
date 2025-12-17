@@ -91,9 +91,14 @@ pub fn run() {
             commands::real_estate::delete_real_estate_photo,
             // Insurance commands
             commands::insurance::get_all_insurance,
+            commands::insurance::get_insurance,
             commands::insurance::create_insurance,
             commands::insurance::update_insurance,
             commands::insurance::delete_insurance,
+            commands::insurance::get_insurance_documents,
+            commands::insurance::add_insurance_document,
+            commands::insurance::delete_insurance_document,
+            commands::insurance::open_insurance_document,
             // Other assets commands
             commands::other_assets::get_all_other_assets,
             commands::other_assets::create_other_asset,

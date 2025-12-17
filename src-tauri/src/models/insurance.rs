@@ -20,7 +20,7 @@ pub struct InsurancePolicy {
     #[serde(rename = "policyName")]
     pub policy_name: String,
     #[serde(rename = "policyNumber")]
-    pub policy_number: String,
+    pub policy_number: Option<String>,
     #[serde(rename = "startDate")]
     pub start_date: i64,
     #[serde(rename = "endDate")]
@@ -53,7 +53,7 @@ pub struct InsertInsurancePolicy {
     #[serde(rename = "policyName")]
     pub policy_name: String,
     #[serde(rename = "policyNumber")]
-    pub policy_number: String,
+    pub policy_number: Option<String>,
     #[serde(rename = "startDate")]
     pub start_date: i64,
     #[serde(rename = "endDate")]
@@ -71,4 +71,31 @@ pub struct InsertInsurancePolicy {
     pub limits: Option<Vec<InsuranceLimit>>,
     pub notes: Option<String>,
     pub status: Option<String>,
+}
+
+/// Insurance document (attached contracts, certificates, etc.)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InsuranceDocument {
+    pub id: String,
+    #[serde(rename = "insuranceId")]
+    pub insurance_id: String,
+    pub name: String,
+    pub description: Option<String>,
+    #[serde(rename = "filePath")]
+    pub file_path: String,
+    #[serde(rename = "fileType")]
+    pub file_type: String,
+    #[serde(rename = "fileSize")]
+    pub file_size: Option<i64>,
+    #[serde(rename = "uploadedAt")]
+    pub uploaded_at: i64,
+}
+
+/// Data for creating insurance document
+#[derive(Debug, Clone, Deserialize)]
+pub struct InsertInsuranceDocument {
+    pub name: String,
+    pub description: Option<String>,
+    #[serde(rename = "fileType")]
+    pub file_type: Option<String>,
 }

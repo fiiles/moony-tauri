@@ -231,12 +231,27 @@ export const realEstateApi = {
 export const insuranceApi = {
   getAll: () => tauriInvoke<any[]>('get_all_insurance'),
 
+  get: (id: string) => tauriInvoke<any | null>('get_insurance', { id }),
+
   create: (data: any) => tauriInvoke<any>('create_insurance', { data }),
 
   update: (id: string, data: any) =>
     tauriInvoke<any>('update_insurance', { id, data }),
 
   delete: (id: string) => tauriInvoke<void>('delete_insurance', { id }),
+
+  // Document management
+  getDocuments: (insuranceId: string) =>
+    tauriInvoke<any[]>('get_insurance_documents', { insuranceId }),
+
+  addDocument: (insuranceId: string, filePath: string, data: { name: string; description?: string; fileType?: string }) =>
+    tauriInvoke<any>('add_insurance_document', { insuranceId, filePath, data }),
+
+  deleteDocument: (documentId: string) =>
+    tauriInvoke<void>('delete_insurance_document', { documentId }),
+
+  openDocument: (documentId: string) =>
+    tauriInvoke<void>('open_insurance_document', { documentId }),
 };
 
 // ============================================================================

@@ -40,7 +40,7 @@ const insuranceFormSchema = z.object({
     type: z.string().min(1),
     provider: z.string().min(1),
     policyName: z.string().min(1),
-    policyNumber: z.string().min(1),
+    policyNumber: z.string().optional(),
     startDate: z.date(),
     endDate: z.date().optional().nullable(),
     paymentFrequency: z.string(),

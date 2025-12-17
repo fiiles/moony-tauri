@@ -13,7 +13,7 @@ pub async fn get_all_savings_accounts(db: State<'_, Database>) -> Result<Vec<Sav
     let accounts: Vec<SavingsAccount> = db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT id, name, balance, currency, interest_rate, has_zone_designation, 
-                    created_at, updated_at 
+                    created_at, updated_at, termination_date 
              FROM savings_accounts ORDER BY name"
         )?;
         
@@ -27,6 +27,7 @@ pub async fn get_all_savings_accounts(db: State<'_, Database>) -> Result<Vec<Sav
                 has_zone_designation: row.get::<_, i32>(5)? != 0,
                 created_at: row.get(6)?,
                 updated_at: row.get(7)?,
+                termination_date: row.get(8)?,
                 effective_interest_rate: None,
                 projected_earnings: None,
             })
@@ -78,7 +79,7 @@ pub async fn get_savings_account(db: State<'_, Database>, id: String) -> Result<
     let account = db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT id, name, balance, currency, interest_rate, has_zone_designation, 
-                    created_at, updated_at 
+                    created_at, updated_at, termination_date 
              FROM savings_accounts WHERE id = ?1"
         )?;
         
@@ -92,6 +93,7 @@ pub async fn get_savings_account(db: State<'_, Database>, id: String) -> Result<
                 has_zone_designation: row.get::<_, i32>(5)? != 0,
                 created_at: row.get(6)?,
                 updated_at: row.get(7)?,
+                termination_date: row.get(8)?,
                 effective_interest_rate: None,
                 projected_earnings: None,
             })
@@ -152,9 +154,9 @@ pub async fn create_savings_account(
     
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO savings_accounts (id, name, balance, currency, interest_rate, has_zone_designation) 
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-            rusqlite::params![id, data.name, data.balance, currency, interest_rate, has_zone as i32],
+            "INSERT INTO savings_accounts (id, name, balance, currency, interest_rate, has_zone_designation, termination_date) 
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            rusqlite::params![id, data.name, data.balance, currency, interest_rate, has_zone as i32, data.termination_date],
         )?;
         Ok(())
     })?;
@@ -173,35 +175,14 @@ pub async fn update_savings_account(
     let now = chrono::Utc::now().timestamp();
     
     db.with_conn(|conn| {
-        let mut updates = vec!["name = ?1", "balance = ?2", "updated_at = ?3"];
-        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![
-            Box::new(data.name.clone()),
-            Box::new(data.balance.clone()),
-            Box::new(now),
-        ];
-        
-        if let Some(ref currency) = data.currency {
-            updates.push("currency = ?4");
-            params.push(Box::new(currency.clone()));
-        }
-        if let Some(ref rate) = data.interest_rate {
-            updates.push("interest_rate = ?5");
-            params.push(Box::new(rate.clone()));
-        }
-        if let Some(has_zone) = data.has_zone_designation {
-            updates.push("has_zone_designation = ?6");
-            params.push(Box::new(has_zone as i32));
-        }
-        
         // Simplified: just update all fields
         conn.execute(
-            &format!(
-                "UPDATE savings_accounts SET name = ?1, balance = ?2, updated_at = ?3, 
-                 currency = COALESCE(?4, currency), 
-                 interest_rate = COALESCE(?5, interest_rate),
-                 has_zone_designation = COALESCE(?6, has_zone_designation)
-                 WHERE id = ?7"
-            ),
+            "UPDATE savings_accounts SET name = ?1, balance = ?2, updated_at = ?3, 
+             currency = COALESCE(?4, currency), 
+             interest_rate = COALESCE(?5, interest_rate),
+             has_zone_designation = COALESCE(?6, has_zone_designation),
+             termination_date = ?7
+             WHERE id = ?8",
             rusqlite::params![
                 data.name,
                 data.balance,
@@ -209,6 +190,7 @@ pub async fn update_savings_account(
                 data.currency,
                 data.interest_rate,
                 data.has_zone_designation.map(|v| v as i32),
+                data.termination_date,
                 id,
             ],
         )?;

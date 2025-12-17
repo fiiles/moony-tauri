@@ -39,7 +39,6 @@ export function CryptoSummary({ metrics, latestFetchedAt }: CryptoSummaryProps) 
                 value={metrics.largestHolding?.ticker || "N/A"}
                 icon={<Award className="h-4 w-4" />}
                 subtitle={metrics.largestHolding ? formatCurrency(metrics.largestHolding.value, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : undefined}
-                valueClassName="text-primary"
             />
 
             <SummaryCard

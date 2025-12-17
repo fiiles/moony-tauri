@@ -24,6 +24,8 @@ pub struct SavingsAccount {
     pub effective_interest_rate: Option<f64>,
     #[serde(rename = "projectedEarnings", skip_serializing_if = "Option::is_none")]
     pub projected_earnings: Option<f64>,
+    #[serde(rename = "terminationDate", skip_serializing_if = "Option::is_none")]
+    pub termination_date: Option<i64>,
 }
 
 /// Data for creating/updating savings account
@@ -36,6 +38,8 @@ pub struct InsertSavingsAccount {
     pub interest_rate: Option<String>,
     #[serde(rename = "hasZoneDesignation")]
     pub has_zone_designation: Option<bool>,
+    #[serde(rename = "terminationDate")]
+    pub termination_date: Option<i64>,
 }
 
 /// Interest rate zone for tiered accounts

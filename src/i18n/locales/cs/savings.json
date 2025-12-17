@@ -22,6 +22,7 @@
         "zoned": "Pásmové",
         "simple": "Jednoduché",
         "effective": "efektivní",
+        "terminationDate": "Datum ukončení",
         "actions": "Akce",
         "noAccounts": "Žádné účty nenalezeny. Přidejte svůj první spořicí účet."
     },
@@ -44,7 +45,9 @@
         "type": "Typ účtu",
         "notes": "Poznámky",
         "hasZones": "Tento účet má označení zón",
-        "zonesDescription": "Rozdělte své úspory do různých cílů"
+        "zonesDescription": "Rozdělte své úspory do různých cílů",
+        "terminationDate": "Datum ukončení (volitelné)",
+        "terminationDateHelp": "Nechte prázdné pro běžný spořicí účet bez pevného termínu."
     },
     "zones": {
         "title": "Zóny spoření",

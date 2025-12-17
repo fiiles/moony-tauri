@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { SavingsAccountZonesModal } from "./SavingsAccountZonesModal";
 import { convertToCzK } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
+import { format } from "date-fns";
 
 interface SavingsAccountsTableProps {
   accounts: SavingsAccount[];
@@ -52,6 +53,7 @@ export function SavingsAccountsTable({
                 <TableHead className="text-right">{t('table.balance')}</TableHead>
                 <TableHead className="text-right">{t('table.interestRate')}</TableHead>
                 <TableHead className="text-center">{t('table.zoned')}</TableHead>
+                <TableHead>{t('table.terminationDate')}</TableHead>
                 <TableHead className="text-right w-[80px]">{tc('labels.actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -59,7 +61,7 @@ export function SavingsAccountsTable({
               {accounts.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="text-center text-muted-foreground py-8"
                   >
                     {t('table.noAccounts')}
@@ -105,6 +107,11 @@ export function SavingsAccountsTable({
                             {t('table.simple')}
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {account.terminationDate
+                          ? format(new Date(account.terminationDate * 1000), 'PP')
+                          : '—'}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

@@ -86,5 +86,53 @@
             "yearly": "Yearly",
             "oneTime": "One Time"
         }
+    },
+    "detail": {
+        "backToList": "Back to Insurance",
+        "basicInfo": "Basic Information",
+        "paymentInfo": "Payment Information",
+        "coverageLimits": "Coverage Limits",
+        "noLimits": "No coverage limits defined",
+        "documents": "Documents",
+        "notes": "Notes",
+        "noNotes": "No notes added",
+        "details": "Details",
+        "regularPayment": "Regular Payment",
+        "yearlyCost": "Yearly Cost",
+        "perYear": "per year",
+        "startDate": "Start Date",
+        "until": "until",
+        "oneTimePayment": "One-Time Payment",
+        "paidOnce": "paid once"
+    },
+    "documents": {
+        "description": "Attach contracts, certificates and other documents",
+        "add": "Add Document",
+        "addFirst": "Add First Document",
+        "addTitle": "Add Document",
+        "noDocuments": "No documents attached yet",
+        "file": "File",
+        "clickToSelect": "Click to select a file",
+        "type": "Document Type",
+        "selectType": "Select type",
+        "namePlaceholder": "e.g., Insurance Contract 2024",
+        "descriptionPlaceholder": "Additional notes about this document...",
+        "uploading": "Uploading...",
+        "upload": "Upload Document",
+        "open": "Open",
+        "delete": "Delete",
+        "added": "Document added successfully",
+        "deleted": "Document deleted successfully",
+        "optional": "optional",
+        "types": {
+            "contract": "Contract",
+            "certificate": "Certificate",
+            "claim": "Claim",
+            "other": "Other"
+        },
+        "deleteConfirm": {
+            "title": "Delete Document",
+            "description": "Are you sure you want to delete \"{{name}}\"? The file will be permanently removed."
+        }
     }
 }

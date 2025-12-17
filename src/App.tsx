@@ -15,6 +15,7 @@ import Investments from "@/pages/Investments";
 import RealEstate from "@/pages/RealEstate";
 import RealEstateDetail from "@/pages/RealEstateDetail";
 import Insurance from "@/pages/Insurance";
+import InsuranceDetail from "@/pages/InsuranceDetail";
 import Loans from "@/pages/Loans";
 import Bonds from "@/pages/Bonds";
 import Crypto from "@/pages/Crypto";
@@ -35,6 +36,7 @@ function Router() {
       <ProtectedRoute path="/real-estate" component={RealEstate} />
       <ProtectedRoute path="/real-estate/:id" component={RealEstateDetail} />
       <ProtectedRoute path="/insurance" component={Insurance} />
+      <ProtectedRoute path="/insurance/:id" component={InsuranceDetail} />
       <ProtectedRoute path="/loans" component={Loans} />
       <ProtectedRoute path="/bonds" component={Bonds} />
       <ProtectedRoute path="/settings" component={Settings} />
