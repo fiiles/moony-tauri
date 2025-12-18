@@ -168,8 +168,8 @@ export function AddInvestmentModal() {
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
+                        <div className="form-section">
+                            <h3 className="form-section-header">
                                 {t('modal.add.companyDetails')}
                             </h3>
                             <div className="grid gap-4">
@@ -217,8 +217,8 @@ export function AddInvestmentModal() {
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
+                        <div className="form-section">
+                            <h3 className="form-section-header">
                                 {t('modal.add.financialDetails')}
                             </h3>
                             <div className="grid gap-4">

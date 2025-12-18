@@ -117,13 +117,23 @@ export default function Dashboard() {
     return change;
   }, [oldestSnapshot, totalLiabilities]);
 
+  // Distinct colors for asset allocation chart (high contrast palette)
+  const allocationColors = {
+    investments: '#8B5CF6', // Violet
+    savings: '#10B981',     // Emerald/Green
+    bonds: '#F59E0B',       // Amber/Orange
+    realEstate: '#3B82F6',  // Blue
+    crypto: '#EC4899',      // Pink
+    otherAssets: '#6366F1', // Indigo
+  };
+
   const allocationData = [
-    { name: t('cards.investments'), value: totalInvestments, percentage: totalAssets ? Math.round((totalInvestments / totalAssets) * 100) : 0, color: 'hsl(var(--chart-1))' },
-    { name: t('cards.savings'), value: totalSavings, percentage: totalAssets ? Math.round((totalSavings / totalAssets) * 100) : 0, color: 'hsl(var(--chart-2))' },
-    { name: t('cards.bonds'), value: totalBonds, percentage: totalAssets ? Math.round((totalBonds / totalAssets) * 100) : 0, color: 'hsl(var(--chart-3))' },
-    { name: t('cards.realEstate'), value: totalRealEstate, percentage: totalAssets ? Math.round((totalRealEstate / totalAssets) * 100) : 0, color: 'hsl(var(--chart-4))' },
-    { name: t('cards.crypto'), value: totalCrypto, percentage: totalAssets ? Math.round((totalCrypto / totalAssets) * 100) : 0, color: 'hsl(var(--chart-5))' },
-    { name: t('cards.otherAssets'), value: totalOtherAssets, percentage: totalAssets ? Math.round((totalOtherAssets / totalAssets) * 100) : 0, color: 'hsl(var(--chart-6))' },
+    { name: t('cards.investments'), value: totalInvestments, percentage: totalAssets ? Math.round((totalInvestments / totalAssets) * 100) : 0, color: allocationColors.investments },
+    { name: t('cards.savings'), value: totalSavings, percentage: totalAssets ? Math.round((totalSavings / totalAssets) * 100) : 0, color: allocationColors.savings },
+    { name: t('cards.bonds'), value: totalBonds, percentage: totalAssets ? Math.round((totalBonds / totalAssets) * 100) : 0, color: allocationColors.bonds },
+    { name: t('cards.realEstate'), value: totalRealEstate, percentage: totalAssets ? Math.round((totalRealEstate / totalAssets) * 100) : 0, color: allocationColors.realEstate },
+    { name: t('cards.crypto'), value: totalCrypto, percentage: totalAssets ? Math.round((totalCrypto / totalAssets) * 100) : 0, color: allocationColors.crypto },
+    { name: t('cards.otherAssets'), value: totalOtherAssets, percentage: totalAssets ? Math.round((totalOtherAssets / totalAssets) * 100) : 0, color: allocationColors.otherAssets },
   ].filter(item => item.value > 0); // Only show assets with value
 
   // Mock sparklines for now until we have historical data

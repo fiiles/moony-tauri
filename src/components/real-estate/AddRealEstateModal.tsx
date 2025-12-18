@@ -227,8 +227,8 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
                         {/* Property Details Section */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
+                        <div className="form-section">
+                            <h3 className="form-section-header">
                                 {t('modal.add.propertyDetails')}
                             </h3>
                             <div className="grid gap-4">
@@ -286,8 +286,8 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                         </div>
 
                         {/* Financial Details Section */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
+                        <div className="form-section">
+                            <h3 className="form-section-header">
                                 {t('modal.add.financialDetails')}
                             </h3>
                             <div className="grid gap-4">
@@ -416,11 +416,9 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                         </div>
 
                         {/* Recurring Costs Section */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between border-b pb-2">
-                                <h3 className="text-sm font-semibold text-foreground">
-                                    {t('modal.add.recurringCosts')}
-                                </h3>
+                        <div className="form-section">
+                            <div className="form-section-header flex items-center justify-between !border-b-0 !pb-0 !mb-2">
+                                <span>{t('modal.add.recurringCosts')}</span>
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -521,8 +519,8 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                         </div>
 
                         {/* Financing Section */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
+                        <div className="form-section">
+                            <h3 className="form-section-header">
                                 {t('modal.add.financing')}
                             </h3>
                             <div className="space-y-2">
@@ -560,8 +558,8 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                         </div>
 
                         {/* Additional Information Section */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
+                        <div className="form-section">
+                            <h3 className="form-section-header">
                                 {t('modal.add.additionalInfo')}
                             </h3>
                             <FormField
@@ -586,7 +584,7 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                     </form>
                 </Form>
             </DialogContent>
-        </Dialog>
+        </Dialog >
     );
 }
 

@@ -124,7 +124,14 @@ moony-tauri/
 
 ## License
 
-This project is private and not yet licensed for public distribution.
+Copyright © 2024 Filip Král. All rights reserved.
+
+This software is **open source for non-commercial use only**:
+- ✅ Free for personal use
+- ✅ Source code viewable and modifiable for learning
+- ❌ Commercial use strictly prohibited without permission
+
+See [LICENSE](./LICENSE) for full terms.
 
 ---
 

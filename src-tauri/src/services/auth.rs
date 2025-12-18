@@ -196,24 +196,222 @@ pub fn recover_account(
     Ok((profile, new_recovery_key))
 }
 
-/// Change password
-///
-/// Re-encrypts master key with new password. Recovery key remains unchanged.
-pub fn change_password(_db: &Database, db_path: &Path, _new_password: &str) -> Result<()> {
+// ============================================================================
+// 2-Phase Setup Flow
+// ============================================================================
+
+/// Prepared setup data - returned by prepare_setup, passed to confirm_setup
+#[derive(Debug, Clone)]
+pub struct PreparedSetup {
+    pub master_key_hex: String,
+    pub recovery_key: String,
+    pub salt: Vec<u8>,
+}
+
+/// Phase 1: Prepare setup - generates keys but doesn't persist anything
+/// Returns the recovery key so user can save it before we create the account
+pub fn prepare_setup() -> Result<PreparedSetup> {
+    let master_key = crypto::generate_master_key();
+    let salt = crypto::generate_salt();
+    let recovery_key = crypto::generate_recovery_key();
+    let master_key_hex = crypto::master_key_to_hex(&master_key);
+
+    Ok(PreparedSetup {
+        master_key_hex,
+        recovery_key,
+        salt: salt.to_vec(),
+    })
+}
+
+/// Phase 2: Confirm setup - persists all keys and creates the account
+/// Only called after user confirms they saved the recovery key
+pub fn confirm_setup(
+    db: &Database,
+    db_path: PathBuf,
+    data: InsertUserProfile,
+    password: &str,
+    prepared: &PreparedSetup,
+) -> Result<UserProfile> {
     let data_dir = db_path
         .parent()
         .ok_or_else(|| AppError::Internal("Invalid database path".into()))?;
 
-    let (_salt_path, _key_path, _) = get_key_paths(data_dir);
+    // Ensure data directory exists
+    fs::create_dir_all(data_dir)
+        .map_err(|e| AppError::Database(format!("Failed to create data directory: {}", e)))?;
 
-    // We need to get the master key from the currently open database connection
-    // For simplicity, we'll require the user to be authenticated and re-derive from current session
-    // In practice, we'd need to store the master key in memory during the session
+    let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
 
-    // TODO: Implement password change - this requires storing the master key in session
-    Err(AppError::Auth(
-        "Password change requires re-authentication".into(),
-    ))
+    // Convert hex back to master key bytes
+    let master_key = crypto::hex_to_master_key(&prepared.master_key_hex)?;
+
+    // Convert salt vec to array
+    if prepared.salt.len() != 32 {
+        return Err(AppError::Encryption("Invalid salt length".into()));
+    }
+    let mut salt = [0u8; 32];
+    salt.copy_from_slice(&prepared.salt);
+
+    // Store salt
+    crypto::write_salt(&salt_path, &salt)?;
+
+    // Store master key encrypted with password
+    crypto::store_password_encrypted_key(&master_key, password, &salt, &key_path)?;
+
+    // Store master key encrypted with recovery key
+    crypto::store_recovery_encrypted_key(
+        &master_key,
+        &prepared.recovery_key,
+        &salt,
+        &recovery_path,
+    )?;
+
+    // Create encrypted database using master key
+    db.create_with_key(db_path.clone(), &prepared.master_key_hex)?;
+
+    // Create user profile
+    let menu_prefs = data
+        .menu_preferences
+        .unwrap_or_else(MenuPreferences::all_enabled);
+    let menu_prefs_json = serde_json::to_string(&menu_prefs)?;
+    let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
+    let exclude_re = data.exclude_personal_real_estate.unwrap_or(false);
+
+    db.with_conn(|conn| {
+        conn.execute(
+            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, exclude_personal_real_estate) 
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![
+                data.name,
+                data.surname,
+                data.email,
+                menu_prefs_json,
+                currency,
+                exclude_re as i32,
+            ],
+        )?;
+        Ok(())
+    })?;
+
+    set_authenticated(true);
+
+    // Return the created profile
+    get_user_profile(db)?
+        .ok_or_else(|| AppError::Internal("Failed to get profile after setup".into()))
+}
+
+// ============================================================================
+// 2-Phase Change Password Flow
+// ============================================================================
+
+/// Phase 1: Prepare password change - verifies current password and generates new recovery key
+/// Returns the new recovery key so user can save it before we make changes
+pub fn prepare_change_password(db_path: &Path, current_password: &str) -> Result<String> {
+    let data_dir = db_path
+        .parent()
+        .ok_or_else(|| AppError::Internal("Invalid database path".into()))?;
+
+    let (salt_path, key_path, _) = get_key_paths(data_dir);
+    let salt = crypto::read_salt(&salt_path)?;
+
+    // Verify current password by attempting to decrypt master key
+    let _master_key = crypto::decrypt_master_key_with_password(current_password, &salt, &key_path)
+        .map_err(|_| AppError::Auth("Current password is incorrect".into()))?;
+
+    // Generate new recovery key (don't persist yet, just return it)
+    let new_recovery_key = crypto::generate_recovery_key();
+    Ok(new_recovery_key)
+}
+
+/// Phase 2: Confirm password change - actually persists the new password and recovery key
+/// Only called after user confirms they saved the new recovery key
+pub fn confirm_change_password(
+    db_path: &Path,
+    current_password: &str,
+    new_password: &str,
+    new_recovery_key: &str,
+) -> Result<()> {
+    let data_dir = db_path
+        .parent()
+        .ok_or_else(|| AppError::Internal("Invalid database path".into()))?;
+
+    let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
+    let salt = crypto::read_salt(&salt_path)?;
+
+    // Decrypt master key with current password
+    let master_key = crypto::decrypt_master_key_with_password(current_password, &salt, &key_path)
+        .map_err(|_| AppError::Auth("Current password is incorrect".into()))?;
+
+    // Re-encrypt master key with new password
+    crypto::store_password_encrypted_key(&master_key, new_password, &salt, &key_path)?;
+
+    // Re-encrypt master key with new recovery key
+    crypto::store_recovery_encrypted_key(&master_key, new_recovery_key, &salt, &recovery_path)?;
+
+    Ok(())
+}
+
+// ============================================================================
+// 2-Phase Recovery Flow
+// ============================================================================
+
+/// Phase 1: Prepare recovery - verifies recovery key and generates new one
+/// Returns new recovery key but doesn't persist any changes
+pub fn prepare_recover(db_path: &Path, recovery_key: &str) -> Result<String> {
+    let data_dir = db_path
+        .parent()
+        .ok_or_else(|| AppError::Internal("Invalid database path".into()))?;
+
+    let (salt_path, _, recovery_path) = get_key_paths(data_dir);
+    let salt = crypto::read_salt(&salt_path)?;
+
+    // Verify recovery key by attempting to decrypt master key
+    let _master_key = crypto::decrypt_master_key_with_recovery(recovery_key, &salt, &recovery_path)
+        .map_err(|_| AppError::Auth("Invalid recovery key".into()))?;
+
+    // Generate new recovery key (don't persist yet, just return it)
+    let new_recovery_key = crypto::generate_recovery_key();
+    Ok(new_recovery_key)
+}
+
+/// Phase 2: Confirm recovery - actually persists new password and recovery key
+/// Only called after user confirms they saved the new recovery key
+pub fn confirm_recover(
+    db: &Database,
+    db_path: PathBuf,
+    old_recovery_key: &str,
+    new_password: &str,
+    new_recovery_key: &str,
+) -> Result<UserProfile> {
+    let data_dir = db_path
+        .parent()
+        .ok_or_else(|| AppError::Internal("Invalid database path".into()))?;
+
+    let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
+    let salt = crypto::read_salt(&salt_path)?;
+
+    // Decrypt master key using old recovery key
+    let master_key =
+        crypto::decrypt_master_key_with_recovery(old_recovery_key, &salt, &recovery_path)
+            .map_err(|_| AppError::Auth("Invalid recovery key".into()))?;
+
+    // Re-encrypt master key with new password
+    crypto::store_password_encrypted_key(&master_key, new_password, &salt, &key_path)?;
+
+    // Re-encrypt master key with new recovery key
+    crypto::store_recovery_encrypted_key(&master_key, new_recovery_key, &salt, &recovery_path)?;
+
+    // Open database with master key
+    let master_key_hex = crypto::master_key_to_hex(&master_key);
+    db.open_with_key(db_path, &master_key_hex)?;
+
+    // Get user profile
+    let profile =
+        get_user_profile(db)?.ok_or_else(|| AppError::Auth("No user profile found".into()))?;
+
+    set_authenticated(true);
+
+    Ok(profile)
 }
 
 /// Lock the app (close database)

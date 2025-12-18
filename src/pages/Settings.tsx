@@ -15,7 +15,8 @@ import { authApi, priceApi, type ApiKeys } from "@/lib/tauri-api";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Eye, EyeOff, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Eye, EyeOff, ExternalLink, Copy, Check, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
 import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type SupportedLanguage } from "@/i18n/index";
@@ -40,8 +41,19 @@ const passwordSchema = z.object({
 
 type PasswordData = z.infer<typeof passwordSchema>;
 
+// Pending change password data (stored between prepare and confirm phases)
+interface PendingPasswordChange {
+  currentPassword: string;
+  newPassword: string;
+  recoveryKey: string;
+}
+
 function ChangePasswordForm() {
   const { toast } = useToast();
+  const [step, setStep] = useState<'form' | 'confirm'>('form');
+  const [pendingData, setPendingData] = useState<PendingPasswordChange | null>(null);
+  const [copied, setCopied] = useState(false);
+
   const form = useForm<PasswordData>({
     resolver: zodResolver(passwordSchema),
     defaultValues: {
@@ -51,44 +63,72 @@ function ChangePasswordForm() {
     },
   });
 
-  const changePasswordMutation = useMutation({
+  // Phase 1: Prepare - verify current password and get new recovery key
+  const prepareMutation = useMutation({
     mutationFn: async (data: PasswordData) => {
-      await authApi.changePassword({
-        newPassword: data.newPassword,
+      const result = await authApi.prepareChangePassword({
+        currentPassword: data.currentPassword,
       });
+      return { ...data, recoveryKey: result.recoveryKey };
     },
-    onSuccess: () => {
-      toast({ title: "Password updated", description: "Your password has been changed successfully." });
-      form.reset();
+    onSuccess: (result) => {
+      setPendingData({
+        currentPassword: result.currentPassword,
+        newPassword: result.newPassword,
+        recoveryKey: result.recoveryKey,
+      });
+      setStep('confirm');
     },
     onError: (error: Error) => {
-      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      toast({ title: "Verification failed", description: error.message, variant: "destructive" });
     },
   });
 
+  // Phase 2: Confirm - actually change the password
+  const confirmMutation = useMutation({
+    mutationFn: async () => {
+      if (!pendingData) throw new Error("No pending password change");
+      await authApi.confirmChangePassword({
+        currentPassword: pendingData.currentPassword,
+        newPassword: pendingData.newPassword,
+        recoveryKey: pendingData.recoveryKey,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Password changed", description: "Your password has been updated successfully. Make sure to keep your new recovery key safe!" });
+      setStep('form');
+      setPendingData(null);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({ title: "Password change failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleCancel = () => {
+    setStep('form');
+    setPendingData(null);
+    setCopied(false);
+  };
+
+  const copyRecoveryKey = async () => {
+    if (pendingData?.recoveryKey) {
+      await navigator.clipboard.writeText(pendingData.recoveryKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit((data) => changePasswordMutation.mutate(data))} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="currentPassword"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Current Password</FormLabel>
-              <FormControl>
-                <Input type="password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit((data) => prepareMutation.mutate(data))} className="space-y-4">
           <FormField
             control={form.control}
-            name="newPassword"
+            name="currentPassword"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>New Password</FormLabel>
+                <FormLabel>Current Password</FormLabel>
                 <FormControl>
                   <Input type="password" {...field} />
                 </FormControl>
@@ -96,27 +136,95 @@ function ChangePasswordForm() {
               </FormItem>
             )}
           />
-          <FormField
-            control={form.control}
-            name="confirmPassword"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Confirm New Password</FormLabel>
-                <FormControl>
-                  <Input type="password" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <Button type="submit" disabled={changePasswordMutation.isPending}>
-          {changePasswordMutation.isPending ? "Updating..." : "Update Password"}
-        </Button>
-      </form>
-    </Form>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="newPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>New Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <Button type="submit" disabled={prepareMutation.isPending}>
+            {prepareMutation.isPending ? "Verifying..." : "Change Password"}
+          </Button>
+        </form>
+      </Form>
+
+      {/* Recovery Key Confirmation Modal */}
+      <Dialog open={step === 'confirm'} onOpenChange={(open) => !open && handleCancel()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-green-500" />
+              Save Your New Recovery Key
+            </DialogTitle>
+            <DialogDescription>
+              Your password will be changed and a new recovery key will be generated.
+              <span className="block mt-2 text-destructive font-medium">
+                <AlertTriangle className="h-4 w-4 inline mr-1" />
+                Your old recovery key will no longer work!
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg font-mono text-center text-lg tracking-wider break-all">
+              {pendingData?.recoveryKey}
+            </div>
+            <Button onClick={copyRecoveryKey} className="w-full" variant="outline">
+              {copied ? (
+                <><Check className="mr-2 h-4 w-4" /> Copied!</>
+              ) : (
+                <><Copy className="mr-2 h-4 w-4" /> Copy to Clipboard</>
+              )}
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                className="flex-1"
+                disabled={confirmMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => confirmMutation.mutate()}
+                disabled={confirmMutation.isPending}
+                className="flex-1"
+              >
+                {confirmMutation.isPending ? "Saving..." : "I've Saved My Recovery Key"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Make sure you've written down or copied your recovery key before confirming.
+              The password change will only happen after you click the button above.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
+
 
 function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
   const [showMarketstack, setShowMarketstack] = useState(false);

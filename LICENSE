@@ -1,0 +1,53 @@
+Moony - Personal Wealth Manager
+Copyright © 2024 Filip Král. All rights reserved.
+
+NON-COMMERCIAL OPEN SOURCE LICENSE
+
+1. DEFINITIONS
+   "Commercial Use" means any use intended for or directed toward commercial 
+   advantage or monetary compensation, including but not limited to:
+   - Selling, licensing, or sublicensing the software
+   - Using the software to provide paid services
+   - Including the software in a commercial product
+   - Using the software in a business environment for profit
+
+2. GRANT OF LICENSE
+   Subject to the terms of this license, you are granted a worldwide, 
+   royalty-free, non-exclusive license to:
+   - Use this software for personal, non-commercial purposes
+   - View, study, and learn from the source code
+   - Modify the software for personal use
+   - Share the original, unmodified source code with others, provided this 
+     license is included
+
+3. RESTRICTIONS
+   You may NOT:
+   - Use this software for any Commercial Use without explicit written 
+     permission from the copyright holder (Filip Král)
+   - Sell, sublicense, or otherwise commercialize this software
+   - Remove or alter any copyright notices or this license
+   - Use the software's name, logo, or branding for commercial purposes
+
+4. COMMERCIAL LICENSING
+   Commercial use of this software is exclusively reserved for Filip Král.
+   For commercial licensing inquiries, please contact the copyright holder.
+
+5. CONTRIBUTIONS
+   Any contributions submitted to this project are subject to this license.
+   By contributing, you agree that your contributions may be used under 
+   these terms.
+
+6. DISCLAIMER OF WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+7. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR 
+   OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE 
+   USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+8. TERMINATION
+   This license automatically terminates if you violate any of its terms.
+   Upon termination, you must destroy all copies of the software.

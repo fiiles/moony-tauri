@@ -1,10 +1,10 @@
 [package]
-name = "moony-tauri"
+name = "moony"
 version = "0.1.0"
 description = "Moony - Personal Finance Manager"
-authors = ["you"]
+authors = ["Filip Král"]
 edition = "2021"
-default-run = "moony-tauri"
+default-run = "moony"
 
 [lib]
 name = "moony_tauri_lib"

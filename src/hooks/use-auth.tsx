@@ -1,6 +1,10 @@
 /**
  * Auth Hook - Tauri Version
- * Supports setup, unlock, lock flows using Tauri invoke
+ * Supports 2-phase setup, unlock, lock, and recovery flows using Tauri invoke
+ * 
+ * 2-Phase Flows:
+ * - Setup: prepareSetup() → show recovery key → confirmSetup() → account created
+ * - Recovery: prepareRecover() → show new recovery key → confirmRecover() → password changed
  */
 import { createContext, ReactNode, useContext, useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -9,6 +13,24 @@ import { queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type AppStatus = "needs_setup" | "locked" | "unlocked";
+
+// Pending setup data (stored between prepare and confirm phases)
+interface PendingSetup {
+    name: string;
+    surname: string;
+    email: string;
+    password: string;
+    masterKeyHex: string;
+    recoveryKey: string;
+    salt: number[];
+}
+
+// Pending recovery data (stored between prepare and confirm phases)
+interface PendingRecover {
+    oldRecoveryKey: string;
+    newPassword: string;
+    newRecoveryKey: string;
+}
 
 type AuthContextType = {
     user: any | null;
@@ -23,6 +45,8 @@ type AuthContextType = {
     confirmRecoveryMutation: any;
     recoveryKey: string | null;
     clearRecoveryKey: () => void;
+    pendingSetup: PendingSetup | null;
+    pendingRecover: PendingRecover | null;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,6 +54,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const { toast } = useToast();
     const [recoveryKey, setRecoveryKey] = useState<string | null>(null);
+    const [pendingSetup, setPendingSetup] = useState<PendingSetup | null>(null);
+    const [pendingRecover, setPendingRecover] = useState<PendingRecover | null>(null);
     const [appStatus, setAppStatus] = useState<AppStatus>("locked");
     const [isCheckingStatus, setIsCheckingStatus] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -73,22 +99,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         checkStatus();
     }, []);
 
-    // Setup mutation (first-time use)
+    // Phase 1: Prepare setup - generates keys, shows recovery key, but doesn't create account
     const setupMutation = useMutation({
         mutationFn: async (data: { name: string; surname: string; email?: string; password: string }) => {
-            const result = await authApi.setup({
+            // Call prepare_setup to get keys
+            const prepared = await authApi.prepareSetup();
+            return {
                 ...data,
                 email: data.email || "",
-            });
-            return result;
+                ...prepared,
+            };
         },
-        onSuccess: (result: { recoveryKey: string; profile: any }) => {
-            queryClient.setQueryData(["user-profile"], result.profile);
-            setAppStatus("unlocked");
+        onSuccess: (result) => {
+            // Store pending setup data
+            setPendingSetup({
+                name: result.name,
+                surname: result.surname,
+                email: result.email,
+                password: result.password,
+                masterKeyHex: result.masterKeyHex,
+                recoveryKey: result.recoveryKey,
+                salt: result.salt,
+            });
+            // Show recovery key modal
             setRecoveryKey(result.recoveryKey);
             toast({
+                title: "Almost done!",
+                description: "Please save your recovery key before continuing.",
+            });
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Setup failed",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
+
+    // Phase 2: Confirm setup - actually creates the account
+    const confirmSetupMutation = useMutation({
+        mutationFn: async () => {
+            if (!pendingSetup) {
+                throw new Error("No pending setup to confirm");
+            }
+            // Now actually create the account
+            const profile = await authApi.confirmSetup(pendingSetup);
+            return profile;
+        },
+        onSuccess: (profile) => {
+            queryClient.setQueryData(["user-profile"], profile);
+            setAppStatus("unlocked");
+            setPendingSetup(null);
+            // Recovery key will be cleared by auth-page when user dismisses modal
+            toast({
                 title: "Setup complete!",
-                description: "Please save your recovery key safely.",
+                description: "Your account has been created successfully.",
             });
         },
         onError: (error: Error) => {
@@ -137,19 +203,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
     });
 
-    // Recover mutation (reset password using recovery key)
+    // Phase 1: Prepare recovery - verifies old recovery key, generates new one
     const recoverMutation = useMutation({
         mutationFn: async (data: { recoveryKey: string; newPassword: string }) => {
-            const result = await authApi.recover(data);
-            return result;
+            // Call prepare_recover to verify and get new recovery key
+            const result = await authApi.prepareRecover(data);
+            return { ...data, newRecoveryKey: result.recoveryKey };
         },
-        onSuccess: (result: { recoveryKey: string; profile: any }) => {
-            queryClient.setQueryData(["user-profile"], result.profile);
-            setAppStatus("unlocked");
-            setRecoveryKey(result.recoveryKey); // New recovery key
+        onSuccess: (result) => {
+            // Store pending recovery data
+            setPendingRecover({
+                oldRecoveryKey: result.recoveryKey,
+                newPassword: result.newPassword,
+                newRecoveryKey: result.newRecoveryKey,
+            });
+            // Show new recovery key modal
+            setRecoveryKey(result.newRecoveryKey);
             toast({
-                title: "Password reset successful!",
-                description: "Please save your new recovery key safely.",
+                title: "Recovery key verified!",
+                description: "Please save your new recovery key before continuing.",
             });
         },
         onError: (error: Error) => {
@@ -161,28 +233,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
     });
 
-    // Confirm setup mutation (used after showing recovery key)
-    const confirmSetupMutation = useMutation({
-        mutationFn: async () => {
-            // Just acknowledge the recovery key was saved
-            return true;
-        },
-        onSuccess: () => {
-            // Clear recovery key after confirmation
-        },
-    });
-
-    // Confirm recovery mutation
+    // Phase 2: Confirm recovery - actually changes password and recovery key
     const confirmRecoveryMutation = useMutation({
         mutationFn: async () => {
-            return true;
+            if (!pendingRecover) {
+                throw new Error("No pending recovery to confirm");
+            }
+            // Now actually change the password
+            const profile = await authApi.confirmRecover(pendingRecover);
+            return profile;
         },
-        onSuccess: () => {
-            // Clear recovery key after confirmation
+        onSuccess: (profile) => {
+            queryClient.setQueryData(["user-profile"], profile);
+            setAppStatus("unlocked");
+            setPendingRecover(null);
+            // Recovery key will be cleared by auth-page
+            toast({
+                title: "Password reset successful!",
+                description: "Your password has been changed.",
+            });
+        },
+        onError: (error: Error) => {
+            toast({
+                title: "Recovery failed",
+                description: error.message,
+                variant: "destructive",
+            });
         },
     });
 
-    const clearRecoveryKey = () => setRecoveryKey(null);
+    const clearRecoveryKey = () => {
+        setRecoveryKey(null);
+        // If user cancels during setup before confirming, clear pending setup
+        if (pendingSetup && appStatus === "needs_setup") {
+            setPendingSetup(null);
+        }
+        // If user cancels during recovery before confirming, clear pending recover
+        if (pendingRecover && appStatus === "locked") {
+            setPendingRecover(null);
+        }
+    };
 
     return (
         <AuthContext.Provider
@@ -199,6 +289,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 confirmRecoveryMutation,
                 recoveryKey,
                 clearRecoveryKey,
+                pendingSetup,
+                pendingRecover,
             }}
         >
             {children}

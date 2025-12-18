@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { SavingsAccountZonesModal } from "./SavingsAccountZonesModal";
 import { convertToCzK } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
+import { useLanguage } from "@/i18n/I18nProvider";
 
 interface SavingsAccountsTableProps {
   accounts: SavingsAccount[];
@@ -38,6 +38,7 @@ export function SavingsAccountsTable({
   const { t } = useTranslation('savings');
   const { t: tc } = useTranslation('common');
   const { formatCurrency } = useCurrency();
+  const { formatDate } = useLanguage();
   const [selectedAccountForZones, setSelectedAccountForZones] = useState<SavingsAccount | null>(null);
 
   return (
@@ -52,8 +53,8 @@ export function SavingsAccountsTable({
                 <TableHead>{t('table.accountName')}</TableHead>
                 <TableHead className="text-right">{t('table.balance')}</TableHead>
                 <TableHead className="text-right">{t('table.interestRate')}</TableHead>
-                <TableHead className="text-center">{t('table.zoned')}</TableHead>
-                <TableHead>{t('table.terminationDate')}</TableHead>
+                <TableHead className="text-center">{t('table.interestType')}</TableHead>
+                <TableHead className="text-right">{t('table.terminationDate')}</TableHead>
                 <TableHead className="text-right w-[80px]">{tc('labels.actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -108,9 +109,9 @@ export function SavingsAccountsTable({
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-right text-muted-foreground">
                         {account.terminationDate
-                          ? format(new Date(account.terminationDate * 1000), 'PP')
+                          ? formatDate(new Date(account.terminationDate * 1000))
                           : '—'}
                       </TableCell>
                       <TableCell className="text-right">

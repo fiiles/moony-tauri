@@ -63,6 +63,7 @@
     "modal": {
         "add": {
             "title": "Přidat ostatní aktivum",
+            "basicInfo": "Informace o aktivu",
             "assetName": "Název aktiva",
             "assetNamePlaceholder": "např. Zlaté slitky",
             "marketPrice": "Aktuální tržní cena (za jednotku)",

@@ -19,6 +19,7 @@
         "interestRate": "Úroková sazba (APY)",
         "type": "Typ",
         "zones": "Úročení",
+        "interestType": "Typ úročení",
         "zoned": "Pásmové",
         "simple": "Jednoduché",
         "effective": "efektivní",

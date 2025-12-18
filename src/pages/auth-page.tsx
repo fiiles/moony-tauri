@@ -35,7 +35,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { ShieldCheck, Copy, Check } from "lucide-react";
-import ThemeToggle from "@/components/ThemeToggle";
 
 export default function AuthPage() {
     const { user, appStatus, setupMutation, unlockMutation, recoverMutation, confirmSetupMutation, confirmRecoveryMutation, recoveryKey, clearRecoveryKey } = useAuth();
@@ -92,9 +91,6 @@ export default function AuthPage() {
     if (appStatus === "needs_setup") {
         return (
             <div className="min-h-screen relative">
-                <div className="absolute top-4 right-4 z-50">
-                    <ThemeToggle />
-                </div>
                 <div className="flex items-center justify-center p-8 bg-background min-h-screen">
                     <Card className="w-full max-w-md border-0 shadow-none sm:border sm:shadow-sm">
                         <CardHeader className="space-y-1">
@@ -193,8 +189,8 @@ export default function AuthPage() {
                     </Card>
                 </div>
 
-                {/* Recovery Key Modal */}
-                <Dialog open={!!recoveryKey} onOpenChange={() => clearRecoveryKey()}>
+                {/* Recovery Key Modal - 2-Phase Setup */}
+                <Dialog open={!!recoveryKey} onOpenChange={(open) => !open && clearRecoveryKey()}>
                     <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
@@ -207,7 +203,7 @@ export default function AuthPage() {
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
-                            <div className="p-4 bg-muted rounded-lg font-mono text-center text-lg tracking-wider">
+                            <div className="p-4 bg-muted rounded-lg font-mono text-center text-lg tracking-wider break-all">
                                 {recoveryKey}
                             </div>
                             <Button onClick={copyRecoveryKey} className="w-full" variant="outline">
@@ -217,15 +213,29 @@ export default function AuthPage() {
                                     <><Copy className="mr-2 h-4 w-4" /> Copy to Clipboard</>
                                 )}
                             </Button>
-                            <Button
-                                onClick={() => {
-                                    confirmSetupMutation.mutate(undefined, { onSuccess: () => clearRecoveryKey() });
-                                }}
-                                disabled={confirmSetupMutation.isPending}
-                                className="w-full"
-                            >
-                                {confirmSetupMutation.isPending ? "Confirming..." : "I've Saved My Recovery Key"}
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={clearRecoveryKey}
+                                    className="flex-1"
+                                    disabled={confirmSetupMutation.isPending}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        confirmSetupMutation.mutate(undefined, { onSuccess: () => clearRecoveryKey() });
+                                    }}
+                                    disabled={confirmSetupMutation.isPending}
+                                    className="flex-1"
+                                >
+                                    {confirmSetupMutation.isPending ? "Creating Account..." : "I've Saved My Recovery Key"}
+                                </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground text-center">
+                                Your account will only be created after you click the button above.
+                                If you cancel, no data will be saved.
+                            </p>
                         </div>
                     </DialogContent>
                 </Dialog>
@@ -236,9 +246,6 @@ export default function AuthPage() {
     // Show unlock/recover page for returning users
     return (
         <div className="min-h-screen relative">
-            <div className="absolute top-4 right-4 z-50">
-                <ThemeToggle />
-            </div>
             <div className="flex items-center justify-center p-8 bg-background min-h-screen">
                 <Card className="w-full max-w-md border-0 shadow-none sm:border sm:shadow-sm">
                     <CardHeader className="space-y-1">
@@ -357,7 +364,7 @@ export default function AuthPage() {
             </div>
 
             {/* Recovery Key Modal for after password reset */}
-            <Dialog open={!!recoveryKey} onOpenChange={() => clearRecoveryKey()}>
+            <Dialog open={!!recoveryKey} onOpenChange={(open) => !open && clearRecoveryKey()}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -365,11 +372,11 @@ export default function AuthPage() {
                             New Recovery Key Generated
                         </DialogTitle>
                         <DialogDescription>
-                            Your password has been reset. Save your new recovery key!
+                            Save your new recovery key before confirming. Your password will be changed and your old recovery key will no longer work.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <div className="p-4 bg-muted rounded-lg font-mono text-center text-lg tracking-wider">
+                        <div className="p-4 bg-muted rounded-lg font-mono text-center text-lg tracking-wider break-all">
                             {recoveryKey}
                         </div>
                         <Button onClick={copyRecoveryKey} className="w-full" variant="outline">
@@ -379,15 +386,29 @@ export default function AuthPage() {
                                 <><Copy className="mr-2 h-4 w-4" /> Copy to Clipboard</>
                             )}
                         </Button>
-                        <Button
-                            onClick={() => {
-                                confirmRecoveryMutation.mutate(undefined, { onSuccess: () => clearRecoveryKey() });
-                            }}
-                            disabled={confirmRecoveryMutation.isPending}
-                            className="w-full"
-                        >
-                            {confirmRecoveryMutation.isPending ? "Confirming..." : "I've Saved My Recovery Key"}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={clearRecoveryKey}
+                                className="flex-1"
+                                disabled={confirmRecoveryMutation.isPending}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    confirmRecoveryMutation.mutate(undefined, { onSuccess: () => clearRecoveryKey() });
+                                }}
+                                disabled={confirmRecoveryMutation.isPending}
+                                className="flex-1"
+                            >
+                                {confirmRecoveryMutation.isPending ? "Changing Password..." : "I've Saved My Recovery Key"}
+                            </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-center">
+                            Your password will only be changed after you click the button above.
+                            If you cancel, your old password and recovery key will remain unchanged.
+                        </p>
                     </div>
                 </DialogContent>
             </Dialog>

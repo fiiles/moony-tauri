@@ -60,10 +60,16 @@
         "deleted": "Pojistka úspěšně smazána"
     },
     "modal": {
+        "basicInfo": "Základní informace",
+        "paymentDetails": "Platební údaje",
+        "additionalInfo": "Doplňující informace",
         "selectType": "Vyberte typ",
         "selectStatus": "Vyberte stav",
+        "policyName": "Název pojistky",
         "policyNamePlaceholder": "např. Pojištění domova 2024",
+        "provider": "Pojišťovna",
         "providerPlaceholder": "např. Allianz",
+        "policyNumber": "Číslo smlouvy",
         "policyNumberPlaceholder": "Číslo smlouvy",
         "paymentFrequency": "Frekvence platby",
         "selectFrequency": "Vyberte frekvenci",

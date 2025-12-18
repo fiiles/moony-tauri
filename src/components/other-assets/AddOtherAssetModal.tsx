@@ -118,55 +118,60 @@ export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalPro
                 <DialogHeader>
                     <DialogTitle>{t('modal.add.title')}</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="name">{t('modal.add.assetName')}</Label>
-                        <Input id="name" {...form.register("name")} placeholder={t('modal.add.assetNamePlaceholder')} />
-                        {form.formState.errors.name && <p className="text-sm text-red-500">{form.formState.errors.name.message}</p>}
+                <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
+                    <div className="form-section">
+                        <h3 className="form-section-header">
+                            {t('modal.add.basicInfo')}
+                        </h3>
+                        <div className="grid gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="name">{t('modal.add.assetName')}</Label>
+                                <Input id="name" {...form.register("name")} placeholder={t('modal.add.assetNamePlaceholder')} />
+                                {form.formState.errors.name && <p className="text-sm text-red-500">{form.formState.errors.name.message}</p>}
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="currency">{tc('labels.currency')}</Label>
+                                    <Select
+                                        value={form.watch("currency")}
+                                        onValueChange={(val) => form.setValue("currency", val)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={tc('labels.selectCurrency')} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {Object.keys(EXCHANGE_RATES).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="marketPrice">{t('modal.add.marketPrice')}</Label>
+                                    <Input id="marketPrice" type="number" step="0.01" {...form.register("marketPrice")} />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="i-qty">{tc('labels.quantity')}</Label>
+                                    <Input id="i-qty" type="number" step="0.0001" {...form.register("initialQuantity")} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="i-price">{t('modal.add.pricePerUnit')}</Label>
+                                    <Input id="i-price" type="number" step="0.01" {...form.register("initialPrice")} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="i-date">{tc('labels.date')}</Label>
+                                    <Input id="i-date" type="date" {...form.register("initialDate")} />
+                                </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">{t('modal.add.initialPurchaseHint')}</p>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="currency">{tc('labels.currency')}</Label>
-                            <Select
-                                value={form.watch("currency")}
-                                onValueChange={(val) => form.setValue("currency", val)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={tc('labels.selectCurrency')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {Object.keys(EXCHANGE_RATES).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="marketPrice">{t('modal.add.marketPrice')}</Label>
-                            <Input id="marketPrice" type="number" step="0.01" {...form.register("marketPrice")} />
-                        </div>
-                    </div>
-
-                    <div className="border-t pt-4 mt-4">
-                        <h4 className="font-medium mb-2">{t('modal.add.initialPurchase')}</h4>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="i-qty">{tc('labels.quantity')}</Label>
-                                <Input id="i-qty" type="number" step="0.0001" {...form.register("initialQuantity")} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="i-price">{t('modal.add.pricePerUnit')}</Label>
-                                <Input id="i-price" type="number" step="0.01" {...form.register("initialPrice")} />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="i-date">{tc('labels.date')}</Label>
-                                <Input id="i-date" type="date" {...form.register("initialDate")} />
-                            </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">{t('modal.add.initialPurchaseHint')}</p>
-                    </div>
-
-                    <div className="border-t pt-4 mt-4">
-                        <h4 className="font-medium mb-2">{t('modal.add.yieldConfig')}</h4>
+                    <div className="form-section">
+                        <h3 className="form-section-header">
+                            {t('modal.add.yieldConfig')}
+                        </h3>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="yieldType">Type</Label>

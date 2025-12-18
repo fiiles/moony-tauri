@@ -181,330 +181,350 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                 </DialogHeader>
 
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="type"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t('form.type')}</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder={t('modal.selectType')} />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="life">{t('types.life')}</SelectItem>
-                                                <SelectItem value="travel">{t('types.travel')}</SelectItem>
-                                                <SelectItem value="accident">{t('types.accident')}</SelectItem>
-                                                <SelectItem value="property">{t('types.property')}</SelectItem>
-                                                <SelectItem value="liability">{t('types.liability')}</SelectItem>
-                                                <SelectItem value="other">{t('types.other')}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="status"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{tc('labels.status')}</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder={t('modal.selectStatus')} />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="active">{t('modal.status.active')}</SelectItem>
-                                                <SelectItem value="inactive">{t('modal.status.inactive')}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="policyName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Policy Name</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} placeholder="e.g. Home Insurance 2024" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="provider"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Provider</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} placeholder="e.g. Allianz" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="policyNumber"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Policy Number</FormLabel>
-                                        <FormControl>
-                                            <Input {...field} placeholder="Contract number" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="paymentFrequency"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{t('modal.paymentFrequency')}</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder={t('modal.selectFrequency')} />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="monthly">{t('modal.frequency.monthly')}</SelectItem>
-                                                <SelectItem value="quarterly">{t('modal.frequency.quarterly')}</SelectItem>
-                                                <SelectItem value="yearly">{t('modal.frequency.yearly')}</SelectItem>
-                                                <SelectItem value="one_time">{t('modal.frequency.oneTime')}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <div className="col-span-2">
-                                <FormLabel>One-Time Payment (Optional)</FormLabel>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <FormField
-                                        control={form.control}
-                                        name="oneTimePayment"
-                                        render={({ field }) => (
-                                            <FormItem className="col-span-2">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
+                        {/* Basic Information Section */}
+                        <div className="form-section">
+                            <h3 className="form-section-header">
+                                {t('modal.basicInfo')}
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="type"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t('form.type')}</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                 <FormControl>
-                                                    <Input {...field} value={field.value ?? ""} type="number" step="0.01" placeholder="0.00" />
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder={t('modal.selectType')} />
+                                                    </SelectTrigger>
                                                 </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="oneTimePaymentCurrency"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <Select onValueChange={field.onChange} value={field.value ?? undefined}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {currencies.map((c) => (
-                                                            <SelectItem key={c.code} value={c.code}>
-                                                                {c.code}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </div>
+                                                <SelectContent>
+                                                    <SelectItem value="life">{t('types.life')}</SelectItem>
+                                                    <SelectItem value="travel">{t('types.travel')}</SelectItem>
+                                                    <SelectItem value="accident">{t('types.accident')}</SelectItem>
+                                                    <SelectItem value="property">{t('types.property')}</SelectItem>
+                                                    <SelectItem value="liability">{t('types.liability')}</SelectItem>
+                                                    <SelectItem value="other">{t('types.other')}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                            <div className="col-span-2">
-                                <FormLabel>Regular Payment *</FormLabel>
-                                <div className="grid grid-cols-3 gap-2">
-                                    <FormField
-                                        control={form.control}
-                                        name="regularPayment"
-                                        render={({ field }) => (
-                                            <FormItem className="col-span-2">
+                                <FormField
+                                    control={form.control}
+                                    name="status"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{tc('labels.status')}</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                 <FormControl>
-                                                    <Input {...field} type="number" step="0.01" />
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder={t('modal.selectStatus')} />
+                                                    </SelectTrigger>
                                                 </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="regularPaymentCurrency"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {currencies.map((c) => (
-                                                            <SelectItem key={c.code} value={c.code}>
-                                                                {c.code}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
+                                                <SelectContent>
+                                                    <SelectItem value="active">{t('modal.status.active')}</SelectItem>
+                                                    <SelectItem value="inactive">{t('modal.status.inactive')}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="policyName"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t('modal.policyName')} *</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} placeholder={t('modal.policyNamePlaceholder')} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="provider"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t('modal.provider')} *</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} placeholder={t('modal.providerPlaceholder')} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="policyNumber"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t('modal.policyNumber')}</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} placeholder={t('modal.policyNumberPlaceholder')} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                             </div>
-
-                            <FormField
-                                control={form.control}
-                                name="startDate"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Start Date</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="date"
-                                                value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                                                onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="endDate"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>End Date (Optional)</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="date"
-                                                value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                                                onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
                         </div>
 
+                        {/* Payment Details Section */}
+                        <div className="form-section">
+                            <h3 className="form-section-header">
+                                {t('modal.paymentDetails')}
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="paymentFrequency"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t('modal.paymentFrequency')}</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder={t('modal.selectFrequency')} />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="monthly">{t('modal.frequency.monthly')}</SelectItem>
+                                                    <SelectItem value="quarterly">{t('modal.frequency.quarterly')}</SelectItem>
+                                                    <SelectItem value="yearly">{t('modal.frequency.yearly')}</SelectItem>
+                                                    <SelectItem value="one_time">{t('modal.frequency.oneTime')}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                                <FormLabel>Coverage Limits</FormLabel>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => append({ title: "", amount: 0, currency: userCurrency as string })}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add Limit
-                                </Button>
-                            </div>
-                            {fields.map((field, index) => (
-                                <div key={field.id} className="flex gap-2 items-end">
-                                    <FormField
-                                        control={form.control}
-                                        name={`limits.${index}.title` as any}
-                                        render={({ field }) => (
-                                            <FormItem className="flex-1">
-                                                <FormControl>
-                                                    <Input {...field} placeholder="Limit Title" />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name={`limits.${index}.amount` as any}
-                                        render={({ field }) => (
-                                            <FormItem className="w-32">
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        type="number"
-                                                        onChange={e => field.onChange(parseFloat(e.target.value))}
-                                                    />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name={`limits.${index}.currency` as any}
-                                        render={({ field }) => (
-                                            <FormItem className="w-24">
-                                                <Select onValueChange={field.onChange} value={field.value}>
+                                <div className="col-span-2">
+                                    <FormLabel>{t('modal.oneTimePayment')}</FormLabel>
+                                    <div className="grid grid-cols-3 gap-2 mt-2">
+                                        <FormField
+                                            control={form.control}
+                                            name="oneTimePayment"
+                                            render={({ field }) => (
+                                                <FormItem className="col-span-2">
                                                     <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue />
-                                                        </SelectTrigger>
+                                                        <Input {...field} value={field.value ?? ""} type="number" step="0.01" placeholder="0.00" />
                                                     </FormControl>
-                                                    <SelectContent>
-                                                        {currencies.map((c) => (
-                                                            <SelectItem key={c.code} value={c.code}>
-                                                                {c.code}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </FormItem>
-                                        )}
-                                    />
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="oneTimePaymentCurrency"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {currencies.map((c) => (
+                                                                <SelectItem key={c.code} value={c.code}>
+                                                                    {c.code}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="col-span-2">
+                                    <FormLabel>{t('modal.regularPayment')} *</FormLabel>
+                                    <div className="grid grid-cols-3 gap-2 mt-2">
+                                        <FormField
+                                            control={form.control}
+                                            name="regularPayment"
+                                            render={({ field }) => (
+                                                <FormItem className="col-span-2">
+                                                    <FormControl>
+                                                        <Input {...field} type="number" step="0.01" />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="regularPaymentCurrency"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {currencies.map((c) => (
+                                                                <SelectItem key={c.code} value={c.code}>
+                                                                    {c.code}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+
+                                <FormField
+                                    control={form.control}
+                                    name="startDate"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t('form.startDate')} *</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="date"
+                                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : undefined)}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="endDate"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>{t('modal.endDateOptional')}</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    type="date"
+                                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                                    onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Additional Information Section */}
+                        <div className="form-section">
+                            <h3 className="form-section-header">
+                                {t('modal.additionalInfo')}
+                            </h3>
+
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <FormLabel>{t('modal.coverageLimits')}</FormLabel>
                                     <Button
                                         type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => remove(index)}
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => append({ title: "", amount: 0, currency: userCurrency as string })}
                                     >
-                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        {t('modal.addLimit')}
                                     </Button>
                                 </div>
-                            ))}
-                        </div>
+                                {fields.map((field, index) => (
+                                    <div key={field.id} className="flex gap-2 items-end">
+                                        <FormField
+                                            control={form.control}
+                                            name={`limits.${index}.title` as any}
+                                            render={({ field }) => (
+                                                <FormItem className="flex-1">
+                                                    <FormControl>
+                                                        <Input {...field} placeholder={t('modal.limitTitle')} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`limits.${index}.amount` as any}
+                                            render={({ field }) => (
+                                                <FormItem className="w-32">
+                                                    <FormControl>
+                                                        <Input
+                                                            {...field}
+                                                            type="number"
+                                                            onChange={e => field.onChange(parseFloat(e.target.value))}
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name={`limits.${index}.currency` as any}
+                                            render={({ field }) => (
+                                                <FormItem className="w-24">
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            {currencies.map((c) => (
+                                                                <SelectItem key={c.code} value={c.code}>
+                                                                    {c.code}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => remove(index)}
+                                        >
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
 
-                        <FormField
-                            control={form.control}
-                            name="notes"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Notes</FormLabel>
-                                    <FormControl>
-                                        <Textarea {...field} value={field.value ?? ""} placeholder="Special conditions, contacts..." />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                            <FormField
+                                control={form.control}
+                                name="notes"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>{t('form.notes')}</FormLabel>
+                                        <FormControl>
+                                            <Textarea {...field} value={field.value ?? ""} placeholder={t('modal.notesPlaceholder')} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
 
                         <div className="flex justify-end gap-2">
                             <Button type="button" variant="outline" onClick={() => setIsOpen?.(false)}>
