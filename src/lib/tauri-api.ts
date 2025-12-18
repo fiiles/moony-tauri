@@ -389,6 +389,40 @@ export const priceApi = {
 
 
 // ============================================================================
+// Cashflow API
+// ============================================================================
+
+export const cashflowApi = {
+  getReport: (viewType: 'monthly' | 'yearly') =>
+    tauriInvoke<any>('get_cashflow_report', { viewType }),
+
+  getAllItems: () => tauriInvoke<any[]>('get_all_cashflow_items'),
+
+  createItem: (data: {
+    name: string;
+    amount: string;
+    currency?: string;
+    frequency: 'monthly' | 'yearly';
+    itemType: 'income' | 'expense';
+    category: string;
+  }) => tauriInvoke<any>('create_cashflow_item', { data }),
+
+  updateItem: (
+    id: string,
+    data: {
+      name: string;
+      amount: string;
+      currency?: string;
+      frequency: 'monthly' | 'yearly';
+      itemType: 'income' | 'expense';
+      category: string;
+    }
+  ) => tauriInvoke<any>('update_cashflow_item', { id, data }),
+
+  deleteItem: (id: string) => tauriInvoke<void>('delete_cashflow_item', { id }),
+};
+
+// ============================================================================
 // Combined API export
 // ============================================================================
 
@@ -404,6 +438,8 @@ export const api = {
   otherAssets: otherAssetsApi,
   portfolio: portfolioApi,
   price: priceApi,
+  cashflow: cashflowApi,
 };
 
 export default api;
+

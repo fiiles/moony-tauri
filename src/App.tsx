@@ -20,6 +20,7 @@ import Bonds from "@/pages/Bonds";
 import Crypto from "@/pages/Crypto";
 import Settings from "@/pages/Settings";
 import OtherAssets from "@/pages/OtherAssets";
+import Cashflow from "@/pages/Cashflow";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { CurrencyProvider } from "@/lib/currency";
@@ -41,6 +42,7 @@ function Router() {
       <ProtectedRoute path="/settings" component={Settings} />
       <ProtectedRoute path="/crypto" component={Crypto} />
       <ProtectedRoute path="/other-assets" component={OtherAssets} />
+      <ProtectedRoute path="/reports/cashflow" component={Cashflow} />
       <Route component={NotFound} />
     </Switch>
   );

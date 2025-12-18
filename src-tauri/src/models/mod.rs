@@ -5,6 +5,7 @@
 #![allow(dead_code)]
 
 pub mod bonds;
+pub mod cashflow;
 pub mod crypto;
 pub mod insurance;
 pub mod investments;
@@ -16,6 +17,7 @@ pub mod user;
 
 // Re-export commonly used types
 pub use bonds::*;
+pub use cashflow::*;
 pub use crypto::*;
 pub use insurance::*;
 pub use investments::*;

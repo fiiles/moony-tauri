@@ -126,6 +126,12 @@ pub fn run() {
             commands::price_api::search_crypto,
             commands::price_api::refresh_dividends,
             commands::price_api::search_stock_tickers,
+            // Cashflow commands
+            commands::cashflow::get_cashflow_report,
+            commands::cashflow::get_all_cashflow_items,
+            commands::cashflow::create_cashflow_item,
+            commands::cashflow::update_cashflow_item,
+            commands::cashflow::delete_cashflow_item,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

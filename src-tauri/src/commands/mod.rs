@@ -4,6 +4,7 @@
 
 pub mod auth;
 pub mod bonds;
+pub mod cashflow;
 pub mod crypto;
 pub mod insurance;
 pub mod investments;

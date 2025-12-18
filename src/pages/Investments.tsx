@@ -138,6 +138,14 @@ export default function Investments() {
           <p className="page-subtitle">{t('subtitle')}</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => refreshPricesMutation.mutate()}
+            disabled={refreshPricesMutation.isPending}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
+            {refreshPricesMutation.isPending ? t('refreshing') : t('refreshPrices')}
+          </Button>
           <ImportInvestmentsModal />
           <AddInvestmentModal />
         </div>
@@ -170,17 +178,6 @@ export default function Investments() {
         onDelete={handleDeleteClick}
       />
 
-      <div className="flex justify-end">
-        <Button
-          variant="outline"
-          onClick={() => refreshPricesMutation.mutate()}
-          disabled={refreshPricesMutation.isPending}
-          className="transition-all duration-200"
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
-          {refreshPricesMutation.isPending ? t('refreshing') : t('refreshPrices')}
-        </Button>
-      </div>
 
       <SellInvestmentModal
         open={sellModalOpen}

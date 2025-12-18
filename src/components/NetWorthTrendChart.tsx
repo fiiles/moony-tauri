@@ -33,16 +33,15 @@ export default function NetWorthTrendChart({
           {formatCurrency(currentValue)}
         </p>
         <div className="flex gap-2 items-center">
-          <p className="text-sm text-muted-foreground">{period}</p>
           <p className={`text-sm font-medium ${isPositive ? 'text-positive' : 'text-negative'}`}>
             {isPositive ? '+' : ''}{Math.abs(change).toFixed(2)}%
           </p>
         </div>
       </div>
 
-      <div className="flex-1 min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
+      <div className="min-h-[300px]">
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
@@ -56,6 +55,8 @@ export default function NetWorthTrendChart({
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12, fontWeight: 700 }}
               tickLine={false}
               axisLine={false}
+              interval="preserveStartEnd"
+              tickMargin={8}
             />
             <YAxis hide />
             <Tooltip
