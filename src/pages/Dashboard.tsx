@@ -3,10 +3,9 @@ import TimePeriodSelector, { type Period } from "@/components/TimePeriodSelector
 import NetWorthTrendChart from "@/components/NetWorthTrendChart";
 import AssetsLiabilitiesChart from "@/components/AssetsLiabilitiesChart";
 import AssetAllocationDonut from "@/components/AssetAllocationDonut";
-import MiniAssetCard from "@/components/MiniAssetCard";
 import { useAuth } from "@/hooks/use-auth";
 import { subDays, startOfYear } from "date-fns";
-import { TrendingUp, Wallet, CreditCard, Briefcase, PiggyBank, FileText, Banknote } from "lucide-react";
+import { TrendingUp, Wallet, CreditCard } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { portfolioApi } from "@/lib/tauri-api";
 import type { PortfolioMetricsHistory } from "@shared/schema";
@@ -136,10 +135,6 @@ export default function Dashboard() {
     { name: t('cards.otherAssets'), value: totalOtherAssets, percentage: totalAssets ? Math.round((totalOtherAssets / totalAssets) * 100) : 0, color: allocationColors.otherAssets },
   ].filter(item => item.value > 0); // Only show assets with value
 
-  // Mock sparklines for now until we have historical data
-  const investmentsSparkline = Array(6).fill(0).map((_, i) => ({ value: totalInvestments * (0.9 + i * 0.02) }));
-  const savingsSparkline = Array(6).fill(0).map((_, i) => ({ value: totalSavings * (0.95 + i * 0.01) }));
-  const bondsSparkline = Array(6).fill(0).map((_, i) => ({ value: totalBonds }));
 
   return (
     <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto space-y-8">
@@ -151,19 +146,60 @@ export default function Dashboard() {
         <TimePeriodSelector value={selectedPeriod} onChange={setSelectedPeriod} />
       </div>
 
+      {/* Net Worth Trend - Full Width */}
+      <NetWorthTrendChart
+        data={(() => {
+          // Reverse history to get chronological order (Oldest -> Newest)
+          // portfolioHistory is DESC (Newest -> Oldest)
+          const historyData = [...(portfolioHistory || [])].reverse().map(h => {
+            const assets = Number(h.totalSavings) + Number(h.totalInvestments) + Number(h.totalBonds) +
+              (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
+              Number(h.totalRealEstateInvestment) +
+              Number((h as any).totalCrypto || 0) +
+              Number((h as any).totalOtherAssets || 0);
+            const liabilities = Number(h.totalLoansPrincipal);
+            return {
+              date: formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric' }),
+              value: assets - liabilities
+            };
+          });
+
+          // Append or update with current live net worth
+          // This ensures the chart ends with the exact value shown in the summary
+          const todayStr = formatDate(new Date(), { month: 'short', day: 'numeric' });
+          const lastPoint = historyData[historyData.length - 1];
+
+          if (lastPoint && lastPoint.date === todayStr) {
+            lastPoint.value = netWorth;
+          } else {
+            historyData.push({
+              date: todayStr,
+              value: netWorth
+            });
+          }
+
+          return historyData;
+        })()}
+        currentValue={netWorth}
+        change={netWorthChange}
+        period={selectedPeriod}
+      />
+
+      {/* Stat Cards - Net Worth, Total Assets, Total Liabilities */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard title={t('stats.netWorth')} value={netWorth} change={netWorthChange} icon={<TrendingUp className="h-4 w-4" />} />
         <StatCard title={t('stats.totalAssets')} value={totalAssets} change={assetsChange} icon={<Wallet className="h-4 w-4" />} />
         <StatCard title={t('stats.totalLiabilities')} value={totalLiabilities} change={liabilitiesChange} icon={<CreditCard className="h-4 w-4" />} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <NetWorthTrendChart
+      {/* Assets vs Liabilities (2/3 width) + Asset Allocation (1/3 width) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
+        <div className="lg:col-span-2 min-h-[450px]">
+          <AssetsLiabilitiesChart
             data={(() => {
               // Reverse history to get chronological order (Oldest -> Newest)
               // portfolioHistory is DESC (Newest -> Oldest)
-              const historyData = [...(portfolioHistory || [])].reverse().map(h => {
+              const chartData = [...(portfolioHistory || [])].reverse().map(h => {
                 const assets = Number(h.totalSavings) + Number(h.totalInvestments) + Number(h.totalBonds) +
                   (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
                   Number(h.totalRealEstateInvestment) +
@@ -172,104 +208,33 @@ export default function Dashboard() {
                 const liabilities = Number(h.totalLoansPrincipal);
                 return {
                   date: formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric' }),
-                  value: assets - liabilities
+                  assets,
+                  liabilities
                 };
               });
 
-              // Append or update with current live net worth
-              // This ensures the chart ends with the exact value shown in the summary
+              // Append or update with current live values
               const todayStr = formatDate(new Date(), { month: 'short', day: 'numeric' });
-              const lastPoint = historyData[historyData.length - 1];
+              const lastPoint = chartData[chartData.length - 1];
 
               if (lastPoint && lastPoint.date === todayStr) {
-                lastPoint.value = netWorth;
+                lastPoint.assets = totalAssets;
+                lastPoint.liabilities = totalLiabilities;
               } else {
-                historyData.push({
+                chartData.push({
                   date: todayStr,
-                  value: netWorth
+                  assets: totalAssets,
+                  liabilities: totalLiabilities
                 });
               }
 
-              return historyData;
-            })()
-            }
-            currentValue={netWorth}
-            change={netWorthChange}
-            period={selectedPeriod}
+              return chartData;
+            })()}
+            totalAssets={totalAssets}
+            totalLiabilities={totalLiabilities}
           />
         </div>
         <AssetAllocationDonut data={allocationData} />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MiniAssetCard
-          title={t('cards.investments')}
-          value={totalInvestments}
-          sparklineData={investmentsSparkline}
-          color="hsl(var(--positive))"
-          icon={<Briefcase className="h-4 w-4" />}
-        />
-        <MiniAssetCard
-          title={t('cards.savings')}
-          value={totalSavings}
-          sparklineData={savingsSparkline}
-          color="hsl(var(--muted-foreground))"
-          icon={<PiggyBank className="h-4 w-4" />}
-        />
-        <MiniAssetCard
-          title={t('cards.bonds')}
-          value={totalBonds}
-          sparklineData={bondsSparkline}
-          color="hsl(var(--positive))"
-          icon={<FileText className="h-4 w-4" />}
-        />
-        <MiniAssetCard
-          title={t('cards.liabilities')}
-          value={totalLiabilities}
-          sparklineData={[]}
-          color="hsl(var(--negative))"
-          icon={<Banknote className="h-4 w-4" />}
-        />
-      </div>
-
-      <div className="h-[400px]">
-        <AssetsLiabilitiesChart
-          data={(() => {
-            // Reverse history to get chronological order (Oldest -> Newest)
-            // portfolioHistory is DESC (Newest -> Oldest)
-            const chartData = [...(portfolioHistory || [])].reverse().map(h => {
-              const assets = Number(h.totalSavings) + Number(h.totalInvestments) + Number(h.totalBonds) +
-                (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
-                Number(h.totalRealEstateInvestment) +
-                Number((h as any).totalCrypto || 0) +
-                Number((h as any).totalOtherAssets || 0);
-              const liabilities = Number(h.totalLoansPrincipal);
-              return {
-                date: formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric' }),
-                assets,
-                liabilities
-              };
-            });
-
-            // Append or update with current live values
-            const todayStr = formatDate(new Date(), { month: 'short', day: 'numeric' });
-            const lastPoint = chartData[chartData.length - 1];
-
-            if (lastPoint && lastPoint.date === todayStr) {
-              lastPoint.assets = totalAssets;
-              lastPoint.liabilities = totalLiabilities;
-            } else {
-              chartData.push({
-                date: todayStr,
-                assets: totalAssets,
-                liabilities: totalLiabilities
-              });
-            }
-
-            return chartData;
-          })()}
-          period={selectedPeriod}
-        />
       </div>
     </div>
   );

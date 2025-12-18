@@ -163,6 +163,14 @@ export default function Crypto() {
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => refreshPricesMutation.mutate()}
+                        disabled={refreshPricesMutation.isPending}
+                    >
+                        <RefreshCw className={`mr-2 h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
+                        {refreshPricesMutation.isPending ? t('refreshing') : t('refreshPrices')}
+                    </Button>
                     <AddCryptoModal />
                 </div>
             </div>
@@ -192,17 +200,6 @@ export default function Crypto() {
                 onBuy={handleBuyClick}
             />
 
-            <div className="flex justify-end">
-                <Button
-                    variant="outline"
-                    onClick={() => refreshPricesMutation.mutate()}
-                    disabled={refreshPricesMutation.isPending}
-                    className="transition-all duration-200"
-                >
-                    <RefreshCw className={`mr-2 h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
-                    {refreshPricesMutation.isPending ? t('refreshing') : t('refreshPrices')}
-                </Button>
-            </div>
 
             <SellCryptoModal
                 investment={selectedHolding}

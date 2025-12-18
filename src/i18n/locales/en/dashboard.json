@@ -20,6 +20,7 @@
         "netWorthTrend": "Net Worth Trend",
         "assetAllocation": "Asset Allocation",
         "assetsVsLiabilities": "Assets vs Liabilities",
+        "assetsToLiabilitiesRatio": "Assets to Liabilities ratio",
         "noHistoricalData": "No historical data available"
     },
     "tooltips": {

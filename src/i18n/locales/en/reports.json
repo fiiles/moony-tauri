@@ -1,0 +1,52 @@
+{
+    "title": "Cashflow",
+    "subtitle": "Overview of your income and expenses",
+    "viewType": {
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+    },
+    "sections": {
+        "income": "Incomes",
+        "expenses": "Costs"
+    },
+    "categories": {
+        "income": "Other Incomes",
+        "savingsInterest": "Savings Interest",
+        "investmentDividends": "Investment Dividends",
+        "bondInterest": "Bond Interest",
+        "rentalIncome": "Rental Income",
+        "loanInterest": "Loan Interest",
+        "insurancePayments": "Insurance Payments",
+        "realEstateCosts": "Real Estate Costs",
+        "otherCosts": "Other Costs"
+    },
+    "summary": {
+        "totalIncome": "Total Income",
+        "totalExpenses": "Total Expenses",
+        "netCashflow": "Net Cashflow"
+    },
+    "addItem": {
+        "title": "Add Item",
+        "editTitle": "Edit Item",
+        "name": "Name",
+        "namePlaceholder": "Enter item name",
+        "amount": "Amount",
+        "amountPlaceholder": "Enter amount",
+        "currency": "Currency",
+        "frequency": "Frequency",
+        "category": "Category",
+        "selectCategory": "Select category",
+        "type": "Type",
+        "income": "Income",
+        "expense": "Expense"
+    },
+    "deleteConfirm": {
+        "title": "Delete Item",
+        "description": "Are you sure you want to delete this item? This action cannot be undone."
+    },
+    "empty": {
+        "noItems": "No items in this category"
+    },
+    "perMonth": "/month",
+    "perYear": "/year"
+}

@@ -32,6 +32,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("004_add_photo_batches", MIGRATION_004),
         ("005_add_insurance_documents", MIGRATION_005),
         ("006_add_savings_termination_date", MIGRATION_006),
+        ("007_add_cashflow_items", MIGRATION_007),
+        ("008_add_cashflow_category", MIGRATION_008),
     ];
 
     for (name, sql) in migrations {
@@ -387,4 +389,23 @@ CREATE INDEX IF NOT EXISTS idx_insurance_documents ON insurance_documents(insura
 /// Migration 006: Add termination date to savings accounts
 const MIGRATION_006: &str = r#"
 ALTER TABLE savings_accounts ADD COLUMN termination_date INTEGER;
+"#;
+
+/// Migration 007: Add cashflow_items table for user-defined income/expense items
+const MIGRATION_007: &str = r#"
+CREATE TABLE IF NOT EXISTS cashflow_items (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    frequency TEXT NOT NULL,
+    item_type TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+"#;
+
+/// Migration 008: Add category column to cashflow_items
+const MIGRATION_008: &str = r#"
+ALTER TABLE cashflow_items ADD COLUMN category TEXT NOT NULL DEFAULT 'income';
 "#;

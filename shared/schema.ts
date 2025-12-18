@@ -472,3 +472,42 @@ export interface CryptoInvestmentWithPrice extends CryptoInvestment {
     fetchedAt: number | null;
 }
 
+// Cashflow Types
+export interface CashflowItem {
+    id: string;
+    name: string;
+    amount: string;
+    currency: string;
+    frequency: 'monthly' | 'yearly';
+    itemType: 'income' | 'expense';
+    category: string;
+    createdAt: number;
+    updatedAt: number;
+}
+
+export interface CashflowReportItem {
+    id: string;
+    name: string;
+    amount: number;
+    originalAmount: number;
+    originalCurrency: string;
+    originalFrequency: 'monthly' | 'yearly';
+    isUserDefined: boolean;
+}
+
+export interface CashflowCategory {
+    key: string;
+    name: string;
+    total: number;
+    items: CashflowReportItem[];
+    isUserEditable: boolean;
+}
+
+export interface CashflowReport {
+    viewType: 'monthly' | 'yearly';
+    income: CashflowCategory[];
+    expenses: CashflowCategory[];
+    totalIncome: number;
+    totalExpenses: number;
+    netCashflow: number;
+}

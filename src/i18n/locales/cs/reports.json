@@ -1,0 +1,52 @@
+{
+    "title": "Cashflow",
+    "subtitle": "Přehled vašich příjmů a výdajů",
+    "viewType": {
+        "monthly": "Měsíčně",
+        "yearly": "Ročně"
+    },
+    "sections": {
+        "income": "Příjmy",
+        "expenses": "Náklady"
+    },
+    "categories": {
+        "income": "Ostatní příjmy",
+        "savingsInterest": "Úroky ze spoření",
+        "investmentDividends": "Dividendy z investic",
+        "bondInterest": "Úroky z dluhopisů",
+        "rentalIncome": "Příjem z pronájmu",
+        "loanInterest": "Úroky z úvěrů",
+        "insurancePayments": "Platby pojištění",
+        "realEstateCosts": "Náklady na nemovitosti",
+        "otherCosts": "Ostatní náklady"
+    },
+    "summary": {
+        "totalIncome": "Celkové příjmy",
+        "totalExpenses": "Celkové výdaje",
+        "netCashflow": "Čistý cashflow"
+    },
+    "addItem": {
+        "title": "Přidat položku",
+        "editTitle": "Upravit položku",
+        "name": "Název",
+        "namePlaceholder": "Zadejte název položky",
+        "amount": "Částka",
+        "amountPlaceholder": "Zadejte částku",
+        "currency": "Měna",
+        "frequency": "Frekvence",
+        "category": "Kategorie",
+        "selectCategory": "Vyberte kategorii",
+        "type": "Typ",
+        "income": "Příjem",
+        "expense": "Výdaj"
+    },
+    "deleteConfirm": {
+        "title": "Smazat položku",
+        "description": "Opravdu chcete smazat tuto položku? Tuto akci nelze vrátit zpět."
+    },
+    "empty": {
+        "noItems": "V této kategorii nejsou žádné položky"
+    },
+    "perMonth": "/měsíc",
+    "perYear": "/rok"
+}

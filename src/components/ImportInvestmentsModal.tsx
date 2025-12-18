@@ -146,7 +146,7 @@ export function ImportInvestmentsModal() {
                     headers = ["Date", "Type", "Ticker", "Quantity", "Price", "Currency"];
                 }
 
-                const data = [];
+                const data: Record<string, string>[] = [];
                 // Process lines
                 lines.slice(startIndex).forEach((line) => {
                     if (!line.trim()) return; // Skip empty lines
@@ -317,7 +317,7 @@ export function ImportInvestmentsModal() {
                             <h3 className="text-xl font-bold">Import Complete</h3>
                             <p className="text-muted-foreground">Processed {successCount + importErrors.length} rows.</p>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                            <div className={`grid gap-4 w-full ${importedItems.length > 0 && importErrors.length > 0 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
                                 {importedItems.length > 0 && (
                                     <Alert className="w-full text-left border-green-200 bg-green-50">
                                         <CheckCircle className="h-4 w-4 text-green-600" />
@@ -333,7 +333,7 @@ export function ImportInvestmentsModal() {
                                 {importErrors.length > 0 && (
                                     <Alert variant="destructive" className="w-full text-left">
                                         <AlertCircle className="h-4 w-4" />
-                                        <AlertTitle>{importErrors.length} Failed</AlertTitle>
+                                        <AlertTitle>{importErrors.length} Skipped</AlertTitle>
                                         <AlertDescription className="max-h-60 overflow-y-auto mt-2">
                                             <ul className="list-disc pl-4 text-xs space-y-1">
                                                 {importErrors.map((e, i) => <li key={i}>{e}</li>)}

@@ -20,6 +20,7 @@
         "netWorthTrend": "Vývoj čistého jmění",
         "assetAllocation": "Alokace aktiv",
         "assetsVsLiabilities": "Aktiva vs závazky",
+        "assetsToLiabilitiesRatio": "Poměr aktiv k závazkům",
         "noHistoricalData": "Žádná historická data k dispozici"
     },
     "tooltips": {
