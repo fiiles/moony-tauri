@@ -417,4 +417,88 @@
   .icon-container {
     @apply flex items-center justify-center rounded-lg p-2 bg-muted/50;
   }
+
+  /* ========================================
+   * PROFESSIONAL FORM STYLING
+   * Scoped to dialog/modal forms only
+   * ======================================== */
+
+  /* Form section with card-like appearance - white blocks on grey dialog */
+  .form-section {
+    @apply relative rounded-lg border border-border/60 bg-card p-4 shadow-sm;
+  }
+
+  /* Form section header - styled like a fieldset legend */
+  .form-section-header {
+    @apply text-sm font-semibold text-foreground mb-4 pb-2 border-b border-border/50;
+  }
+
+  /* Alternative: Form section with subtle left accent */
+  .form-section-accent {
+    @apply relative rounded-lg border border-border/50 bg-card p-4 pl-5;
+    border-left: 3px solid hsl(var(--primary) / 0.6);
+  }
+
+  /* Enhanced input styling for forms */
+  .form-input-enhanced {
+    @apply bg-background border-border/80 shadow-sm;
+    @apply focus:border-primary/50 focus:shadow-md;
+    @apply transition-all duration-150;
+  }
+
+  /* Grid layout helpers for forms */
+  .form-grid {
+    @apply grid gap-4;
+  }
+
+  .form-grid-2 {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  }
+
+  .form-grid-3 {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-4;
+  }
+}
+
+
+
+/* Style the calendar icon */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Firefox date input styling */
+input[type="date"]::-moz-placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Dialog content form enhancements - scoped to dialogs only */
+[role="dialog"] .space-y-4>h3.border-b {
+  @apply text-sm font-semibold text-foreground/90 pb-2 mb-3;
+  border-bottom-color: hsl(var(--border) / 0.5);
+}
+
+/* Dialog background - grey to match main app */
+[role="dialog"]>div {
+  background-color: hsl(var(--background));
+}
+
+/* Force date input text to be grey, not blue - more aggressive fix */
+input[type="date"] {
+  color: hsl(var(--foreground)) !important;
+}
+
+input[type="date"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  color: hsl(var(--foreground)) !important;
 }

@@ -63,6 +63,7 @@
     "modal": {
         "add": {
             "title": "Add Other Asset",
+            "basicInfo": "Asset Information",
             "assetName": "Asset Name",
             "assetNamePlaceholder": "e.g. Gold Bars",
             "marketPrice": "Current Market Price (per unit)",

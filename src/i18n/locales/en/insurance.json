@@ -60,10 +60,16 @@
         "deleted": "Policy deleted successfully"
     },
     "modal": {
+        "basicInfo": "Basic Information",
+        "paymentDetails": "Payment Details",
+        "additionalInfo": "Additional Information",
         "selectType": "Select type",
         "selectStatus": "Select status",
+        "policyName": "Policy Name",
         "policyNamePlaceholder": "e.g. Home Insurance 2024",
+        "provider": "Provider",
         "providerPlaceholder": "e.g. Allianz",
+        "policyNumber": "Policy Number",
         "policyNumberPlaceholder": "Contract number",
         "paymentFrequency": "Payment Frequency",
         "selectFrequency": "Select frequency",

@@ -16,10 +16,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Loan } from "@shared/schema";
-import { format, isAfter } from "date-fns";
+import { isAfter } from "date-fns";
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/i18n/I18nProvider";
 
 interface LoansTableProps {
     loans: Loan[];
@@ -31,6 +32,7 @@ export function LoansTable({ loans, onEdit, onDelete }: LoansTableProps) {
     const { t } = useTranslation('loans');
     const { t: tc } = useTranslation('common');
     const { formatCurrency } = useCurrency();
+    const { formatDate } = useLanguage();
     const today = new Date();
 
     return (
@@ -81,13 +83,13 @@ export function LoansTable({ loans, onEdit, onDelete }: LoansTableProps) {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {(loan as any).interestRateValidityDate
-                                                    ? format(new Date((loan as any).interestRateValidityDate * 1000), "MMM d, yyyy")
-                                                    : "-"}
+                                                    ? formatDate(new Date((loan as any).interestRateValidityDate * 1000))
+                                                    : "—"}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {loan.endDate
-                                                    ? format(new Date((loan.endDate as any) * 1000), "MMM d, yyyy")
-                                                    : "-"}
+                                                    ? formatDate(new Date((loan.endDate as any) * 1000))
+                                                    : "—"}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <DropdownMenu>

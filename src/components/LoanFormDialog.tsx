@@ -141,8 +141,8 @@ export function LoanFormDialog({
                         onSubmit={form.handleSubmit(handleSubmit)}
                         className="grid gap-6 py-4"
                     >
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
+                        <div className="form-section">
+                            <h3 className="form-section-header">
                                 {t('modal.basicInfo')}
                             </h3>
                             <FormField
@@ -160,8 +160,8 @@ export function LoanFormDialog({
                             />
                         </div>
 
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
+                        <div className="form-section">
+                            <h3 className="form-section-header">
                                 {t('modal.financialDetails')}
                             </h3>
                             <div className="space-y-4">

@@ -137,6 +137,28 @@ pub fn master_key_to_hex(master_key: &[u8]) -> String {
     format!("'{}'", hex::encode(master_key))
 }
 
+/// Convert hex string back to master key bytes
+/// Handles the format from master_key_to_hex (with surrounding quotes)
+pub fn hex_to_master_key(hex_str: &str) -> Result<[u8; KEY_LENGTH]> {
+    // Remove surrounding quotes if present
+    let clean_hex = hex_str.trim_matches('\'');
+
+    let bytes = hex::decode(clean_hex)
+        .map_err(|e| AppError::Encryption(format!("Invalid hex key: {}", e)))?;
+
+    if bytes.len() != KEY_LENGTH {
+        return Err(AppError::Encryption(format!(
+            "Invalid key length: expected {}, got {}",
+            KEY_LENGTH,
+            bytes.len()
+        )));
+    }
+
+    let mut key = [0u8; KEY_LENGTH];
+    key.copy_from_slice(&bytes);
+    Ok(key)
+}
+
 /// Read salt from file
 pub fn read_salt(path: &Path) -> Result<[u8; SALT_LENGTH]> {
     let data =

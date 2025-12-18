@@ -172,8 +172,8 @@ export function SavingsAccountFormDialog({
         </DialogHeader>
         <div className="grid gap-6 py-4">
           {/* Basic Information Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
+          <div className="form-section">
+            <h3 className="form-section-header">
               {t('modal.basicInfo')}
             </h3>
             <div className="grid gap-4">
@@ -237,8 +237,8 @@ export function SavingsAccountFormDialog({
           </div>
 
           {/* Interest Rate Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
+          <div className="form-section">
+            <h3 className="form-section-header">
               {t('modal.interestConfig')}
             </h3>
 

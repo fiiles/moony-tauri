@@ -3,11 +3,12 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
-    StockInvestment, InsertStockInvestment, EnrichedStockInvestment,
+    StockInvestment, InsertStockInvestment, EnrichedStockInvestment, 
     InvestmentTransaction, InsertInvestmentTransaction,
     StockPriceOverride, DividendOverride,
 };
 use crate::services::currency::convert_to_czk;
+use crate::commands::portfolio;
 use tauri::State;
 use uuid::Uuid;
 
@@ -232,7 +233,7 @@ pub async fn create_investment_transaction(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     
-    db.with_conn(|conn| {
+    let result = db.with_conn(|conn| {
         conn.execute(
             "INSERT INTO investment_transactions 
              (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at) 
@@ -251,6 +252,8 @@ pub async fn create_investment_transaction(
             ],
         )?;
         
+        recalculate_investment(conn, &investment_id)?;
+        
         Ok(InvestmentTransaction {
             id,
             investment_id,
@@ -263,16 +266,36 @@ pub async fn create_investment_transaction(
             transaction_date: data.transaction_date,
             created_at: now,
         })
-    })
+    })?;
+    
+    // Update portfolio snapshot
+    portfolio::update_todays_snapshot(&db).await.ok();
+    
+    Ok(result)
 }
 
 /// Delete transaction
 #[tauri::command]
 pub async fn delete_investment_transaction(db: State<'_, Database>, tx_id: String) -> Result<()> {
     db.with_conn(|conn| {
+        // Get investment_id before deleting
+        let investment_id: String = conn.query_row(
+            "SELECT investment_id FROM investment_transactions WHERE id = ?1",
+            [&tx_id],
+            |row| row.get(0),
+        )?;
+        
         conn.execute("DELETE FROM investment_transactions WHERE id = ?1", [&tx_id])?;
+        
+        recalculate_investment(conn, &investment_id)?;
+        
         Ok(())
-    })
+    })?;
+    
+    // Update portfolio snapshot
+    portfolio::update_todays_snapshot(&db).await.ok();
+    
+    Ok(())
 }
 
 /// Update transaction
@@ -282,7 +305,14 @@ pub async fn update_investment_transaction(
     tx_id: String,
     data: InsertInvestmentTransaction,
 ) -> Result<InvestmentTransaction> {
-    db.with_conn(|conn| {
+    let result = db.with_conn(|conn| {
+        // Get investment_id
+        let investment_id: String = conn.query_row(
+            "SELECT investment_id FROM investment_transactions WHERE id = ?1",
+            [&tx_id],
+            |row| row.get(0),
+        )?;
+        
         conn.execute(
             "UPDATE investment_transactions 
              SET type = ?2, quantity = ?3, price_per_unit = ?4, currency = ?5, transaction_date = ?6
@@ -296,6 +326,8 @@ pub async fn update_investment_transaction(
                 data.transaction_date,
             ],
         )?;
+        
+        recalculate_investment(conn, &investment_id)?;
         
         // Fetch updated transaction
         let tx = conn.query_row(
@@ -318,7 +350,12 @@ pub async fn update_investment_transaction(
         )?;
         
         Ok(tx)
-    })
+    })?;
+    
+    // Update portfolio snapshot
+    portfolio::update_todays_snapshot(&db).await.ok();
+    
+    Ok(result)
 }
 
 /// Import investment transactions from CSV data
@@ -330,28 +367,43 @@ pub async fn import_investment_transactions(
 ) -> Result<serde_json::Value> {
     let mut success_count = 0;
     let mut errors: Vec<String> = Vec::new();
+    let mut imported: Vec<String> = Vec::new();
     
     db.with_conn(|conn| {
         for (index, tx) in transactions.iter().enumerate() {
             let result = process_import_transaction(conn, tx, &default_currency);
             match result {
-                Ok(_) => success_count += 1,
+                Ok(description) => {
+                    success_count += 1;
+                    imported.push(format!("Row {}: {}", index + 1, description));
+                },
                 Err(e) => errors.push(format!("Row {}: {}", index + 1, e)),
             }
         }
         
         Ok(serde_json::json!({
             "success": success_count,
-            "errors": errors
+            "errors": errors,
+            "imported": imported
         }))
-    })
+    })?;
+    
+    // Update portfolio snapshot after all imports
+    portfolio::update_todays_snapshot(&db).await.ok();
+    
+    // Return result structure
+    Ok(serde_json::json!({
+        "success": success_count,
+        "errors": errors,
+        "imported": imported
+    }))
 }
 
 fn process_import_transaction(
     conn: &rusqlite::Connection,
     tx: &serde_json::Value,
     default_currency: &str,
-) -> std::result::Result<(), String> {
+) -> std::result::Result<String, String> {
     // Extract fields from the transaction object
     let ticker = tx.get("Ticker").or_else(|| tx.get("ticker"))
         .and_then(|v| v.as_str())
@@ -363,17 +415,46 @@ fn process_import_transaction(
         .unwrap_or("buy")
         .to_lowercase();
     
-    let quantity = tx.get("Quantity").or_else(|| tx.get("quantity"))
-        .and_then(|v| v.as_str().or_else(|| v.as_f64().map(|n| Box::leak(n.to_string().into_boxed_str()) as &str)))
-        .ok_or("Missing quantity")?;
+    // Validate transaction type
+    if tx_type != "buy" && tx_type != "sell" {
+        return Err(format!("{}: Invalid type '{}' (must be 'buy' or 'sell')", ticker, tx_type));
+    }
     
-    let price = tx.get("Price").or_else(|| tx.get("price"))
+    let raw_quantity = tx.get("Quantity").or_else(|| tx.get("quantity"))
         .and_then(|v| v.as_str().or_else(|| v.as_f64().map(|n| Box::leak(n.to_string().into_boxed_str()) as &str)))
-        .ok_or("Missing price")?;
+        .ok_or(format!("{}: Missing quantity", ticker))?;
     
-    let currency = tx.get("Currency").or_else(|| tx.get("currency"))
+    // Sanitize quantity (take first non-whitespace part, replace comma with dot)
+    let quantity = raw_quantity.trim().split_whitespace().next().unwrap_or("0").replace(',', ".");
+    
+    // Validate quantity is a positive number
+    let qty_value: f64 = quantity.parse().map_err(|_| format!("{}: Invalid quantity '{}'", ticker, raw_quantity))?;
+    if qty_value <= 0.0 {
+        return Err(format!("{}: Quantity must be positive (got {})", ticker, raw_quantity));
+    }
+    
+    let raw_price = tx.get("Price").or_else(|| tx.get("price"))
+        .and_then(|v| v.as_str().or_else(|| v.as_f64().map(|n| Box::leak(n.to_string().into_boxed_str()) as &str)))
+        .ok_or(format!("{}: Missing price", ticker))?;
+    
+    // Sanitize price (take first non-whitespace part, replace comma with dot)
+    let price = raw_price.trim().split_whitespace().next().unwrap_or("0").replace(',', ".");
+    
+    // Validate price is a positive number
+    let price_value: f64 = price.parse().map_err(|_| format!("{}: Invalid price '{}'", ticker, raw_price))?;
+    if price_value <= 0.0 {
+        return Err(format!("{}: Price must be positive (got {})", ticker, raw_price));
+    }
+    
+    let raw_currency = tx.get("Currency").or_else(|| tx.get("currency"))
         .and_then(|v| v.as_str())
         .unwrap_or(default_currency);
+    let mut currency = raw_currency.trim().split_whitespace().next().unwrap_or(default_currency);
+    
+    // If currency is numeric (e.g. "45"), fallback to default
+    if currency.chars().all(char::is_numeric) {
+        currency = default_currency;
+    }
     
     let date_str = tx.get("Date").or_else(|| tx.get("date"))
         .and_then(|v| v.as_str())
@@ -385,27 +466,33 @@ fn process_import_transaction(
             .or_else(|_| chrono::NaiveDate::parse_from_str(date_str, "%d.%m.%Y"))
             .or_else(|_| chrono::NaiveDate::parse_from_str(date_str, "%d/%m/%Y"))
             .map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp())
-            .unwrap_or_else(|_| chrono::Utc::now().timestamp())
+            .map_err(|_| format!("{}: Invalid date format '{}' (use YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY)", ticker, date_str))?
     } else {
         chrono::Utc::now().timestamp()
     };
     
-    // Check if investment exists, create if not
+    // Check if investment exists
     let existing: Option<String> = conn.query_row(
         "SELECT id FROM stock_investments WHERE ticker = ?1",
         [&ticker],
         |row| row.get(0),
     ).ok();
     
+    // For sell transactions, require existing investment
+    if tx_type == "sell" && existing.is_none() {
+        return Err(format!("{}: Cannot sell - no existing position found", ticker));
+    }
+    
     let investment_id = match existing {
         Some(id) => id,
         None => {
+            // Only create new investment for buy transactions
             let id = Uuid::new_v4().to_string();
             conn.execute(
                 "INSERT INTO stock_investments (id, ticker, company_name, quantity, average_price) 
                  VALUES (?1, ?2, ?3, ?4, ?5)",
                 rusqlite::params![id, ticker, ticker.clone(), "0", "0"],
-            ).map_err(|e| e.to_string())?;
+            ).map_err(|e| format!("{}: Failed to create investment - {}", ticker, e))?;
             id
         }
     };
@@ -430,9 +517,11 @@ fn process_import_transaction(
             transaction_date,
             now,
         ],
-    ).map_err(|e| e.to_string())?;
+    ).map_err(|e| format!("{}: Failed to create transaction - {}", ticker, e))?;
     
-    Ok(())
+    recalculate_investment(conn, &investment_id).map_err(|e| format!("{}: Failed to recalculate investment - {}", ticker, e))?;
+    
+    Ok(format!("{} {} {} @ {}", tx_type.to_uppercase(), quantity, ticker, price))
 }
 
 /// Set manual price override
@@ -527,4 +616,54 @@ pub async fn delete_manual_dividend(db: State<'_, Database>, ticker: String) -> 
         conn.execute("DELETE FROM dividend_overrides WHERE ticker = ?1", [&ticker.to_uppercase()])?;
         Ok(())
     })
+}
+
+/// Recalculate investment quantity and average price from transactions
+fn recalculate_investment(conn: &rusqlite::Connection, investment_id: &str) -> Result<()> {
+    // 1. Get all transactions
+    let mut stmt = conn.prepare(
+        "SELECT type, quantity, price_per_unit, currency FROM investment_transactions WHERE investment_id = ?1"
+    )?;
+    
+    let txs: Vec<(String, f64, f64, String)> = stmt.query_map([investment_id], |row| {
+         let type_: String = row.get(0)?;
+         let qty_str: String = row.get(1)?;
+         let price_str: String = row.get(2)?;
+         let currency: String = row.get(3)?;
+         
+         let qty = qty_str.trim().split_whitespace().next().unwrap_or("0").parse::<f64>().unwrap_or(0.0);
+         let price = price_str.trim().split_whitespace().next().unwrap_or("0").parse::<f64>().unwrap_or(0.0);
+         
+         Ok((type_, qty, price, currency))
+    })?.filter_map(|r| r.ok()).collect();
+    
+    let mut total_quantity = 0.0;
+    let mut weighted_buy_sum = 0.0;
+    let mut weighted_buy_qty = 0.0;
+    
+    for (tx_type, qty, price, currency) in txs {
+        // Convert price to CZK for uniform calculation
+        let price_czk = convert_to_czk(price, &currency);
+        
+        if tx_type == "buy" {
+            total_quantity += qty;
+            weighted_buy_sum += qty * price_czk;
+            weighted_buy_qty += qty;
+        } else {
+            total_quantity -= qty;
+        }
+    }
+    
+    let average_price = if weighted_buy_qty > 0.0 {
+        weighted_buy_sum / weighted_buy_qty
+    } else {
+        0.0
+    };
+    
+    conn.execute(
+        "UPDATE stock_investments SET quantity = ?1, average_price = ?2 WHERE id = ?3",
+        rusqlite::params![total_quantity.to_string(), average_price.to_string(), investment_id],
+    )?;
+    
+    Ok(())
 }

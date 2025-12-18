@@ -25,14 +25,40 @@ async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): 
 export const authApi = {
   checkSetup: () => tauriInvoke<boolean>('check_setup'),
 
+  // Legacy single-step setup (kept for compatibility)
   setup: (data: { name: string; surname: string; email: string; password: string }) =>
     tauriInvoke<{ recoveryKey: string; profile: any }>('setup', { data }),
+
+  // 2-Phase Setup
+  prepareSetup: () =>
+    tauriInvoke<{ recoveryKey: string; masterKeyHex: string; salt: number[] }>('prepare_setup'),
+
+  confirmSetup: (data: {
+    name: string;
+    surname: string;
+    email: string;
+    password: string;
+    masterKeyHex: string;
+    recoveryKey: string;
+    salt: number[];
+  }) => tauriInvoke<any>('confirm_setup', { data }),
 
   unlock: (password: string) =>
     tauriInvoke<any>('unlock', { password }),
 
+  // Legacy recover (kept for compatibility)
   recover: (data: { recoveryKey: string; newPassword: string }) =>
     tauriInvoke<{ recoveryKey: string; profile: any }>('recover', { data }),
+
+  // 2-Phase Recovery (password reset using recovery key)
+  prepareRecover: (data: { recoveryKey: string; newPassword: string }) =>
+    tauriInvoke<{ recoveryKey: string }>('prepare_recover', { data }),
+
+  confirmRecover: (data: {
+    oldRecoveryKey: string;
+    newPassword: string;
+    newRecoveryKey: string;
+  }) => tauriInvoke<any>('confirm_recover', { data }),
 
   logout: () => tauriInvoke<void>('logout'),
 
@@ -43,8 +69,15 @@ export const authApi = {
   updateProfile: (updates: any) =>
     tauriInvoke<any>('update_user_profile', { updates }),
 
-  changePassword: (data: { newPassword: string }) =>
-    tauriInvoke<void>('change_password', { data }),
+  // 2-Phase Change Password
+  prepareChangePassword: (data: { currentPassword: string }) =>
+    tauriInvoke<{ recoveryKey: string }>('prepare_change_password', { data }),
+
+  confirmChangePassword: (data: {
+    currentPassword: string;
+    newPassword: string;
+    recoveryKey: string;
+  }) => tauriInvoke<void>('confirm_change_password', { data }),
 
   deleteAccount: () => tauriInvoke<void>('delete_account'),
 };

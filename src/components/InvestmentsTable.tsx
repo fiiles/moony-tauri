@@ -195,7 +195,7 @@ export function InvestmentsTable({
                         <span className="data-value">
                           {holding.dividendYield
                             ? formatCurrency(holding.dividendYield * holding.quantity, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-                            : "-"}
+                            : "—"}
                         </span>
                       </div>
                     </TableCell>

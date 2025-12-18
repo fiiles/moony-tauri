@@ -103,15 +103,6 @@ pub struct RecoverData {
     pub new_password: String,
 }
 
-/// Change password data
-#[derive(Debug, Clone, Deserialize)]
-pub struct ChangePasswordData {
-    #[serde(rename = "currentPassword")]
-    pub current_password: String,
-    #[serde(rename = "newPassword")]
-    pub new_password: String,
-}
-
 /// Portfolio metrics history entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortfolioMetricsHistory {

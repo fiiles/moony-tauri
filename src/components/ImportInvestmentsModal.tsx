@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, FileText, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle, Loader2, Download } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -24,19 +24,46 @@ export function ImportInvestmentsModal() {
     const [error, setError] = useState<string | null>(null);
     const [successCount, setSuccessCount] = useState<number | null>(null);
     const [importErrors, setImportErrors] = useState<string[]>([]);
-    const [defaultCurrency, setDefaultCurrency] = useState("USD"); // Default currency
+    const [importedItems, setImportedItems] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
 
+    const exampleCSVContent = `Date,Type,Ticker,Quantity,Price,Currency
+2024-01-15,buy,AAPL,10,180.50,USD
+2024-02-20,buy,MSFT,5,395.00,USD
+2024-03-10,sell,AAPL,3,185.25,USD
+2024-04-05,buy,GOOGL,2,155.75,USD
+2024-05-15,buy,NVDA,8,850.00,USD`;
+
+    const downloadExampleCSV = async () => {
+        try {
+            const { save } = await import("@tauri-apps/plugin-dialog");
+            const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+
+            const filePath = await save({
+                defaultPath: "example-transactions.csv",
+                filters: [{ name: "CSV", extensions: ["csv"] }]
+            });
+
+            if (filePath) {
+                await writeTextFile(filePath, exampleCSVContent);
+            }
+        } catch (error) {
+            console.error("Failed to save CSV:", error);
+        }
+    };
+
     const importMutation = useMutation({
         mutationFn: async (transactions: any[]) => {
-            return investmentsApi.importTransactions(transactions, defaultCurrency);
+            return investmentsApi.importTransactions(transactions, "USD");
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["investments"] });
+            queryClient.invalidateQueries({ queryKey: ["transactions"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             setSuccessCount(data.success);
             setImportErrors(data.errors || []);
+            setImportedItems(data.imported || []);
             setParsedData([]);
             setFile(null);
         },
@@ -73,37 +100,84 @@ export function ImportInvestmentsModal() {
 
                 // Check if first line is a header
                 // Heuristic: check if it contains typical header names (english or czech)
-                const headerKeywords = ["ticker", "symbol", "date", "datum", "price", "cena", "quantity", "množství", "type", "typ", "fee", "poplatek"];
+                const headerKeywords = ["ticker", "symbol", "date", "datum", "price", "cena", "quantity", "množství", "type", "typ", "currency", "měna"];
                 const hasHeader = headerKeywords.some(k => firstLine.toLowerCase().includes(k));
+
+                // Helper to split CSV line respecting quotes
+                const splitLine = (line: string, delim: string) => {
+                    const result = [];
+                    let current = '';
+                    let inQuote = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        if (char === '"') {
+                            inQuote = !inQuote;
+                        }
+
+                        if (char === delim && !inQuote) {
+                            result.push(current);
+                            current = '';
+                        } else {
+                            current += char;
+                        }
+                    }
+                    result.push(current);
+                    return result;
+                };
 
                 let headers: string[] = [];
                 let startIndex = 0;
 
                 if (hasHeader) {
-                    headers = firstLine.split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
+                    const normalizeHeader = (h: string) => {
+                        h = h.toLowerCase();
+                        if (["date", "datum"].includes(h)) return "Date";
+                        if (["type", "typ"].includes(h)) return "Type";
+                        if (["ticker", "symbol"].includes(h)) return "Ticker";
+                        if (["quantity", "množství", "pocet", "amount"].includes(h)) return "Quantity";
+                        if (["price", "cena", "price_per_unit", "cost"].includes(h)) return "Price";
+                        if (["currency", "měna", "mena"].includes(h)) return "Currency";
+                        return h.charAt(0).toUpperCase() + h.slice(1);
+                    };
+                    headers = splitLine(firstLine, delimiter).map(h => normalizeHeader(h.trim().replace(/^"|"$/g, '')));
                     startIndex = 1;
                 } else {
-                    // Default schema if no header: date, type, currency, ticker, quantity, price, fee
-                    headers = ["Date", "Type", "Currency", "Ticker", "Quantity", "Price", "Fee"];
-                    startIndex = 0;
+                    // Default schema if no header: Date, Type, Ticker, Quantity, Price, Currency
+                    headers = ["Date", "Type", "Ticker", "Quantity", "Price", "Currency"];
                 }
 
                 const data = [];
-                for (let i = startIndex; i < lines.length; i++) {
-                    const line = lines[i];
-                    // Handle quoted values basic implementation
-                    const values = line.split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
+                // Process lines
+                lines.slice(startIndex).forEach((line) => {
+                    if (!line.trim()) return; // Skip empty lines
 
-                    if (values.length < headers.length) continue; // Skip incomplete lines
+                    const values = splitLine(line, delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
 
-                    const row: Record<string, string> = {};
-                    headers.forEach((h, index) => {
-                        if (index < values.length) {
-                            row[h] = values[index];
+                    if (values.length === 0) return;
+
+                    // Fix for European number format (e.g. 109,45) splitting into two columns if delimiter is comma
+                    if (values.length === headers.length + 1 && delimiter === ',') {
+                        const priceIdx = headers.indexOf("Price");
+                        if (priceIdx !== -1 && values.length > priceIdx + 1) {
+                            const p1 = values[priceIdx];
+                            const p2 = values[priceIdx + 1];
+                            // Check if split looks like a number (digits split by comma)
+                            // e.g. p1="109", p2="45"
+                            if (/^\d+$/.test(p1) && /^\d+$/.test(p2)) {
+                                values.splice(priceIdx, 2, `${p1},${p2}`);
+                            }
+                        }
+                    }
+
+                    const transaction: Record<string, string> = {};
+                    headers.forEach((header, index) => {
+                        // Only set if we have a value and it matches header range
+                        if (index < values.length && values[index] !== undefined) {
+                            transaction[header] = values[index];
                         }
                     });
-                    data.push(row);
-                }
+                    data.push(transaction);
+                });
 
                 if (data.length === 0) {
                     throw new Error("No valid data rows found");
@@ -130,6 +204,7 @@ export function ImportInvestmentsModal() {
         setError(null);
         setSuccessCount(null);
         setImportErrors([]);
+        setImportedItems([]);
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -149,23 +224,24 @@ export function ImportInvestmentsModal() {
             <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Import Investments</DialogTitle>
-                    <DialogDescription>
-                        Format: Date, Type, Currency, Ticker, Quantity, Price, Fee
+                    <DialogDescription className="space-y-2">
+                        <span>Import investment transactions from a CSV file. Required columns:</span>
+                        <code className="block text-xs bg-muted px-2 py-1 rounded mt-1">
+                            Date, Type, Ticker, Quantity, Price, Currency
+                        </code>
+                        <span className="block text-xs text-muted-foreground mt-1">
+                            Date formats: YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY. Type: buy or sell.
+                        </span>
+                        <button
+                            type="button"
+                            onClick={downloadExampleCSV}
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+                        >
+                            <Download className="h-3 w-3" />
+                            Download example CSV template
+                        </button>
                     </DialogDescription>
                 </DialogHeader>
-
-                <div className="flex items-center gap-4 py-2">
-                    <label className="text-sm font-medium">Default Currency:</label>
-                    <select
-                        className="flex h-10 w-[100px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                        value={defaultCurrency}
-                        onChange={(e) => setDefaultCurrency(e.target.value)}
-                    >
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="CZK">CZK</option>
-                    </select>
-                </div>
 
                 <div className="flex-1 overflow-hidden flex flex-col gap-4 py-4">
                     {!file && !successCount && (
@@ -236,22 +312,36 @@ export function ImportInvestmentsModal() {
                     )}
 
                     {successCount !== null && (
-                        <div className="flex flex-col gap-4 items-center justify-center p-8">
+                        <div className="flex flex-col gap-4 items-center justify-center p-8 w-full">
                             <CheckCircle className="h-16 w-16 text-green-500" />
                             <h3 className="text-xl font-bold">Import Complete</h3>
-                            <p className="text-muted-foreground">Successfully imported {successCount} transactions.</p>
+                            <p className="text-muted-foreground">Processed {successCount + importErrors.length} rows.</p>
 
-                            {importErrors.length > 0 && (
-                                <Alert variant="destructive" className="mt-4 w-full text-left">
-                                    <AlertCircle className="h-4 w-4" />
-                                    <AlertTitle>{importErrors.length} Failed Rows</AlertTitle>
-                                    <AlertDescription className="max-h-40 overflow-y-auto mt-2">
-                                        <ul className="list-disc pl-4 text-xs space-y-1">
-                                            {importErrors.map((e, i) => <li key={i}>{e}</li>)}
-                                        </ul>
-                                    </AlertDescription>
-                                </Alert>
-                            )}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                                {importedItems.length > 0 && (
+                                    <Alert className="w-full text-left border-green-200 bg-green-50">
+                                        <CheckCircle className="h-4 w-4 text-green-600" />
+                                        <AlertTitle className="text-green-800">{successCount} Successful</AlertTitle>
+                                        <AlertDescription className="max-h-60 overflow-y-auto mt-2">
+                                            <ul className="list-disc pl-4 text-xs space-y-1 text-green-700">
+                                                {importedItems.map((e, i) => <li key={i}>{e}</li>)}
+                                            </ul>
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+
+                                {importErrors.length > 0 && (
+                                    <Alert variant="destructive" className="w-full text-left">
+                                        <AlertCircle className="h-4 w-4" />
+                                        <AlertTitle>{importErrors.length} Failed</AlertTitle>
+                                        <AlertDescription className="max-h-60 overflow-y-auto mt-2">
+                                            <ul className="list-disc pl-4 text-xs space-y-1">
+                                                {importErrors.map((e, i) => <li key={i}>{e}</li>)}
+                                            </ul>
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+                            </div>
 
                             <Button onClick={() => setOpen(false)} className="mt-4">Close</Button>
                         </div>

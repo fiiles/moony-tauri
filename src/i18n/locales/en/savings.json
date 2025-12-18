@@ -19,6 +19,7 @@
         "interestRate": "Interest Rate (APY)",
         "type": "Type",
         "zones": "Zones",
+        "interestType": "Interest Type",
         "zoned": "Zoned",
         "simple": "Simple",
         "effective": "effective",

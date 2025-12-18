@@ -18,8 +18,8 @@ import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Bond } from "@shared/schema";
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
-import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/i18n/I18nProvider";
 
 interface BondsTableProps {
   bonds: Bond[];
@@ -31,6 +31,7 @@ export function BondsTable({ bonds, onEdit, onDelete }: BondsTableProps) {
   const { t } = useTranslation('bonds');
   const { t: tc } = useTranslation('common');
   const { formatCurrency } = useCurrency();
+  const { formatDate } = useLanguage();
 
   return (
     <Card className="border">
@@ -71,7 +72,7 @@ export function BondsTable({ bonds, onEdit, onDelete }: BondsTableProps) {
                       {Number(bond.interestRate).toFixed(2)}%
                     </TableCell>
                     <TableCell className="text-right">
-                      {bond.maturityDate ? format(new Date(bond.maturityDate * 1000), "MMM d, yyyy") : "-"}
+                      {bond.maturityDate ? formatDate(new Date(bond.maturityDate * 1000)) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
