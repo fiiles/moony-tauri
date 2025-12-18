@@ -45,12 +45,82 @@ A modern, privacy-focused personal finance management application built with Tau
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18 or later)
-- [Rust](https://www.rust-lang.org/tools/install) (latest stable)
-- Platform-specific Tauri dependencies:
-  - **macOS**: Xcode Command Line Tools
-  - **Windows**: Microsoft Visual Studio C++ Build Tools
-  - **Linux**: See [Tauri prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites#setting-up-linux)
+Before running the application, make sure you have the following installed:
+
+### All Platforms
+- [Node.js](https://nodejs.org/) (v18 or later) - JavaScript runtime
+- [Rust](https://www.rust-lang.org/tools/install) (latest stable) - Backend language
+
+---
+
+### Windows
+
+1. **Install Rust**
+   - Download and run the installer from [rustup.rs](https://win.rustup.rs/x86_64)
+   - Follow the installation prompts
+   - Restart your terminal after installation
+
+2. **Install Microsoft C++ Build Tools** (required by Rust)
+   - Download from [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+   - During installation, select **"Desktop development with C++"** workload
+   - This includes MSVC compiler and Windows SDK
+
+3. **Install WebView2** (usually pre-installed on Windows 10/11)
+   - If not present, download from [Microsoft Edge WebView2](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
+
+4. **Verify installation**
+   ```powershell
+   rustc --version
+   cargo --version
+   node --version
+   ```
+
+---
+
+### macOS
+
+1. **Install Xcode Command Line Tools**
+   ```bash
+   xcode-select --install
+   ```
+
+2. **Install Rust**
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   source $HOME/.cargo/env
+   ```
+
+3. **Verify installation**
+   ```bash
+   rustc --version
+   cargo --version
+   node --version
+   ```
+
+---
+
+### Linux (Ubuntu/Debian)
+
+1. **Install system dependencies**
+   ```bash
+   sudo apt update
+   sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+   ```
+
+2. **Install Rust**
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   source $HOME/.cargo/env
+   ```
+
+3. **Verify installation**
+   ```bash
+   rustc --version
+   cargo --version
+   node --version
+   ```
+
+For other Linux distributions, see [Tauri Linux Prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites#setting-up-linux).
 
 ## Getting Started
 
