@@ -27,6 +27,7 @@ export interface CryptoHoldingData extends HoldingMetrics {
     id: string;
     ticker: string;
     name: string;
+    coingeckoId?: string;
     quantity: number;
     avgCost: number;
     currentPrice: number;
@@ -103,7 +104,8 @@ export function mapCryptoInvestmentToHolding(
     averagePrice: number,
     currentPrice: number,
     fetchedAt?: Date | string | null,
-    isManualPrice?: boolean
+    isManualPrice?: boolean,
+    coingeckoId?: string
 ): CryptoHoldingData {
     const metrics = calculateCryptoHoldingMetrics({ quantity, averagePrice, currentPrice });
 
@@ -121,6 +123,7 @@ export function mapCryptoInvestmentToHolding(
         id,
         ticker,
         name,
+        coingeckoId,
         quantity,
         avgCost: averagePrice,
         currentPrice,

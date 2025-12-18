@@ -53,6 +53,8 @@ export function CryptoTransactionsModal({ investment, open, onOpenChange }: Cryp
         queryKey: ["crypto-transactions", investment?.id],
         queryFn: () => investment ? cryptoApi.getTransactions(investment.id) : Promise.resolve([]),
         enabled: !!investment && open,
+        staleTime: 0,
+        refetchOnMount: 'always',
     });
 
     const deleteMutation = useMutation({

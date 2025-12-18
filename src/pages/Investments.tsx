@@ -116,7 +116,7 @@ export default function Investments() {
 
   const handleDeleteConfirm = () => {
     if (!selectedInvestment) return;
-    deleteMutation.mutate(selectedInvestment.ticker);
+    deleteMutation.mutate(selectedInvestment.id);
   };
 
   if (isLoading) {

@@ -76,6 +76,8 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
 
             const txData = {
                 type: "buy",
+                ticker: investment.ticker,
+                companyName: investment.companyName,
                 quantity: values.quantity.toString(),
                 pricePerUnit: values.pricePerUnit.toString(),
                 currency: values.currency,

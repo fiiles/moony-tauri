@@ -54,6 +54,8 @@ export function ViewTransactionsModal({ investment, open, onOpenChange }: ViewTr
         queryKey: ["transactions", investment?.id],
         queryFn: () => investment ? investmentsApi.getTransactions(investment.id) : Promise.resolve([]),
         enabled: !!investment && open,
+        staleTime: 0,
+        refetchOnMount: 'always',
     });
 
     const deleteMutation = useMutation({

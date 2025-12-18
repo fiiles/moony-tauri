@@ -131,6 +131,8 @@ export function AddInvestmentModal() {
             };
             const initialTransaction = {
                 type: "buy",
+                ticker: values.ticker,
+                companyName: values.companyName,
                 quantity: values.quantity.toString(),
                 pricePerUnit: values.pricePerUnit.toString(),
                 currency: values.currency,

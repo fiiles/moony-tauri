@@ -65,6 +65,8 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
 
             const txData = {
                 type: "sell",
+                ticker: investment.ticker,
+                companyName: investment.companyName,
                 quantity: values.quantity.toString(),
                 pricePerUnit: values.pricePerUnit.toString(),
                 currency: values.currency,
