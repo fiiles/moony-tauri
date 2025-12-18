@@ -51,7 +51,7 @@ export function AppSidebar() {
                         <SidebarMenuButton size="lg" className="h-14" asChild>
                             <a href="/">
                                 <div className="flex aspect-square size-10 shrink-0 items-center justify-center rounded-lg overflow-hidden">
-                                    <img src="../../public/moony-icon.png" alt="Moony" className="size-10" />
+                                    <img src="/moony-icon.png" alt="Moony" className="size-10" />
                                 </div>
                                 <div className="grid flex-1 text-left text-base leading-tight group-data-[collapsible=icon]:hidden">
                                     <span className="truncate font-bold">{t('app.name')}</span>
