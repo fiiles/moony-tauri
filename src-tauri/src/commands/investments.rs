@@ -158,7 +158,8 @@ pub async fn create_investment(
                 ],
             )?;
             
-            // Recalculate metrics would go here
+            // Recalculate quantity and average price from the transaction
+            recalculate_investment(conn, &investment_id)?;
         }
         
         // Return the investment
@@ -287,7 +288,20 @@ pub async fn delete_investment_transaction(db: State<'_, Database>, tx_id: Strin
         
         conn.execute("DELETE FROM investment_transactions WHERE id = ?1", [&tx_id])?;
         
-        recalculate_investment(conn, &investment_id)?;
+        // Check if any transactions remain
+        let tx_count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM investment_transactions WHERE investment_id = ?1",
+            [&investment_id],
+            |row| row.get(0),
+        )?;
+        
+        if tx_count == 0 {
+            // No transactions left - delete the investment entirely
+            conn.execute("DELETE FROM stock_investments WHERE id = ?1", [&investment_id])?;
+        } else {
+            // Recalculate investment metrics
+            recalculate_investment(conn, &investment_id)?;
+        }
         
         Ok(())
     })?;

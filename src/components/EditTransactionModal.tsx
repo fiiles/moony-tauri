@@ -76,6 +76,8 @@ export function EditTransactionModal({ transaction, investmentId, open, onOpenCh
 
             const txData = {
                 type: transaction.type, // Type is read-only
+                ticker: transaction.ticker,
+                companyName: transaction.companyName,
                 quantity: values.quantity.toString(),
                 pricePerUnit: values.pricePerUnit.toString(),
                 currency: values.currency,

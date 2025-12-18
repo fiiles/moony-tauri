@@ -42,6 +42,9 @@ impl Database {
         // Set SQLCipher encryption key
         conn.pragma_update(None, "key", password)?;
 
+        // Enable foreign key constraints
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
+
         // Verify the key works by querying sqlite_master
         conn.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(()))
             .map_err(|_| AppError::Auth("Invalid password or corrupted database".into()))?;
@@ -66,6 +69,9 @@ impl Database {
         // SQLCipher expects: PRAGMA key = "x'hexstring'"
         let pragma_key = format!("x{}", hex_key);
         conn.pragma_update(None, "key", &pragma_key)?;
+
+        // Enable foreign key constraints
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
 
         // Verify the key works by querying sqlite_master
         conn.query_row("SELECT count(*) FROM sqlite_master", [], |_| Ok(()))
@@ -94,6 +100,9 @@ impl Database {
         // Set SQLCipher encryption key
         conn.pragma_update(None, "key", password)?;
 
+        // Enable foreign key constraints
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
+
         // Run migrations to create schema
         migrations::run_migrations(&conn)?;
 
@@ -119,6 +128,9 @@ impl Database {
         // Set SQLCipher encryption key using hex format
         let pragma_key = format!("x{}", hex_key);
         conn.pragma_update(None, "key", &pragma_key)?;
+
+        // Enable foreign key constraints
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
 
         // Run migrations to create schema
         migrations::run_migrations(&conn)?;

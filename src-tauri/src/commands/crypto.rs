@@ -104,6 +104,9 @@ pub async fn create_crypto(
                     tx.quantity, tx.price_per_unit, tx.currency, tx.transaction_date, now,
                 ],
             )?;
+            
+            // Recalculate crypto investment metrics
+            recalculate_crypto_investment(conn, &investment_id)?;
         }
         
         let inv = conn.query_row(
@@ -171,6 +174,55 @@ pub async fn get_crypto_transactions(
     })
 }
 
+/// Recalculate crypto investment metrics from transactions
+fn recalculate_crypto_investment(conn: &rusqlite::Connection, investment_id: &str) -> Result<()> {
+    // Get all transactions for this investment (including currency)
+    let mut stmt = conn.prepare(
+        "SELECT type, quantity, price_per_unit, currency FROM crypto_transactions WHERE investment_id = ?1"
+    )?;
+    
+    let txs: Vec<(String, f64, f64, String)> = stmt.query_map([investment_id], |row| {
+        let tx_type: String = row.get(0)?;
+        let qty: String = row.get(1)?;
+        let price: String = row.get(2)?;
+        let currency: String = row.get(3)?;
+        Ok((tx_type, qty.parse().unwrap_or(0.0), price.parse().unwrap_or(0.0), currency))
+    })?.filter_map(|r| r.ok()).collect();
+    
+    let mut total_qty = 0.0f64;
+    let mut total_cost_czk = 0.0f64;
+    
+    for (tx_type, qty, price, currency) in txs {
+        // Convert price to CZK
+        let price_czk = convert_to_czk(price, &currency);
+        
+        if tx_type == "buy" {
+            total_cost_czk += qty * price_czk;
+            total_qty += qty;
+        } else if tx_type == "sell" {
+            // Reduce quantity, adjust cost proportionally
+            if total_qty > 0.0 {
+                let avg_cost = total_cost_czk / total_qty;
+                total_cost_czk -= qty * avg_cost;
+            }
+            total_qty -= qty;
+        }
+    }
+    
+    // Prevent negative values
+    if total_qty < 0.0 { total_qty = 0.0; }
+    if total_cost_czk < 0.0 { total_cost_czk = 0.0; }
+    
+    let avg_price_czk = if total_qty > 0.0 { total_cost_czk / total_qty } else { 0.0 };
+    
+    conn.execute(
+        "UPDATE crypto_investments SET quantity = ?1, average_price = ?2 WHERE id = ?3",
+        rusqlite::params![total_qty.to_string(), avg_price_czk.to_string(), investment_id],
+    )?;
+    
+    Ok(())
+}
+
 /// Create crypto transaction
 #[tauri::command]
 pub async fn create_crypto_transaction(
@@ -181,7 +233,7 @@ pub async fn create_crypto_transaction(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     
-    db.with_conn(|conn| {
+    let result = db.with_conn(|conn| {
         conn.execute(
             "INSERT INTO crypto_transactions 
              (id, investment_id, type, ticker, name, quantity, price_per_unit, currency, transaction_date, created_at) 
@@ -191,6 +243,9 @@ pub async fn create_crypto_transaction(
                 data.quantity, data.price_per_unit, data.currency, data.transaction_date, now,
             ],
         )?;
+        
+        // Recalculate crypto investment metrics
+        recalculate_crypto_investment(conn, &investment_id)?;
         
         Ok(CryptoTransaction {
             id,
@@ -204,16 +259,49 @@ pub async fn create_crypto_transaction(
             transaction_date: data.transaction_date,
             created_at: now,
         })
-    })
+    })?;
+    
+    // Update portfolio snapshot
+    crate::commands::portfolio::update_todays_snapshot(&db).await.ok();
+    
+    Ok(result)
 }
 
 /// Delete crypto transaction
 #[tauri::command]
 pub async fn delete_crypto_transaction(db: State<'_, Database>, tx_id: String) -> Result<()> {
     db.with_conn(|conn| {
+        // Get investment_id before deleting
+        let investment_id: String = conn.query_row(
+            "SELECT investment_id FROM crypto_transactions WHERE id = ?1",
+            [&tx_id],
+            |row| row.get(0),
+        )?;
+        
         conn.execute("DELETE FROM crypto_transactions WHERE id = ?1", [&tx_id])?;
+        
+        // Check if any transactions remain
+        let tx_count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM crypto_transactions WHERE investment_id = ?1",
+            [&investment_id],
+            |row| row.get(0),
+        )?;
+        
+        if tx_count == 0 {
+            // No transactions left - delete the crypto investment entirely
+            conn.execute("DELETE FROM crypto_investments WHERE id = ?1", [&investment_id])?;
+        } else {
+            // Recalculate crypto investment metrics
+            recalculate_crypto_investment(conn, &investment_id)?;
+        }
+        
         Ok(())
-    })
+    })?;
+    
+    // Update portfolio snapshot
+    crate::commands::portfolio::update_todays_snapshot(&db).await.ok();
+    
+    Ok(())
 }
 
 /// Update crypto price (manual or from API)

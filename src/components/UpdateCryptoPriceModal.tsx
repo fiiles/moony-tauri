@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { CryptoHoldingData } from "@/components/CryptoTable";
 import { useCurrency } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
-import { investmentsApi } from "@/lib/tauri-api";
+import { cryptoApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
 
 const manualPriceSchema = z.object({
@@ -78,8 +78,8 @@ export function UpdateCryptoPriceModal({
     const mutation = useMutation({
         mutationFn: async (data: FormData) => {
             if (!investment) return;
-            // Reusing the general investment price override since it keys off ticker
-            return investmentsApi.setManualPrice(investment.ticker, data.price, data.currency);
+            // Use the crypto-specific API with symbol and optional coingeckoId
+            return cryptoApi.updatePrice(investment.ticker, data.price, data.currency, investment.coingeckoId);
         },
 
         onSuccess: () => {

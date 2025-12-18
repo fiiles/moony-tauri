@@ -17,6 +17,7 @@ import { AddCryptoModal } from "@/components/AddCryptoModal";
 import { CryptoSummary } from "@/components/CryptoSummary";
 import { CryptoTable, type CryptoHoldingData } from "@/components/CryptoTable";
 import { SellCryptoModal } from "@/components/SellCryptoModal";
+import { BuyCryptoModal } from "@/components/BuyCryptoModal";
 import { CryptoTransactionsModal } from "@/components/CryptoTransactionsModal";
 import { UpdateCryptoPriceModal } from "@/components/UpdateCryptoPriceModal";
 import { cryptoApi, priceApi } from "@/lib/tauri-api";
@@ -105,7 +106,8 @@ export default function Crypto() {
             averagePrice,
             currentPrice,
             inv.fetchedAt,
-            inv.isManualPrice
+            inv.isManualPrice,
+            inv.coingeckoId
         );
     });
 
@@ -217,6 +219,12 @@ export default function Crypto() {
                 investment={selectedHolding}
                 open={updatePriceModalOpen}
                 onOpenChange={setUpdatePriceModalOpen}
+            />
+
+            <BuyCryptoModal
+                crypto={selectedHolding}
+                open={buyModalOpen}
+                onOpenChange={setBuyModalOpen}
             />
 
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
