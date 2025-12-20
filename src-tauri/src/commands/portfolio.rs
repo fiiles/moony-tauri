@@ -61,12 +61,13 @@ fn calculate_portfolio_metrics(
             .sum();
 
         // Calculate total bonds
-        let mut bonds_stmt = conn.prepare("SELECT coupon_value, currency FROM bonds")?;
+        let mut bonds_stmt = conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
         let total_bonds: f64 = bonds_stmt
             .query_map([], |row| {
                 let value: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
-                let currency: String = row.get(1)?;
-                Ok(convert_to_czk(value, &currency))
+                let quantity: f64 = row.get::<_, String>(1)?.parse().unwrap_or(1.0);
+                let currency: String = row.get(2)?;
+                Ok(convert_to_czk(value * quantity, &currency))
             })?
             .filter_map(|r| r.ok())
             .sum();

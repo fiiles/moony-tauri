@@ -40,7 +40,7 @@
         "lender": "Poskytovatel",
         "lenderPlaceholder": "např. Název banky",
         "type": "Typ úvěru",
-        "originalAmount": "Původní částka",
+        "originalAmount": "Jistina",
         "outstandingAmount": "Nesplacená částka",
         "interestRate": "Úroková sazba (%)",
         "monthlyPayment": "Měsíční splátka",

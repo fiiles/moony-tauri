@@ -17,6 +17,7 @@
         "premium": "Premium",
         "coverage": "Coverage",
         "expiryDate": "Expiry Date",
+        "status": "Status",
         "actions": "Actions",
         "noPolicies": "No policies found. Add your first insurance policy to get started."
     },
@@ -28,7 +29,8 @@
         "travel": "Travel Insurance",
         "liability": "Liability Insurance",
         "accident": "Accident Insurance",
-        "other": "Other"
+        "other": "Other",
+        "allTypes": "All Types"
     },
     "form": {
         "addTitle": "Add Insurance Policy",
@@ -90,7 +92,7 @@
             "monthly": "Monthly",
             "quarterly": "Quarterly",
             "yearly": "Yearly",
-            "oneTime": "One Time"
+            "one_time": "One Time"
         }
     },
     "detail": {

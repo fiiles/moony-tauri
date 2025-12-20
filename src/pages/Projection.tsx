@@ -86,7 +86,7 @@ export default function Projection() {
     const { data: projection, isLoading } = useQuery<PortfolioProjection>({
         queryKey: ['projection', horizonYears, viewType, excludePersonalRE],
         queryFn: () => projectionApi.calculate({ horizonYears, viewType, excludePersonalRealEstate: excludePersonalRE }),
-        refetchOnMount: true,
+        refetchOnMount: 'always',
     });
 
     // Build settings map from saved settings or calculated defaults from projection

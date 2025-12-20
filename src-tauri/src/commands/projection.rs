@@ -332,13 +332,15 @@ fn get_current_portfolio_values(
 
     // Calculate bonds with weighted yield
     eprintln!("[Projection] Querying bonds...");
-    let mut bonds_stmt = conn.prepare("SELECT coupon_value, currency, interest_rate FROM bonds")?;
+    let mut bonds_stmt =
+        conn.prepare("SELECT coupon_value, quantity, currency, interest_rate FROM bonds")?;
     let bonds_data: Vec<(f64, f64)> = bonds_stmt
         .query_map([], |row| {
             let value: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
-            let currency: String = row.get(1)?;
-            let yield_rate: f64 = row.get::<_, String>(2)?.parse().unwrap_or(0.0);
-            Ok((convert_to_czk(value, &currency), yield_rate))
+            let quantity: f64 = row.get::<_, String>(1)?.parse().unwrap_or(1.0);
+            let currency: String = row.get(2)?;
+            let yield_rate: f64 = row.get::<_, String>(3)?.parse().unwrap_or(0.0);
+            Ok((convert_to_czk(value * quantity, &currency), yield_rate))
         })?
         .filter_map(|r| r.ok())
         .collect();

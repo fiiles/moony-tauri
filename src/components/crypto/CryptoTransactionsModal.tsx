@@ -83,7 +83,7 @@ export function CryptoTransactionsModal({ investment, open, onOpenChange }: Cryp
     return (
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="sm:max-w-[700px]">
+                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{t('modals.transactions.title')} - {investment.ticker}</DialogTitle>
                         <DialogDescription>
@@ -96,9 +96,9 @@ export function CryptoTransactionsModal({ investment, open, onOpenChange }: Cryp
                     ) : !transactions || transactions.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">{t('modals.transactions.noTransactions')}</div>
                     ) : (
-                        <div className="rounded-lg border max-h-[500px] overflow-y-auto">
+                        <div className="rounded-lg border bg-card shadow-sm">
                             <Table>
-                                <TableHeader className="[&_th]:bg-muted/50 sticky top-0 bg-background">
+                                <TableHeader style={{ backgroundColor: 'hsl(220 14% 90%)' }}>
                                     <TableRow>
                                         <TableHead>{tc('labels.date')}</TableHead>
                                         <TableHead>{tc('labels.type')}</TableHead>
@@ -111,7 +111,7 @@ export function CryptoTransactionsModal({ investment, open, onOpenChange }: Cryp
                                 </TableHeader>
                                 <TableBody>
                                     {transactions.map((tx) => (
-                                        <TableRow key={tx.id}>
+                                        <TableRow key={tx.id} className="row-interactive">
                                             <TableCell>{new Date(tx.transactionDate * 1000).toLocaleDateString()}</TableCell>
                                             <TableCell>
                                                 <span className={tx.type === 'buy' ? 'text-positive' : 'text-negative'}>

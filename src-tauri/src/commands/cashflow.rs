@@ -259,17 +259,18 @@ pub async fn get_cashflow_report(
 
         // 3. Bond Interest
         let mut bond_items: Vec<CashflowReportItem> = Vec::new();
-        let mut bond_stmt = conn.prepare("SELECT id, name, coupon_value, interest_rate, currency FROM bonds")?;
+        let mut bond_stmt = conn.prepare("SELECT id, name, coupon_value, quantity, interest_rate, currency FROM bonds")?;
         let bonds = bond_stmt.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?, row.get::<_, String>(4)?))
+                row.get::<_, String>(3)?, row.get::<_, String>(4)?, row.get::<_, String>(5)?))
         })?;
 
         for bond in bonds.filter_map(|r| r.ok()) {
             let coupon_value: f64 = bond.2.parse().unwrap_or(0.0);
-            let interest_rate: f64 = bond.3.parse().unwrap_or(0.0);
-            let yearly_interest = coupon_value * interest_rate / 100.0;
-            let yearly_interest_czk = convert_to_czk(yearly_interest, &bond.4);
+            let quantity: f64 = bond.3.parse().unwrap_or(1.0);
+            let interest_rate: f64 = bond.4.parse().unwrap_or(0.0);
+            let yearly_interest = coupon_value * quantity * interest_rate / 100.0;
+            let yearly_interest_czk = convert_to_czk(yearly_interest, &bond.5);
             let normalized = normalize_to_period(yearly_interest_czk, "yearly", target_period);
 
             if normalized > 0.0 {

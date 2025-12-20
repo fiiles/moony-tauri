@@ -18,6 +18,8 @@
         "isin": "ISIN",
         "faceValue": "Face Value",
         "couponValue": "Coupon Value",
+        "quantity": "Quantity",
+        "totalValue": "Total Value",
         "currentValue": "Current Value",
         "interestRate": "Interest Rate",
         "maturityDate": "Maturity Date",
@@ -71,6 +73,7 @@
         "isinPlaceholder": "e.g., US9128285Q88",
         "isinHelp": "International Securities Identification Number",
         "couponValue": "Coupon Value",
+        "quantity": "Quantity",
         "apyHelp": "Annual percentage yield"
     }
 }

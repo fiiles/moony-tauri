@@ -5,9 +5,11 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { format } from "date-fns";
+
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
+import { useLanguage } from "@/i18n/I18nProvider";
+import { useTranslation } from "react-i18next";
 
 interface InsuranceDetailModalProps {
     open: boolean;
@@ -16,7 +18,10 @@ interface InsuranceDetailModalProps {
 }
 
 export function InsuranceDetailModal({ open, onOpenChange, policy }: InsuranceDetailModalProps) {
+    const { t } = useTranslation('insurance');
     const { formatCurrency } = useCurrency();
+
+    const { formatDate } = useLanguage();
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -40,11 +45,11 @@ export function InsuranceDetailModal({ open, onOpenChange, policy }: InsuranceDe
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Type</p>
-                                <p className="font-medium capitalize">{policy.type}</p>
+                                <p className="font-medium capitalize">{t(`types.${policy.type}`)}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Status</p>
-                                <p className="font-medium capitalize">{policy.status}</p>
+                                <p className="font-medium capitalize">{t(`modal.status.${policy.status}`)}</p>
                             </div>
                         </div>
                     </div>
@@ -55,7 +60,7 @@ export function InsuranceDetailModal({ open, onOpenChange, policy }: InsuranceDe
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-sm text-muted-foreground">Payment Frequency</p>
-                                <p className="font-medium capitalize">{policy.paymentFrequency.replace('_', ' ')}</p>
+                                <p className="font-medium capitalize">{t(`modal.frequency.${policy.paymentFrequency}`)}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Regular Payment</p>
@@ -80,12 +85,12 @@ export function InsuranceDetailModal({ open, onOpenChange, policy }: InsuranceDe
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <p className="text-sm text-muted-foreground">Start Date</p>
-                                <p className="font-medium">{format(new Date(policy.startDate * 1000), "PP")}</p>
+                                <p className="font-medium">{formatDate(new Date(policy.startDate * 1000))}</p>
                             </div>
                             {policy.endDate && (
                                 <div>
                                     <p className="text-sm text-muted-foreground">End Date</p>
-                                    <p className="font-medium">{format(new Date(policy.endDate * 1000), "PP")}</p>
+                                    <p className="font-medium">{formatDate(new Date(policy.endDate * 1000))}</p>
                                 </div>
                             )}
                         </div>

@@ -103,6 +103,7 @@ export interface Bond {
     name: string;
     isin: string;
     couponValue: string;
+    quantity: string;
     currency: string;
     interestRate: string;
     maturityDate: number | null;
@@ -320,6 +321,7 @@ export const insertBondSchema = z.object({
     name: z.string().min(1),
     isin: z.string().min(1),
     couponValue: z.string(),
+    quantity: z.string().optional(),
     interestRate: z.string().optional(),
     maturityDate: z.date().or(z.number()).optional(),
 });

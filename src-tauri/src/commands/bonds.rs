@@ -12,7 +12,7 @@ use uuid::Uuid;
 pub async fn get_all_bonds(db: State<'_, Database>) -> Result<Vec<Bond>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, name, isin, coupon_value, currency, interest_rate, maturity_date, created_at, updated_at
+            "SELECT id, name, isin, coupon_value, quantity, currency, interest_rate, maturity_date, created_at, updated_at
              FROM bonds ORDER BY name"
         )?;
 
@@ -22,11 +22,12 @@ pub async fn get_all_bonds(db: State<'_, Database>) -> Result<Vec<Bond>> {
                 name: row.get(1)?,
                 isin: row.get(2)?,
                 coupon_value: row.get(3)?,
-                currency: row.get(4)?,
-                interest_rate: row.get(5)?,
-                maturity_date: row.get(6)?,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
+                quantity: row.get(4)?,
+                currency: row.get(5)?,
+                interest_rate: row.get(6)?,
+                maturity_date: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
             })
         })?.filter_map(|r| r.ok()).collect();
 
@@ -41,12 +42,13 @@ pub async fn create_bond(db: State<'_, Database>, data: InsertBond) -> Result<Bo
     let now = chrono::Utc::now().timestamp();
     let interest_rate = data.interest_rate.unwrap_or_else(|| "0".to_string());
     let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
+    let quantity = data.quantity.unwrap_or_else(|| "1".to_string());
 
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO bonds (id, name, isin, coupon_value, currency, interest_rate, maturity_date, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)",
-            rusqlite::params![id, data.name, data.isin, data.coupon_value, currency, interest_rate, data.maturity_date, now],
+            "INSERT INTO bonds (id, name, isin, coupon_value, quantity, currency, interest_rate, maturity_date, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
+            rusqlite::params![id, data.name, data.isin, data.coupon_value, quantity, currency, interest_rate, data.maturity_date, now],
         )?;
 
         Ok(Bond {
@@ -54,6 +56,7 @@ pub async fn create_bond(db: State<'_, Database>, data: InsertBond) -> Result<Bo
             name: data.name,
             isin: data.isin,
             coupon_value: data.coupon_value,
+            quantity,
             currency,
             interest_rate,
             maturity_date: data.maturity_date,
@@ -71,17 +74,17 @@ pub async fn update_bond(db: State<'_, Database>, id: String, data: InsertBond) 
     db.with_conn(|conn| {
         conn.execute(
             "UPDATE bonds SET name = ?1, isin = ?2, coupon_value = ?3,
-             currency = COALESCE(?4, currency), interest_rate = COALESCE(?5, interest_rate),
-             maturity_date = ?6, updated_at = ?7
-             WHERE id = ?8",
+             quantity = COALESCE(?4, quantity), currency = COALESCE(?5, currency),
+             interest_rate = COALESCE(?6, interest_rate), maturity_date = ?7, updated_at = ?8
+             WHERE id = ?9",
             rusqlite::params![
-                data.name, data.isin, data.coupon_value, data.currency,
-                data.interest_rate, data.maturity_date, now, id
+                data.name, data.isin, data.coupon_value, data.quantity,
+                data.currency, data.interest_rate, data.maturity_date, now, id
             ],
         )?;
 
         conn.query_row(
-            "SELECT id, name, isin, coupon_value, currency, interest_rate, maturity_date, created_at, updated_at
+            "SELECT id, name, isin, coupon_value, quantity, currency, interest_rate, maturity_date, created_at, updated_at
              FROM bonds WHERE id = ?1",
             [&id],
             |row| Ok(Bond {
@@ -89,11 +92,12 @@ pub async fn update_bond(db: State<'_, Database>, id: String, data: InsertBond) 
                 name: row.get(1)?,
                 isin: row.get(2)?,
                 coupon_value: row.get(3)?,
-                currency: row.get(4)?,
-                interest_rate: row.get(5)?,
-                maturity_date: row.get(6)?,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
+                quantity: row.get(4)?,
+                currency: row.get(5)?,
+                interest_rate: row.get(6)?,
+                maturity_date: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
             }),
         ).map_err(|_| AppError::NotFound("Bond not found".into()))
     })

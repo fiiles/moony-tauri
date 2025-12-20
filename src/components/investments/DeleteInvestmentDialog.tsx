@@ -9,6 +9,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { HoldingData } from "@/utils/investments";
+import { useTranslation } from "react-i18next";
 
 interface DeleteInvestmentDialogProps {
     open: boolean;
@@ -25,26 +26,25 @@ export function DeleteInvestmentDialog({
     onConfirm,
     isLoading = false,
 }: DeleteInvestmentDialogProps) {
+    const { t } = useTranslation('investments');
+    const { t: tc } = useTranslation('common');
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogTitle>{t('confirmDelete.title')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the investment
-                        {investment &&
-                            ` "${investment.companyName}" (${investment.ticker})`}{" "}
-                        and all associated transactions.
+                        {t('confirmDelete.description', { name: investment?.ticker || '' })}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{tc('buttons.cancel')}</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={onConfirm}
                         disabled={isLoading}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                        {isLoading ? "Deleting..." : "Delete"}
+                        {isLoading ? tc('status.deleting') : tc('buttons.delete')}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

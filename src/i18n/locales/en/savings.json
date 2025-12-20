@@ -59,7 +59,20 @@
         "currentAmount": "Current Amount",
         "progress": "Progress",
         "remaining": "Remaining",
-        "noZones": "No zones defined"
+        "noZones": "No zones defined",
+        "addZoneTitle": "Add New Zone",
+        "editZoneTitle": "Edit Zone",
+        "save": "Save",
+        "emptyState": "No zones defined yet",
+        "emptyStateDescription": "Add your first zone above to enable tiered interest rates",
+        "validation": {
+            "required": "From Amount and Interest Rate are required",
+            "toAmountGreater": "To Amount must be greater than From Amount",
+            "oneUnlimited": "Only one unlimited zone is allowed. Please set a specific upper limit or remove the existing unlimited zone.",
+            "overlapExisting": "Zone overlaps with existing zone ({{from}} - {{to}})",
+            "overlapUnlimited": "Zone overlaps with unlimited zone starting at {{start}}",
+            "cannotAddUnlimited": "Cannot add unlimited zone when one already exists"
+        }
     },
     "actions": {
         "edit": "Edit",
