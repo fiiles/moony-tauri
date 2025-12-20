@@ -15,7 +15,9 @@
         "realEstate": "Nemovitosti",
         "otherAssets": "Ostatní aktiva",
         "settings": "Nastavení",
-        "lockApp": "Zamknout aplikaci"
+        "lockApp": "Zamknout aplikaci",
+        "calculators": "Kalkulačky",
+        "annuityCalculator": "Anuitní kalkulačka"
     },
     "app": {
         "name": "Moony",

@@ -11,7 +11,7 @@ import {
     SidebarFooter,
     SidebarRail,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, TrendingUp, Home as HomeIcon, Shield, Wallet, Settings, Lock, Bitcoin, Gem, ChevronsUpDown, CreditCard, FileText, BarChart3 } from "lucide-react";
+import { LayoutDashboard, TrendingUp, Home as HomeIcon, Shield, Wallet, Settings, Lock, Bitcoin, Gem, ChevronsUpDown, CreditCard, FileText, BarChart3, Calculator } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
@@ -119,6 +119,23 @@ export function AppSidebar() {
                                     <Link href="/reports/projection">
                                         <TrendingUp />
                                         <span className="group-data-[collapsible=icon]:hidden">{t('nav.projection')}</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
+                {/* Calculators Section */}
+                <SidebarGroup>
+                    <SidebarGroupLabel>{t('nav.calculators')}</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip={t('nav.annuityCalculator')} isActive={location === "/calculators/annuity"}>
+                                    <Link href="/calculators/annuity">
+                                        <Calculator />
+                                        <span className="group-data-[collapsible=icon]:hidden">{t('nav.annuityCalculator')}</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>

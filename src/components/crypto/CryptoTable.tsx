@@ -77,7 +77,7 @@ export function CryptoTable({
         <Card className="border shadow-sm card-hover">
             <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-semibold tracking-tight">{t('table.title')}</h2>
+                    <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>
                     <div className="flex items-center gap-2">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />

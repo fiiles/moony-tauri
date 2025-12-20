@@ -1,0 +1,49 @@
+{
+    "annuity": {
+        "title": "Anuitní kalkulačka",
+        "subtitle": "Výpočet splátek úvěru a splátkového kalendáře",
+        "form": {
+            "loanParameters": "Parametry úvěru",
+            "loanAmount": "Výše úvěru",
+            "loanAmountPlaceholder": "Zadejte výši úvěru",
+            "period": "Doba splácení",
+            "periodYears": "let",
+            "periodMonths": "měsíců",
+            "interestRate": "Roční úroková sazba",
+            "interestRatePlaceholder": "např. 5,5",
+            "periodicity": "Frekvence splátek",
+            "periodicityOptions": {
+                "monthly": "Měsíčně",
+                "quarterly": "Čtvrtletně",
+                "semiAnnually": "Pololetně",
+                "annually": "Ročně"
+            }
+        },
+        "results": {
+            "regularPayment": "Pravidelná splátka",
+            "totalPayments": "Celkové splátky",
+            "totalInterest": "Celkový úrok",
+            "perPeriod": "za období"
+        },
+        "chart": {
+            "title": "Rozložení splátek v čase",
+            "principal": "Jistina",
+            "interest": "Úrok",
+            "remainingBalance": "Zbývající dluh",
+            "monthly": "Měsíčně",
+            "yearly": "Ročně"
+        },
+        "table": {
+            "title": "Splátkový kalendář",
+            "showDetails": "Zobrazit podrobný kalendář",
+            "hideDetails": "Skrýt podrobný kalendář",
+            "periodNo": "#",
+            "year": "Rok",
+            "month": "Měsíc",
+            "payment": "Splátka",
+            "principalPayment": "Jistina",
+            "interestPayment": "Úrok",
+            "remainingBalance": "Zbývající dluh"
+        }
+    }
+}

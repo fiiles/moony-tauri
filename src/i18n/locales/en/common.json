@@ -15,7 +15,9 @@
         "realEstate": "Real Estates",
         "otherAssets": "Other Assets",
         "settings": "Settings",
-        "lockApp": "Lock Application"
+        "lockApp": "Lock Application",
+        "calculators": "Calculators",
+        "annuityCalculator": "Annuity Calculator"
     },
     "app": {
         "name": "Moony",

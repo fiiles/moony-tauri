@@ -150,6 +150,11 @@ export interface RealEstate {
     notes: string | null;
     createdAt: number;
     updatedAt: number;
+    // Helper fields from backend logic (optional in DB but present in API usually if enriched, otherwise optional)
+    // Actually looking at the usage in RealEstate.tsx, these seem to be expected always or defaulted.
+    // The previous code had strict types for some but not others.
+    // Let's add them as optional or check if they are actually in the DB model.
+    // If they are not in the DB model but computed/returned, we might need a separate type or add them here.
 }
 
 export interface RealEstateOneTimeCost {
@@ -281,6 +286,7 @@ export interface PortfolioMetricsHistory {
     totalBonds: string;
     totalRealEstatePersonal: string;
     totalRealEstateInvestment: string;
+    totalOtherAssets: string;
     recordedAt: number;
 }
 

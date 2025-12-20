@@ -22,6 +22,7 @@ import enRealEstate from './locales/en/realEstate.json';
 import enOtherAssets from './locales/en/otherAssets.json';
 import enInsurance from './locales/en/insurance.json';
 import enReports from './locales/en/reports.json';
+import enCalculators from './locales/en/calculators.json';
 
 import csCommon from './locales/cs/common.json';
 import csDashboard from './locales/cs/dashboard.json';
@@ -36,6 +37,7 @@ import csRealEstate from './locales/cs/realEstate.json';
 import csOtherAssets from './locales/cs/otherAssets.json';
 import csInsurance from './locales/cs/insurance.json';
 import csReports from './locales/cs/reports.json';
+import csCalculators from './locales/cs/calculators.json';
 
 export const SUPPORTED_LANGUAGES = ['en', 'cs'] as const;
 export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
@@ -60,6 +62,7 @@ export const NAMESPACES = [
     'otherAssets',
     'insurance',
     'reports',
+    'calculators',
 ] as const;
 
 export type Namespace = typeof NAMESPACES[number];
@@ -79,6 +82,7 @@ const resources = {
         otherAssets: enOtherAssets,
         insurance: enInsurance,
         reports: enReports,
+        calculators: enCalculators,
     },
     cs: {
         common: csCommon,
@@ -94,6 +98,7 @@ const resources = {
         otherAssets: csOtherAssets,
         insurance: csInsurance,
         reports: csReports,
+        calculators: csCalculators,
     },
 };
 

@@ -519,13 +519,27 @@ pub fn delete_account(db: &Database, db_path: &Path) -> Result<()> {
             .map_err(|e| AppError::Database(format!("Failed to delete database: {}", e)))?;
     }
 
-    // Delete key files
+    // Delete key files and resource directories
     if let Some(data_dir) = db_path.parent() {
         let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
 
+        // Delete key files
         for path in [salt_path, key_path, recovery_path] {
             if path.exists() {
                 let _ = fs::remove_file(path);
+            }
+        }
+
+        // Delete resource directories
+        let resource_dirs = [
+            data_dir.join("real_estate_photos"),
+            data_dir.join("real_estate_documents"),
+            data_dir.join("insurance_documents"),
+        ];
+
+        for dir in resource_dirs {
+            if dir.exists() {
+                let _ = fs::remove_dir_all(dir);
             }
         }
     }
