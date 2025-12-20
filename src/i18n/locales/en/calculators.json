@@ -1,0 +1,49 @@
+{
+    "annuity": {
+        "title": "Annuity Calculator",
+        "subtitle": "Calculate loan payments and amortization schedule",
+        "form": {
+            "loanParameters": "Loan Parameters",
+            "loanAmount": "Loan Amount",
+            "loanAmountPlaceholder": "Enter loan amount",
+            "period": "Loan Period",
+            "periodYears": "years",
+            "periodMonths": "months",
+            "interestRate": "Annual Interest Rate",
+            "interestRatePlaceholder": "e.g. 5.5",
+            "periodicity": "Payment Frequency",
+            "periodicityOptions": {
+                "monthly": "Monthly",
+                "quarterly": "Quarterly",
+                "semiAnnually": "Semi-Annually",
+                "annually": "Annually"
+            }
+        },
+        "results": {
+            "regularPayment": "Regular Payment",
+            "totalPayments": "Total Payments",
+            "totalInterest": "Total Interest",
+            "perPeriod": "per period"
+        },
+        "chart": {
+            "title": "Payment Breakdown Over Time",
+            "principal": "Principal",
+            "interest": "Interest",
+            "remainingBalance": "Remaining Balance",
+            "monthly": "Monthly",
+            "yearly": "Yearly"
+        },
+        "table": {
+            "title": "Amortization Schedule",
+            "showDetails": "Show detailed schedule",
+            "hideDetails": "Hide detailed schedule",
+            "periodNo": "#",
+            "year": "Year",
+            "month": "Month",
+            "payment": "Payment",
+            "principalPayment": "Principal",
+            "interestPayment": "Interest",
+            "remainingBalance": "Remaining Balance"
+        }
+    }
+}

@@ -15,7 +15,6 @@ import { useLanguage } from "@/i18n/I18nProvider";
 
 export default function Dashboard() {
   const { t } = useTranslation('dashboard');
-  const { t: tc } = useTranslation('common');
   const { user } = useAuth();
   const { formatDate } = useLanguage();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('30D');
@@ -47,6 +46,8 @@ export default function Dashboard() {
       const endDate = Math.floor(dateRange.end.getTime() / 1000);
       return portfolioApi.getHistory(startDate, endDate);
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   // Fetch portfolio metrics using Tauri API
@@ -55,6 +56,8 @@ export default function Dashboard() {
     queryFn: async () => {
       return portfolioApi.getMetrics(user?.excludePersonalRealEstate || false);
     },
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
 
@@ -81,8 +84,8 @@ export default function Dashboard() {
       Number(oldestSnapshot.totalBonds) +
       (user?.excludePersonalRealEstate ? 0 : Number(oldestSnapshot.totalRealEstatePersonal)) +
       Number(oldestSnapshot.totalRealEstateInvestment) +
-      Number((oldestSnapshot as any).totalCrypto || 0) +
-      Number((oldestSnapshot as any).totalOtherAssets || 0);
+      Number(oldestSnapshot.totalCrypto || 0) +
+      Number(oldestSnapshot.totalOtherAssets || 0);
     const oldLiabilities = Number(oldestSnapshot.totalLoansPrincipal);
     const oldNetWorth = oldAssets - oldLiabilities;
 
@@ -99,8 +102,8 @@ export default function Dashboard() {
       Number(oldestSnapshot.totalBonds) +
       (user?.excludePersonalRealEstate ? 0 : Number(oldestSnapshot.totalRealEstatePersonal)) +
       Number(oldestSnapshot.totalRealEstateInvestment) +
-      Number((oldestSnapshot as any).totalCrypto || 0) +
-      Number((oldestSnapshot as any).totalOtherAssets || 0);
+      Number(oldestSnapshot.totalCrypto || 0) +
+      Number(oldestSnapshot.totalOtherAssets || 0);
 
     if (oldAssets === 0) return 0;
     const change = ((totalAssets - oldAssets) / Math.abs(oldAssets)) * 100;
@@ -155,8 +158,8 @@ export default function Dashboard() {
             const assets = Number(h.totalSavings) + Number(h.totalInvestments) + Number(h.totalBonds) +
               (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
               Number(h.totalRealEstateInvestment) +
-              Number((h as any).totalCrypto || 0) +
-              Number((h as any).totalOtherAssets || 0);
+              Number(h.totalCrypto || 0) +
+              Number(h.totalOtherAssets || 0);
             const liabilities = Number(h.totalLoansPrincipal);
             return {
               date: formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric' }),
@@ -203,8 +206,8 @@ export default function Dashboard() {
                 const assets = Number(h.totalSavings) + Number(h.totalInvestments) + Number(h.totalBonds) +
                   (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
                   Number(h.totalRealEstateInvestment) +
-                  Number((h as any).totalCrypto || 0) +
-                  Number((h as any).totalOtherAssets || 0);
+                  Number(h.totalCrypto || 0) +
+                  Number(h.totalOtherAssets || 0);
                 const liabilities = Number(h.totalLoansPrincipal);
                 return {
                   date: formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric' }),

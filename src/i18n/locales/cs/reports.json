@@ -7,7 +7,7 @@
     },
     "sections": {
         "income": "Příjmy",
-        "expenses": "Náklady"
+        "expenses": "Výdaje"
     },
     "categories": {
         "income": "Ostatní příjmy",
@@ -23,7 +23,7 @@
     "summary": {
         "totalIncome": "Celkové příjmy",
         "totalExpenses": "Celkové výdaje",
-        "netCashflow": "Čistý cashflow"
+        "netCashflow": "Čisté cashflow"
     },
     "addItem": {
         "title": "Přidat položku",

@@ -227,6 +227,7 @@ function ChangePasswordForm() {
 
 
 function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
+  const { t } = useTranslation('settings');
   const [showMarketstack, setShowMarketstack] = useState(false);
   const [showCoingecko, setShowCoingecko] = useState(false);
   const [marketstackKey, setMarketstackKey] = useState("");
@@ -254,32 +255,32 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
-      toast({ title: "API keys saved", description: "Your API keys have been updated." });
+      toast({ title: t('apiKeys.saved'), description: t('apiKeys.savedDescription') });
     },
     onError: (error: Error) => {
-      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      toast({ title: t('toast.updateFailed'), description: error.message, variant: "destructive" });
     },
   });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>API Keys</CardTitle>
+        <CardTitle>{t('apiKeys.title')}</CardTitle>
         <CardDescription>
-          Configure API keys for stock and cryptocurrency price fetching.
+          {t('apiKeys.description')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <label className="text-sm font-medium">
-            MarketStack API Key
+            {t('apiKeys.marketstack.label')}
             <a
               href="https://marketstack.com/signup"
               target="_blank"
               rel="noopener noreferrer"
               className="ml-2 text-primary text-xs hover:underline inline-flex items-center gap-1"
             >
-              Get free key <ExternalLink className="h-3 w-3" />
+              {t('apiKeys.marketstack.getFreeKey')} <ExternalLink className="h-3 w-3" />
             </a>
           </label>
           <div className="flex gap-2">
@@ -287,7 +288,7 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
               type={showMarketstack ? "text" : "password"}
               value={marketstackKey}
               onChange={(e) => setMarketstackKey(e.target.value)}
-              placeholder="Enter MarketStack API key"
+              placeholder={t('apiKeys.marketstack.placeholder')}
             />
             <Button
               type="button"
@@ -298,19 +299,19 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
               {showMarketstack ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">Used for real-time stock price updates</p>
+          <p className="text-xs text-muted-foreground">{t('apiKeys.marketstack.hint')}</p>
         </div>
 
         <div className="space-y-2">
           <label className="text-sm font-medium">
-            CoinGecko API Key (optional)
+            {t('apiKeys.coingecko.label')}
             <a
               href="https://www.coingecko.com/en/api"
               target="_blank"
               rel="noopener noreferrer"
               className="ml-2 text-primary text-xs hover:underline inline-flex items-center gap-1"
             >
-              Get demo key <ExternalLink className="h-3 w-3" />
+              {t('apiKeys.coingecko.getDemoKey')} <ExternalLink className="h-3 w-3" />
             </a>
           </label>
           <div className="flex gap-2">
@@ -318,7 +319,7 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
               type={showCoingecko ? "text" : "password"}
               value={coingeckoKey}
               onChange={(e) => setCoingeckoKey(e.target.value)}
-              placeholder="Optional - free tier works without key"
+              placeholder={t('apiKeys.coingecko.placeholder')}
             />
             <Button
               type="button"
@@ -329,14 +330,14 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
               {showCoingecko ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">Used for crypto prices and search (free tier has rate limits)</p>
+          <p className="text-xs text-muted-foreground">{t('apiKeys.coingecko.hint')}</p>
         </div>
 
         <Button
           onClick={() => saveApiKeysMutation.mutate()}
           disabled={saveApiKeysMutation.isPending}
         >
-          {saveApiKeysMutation.isPending ? "Saving..." : "Save API Keys"}
+          {saveApiKeysMutation.isPending ? t('apiKeys.saving') : t('apiKeys.save')}
         </Button>
       </CardContent>
     </Card>

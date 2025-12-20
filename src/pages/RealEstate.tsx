@@ -43,7 +43,7 @@ export default function RealEstatePage() {
 
   const totalMarketValue = realEstates?.reduce((sum, re) => {
     const marketPrice = Number(re.marketPrice);
-    const currency = (re as any).marketPriceCurrency || "CZK";
+    const currency = re.marketPriceCurrency || "CZK";
     const inCzk = convertToCzK(marketPrice, currency as CurrencyCode);
     const converted = convertFromCzK(inCzk, userCurrency as CurrencyCode);
     return sum + converted;
@@ -51,7 +51,7 @@ export default function RealEstatePage() {
 
   const totalPurchasePrice = realEstates?.reduce((sum, re) => {
     const purchasePrice = Number(re.purchasePrice);
-    const currency = (re as any).purchasePriceCurrency || "CZK";
+    const currency = re.purchasePriceCurrency || "CZK";
     const inCzk = convertToCzK(purchasePrice, currency as CurrencyCode);
     const converted = convertFromCzK(inCzk, userCurrency as CurrencyCode);
     return sum + converted;
@@ -59,28 +59,13 @@ export default function RealEstatePage() {
 
   const totalProperties = realEstates?.length || 0;
 
-  // Calculate net cashflow for investment properties only
-  const investmentCashflow = realEstates
-    ?.filter(re => re.type === 'investment')
-    .reduce((sum, re) => {
+  // Calculate gross monthly rental income (sum of all monthly rents)
+  const totalMonthlyRent = realEstates?.reduce((sum, re) => {
       const monthlyRent = re.monthlyRent ? Number(re.monthlyRent) : 0;
-      const rentCurrency = (re as any).monthlyRentCurrency || "CZK";
-      const yearlyRentInCzk = convertToCzK(monthlyRent * 12, rentCurrency as CurrencyCode);
-      const yearlyRent = convertFromCzK(yearlyRentInCzk, userCurrency as CurrencyCode);
-
-      const yearlyRecurringCosts = (re.recurringCosts as any[])?.reduce((costSum, cost) => {
-        let yearlyAmount = Number(cost.amount);
-        if (cost.frequency === 'monthly') yearlyAmount *= 12;
-        if (cost.frequency === 'quarterly') yearlyAmount *= 4;
-        const costCurrency = cost.currency || "CZK";
-        const costInCzk = convertToCzK(yearlyAmount, costCurrency as CurrencyCode);
-        const convertedCost = convertFromCzK(costInCzk, userCurrency as CurrencyCode);
-        return costSum + convertedCost;
-      }, 0) || 0;
-
-      // Note: We're not including loan payments here since we'd need to fetch linked loans
-      // This is a simplified calculation
-      return sum + (yearlyRent - yearlyRecurringCosts);
+      const rentCurrency = re.monthlyRentCurrency || "CZK";
+      const rentInCzk = convertToCzK(monthlyRent, rentCurrency as CurrencyCode);
+      const converted = convertFromCzK(rentInCzk, userCurrency as CurrencyCode);
+      return sum + converted;
     }, 0) || 0;
 
   return (
@@ -107,17 +92,16 @@ export default function RealEstatePage() {
         />
         <SummaryCard
           title={t('summary.rentalIncome')}
-          value={formatCurrency(investmentCashflow, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          value={formatCurrency(totalMonthlyRent, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           icon={<Home className="h-4 w-4" />}
-          valueClassName={investmentCashflow >= 0 ? 'text-green-600' : 'text-red-600'}
-          subtitle={t('detail.netIncome')}
+          subtitle={t('summary.grossRentalIncome')}
         />
       </div>
 
       <Card className="border shadow-sm card-hover">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold tracking-tight">{t('table.title')}</h2>
+            <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>
           </div>
 
           <div className="rounded-lg border">
@@ -141,7 +125,7 @@ export default function RealEstatePage() {
                   >
                     <TableCell className="font-medium">{re.name}</TableCell>
                     <TableCell>{re.address}</TableCell>
-                    <TableCell className="capitalize">{re.type}</TableCell>
+                    <TableCell className="capitalize">{t(`types.${re.type}`)}</TableCell>
                     <TableCell className="text-right data-value">
                       {formatCurrency(convertToCzK(Number(re.purchasePrice), re.purchasePriceCurrency as CurrencyCode))}
                     </TableCell>

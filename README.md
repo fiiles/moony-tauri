@@ -194,7 +194,7 @@ moony-tauri/
 
 ## License
 
-Copyright © 2024 Filip Král. All rights reserved.
+Copyright © 2025 Filip Král. All rights reserved.
 
 This software is **open source for non-commercial use only**:
 - ✅ Free for personal use
