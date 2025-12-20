@@ -29,6 +29,7 @@ import {
 import { AddRealEstateModal } from "@/components/real-estate/AddRealEstateModal";
 import { OneTimeCostModal } from "@/components/real-estate/OneTimeCostModal";
 import { PhotoTimelineGallery } from "@/components/real-estate/PhotoTimelineGallery";
+import { RealEstateDocuments } from "@/components/real-estate/RealEstateDocuments";
 import type { RealEstate, RealEstateOneTimeCost, Loan } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { realEstateApi } from "@/lib/tauri-api";
@@ -59,7 +60,7 @@ export default function RealEstateDetail() {
     const { t: tc } = useTranslation('common');
     const { formatDate } = useLanguage();
 
-    const { data: realEstate, isLoading } = useQuery<RealEstate>({
+    const { data: realEstate, isLoading } = useQuery<RealEstate | null>({
         queryKey: ["real-estate", id],
         queryFn: () => realEstateApi.get(id!),
         enabled: !!id,
@@ -263,6 +264,7 @@ export default function RealEstateDetail() {
                     <TabsTrigger value="financials">{t('detail.financials')}</TabsTrigger>
                     <TabsTrigger value="history">{t('detail.history')}</TabsTrigger>
                     <TabsTrigger value="gallery">{t('detail.gallery')}</TabsTrigger>
+                    <TabsTrigger value="documents">{t('detail.documents')}</TabsTrigger>
                     <TabsTrigger value="notes">{t('detail.notes')}</TabsTrigger>
                 </TabsList>
 
@@ -409,6 +411,10 @@ export default function RealEstateDetail() {
 
                 <TabsContent value="gallery">
                     <PhotoTimelineGallery realEstateId={id!} />
+                </TabsContent>
+
+                <TabsContent value="documents">
+                    <RealEstateDocuments realEstateId={id!} />
                 </TabsContent>
 
                 <TabsContent value="notes">

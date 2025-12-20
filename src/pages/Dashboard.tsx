@@ -1,8 +1,8 @@
-import StatCard from "@/components/StatCard";
-import TimePeriodSelector, { type Period } from "@/components/TimePeriodSelector";
-import NetWorthTrendChart from "@/components/NetWorthTrendChart";
-import AssetsLiabilitiesChart from "@/components/AssetsLiabilitiesChart";
-import AssetAllocationDonut from "@/components/AssetAllocationDonut";
+import StatCard from "@/components/common/StatCard";
+import TimePeriodSelector, { type Period } from "@/components/cashflow/TimePeriodSelector";
+import NetWorthTrendChart from "@/components/dashboard/NetWorthTrendChart";
+import AssetsLiabilitiesChart from "@/components/dashboard/AssetsLiabilitiesChart";
+import AssetAllocationDonut from "@/components/dashboard/AssetAllocationDonut";
 import { useAuth } from "@/hooks/use-auth";
 import { subDays, startOfYear } from "date-fns";
 import { TrendingUp, Wallet, CreditCard } from "lucide-react";

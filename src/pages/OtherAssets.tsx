@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, TrendingUp, Folder, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { SummaryCard } from "@/components/SummaryCard";
+import { SummaryCard } from "@/components/common/SummaryCard";
 import { OtherAssetsTable } from "@/components/other-assets/OtherAssetsTable";
 import { AddOtherAssetModal } from "@/components/other-assets/AddOtherAssetModal";
 import { BuyOtherAssetModal } from "@/components/other-assets/BuyOtherAssetModal";

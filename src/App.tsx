@@ -4,8 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import { ThemeProvider } from "@/components/theme-provider";
+import { AppSidebar } from "@/components/common/app-sidebar";
+import { ThemeProvider } from "@/components/common/theme-provider";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import AuthPage from "@/pages/auth-page";
@@ -21,10 +21,11 @@ import Crypto from "@/pages/Crypto";
 import Settings from "@/pages/Settings";
 import OtherAssets from "@/pages/OtherAssets";
 import Cashflow from "@/pages/Cashflow";
+import Projection from "@/pages/Projection";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { CurrencyProvider } from "@/lib/currency";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { I18nProvider } from "@/i18n/I18nProvider";
 
 function Router() {
@@ -43,6 +44,7 @@ function Router() {
       <ProtectedRoute path="/crypto" component={Crypto} />
       <ProtectedRoute path="/other-assets" component={OtherAssets} />
       <ProtectedRoute path="/reports/cashflow" component={Cashflow} />
+      <ProtectedRoute path="/reports/projection" component={Projection} />
       <Route component={NotFound} />
     </Switch>
   );

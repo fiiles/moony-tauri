@@ -72,7 +72,7 @@ export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalPro
                     type: 'buy',
                     quantity: data.initialQuantity,
                     pricePerUnit: data.initialPrice,
-                    currency: data.currency,
+                    currency: data.currency || 'CZK',
                     transactionDate: Math.floor(new Date(data.initialDate).getTime() / 1000),
                 };
                 quantity = data.initialQuantity;
@@ -85,7 +85,7 @@ export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalPro
                 marketPrice: data.marketPrice ? data.marketPrice.toString() : "0",
                 currency: data.currency,
                 yieldType: data.yieldType,
-                yieldValue: (data.yieldType === 'none' || !data.yieldValue) ? null : data.yieldValue.toString(),
+                yieldValue: (data.yieldType === 'none' || !data.yieldValue) ? undefined : data.yieldValue.toString(),
                 quantity: quantity,
                 averagePurchasePrice: averagePurchasePrice,
             };

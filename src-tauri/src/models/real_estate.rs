@@ -136,3 +136,30 @@ pub struct UpdatePhotoBatch {
     pub photo_date: Option<i64>,
     pub description: Option<String>,
 }
+
+/// Real estate document (attached contracts, deeds, etc.)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RealEstateDocument {
+    pub id: String,
+    #[serde(rename = "realEstateId")]
+    pub real_estate_id: String,
+    pub name: String,
+    pub description: Option<String>,
+    #[serde(rename = "filePath")]
+    pub file_path: String,
+    #[serde(rename = "fileType")]
+    pub file_type: String,
+    #[serde(rename = "fileSize")]
+    pub file_size: Option<i64>,
+    #[serde(rename = "uploadedAt")]
+    pub uploaded_at: i64,
+}
+
+/// Data for creating real estate document
+#[derive(Debug, Clone, Deserialize)]
+pub struct InsertRealEstateDocument {
+    pub name: String,
+    pub description: Option<String>,
+    #[serde(rename = "fileType")]
+    pub file_type: Option<String>,
+}

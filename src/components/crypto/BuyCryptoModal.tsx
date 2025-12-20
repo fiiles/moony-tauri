@@ -31,7 +31,7 @@ import { CURRENCIES } from "@shared/currencies";
 import { cryptoApi } from "@/lib/tauri-api";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { CryptoHoldingData } from "@/components/CryptoTable";
+import type { CryptoHoldingData } from "@/components/crypto/CryptoTable";
 import { useTranslation } from "react-i18next";
 
 const formSchema = z.object({

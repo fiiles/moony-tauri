@@ -177,5 +177,36 @@
         "photosAdded": "Photos added to batch",
         "batchUpdated": "Batch updated successfully",
         "batchDeleted": "Batch deleted successfully"
+    },
+    "documents": {
+        "title": "Documents",
+        "description": "Attach deeds, contracts, appraisals and other documents",
+        "add": "Add Document",
+        "addFirst": "Add First Document",
+        "addTitle": "Add Document",
+        "noDocuments": "No documents attached yet",
+        "file": "File",
+        "clickToSelect": "Click to select a file",
+        "type": "Document Type",
+        "selectType": "Select type",
+        "namePlaceholder": "e.g., Property Deed 2024",
+        "descriptionPlaceholder": "Additional notes about this document...",
+        "uploading": "Uploading...",
+        "upload": "Upload Document",
+        "open": "Open",
+        "delete": "Delete",
+        "added": "Document added successfully",
+        "deleted": "Document deleted successfully",
+        "optional": "optional",
+        "types": {
+            "deed": "Deed",
+            "contract": "Contract",
+            "appraisal": "Appraisal",
+            "other": "Other"
+        },
+        "deleteConfirm": {
+            "title": "Delete Document",
+            "description": "Are you sure you want to delete \"{{name}}\"? The file will be permanently removed."
+        }
     }
 }

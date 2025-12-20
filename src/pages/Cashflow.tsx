@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cashflowApi } from "@/lib/tauri-api";
-import CashflowViewSelector, { type CashflowViewType } from "@/components/CashflowViewSelector";
-import CashflowCategory from "@/components/CashflowCategory";
-import AddCashflowItemDialog from "@/components/AddCashflowItemDialog";
-import { SummaryCard } from "@/components/SummaryCard";
+import CashflowViewSelector, { type CashflowViewType } from "@/components/cashflow/CashflowViewSelector";
+import CashflowCategory from "@/components/cashflow/CashflowCategory";
+import AddCashflowItemDialog from "@/components/cashflow/AddCashflowItemDialog";
+import { SummaryCard } from "@/components/common/SummaryCard";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Wallet, Plus } from "lucide-react";
 import { useCurrency } from "@/lib/currency";

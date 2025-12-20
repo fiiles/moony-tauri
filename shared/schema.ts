@@ -180,6 +180,18 @@ export interface RealEstatePhoto {
     createdAt: number;
 }
 
+// Real Estate Document
+export interface RealEstateDocument {
+    id: string;
+    realEstateId: string;
+    name: string;
+    description: string | null;
+    filePath: string;
+    fileType: string;  // 'deed' | 'contract' | 'appraisal' | 'other'
+    fileSize: number | null;
+    uploadedAt: number;
+}
+
 // Insurance
 export interface InsuranceLimit {
     title: string;
@@ -253,6 +265,7 @@ export interface PortfolioMetrics {
     totalRealEstatePersonal: number;
     totalRealEstateInvestment: number;
     totalRealEstate: number;
+    totalOtherAssets: number;
     totalLiabilities: number;
     totalAssets: number;
     netWorth: number;
@@ -511,3 +524,45 @@ export interface CashflowReport {
     totalExpenses: number;
     netCashflow: number;
 }
+
+// Projection Types
+export interface ProjectionSettings {
+    id: string;
+    assetType: 'savings' | 'investments' | 'crypto' | 'bonds' | 'real_estate' | 'other_assets' | 'loans';
+    yearlyGrowthRate: string;
+    monthlyContribution: string;
+    contributionCurrency: string;
+    enabled: boolean;
+    createdAt?: number;
+    updatedAt?: number;
+}
+
+export interface ProjectionTimelinePoint {
+    date: number;
+    totalAssets: number;
+    totalLiabilities: number;
+    netWorth: number;
+    savings: number;
+    investments: number;
+    crypto: number;
+    bonds: number;
+    realEstate: number;
+    otherAssets: number;
+    loans: number;
+}
+
+export interface PortfolioProjection {
+    horizonYears: number;
+    viewType: 'monthly' | 'yearly';
+    timeline: ProjectionTimelinePoint[];
+    projectedNetWorth: number;
+    totalContributions: number;
+    totalGrowth: number;
+    calculatedDefaults: CalculatedDefaults;
+}
+
+export interface CalculatedDefaults {
+    savingsRate: number;
+    bondsRate: number;
+}
+

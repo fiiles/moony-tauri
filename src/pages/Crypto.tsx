@@ -13,13 +13,13 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AddCryptoModal } from "@/components/AddCryptoModal";
-import { CryptoSummary } from "@/components/CryptoSummary";
-import { CryptoTable, type CryptoHoldingData } from "@/components/CryptoTable";
-import { SellCryptoModal } from "@/components/SellCryptoModal";
-import { BuyCryptoModal } from "@/components/BuyCryptoModal";
-import { CryptoTransactionsModal } from "@/components/CryptoTransactionsModal";
-import { UpdateCryptoPriceModal } from "@/components/UpdateCryptoPriceModal";
+import { AddCryptoModal } from "@/components/crypto/AddCryptoModal";
+import { CryptoSummary } from "@/components/crypto/CryptoSummary";
+import { CryptoTable, type CryptoHoldingData } from "@/components/crypto/CryptoTable";
+import { SellCryptoModal } from "@/components/crypto/SellCryptoModal";
+import { BuyCryptoModal } from "@/components/crypto/BuyCryptoModal";
+import { CryptoTransactionsModal } from "@/components/crypto/CryptoTransactionsModal";
+import { UpdateCryptoPriceModal } from "@/components/crypto/UpdateCryptoPriceModal";
 import { cryptoApi, priceApi } from "@/lib/tauri-api";
 import {
     calculateCryptoPortfolioMetrics,

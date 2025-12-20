@@ -12,5 +12,6 @@ pub mod loans;
 pub mod other_assets;
 pub mod portfolio;
 pub mod price_api;
+pub mod projection;
 pub mod real_estate;
 pub mod savings;

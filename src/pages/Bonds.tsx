@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { useBonds } from "@/hooks/useBonds";
-import { BondsSummary } from "@/components/BondsSummary";
-import { BondsTable } from "@/components/BondsTable";
-import { BondsFormDialog } from "@/components/BondsFormDialog";
-import { DeleteBondDialog } from "@/components/DeleteBondDialog";
-import { useBondMutations } from "@/hooks/useBondMutations";
+import { useBonds } from "@/hooks/use-bonds";
+import { BondsSummary } from "@/components/bonds/BondsSummary";
+import { BondsTable } from "@/components/bonds/BondsTable";
+import { BondsFormDialog } from "@/components/bonds/BondsFormDialog";
+import { DeleteBondDialog } from "@/components/bonds/DeleteBondDialog";
+import { useBondMutations } from "@/hooks/use-bond-mutations";
 import type { Bond, InsertBond } from "@shared/schema";
 import { useTranslation } from "react-i18next";
 

@@ -115,6 +115,14 @@ export function AppSidebar() {
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip={t('nav.projection')} isActive={location === "/reports/projection"}>
+                                    <Link href="/reports/projection">
+                                        <TrendingUp />
+                                        <span className="group-data-[collapsible=icon]:hidden">{t('nav.projection')}</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>

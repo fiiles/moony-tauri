@@ -48,5 +48,41 @@
         "noItems": "V této kategorii nejsou žádné položky"
     },
     "perMonth": "/měsíc",
-    "perYear": "/rok"
+    "perYear": "/rok",
+    "projection": {
+        "title": "Projekce portfolia",
+        "subtitle": "Podívejte se, jak by vaše portfolio mohlo růst v čase",
+        "horizon": "Horizont projekce",
+        "year": "rok",
+        "years": "let",
+        "month": "měsíc",
+        "months": "měsíců",
+        "currentNetWorth": "Aktuální čisté jmění",
+        "projectedNetWorth": "Předpokládané čisté jmění",
+        "totalContributions": "Celkové vklady",
+        "totalGrowth": "Celkový růst",
+        "netWorthTrend": "Projekce čistého jmění",
+        "assetsVsLiabilities": "Aktiva vs závazky",
+        "assetBreakdown": "Rozložení aktiv",
+        "assets": "Aktiva",
+        "liabilities": "Závazky",
+        "netWorth": "Čisté jmění",
+        "categories": {
+            "savings": "Spoření",
+            "investments": "Investice",
+            "crypto": "Krypto",
+            "bonds": "Dluhopisy",
+            "realEstate": "Nemovitosti",
+            "otherAssets": "Ostatní aktiva"
+        },
+        "settings": {
+            "title": "Parametry projekce",
+            "editTitle": "Upravit nastavení projekce",
+            "editDescription": "Nastavte tempo růstu a měsíční vklady pro každou třídu aktiv",
+            "growthRates": "Roční tempo růstu",
+            "contributions": "Měsíční vklady",
+            "perYear": "ročně",
+            "month": "měsíc"
+        }
+    }
 }

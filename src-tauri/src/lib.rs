@@ -94,6 +94,11 @@ pub fn run() {
             commands::real_estate::update_photo_batch,
             commands::real_estate::delete_photo_batch,
             commands::real_estate::delete_real_estate_photo,
+            // Real estate document commands
+            commands::real_estate::get_real_estate_documents,
+            commands::real_estate::add_real_estate_document,
+            commands::real_estate::delete_real_estate_document,
+            commands::real_estate::open_real_estate_document,
             // Insurance commands
             commands::insurance::get_all_insurance,
             commands::insurance::get_insurance,
@@ -132,6 +137,10 @@ pub fn run() {
             commands::cashflow::create_cashflow_item,
             commands::cashflow::update_cashflow_item,
             commands::cashflow::delete_cashflow_item,
+            // Projection commands
+            commands::projection::get_projection_settings,
+            commands::projection::save_projection_settings,
+            commands::projection::calculate_portfolio_projection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

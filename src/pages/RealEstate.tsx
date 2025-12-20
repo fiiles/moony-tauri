@@ -14,7 +14,7 @@ import { Eye, Building2, Home, TrendingUp } from "lucide-react";
 import { useLocation } from "wouter";
 import { realEstateApi } from "@/lib/tauri-api";
 import type { RealEstate } from "@shared/schema";
-import { SummaryCard } from "@/components/SummaryCard";
+import { SummaryCard } from "@/components/common/SummaryCard";
 
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
