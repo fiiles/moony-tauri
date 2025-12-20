@@ -19,7 +19,6 @@ export default function NetWorthTrendChart({
   data,
   currentValue,
   change,
-  period = "Last 90 Days"
 }: NetWorthTrendChartProps) {
   const isPositive = change >= 0;
   const { formatCurrency } = useCurrency();

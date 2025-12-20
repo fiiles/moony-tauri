@@ -3,7 +3,6 @@ import { useLocation, useRoute } from "wouter";
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
@@ -16,10 +15,6 @@ import {
     DollarSign,
     Trash2,
     Pencil,
-    FileText,
-    Plus,
-    ExternalLink,
-    File,
 } from "lucide-react";
 import { InsuranceFormDialog } from "@/components/insurance/InsuranceFormDialog";
 import { InsuranceDocuments } from "@/components/insurance/InsuranceDocuments";

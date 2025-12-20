@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useCurrency } from "@/lib/currency";
 
 interface AssetData {
@@ -14,7 +14,6 @@ interface AssetAllocationChartProps {
 
 export default function AssetAllocationChart({ data }: AssetAllocationChartProps) {
   const { formatCurrency } = useCurrency();
-  const total = data.reduce((sum, item) => sum + item.value, 0);
 
   return (
     <Card className="p-6">

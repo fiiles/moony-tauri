@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { bondsApi } from "@/lib/tauri-api";
 import { useToast } from "@/hooks/use-toast";
+import type { InsertBond } from "@shared/schema";
 
 export interface UpdateBondData {
   name?: string;
@@ -15,7 +16,7 @@ export function useBondMutations() {
   const { toast } = useToast();
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: InsertBond & { maturityDate?: Date | number | null }) => {
       // Convert Date to timestamp if needed
       const payload = {
         ...data,

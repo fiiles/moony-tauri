@@ -2,12 +2,13 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { loansApi } from "@/lib/tauri-api";
 import { useToast } from "@/hooks/use-toast";
+import type { InsertLoan } from "@shared/schema";
 
 export function useLoanMutations() {
     const { toast } = useToast();
 
     const createMutation = useMutation({
-        mutationFn: (data: any) => loansApi.create(data),
+        mutationFn: (data: InsertLoan) => loansApi.create(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["loans"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
@@ -19,7 +20,7 @@ export function useLoanMutations() {
     });
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, ...data }: { id: string;[key: string]: any }) => {
+        mutationFn: ({ id, ...data }: { id: string } & Partial<InsertLoan>) => {
             return loansApi.update(id, data);
         },
         onSuccess: () => {

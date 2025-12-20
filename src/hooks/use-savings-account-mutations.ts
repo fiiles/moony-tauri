@@ -2,12 +2,13 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { savingsApi } from "@/lib/tauri-api";
 import { useToast } from "@/hooks/use-toast";
+import type { InsertSavingsAccount } from "@shared/schema";
 
 export function useSavingsAccountMutations() {
   const { toast } = useToast();
 
   const createMutation = useMutation({
-    mutationFn: async ({ data, zones }: { data: any; zones?: any[] }) => {
+    mutationFn: async ({ data, zones }: { data: InsertSavingsAccount; zones?: Array<{ fromAmount: string; toAmount?: string | null; interestRate: string }> }) => {
       // 1. Create the account
       const account = await savingsApi.create(data);
 
@@ -18,7 +19,7 @@ export function useSavingsAccountMutations() {
             ...zone,
             savingsAccountId: account.id,
             // Convert empty strings to null for optional fields if needed
-            toAmount: zone.toAmount === "" ? null : zone.toAmount,
+            toAmount: zone.toAmount === "" ? null : (zone.toAmount ?? null),
           })
         );
         await Promise.all(zonePromises);
@@ -41,7 +42,7 @@ export function useSavingsAccountMutations() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data, zones }: { id: string; data: any; zones?: any[] }) => {
+    mutationFn: ({ id, data, zones: _zones }: { id: string; data: Partial<InsertSavingsAccount>; zones?: Array<{ fromAmount: string; toAmount?: string | null; interestRate: string }> }) => {
       // Call update and optionally handle zones
       return savingsApi.update(id, data);
     },
@@ -68,7 +69,7 @@ export function useSavingsAccountMutations() {
   });
 
   const createZoneMutation = useMutation({
-    mutationFn: (data: any) => savingsApi.createZone(data),
+    mutationFn: (data: { fromAmount: string; toAmount: string | null; interestRate: string; savingsAccountId: string }) => savingsApi.createZone(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savings-accounts"] });
       toast({ title: "Interest rate zone created" });

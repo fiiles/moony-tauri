@@ -28,12 +28,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { investmentsApi, priceApi } from "@/lib/tauri-api";
-import { CURRENCIES, convertToCzK, type CurrencyCode } from "@shared/currencies";
+import { CURRENCIES } from "@shared/currencies";
 import { useState } from "react";
 import { Plus, Search, Loader2 } from "lucide-react";
 import {
     AlertDialog,
-    AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,

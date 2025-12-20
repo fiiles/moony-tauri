@@ -48,7 +48,7 @@ export default function Loans() {
     if (!("id" in data)) {
       return;
     }
-    updateMutation.mutate(data, {
+    updateMutation.mutate({ ...data, id: data.id } as { id: string } & Record<string, unknown>, {
       onSuccess: () => {
         setEditDialogOpen(false);
         setSelectedLoan(null);

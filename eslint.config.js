@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import unusedImports from 'eslint-plugin-unused-imports';
 import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default tseslint.config(
@@ -16,6 +17,7 @@ export default tseslint.config(
     plugins: {
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
+      'unused-imports': unusedImports,
     },
     rules: {
       // Use recommended rules but override specific ones
@@ -25,8 +27,10 @@ export default tseslint.config(
       'react-hooks/set-state-in-effect': 'warn',
       // Warn on 'any' types to encourage proper typing
       '@typescript-eslint/no-explicit-any': 'warn',
-      // Allow unused vars starting with underscore
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // Disable default unused-vars, use plugin instead for auto-fix
+      '@typescript-eslint/no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'warn',
+      'unused-imports/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       // React refresh rules for Vite
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       // Allow empty functions (common in event handlers)

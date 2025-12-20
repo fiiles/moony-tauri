@@ -16,9 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Trash } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { OtherAsset, OtherAssetTransaction } from "@shared/schema";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { CURRENCIES, type CurrencyCode } from "@shared/currencies";
+import { CURRENCIES } from "@shared/currencies";
 import { otherAssetsApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
 

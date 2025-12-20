@@ -10,7 +10,6 @@ import {
     SidebarHeader,
     SidebarFooter,
     SidebarRail,
-    SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { LayoutDashboard, TrendingUp, Home as HomeIcon, Shield, Wallet, Settings, Lock, Bitcoin, Gem, ChevronsUpDown, CreditCard, FileText, BarChart3 } from "lucide-react";
 import { Link, useLocation } from "wouter";

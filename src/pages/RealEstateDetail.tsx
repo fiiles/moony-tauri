@@ -24,7 +24,6 @@ import {
     Home,
     Trash2,
     Pencil,
-    ExternalLink,
 } from "lucide-react";
 import { AddRealEstateModal } from "@/components/real-estate/AddRealEstateModal";
 import { OneTimeCostModal } from "@/components/real-estate/OneTimeCostModal";

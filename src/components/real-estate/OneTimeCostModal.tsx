@@ -32,7 +32,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useCurrency, currencies } from "@/lib/currency";
-import { CurrencyCode } from "@shared/currencies";
 import { realEstateApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
 

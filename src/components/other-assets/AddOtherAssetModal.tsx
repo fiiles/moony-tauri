@@ -19,7 +19,7 @@ import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { otherAssetsApi } from "@/lib/tauri-api";
-import { insertOtherAssetSchema, insertOtherAssetTransactionSchema } from "@shared/schema";
+import { insertOtherAssetSchema } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { EXCHANGE_RATES } from "@shared/currencies";
 import { z } from "zod";

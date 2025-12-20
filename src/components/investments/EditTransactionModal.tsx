@@ -26,7 +26,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { CURRENCIES, convertToCzK, type CurrencyCode } from "@shared/currencies";
+import { CURRENCIES } from "@shared/currencies";
 import type { InvestmentTransaction } from "@shared/schema";
 import { useEffect } from "react";
 import { investmentsApi } from "@/lib/tauri-api";
