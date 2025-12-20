@@ -3,7 +3,7 @@ name = "moony"
 version = "0.2.0"
 description = "Moony - Personal Finance Manager"
 authors = ["Filip Král"]
-edition = "2025"
+edition = "2021"
 default-run = "moony"
 
 [lib]
