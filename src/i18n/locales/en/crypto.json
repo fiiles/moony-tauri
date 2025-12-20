@@ -8,7 +8,12 @@
     "summary": {
         "totalValue": "Total Value",
         "totalGainLoss": "Overall Gain/Loss",
-        "cryptoCount": "Cryptocurrencies"
+        "cryptoCount": "Cryptocurrencies",
+        "totalCrypto": "Total Crypto",
+        "totalCost": "Total Cost",
+        "largestHolding": "Largest Holding",
+        "investedCapital": "Invested Capital",
+        "lastUpdated": "Last updated: {{date}}"
     },
     "table": {
         "title": "All Holdings",

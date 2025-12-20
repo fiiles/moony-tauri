@@ -47,6 +47,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
   const [name, setName] = useState("");
   const [isin, setIsin] = useState("");
   const [couponValue, setCouponValue] = useState("0");
+  const [quantity, setQuantity] = useState("1");
   const [interestRate, setInterestRate] = useState("0");
   const [maturityDate, setMaturityDate] = useState<string>("");
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(userCurrency);
@@ -57,6 +58,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
         setName(bond.name);
         setIsin(bond.isin);
         setCouponValue(bond.couponValue);
+        setQuantity(bond.quantity || "1");
         setInterestRate(bond.interestRate.toString());
         setMaturityDate(bond.maturityDate ? new Date(bond.maturityDate * 1000).toISOString().split('T')[0] : "");
         setSelectedCurrency((bond.currency as CurrencyCode) || "CZK");
@@ -64,6 +66,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
         setName("");
         setIsin("");
         setCouponValue("0");
+        setQuantity("1");
         setInterestRate("0");
         setMaturityDate("");
         setSelectedCurrency(userCurrency);
@@ -76,6 +79,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
       name,
       isin,
       couponValue: couponValue,
+      quantity,
       currency: selectedCurrency,
       interestRate,
       maturityDate: maturityDate ? Math.floor(new Date(maturityDate).getTime() / 1000) : undefined
@@ -97,6 +101,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
       setName("");
       setIsin("");
       setCouponValue("0");
+      setQuantity("1");
       setInterestRate("0");
       setMaturityDate("");
     }
@@ -183,6 +188,19 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="quantity">{t('modal.quantity')}</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  step="1"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="1"
+                />
               </div>
 
               <div className="grid gap-2">

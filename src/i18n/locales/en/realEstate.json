@@ -59,6 +59,7 @@
         "principal": "Principal",
         "rate": "Rate",
         "equity": "Equity",
+        "rent": "Yearly Rent",
         "outstandingLoans": "Outstanding Loans",
         "estNetCashflow": "Est. Net Cashflow (Yearly)",
         "photos": "Photos",

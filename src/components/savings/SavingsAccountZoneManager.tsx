@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ export function SavingsAccountZoneManager({
     zones,
     onChange,
 }: SavingsAccountZoneManagerProps) {
+    const { t } = useTranslation("savings");
     const { formatCurrency } = useCurrency();
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [formData, setFormData] = useState<ZoneData>({
@@ -42,7 +44,7 @@ export function SavingsAccountZoneManager({
     const validateZone = (newZone: ZoneData, currentIndex: number | null): string => {
         // Basic validation
         if (!newZone.fromAmount || !newZone.interestRate) {
-            return "From Amount and Interest Rate are required";
+            return t("zones.validation.required");
         }
 
         const from = parseFloat(newZone.fromAmount);
@@ -50,7 +52,7 @@ export function SavingsAccountZoneManager({
 
         // Check if toAmount is less than fromAmount
         if (to !== null && to <= from) {
-            return "To Amount must be greater than From Amount";
+            return t("zones.validation.toAmountGreater");
         }
 
         // Get all zones except the one being edited
@@ -59,7 +61,7 @@ export function SavingsAccountZoneManager({
         // Check if there's already an unlimited zone
         const hasUnlimitedZone = otherZones.some(z => !z.toAmount || z.toAmount === "");
         if ((!newZone.toAmount || newZone.toAmount === "") && hasUnlimitedZone) {
-            return "Only one unlimited zone is allowed. Please set a specific upper limit or remove the existing unlimited zone.";
+            return t("zones.validation.oneUnlimited");
         }
 
         // Check for overlaps with existing zones
@@ -71,24 +73,24 @@ export function SavingsAccountZoneManager({
             if (to === null) {
                 // New zone is unlimited, check if it starts before any existing zone ends
                 if (zoneTo === null) {
-                    return "Cannot add unlimited zone when one already exists";
+                    return t("zones.validation.cannotAddUnlimited");
                 }
                 if (from < zoneTo) {
-                    return `Zone overlaps with existing zone (${formatCurrency(zoneFrom)} - ${formatCurrency(zoneTo)})`;
+                    return t("zones.validation.overlapExisting", { from: formatCurrency(zoneFrom), to: formatCurrency(zoneTo) });
                 }
             } else {
                 // New zone has an upper limit
                 if (zoneTo === null) {
                     // Existing zone is unlimited
                     if (to > zoneFrom) {
-                        return `Zone overlaps with unlimited zone starting at ${formatCurrency(zoneFrom)}`;
+                        return t("zones.validation.overlapUnlimited", { start: formatCurrency(zoneFrom) });
                     }
                 } else {
                     // Both zones have limits - check for overlap
                     if ((from >= zoneFrom && from < zoneTo) ||
                         (to > zoneFrom && to <= zoneTo) ||
                         (from <= zoneFrom && to >= zoneTo)) {
-                        return `Zone overlaps with existing zone (${formatCurrency(zoneFrom)} - ${formatCurrency(zoneTo)})`;
+                        return t("zones.validation.overlapExisting", { from: formatCurrency(zoneFrom), to: formatCurrency(zoneTo) });
                     }
                 }
             }
@@ -152,7 +154,7 @@ export function SavingsAccountZoneManager({
             {/* Zone Input Form */}
             <div className="p-4 bg-muted/30 rounded-lg border space-y-3">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {editingIndex === null ? "Add New Zone" : "Edit Zone"}
+                    {editingIndex === null ? t("zones.addZoneTitle") : t("zones.editZoneTitle")}
                 </p>
                 <div className="grid grid-cols-7 gap-3">
                     <div className="col-span-2 grid gap-1.5">
@@ -199,7 +201,7 @@ export function SavingsAccountZoneManager({
                         ) : (
                             <div className="flex gap-1 w-full">
                                 <Button onClick={handleUpdate} type="button" size="sm" className="h-9 flex-1">
-                                    Save
+                                    {t("zones.save")}
                                 </Button>
                                 <Button onClick={handleCancel} type="button" variant="outline" size="sm" className="h-9 flex-1">
                                     ✕
@@ -265,8 +267,8 @@ export function SavingsAccountZoneManager({
 
             {zones.length === 0 && (
                 <div className="text-center text-sm text-muted-foreground py-8 border border-dashed rounded-lg bg-muted/20">
-                    <p className="font-medium">No zones defined yet</p>
-                    <p className="text-xs mt-1">Add your first zone above to enable tiered interest rates</p>
+                    <p className="font-medium">{t("zones.emptyState")}</p>
+                    <p className="text-xs mt-1">{t("zones.emptyStateDescription")}</p>
                 </div>
             )}
         </div>

@@ -18,6 +18,8 @@
         "isin": "ISIN",
         "faceValue": "Nominální hodnota",
         "couponValue": "Hodnota kupónu",
+        "quantity": "Počet",
+        "totalValue": "Celková hodnota",
         "currentValue": "Aktuální hodnota",
         "interestRate": "Úroková sazba",
         "maturityDate": "Datum splatnosti",
@@ -71,6 +73,7 @@
         "isinPlaceholder": "např. CZ0001005516",
         "isinHelp": "Mezinárodní identifikační číslo cenného papíru",
         "couponValue": "Hodnota kupónu",
+        "quantity": "Počet",
         "apyHelp": "Roční procentní výnos"
     }
 }

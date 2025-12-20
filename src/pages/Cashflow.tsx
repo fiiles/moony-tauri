@@ -40,6 +40,7 @@ export default function Cashflow() {
     const { data: report, isLoading } = useQuery<CashflowReport>({
         queryKey: ['cashflow-report', viewType],
         queryFn: () => cashflowApi.getReport(viewType),
+        refetchOnMount: 'always',
     });
 
     // Create item mutation

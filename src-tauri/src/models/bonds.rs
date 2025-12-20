@@ -10,6 +10,7 @@ pub struct Bond {
     pub isin: String,
     #[serde(rename = "couponValue")]
     pub coupon_value: String,
+    pub quantity: String,
     pub currency: String,
     #[serde(rename = "interestRate")]
     pub interest_rate: String,
@@ -28,6 +29,7 @@ pub struct InsertBond {
     pub isin: String,
     #[serde(rename = "couponValue")]
     pub coupon_value: String,
+    pub quantity: Option<String>,
     pub currency: Option<String>,
     #[serde(rename = "interestRate")]
     pub interest_rate: Option<String>,

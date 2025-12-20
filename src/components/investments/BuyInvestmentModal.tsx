@@ -133,7 +133,18 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
                                     <FormItem>
                                         <FormLabel>{t('modal.buy.pricePerShare')} *</FormLabel>
                                         <FormControl>
-                                            <Input type="number" step="0.01" {...field} />
+                                            <Input 
+                                                type="number" 
+                                                step="0.01" 
+                                                {...field} 
+                                                onBlur={(e) => {
+                                                    const value = parseFloat(e.target.value);
+                                                    if (!isNaN(value)) {
+                                                        field.onChange(value.toFixed(2));
+                                                    }
+                                                    field.onBlur();
+                                                }}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

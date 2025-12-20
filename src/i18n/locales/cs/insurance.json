@@ -17,6 +17,7 @@
         "premium": "Pojistné",
         "coverage": "Krytí",
         "expiryDate": "Datum expirace",
+        "status": "Stav",
         "actions": "Akce",
         "noPolicies": "Žádné pojistky nenalezeny. Přidejte svou první pojistku."
     },
@@ -28,7 +29,8 @@
         "travel": "Cestovní pojištění",
         "liability": "Pojištění odpovědnosti",
         "accident": "Úrazové pojištění",
-        "other": "Jiné"
+        "other": "Jiné",
+        "allTypes": "Všechny typy"
     },
     "form": {
         "addTitle": "Přidat pojistku",
@@ -83,18 +85,18 @@
         "createPolicy": "Vytvořit pojistku",
         "updatePolicy": "Aktualizovat pojistku",
         "status": {
-            "active": "Aktivní",
-            "inactive": "Neaktivní"
+            "active": "aktivní",
+            "inactive": "neaktivní"
         },
         "frequency": {
             "monthly": "Měsíčně",
             "quarterly": "Čtvrtletně",
             "yearly": "Ročně",
-            "oneTime": "Jednorázově"
+            "one_time": "Jednorázově"
         }
     },
     "detail": {
-        "backToList": "Zpět na pojištění",
+        "backToList": "Zpět na seznam",
         "basicInfo": "Základní informace",
         "paymentInfo": "Informace o platbách",
         "coverageLimits": "Limity krytí",

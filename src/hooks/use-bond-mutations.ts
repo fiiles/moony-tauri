@@ -29,6 +29,8 @@ export function useBondMutations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bonds"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["projection"] });
+      queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
       toast({ title: "Bond created" });
     },
     onError: (error: Error) => {
@@ -50,6 +52,8 @@ export function useBondMutations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bonds"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["projection"] });
+      queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
       toast({ title: "Bond updated" });
     },
     onError: (error: Error) => {
@@ -62,6 +66,8 @@ export function useBondMutations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bonds"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["projection"] });
+      queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
       toast({ title: "Bond deleted" });
     },
     onError: (error: Error) => {

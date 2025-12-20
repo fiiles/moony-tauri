@@ -146,7 +146,18 @@ export function BuyCryptoModal({ crypto, open, onOpenChange }: BuyCryptoModalPro
                                     <FormItem>
                                         <FormLabel>{t('modal.buy.pricePerUnit')} *</FormLabel>
                                         <FormControl>
-                                            <Input type="number" step="any" {...field} />
+                                            <Input 
+                                                type="number" 
+                                                step="any" 
+                                                {...field} 
+                                                onBlur={(e) => {
+                                                    const value = parseFloat(e.target.value);
+                                                    if (!isNaN(value)) {
+                                                        field.onChange(value.toFixed(2));
+                                                    }
+                                                    field.onBlur();
+                                                }}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

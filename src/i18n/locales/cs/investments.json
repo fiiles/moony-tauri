@@ -12,7 +12,7 @@
         "estimatedDividend": "Odhadovaný výnos z dividend",
         "topPerformer": "Nejvýkonnější",
         "basedOnLastYear": "Na základě dividend z minulého roku",
-        "lastUpdated": "Naposledy aktualizováno: {{date}}"
+        "lastUpdated": "Aktualizováno: {{date}}"
     },
     "table": {
         "title": "Všechny pozice",
@@ -31,7 +31,7 @@
         "viewTransactions": "Zobrazit transakce",
         "buy": "Koupit",
         "sell": "Prodat",
-        "updatePrice": "Ručně aktualizovat cenu",
+        "updatePrice": "Aktualizovat cenu",
         "updateDividend": "Aktualizovat odhad dividendy",
         "delete": "Smazat"
     },

@@ -45,6 +45,8 @@ export function BondsTable({ bonds, onEdit, onDelete }: BondsTableProps) {
                 <TableHead>{t('table.bondName')}</TableHead>
                 <TableHead>{t('table.isin')}</TableHead>
                 <TableHead className="text-right">{t('table.couponValue')}</TableHead>
+                <TableHead className="text-right">{t('table.quantity')}</TableHead>
+                <TableHead className="text-right">{t('table.totalValue')}</TableHead>
                 <TableHead className="text-right">{t('table.interestRate')}</TableHead>
                 <TableHead className="text-right">{t('table.maturityDate')}</TableHead>
                 <TableHead className="w-[80px] text-right">{tc('labels.actions')}</TableHead>
@@ -54,19 +56,29 @@ export function BondsTable({ bonds, onEdit, onDelete }: BondsTableProps) {
               {bonds.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={8}
                     className="text-center text-muted-foreground py-8"
                   >
                     {t('table.noBonds')}
                   </TableCell>
                 </TableRow>
               ) : (
-                bonds.map((bond) => (
+                bonds.map((bond) => {
+                  const quantity = Number(bond.quantity || "1");
+                  const couponValue = Number(bond.couponValue);
+                  const totalValue = couponValue * quantity;
+                  return (
                   <TableRow key={bond.id}>
                     <TableCell className="font-medium">{bond.name}</TableCell>
                     <TableCell>{bond.isin}</TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(convertToCzK(Number(bond.couponValue), bond.currency as CurrencyCode))}
+                      {formatCurrency(convertToCzK(couponValue, bond.currency as CurrencyCode))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {quantity}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(convertToCzK(totalValue, bond.currency as CurrencyCode))}
                     </TableCell>
                     <TableCell className="text-right">
                       {Number(bond.interestRate).toFixed(2)}%
@@ -97,7 +109,8 @@ export function BondsTable({ bonds, onEdit, onDelete }: BondsTableProps) {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>

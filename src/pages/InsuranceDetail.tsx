@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
-import { format } from "date-fns";
+
 
 export default function InsuranceDetail() {
     const [, params] = useRoute("/insurance/:id");
@@ -123,11 +123,11 @@ export default function InsuranceDetail() {
                                     ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                     : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
                                 }`}>
-                                {policy.status}
+                                {t(`modal.status.${policy.status}`)}
                             </span>
                         </div>
                         <p className="text-sm text-muted-foreground flex items-center">
-                            <Shield className="mr-1 h-4 w-4" /> {policy.provider} • {policy.type}
+                            <Shield className="mr-1 h-4 w-4" /> {policy.provider} • {t(`types.${policy.type}`)}
                         </p>
                     </div>
 
@@ -179,7 +179,7 @@ export default function InsuranceDetail() {
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(regularPaymentInCzk)}</div>
                         <p className="text-xs text-muted-foreground capitalize">
-                            {policy.paymentFrequency.replace('_', ' ')}
+                            {t(`modal.frequency.${policy.paymentFrequency}`)}
                         </p>
                     </CardContent>
                 </Card>
@@ -200,11 +200,11 @@ export default function InsuranceDetail() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {format(new Date(policy.startDate * 1000), "PP")}
+                            {formatDate(new Date(policy.startDate * 1000))}
                         </div>
                         {policy.endDate && (
                             <p className="text-xs text-muted-foreground">
-                                {t('detail.until')} {format(new Date(policy.endDate * 1000), "PP")}
+                                {t('detail.until')} {formatDate(new Date(policy.endDate * 1000))}
                             </p>
                         )}
                     </CardContent>
@@ -250,11 +250,11 @@ export default function InsuranceDetail() {
                                     </div>
                                     <div>
                                         <p className="text-sm text-muted-foreground">{t('form.type')}</p>
-                                        <p className="font-medium capitalize">{policy.type}</p>
+                                        <p className="font-medium capitalize">{t(`types.${policy.type}`)}</p>
                                     </div>
                                     <div>
                                         <p className="text-sm text-muted-foreground">{tc('labels.status')}</p>
-                                        <p className="font-medium capitalize">{policy.status}</p>
+                                        <p className="font-medium capitalize">{t(`modal.status.${policy.status}`)}</p>
                                     </div>
                                 </div>
                             </CardContent>

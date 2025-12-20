@@ -59,7 +59,20 @@
         "currentAmount": "Aktuální částka",
         "progress": "Průběh",
         "remaining": "Zbývá",
-        "noZones": "Žádné zóny definovány"
+        "noZones": "Žádné zóny definovány",
+        "addZoneTitle": "Přidat novou zónu",
+        "editZoneTitle": "Upravit zónu",
+        "save": "Uložit",
+        "emptyState": "Zatím nejsou definovány žádné zóny",
+        "emptyStateDescription": "Přidejte svou první zónu výše pro povolení odstupňovaných úrokových sazeb",
+        "validation": {
+            "required": "Částka od a úroková sazba jsou povinné",
+            "toAmountGreater": "Částka do musí být vyšší než částka od",
+            "oneUnlimited": "Je povolena pouze jedna neomezená zóna. Prosím nastavte horní limit nebo odstraňte existující neomezenou zónu.",
+            "overlapExisting": "Zóna se překrývá s existující zónou ({{from}} - {{to}})",
+            "overlapUnlimited": "Zóna se překrývá s neomezenou zónou začínající na {{start}}",
+            "cannotAddUnlimited": "Nelze přidat neomezenou zónu, pokud již existuje"
+        }
     },
     "actions": {
         "edit": "Upravit",

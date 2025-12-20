@@ -23,11 +23,12 @@ import {
 import { Eye } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
+import { useTranslation } from "react-i18next";
 
 export function InsuranceList() {
+    const { t } = useTranslation('insurance');
     const { formatCurrency } = useCurrency();
     const [filterType, setFilterType] = useState<string>("all");
-    const [sortBy, setSortBy] = useState<string>("date");
     const [, setLocation] = useLocation();
 
     const { data: policies, isLoading } = useQuery<InsurancePolicy[]>({
@@ -39,47 +40,30 @@ export function InsuranceList() {
         if (filterType !== "all" && policy.type !== filterType) return false;
         return true;
     }).sort((a, b) => {
-        if (sortBy === "date") {
-            return new Date(b.createdAt * 1000).getTime() - new Date(a.createdAt * 1000).getTime();
-        } else if (sortBy === "cost") {
-            return Number(b.regularPayment) - Number(a.regularPayment);
-        } else if (sortBy === "name") {
-            return a.policyName.localeCompare(b.policyName);
-        }
-        return 0;
+        // Default sort by date descending
+        return new Date(b.createdAt * 1000).getTime() - new Date(a.createdAt * 1000).getTime();
     });
 
-    if (isLoading) return <div>Loading...</div>;
+    if (isLoading) return <div>{t('loading')}</div>;
 
     return (
         <Card className="border">
             <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold">All Policies</h2>
+                    <h2 className="text-xl font-semibold">{t('table.title')}</h2>
                     <div className="flex gap-4 items-center">
                         <Select value={filterType} onValueChange={setFilterType}>
                             <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Filter by Type" />
+                                <SelectValue placeholder={t('modal.selectType')} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Types</SelectItem>
-                                <SelectItem value="life">Life</SelectItem>
-                                <SelectItem value="travel">Travel</SelectItem>
-                                <SelectItem value="accident">Accident</SelectItem>
-                                <SelectItem value="property">Property</SelectItem>
-                                <SelectItem value="liability">Liability</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <Select value={sortBy} onValueChange={setSortBy}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Sort by" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="date">Date Created</SelectItem>
-                                <SelectItem value="cost">Payment Amount</SelectItem>
-                                <SelectItem value="name">Name</SelectItem>
+                                <SelectItem value="all">{t('types.allTypes')}</SelectItem>
+                                <SelectItem value="life">{t('types.life')}</SelectItem>
+                                <SelectItem value="travel">{t('types.travel')}</SelectItem>
+                                <SelectItem value="accident">{t('types.accident')}</SelectItem>
+                                <SelectItem value="property">{t('types.property')}</SelectItem>
+                                <SelectItem value="liability">{t('types.liability')}</SelectItem>
+                                <SelectItem value="other">{t('types.other')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -89,12 +73,12 @@ export function InsuranceList() {
                     <Table>
                         <TableHeader className="[&_th]:bg-muted/50">
                             <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Provider</TableHead>
-                                <TableHead className="text-right">Regular Payment</TableHead>
-                                <TableHead>Frequency</TableHead>
-                                <TableHead>Status</TableHead>
+                                <TableHead>{t('table.name')}</TableHead>
+                                <TableHead>{t('table.type')}</TableHead>
+                                <TableHead>{t('table.provider')}</TableHead>
+                                <TableHead className="text-right">{t('table.premium')}</TableHead>
+                                <TableHead>{t('modal.paymentFrequency')}</TableHead>
+                                <TableHead>{t('table.status')}</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -102,7 +86,7 @@ export function InsuranceList() {
                             {filteredPolicies?.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="h-24 text-center">
-                                        No insurance policies found. Add one to get started.
+                                        {t('table.noPolicies')}
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -118,18 +102,18 @@ export function InsuranceList() {
                                                 {policy.policyNumber && <span className="text-xs text-muted-foreground">{policy.policyNumber}</span>}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="capitalize">{policy.type}</TableCell>
+                                        <TableCell className="capitalize">{t(`types.${policy.type}`)}</TableCell>
                                         <TableCell>{policy.provider}</TableCell>
                                         <TableCell className="text-right">
                                             {formatCurrency(convertToCzK(Number(policy.regularPayment), policy.regularPaymentCurrency as CurrencyCode))}
                                         </TableCell>
-                                        <TableCell className="capitalize">{policy.paymentFrequency.replace('_', ' ')}</TableCell>
+                                        <TableCell className="capitalize">{t(`modal.frequency.${policy.paymentFrequency}`)}</TableCell>
                                         <TableCell>
                                             <span className={`px-2 py-1 rounded-full text-xs ${policy.status === 'active'
                                                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                                 : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
                                                 }`}>
-                                                {policy.status}
+                                                {t(`modal.status.${policy.status}`)}
                                             </span>
                                         </TableCell>
                                         <TableCell>

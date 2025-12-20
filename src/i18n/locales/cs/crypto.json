@@ -8,7 +8,12 @@
     "summary": {
         "totalValue": "Celková hodnota",
         "totalGainLoss": "Celkový zisk/ztráta",
-        "cryptoCount": "Počet kryptoměn"
+        "cryptoCount": "Počet kryptoměn",
+        "totalCrypto": "Celkem krypto",
+        "totalCost": "Celkové náklady",
+        "largestHolding": "Největší pozice",
+        "investedCapital": "Investovaný kapitál",
+        "lastUpdated": "Aktualizováno: {{date}}"
     },
     "table": {
         "title": "Všechny pozice",

@@ -22,26 +22,28 @@ export function useBonds() {
   const totalValue = bonds.reduce(
     (sum, bond: Bond) => {
       const value = parseFloat(bond.couponValue || "0");
+      const quantity = parseFloat(bond.quantity || "1");
       const currency = bond.currency || "CZK";
-      return sum + convertToCzK(value, currency as CurrencyCode);
+      return sum + convertToCzK(value * quantity, currency as CurrencyCode);
     },
     0
   );
 
-  // Calculate weighted average yield (weighted by coupon value in CZK)
+  // Calculate weighted average yield (weighted by total value in CZK)
   const averageYield = (() => {
     if (bonds.length === 0) return 0;
 
     const { weightedSum, totalWeight } = bonds.reduce(
       (acc, bond: Bond) => {
         const value = parseFloat(bond.couponValue || "0");
+        const quantity = parseFloat(bond.quantity || "1");
         const currency = bond.currency || "CZK";
-        const valueInCzk = convertToCzK(value, currency as CurrencyCode);
+        const totalValueCzk = convertToCzK(value * quantity, currency as CurrencyCode);
         const rate = parseFloat(bond.interestRate || "0");
 
         return {
-          weightedSum: acc.weightedSum + (valueInCzk * rate),
-          totalWeight: acc.totalWeight + valueInCzk,
+          weightedSum: acc.weightedSum + (totalValueCzk * rate),
+          totalWeight: acc.totalWeight + totalValueCzk,
         };
       },
       { weightedSum: 0, totalWeight: 0 }
@@ -53,9 +55,10 @@ export function useBonds() {
   const projectedYearlyIncome = bonds.reduce(
     (sum, bond: Bond) => {
       const value = parseFloat(bond.couponValue || "0");
+      const quantity = parseFloat(bond.quantity || "1");
       const rate = parseFloat(bond.interestRate || "0");
-      // Calculate income in original currency
-      const income = (value * rate) / 100;
+      // Calculate income in original currency (value * quantity * rate%)
+      const income = (value * quantity * rate) / 100;
       // Convert income to CZK
       const currency = bond.currency || "CZK";
       return sum + convertToCzK(income, currency as CurrencyCode);

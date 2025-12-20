@@ -24,6 +24,7 @@ import {
     Home,
     Trash2,
     Pencil,
+    Wallet,
 } from "lucide-react";
 import { AddRealEstateModal } from "@/components/real-estate/AddRealEstateModal";
 import { OneTimeCostModal } from "@/components/real-estate/OneTimeCostModal";
@@ -232,13 +233,13 @@ export default function RealEstateDetail() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">{t('detail.outstandingLoans')}</CardTitle>
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">{t('detail.rent')}</CardTitle>
+                        <Wallet className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(totalLoansInCzk)}</div>
+                        <div className="text-2xl font-bold">{formatCurrency(rentInCzk)}</div>
                         <p className="text-xs text-muted-foreground">
-                            {linkedLoans?.length || 0} {t('detail.linkedLoansCount', { count: linkedLoans?.length || 0 })}
+                            {formatCurrency(rentInCzk / 12)} / {t('modal.add.monthly').toLowerCase()}
                         </p>
                     </CardContent>
                 </Card>
