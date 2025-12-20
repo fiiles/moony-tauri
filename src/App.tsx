@@ -29,6 +29,8 @@ import { CurrencyProvider } from "@/lib/currency";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { I18nProvider } from "@/i18n/I18nProvider";
 import { UpdateNotification } from "@/components/update-notification";
+import { AboutModal } from "@/components/common/AboutModal";
+import { UpdateStatusBadge } from "@/components/common/UpdateStatusBadge";
 
 function Router() {
   return (
@@ -69,8 +71,12 @@ function AppLayout() {
     <SidebarProvider style={style as React.CSSProperties}>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
+          <div className="flex items-center gap-2">
+            <UpdateStatusBadge />
+            <AboutModal />
+          </div>
         </header>
         <main className="flex-1 overflow-auto p-4">
           <Router />

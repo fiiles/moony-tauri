@@ -59,6 +59,7 @@ pub struct ConfirmSetupData {
     #[serde(rename = "recoveryKey")]
     pub recovery_key: String,
     pub salt: Vec<u8>,
+    pub language: Option<String>,
 }
 
 // ============================================================================
@@ -159,6 +160,7 @@ pub async fn setup(
         email: data.email,
         menu_preferences: None,
         currency: None,
+        language: None,
         exclude_personal_real_estate: None,
     };
 
@@ -201,6 +203,7 @@ pub async fn confirm_setup(
         email: data.email,
         menu_preferences: None,
         currency: None,
+        language: data.language,
         exclude_personal_real_estate: None,
     };
 

@@ -102,18 +102,20 @@ pub fn setup_account(
         .unwrap_or_else(MenuPreferences::all_enabled);
     let menu_prefs_json = serde_json::to_string(&menu_prefs)?;
     let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
+    let language = data.language.unwrap_or_else(|| "en".to_string());
     let exclude_re = data.exclude_personal_real_estate.unwrap_or(false);
 
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, exclude_personal_real_estate)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, language, exclude_personal_real_estate)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             rusqlite::params![
                 data.name,
                 data.surname,
                 data.email,
                 menu_prefs_json,
                 currency,
+                language,
                 exclude_re as i32,
             ],
         )?;
@@ -275,18 +277,20 @@ pub fn confirm_setup(
         .unwrap_or_else(MenuPreferences::all_enabled);
     let menu_prefs_json = serde_json::to_string(&menu_prefs)?;
     let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
+    let language = data.language.unwrap_or_else(|| "en".to_string());
     let exclude_re = data.exclude_personal_real_estate.unwrap_or(false);
 
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, exclude_personal_real_estate)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, language, exclude_personal_real_estate)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             rusqlite::params![
                 data.name,
                 data.surname,
                 data.email,
                 menu_prefs_json,
                 currency,
+                language,
                 exclude_re as i32,
             ],
         )?;
@@ -425,7 +429,7 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT id, name, surname, email, menu_preferences, currency,
-                    exclude_personal_real_estate, created_at
+                    language, exclude_personal_real_estate, created_at
              FROM user_profile LIMIT 1",
         )?;
 
@@ -441,8 +445,9 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
                 email: row.get(3)?,
                 menu_preferences: menu_prefs,
                 currency: row.get(5)?,
-                exclude_personal_real_estate: row.get::<_, i32>(6)? != 0,
-                created_at: row.get(7)?,
+                language: row.get(6)?,
+                exclude_personal_real_estate: row.get::<_, i32>(7)? != 0,
+                created_at: row.get(8)?,
             })
         });
 
@@ -483,6 +488,11 @@ pub fn update_user_profile(db: &Database, updates: UpdateUserProfile) -> Result<
         if let Some(ref currency) = updates.currency {
             set_clauses.push("currency = ?".to_string());
             params.push(Box::new(currency.clone()));
+        }
+
+        if let Some(ref language) = updates.language {
+            set_clauses.push("language = ?".to_string());
+            params.push(Box::new(language.clone()));
         }
 
         if let Some(exclude) = updates.exclude_personal_real_estate {

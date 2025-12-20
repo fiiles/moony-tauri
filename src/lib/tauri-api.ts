@@ -85,6 +85,7 @@ export const authApi = {
     masterKeyHex: string;
     recoveryKey: string;
     salt: number[];
+    language?: string;
   }) => tauriInvoke<UserProfile>('confirm_setup', { data }),
 
   unlock: (password: string) =>

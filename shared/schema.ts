@@ -15,6 +15,7 @@ export interface UserProfile {
     email: string;
     menuPreferences: MenuPreferences;
     currency: string;
+    language?: string;
     excludePersonalRealEstate: boolean;
     createdAt: number;
 }

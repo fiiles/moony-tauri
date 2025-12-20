@@ -23,6 +23,7 @@ interface PendingSetup {
     masterKeyHex: string;
     recoveryKey: string;
     salt: number[];
+    language?: string;
 }
 
 // Pending recovery data (stored between prepare and confirm phases)
@@ -101,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Phase 1: Prepare setup - generates keys, shows recovery key, but doesn't create account
     const setupMutation = useMutation({
-        mutationFn: async (data: { name: string; surname: string; email?: string; password: string }) => {
+        mutationFn: async (data: { name: string; surname: string; email?: string; password: string; language?: string }) => {
             // Call prepare_setup to get keys
             const prepared = await authApi.prepareSetup();
             return {
@@ -120,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 masterKeyHex: result.masterKeyHex,
                 recoveryKey: result.recoveryKey,
                 salt: result.salt,
+                language: result.language,
             });
             // Show recovery key modal
             setRecoveryKey(result.recoveryKey);

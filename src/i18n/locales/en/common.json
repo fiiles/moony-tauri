@@ -144,5 +144,24 @@
         "topPerformer": "Top Performer",
         "basedOnLastYear": "Based on last year dividends",
         "na": "N/A"
+    },
+    "about": {
+        "title": "About",
+        "version": "Version",
+        "description": "Moony is a personal wealth management application that helps you track your investments, savings, real estate, and more. All your data is stored locally and securely on your device.",
+        "viewOnGithub": "View on GitHub",
+        "madeWith": "Made with",
+        "byAuthor": "by Filip Král"
+    },
+    "update": {
+        "checking": "Checking...",
+        "upToDate": "Up to date",
+        "available": "Update Available",
+        "newVersion": "A new version {{version}} is available.",
+        "releaseNotes": "Release Notes",
+        "downloading": "Downloading...",
+        "installing": "Installing update...",
+        "later": "Later",
+        "updateNow": "Update Now"
     }
 }
