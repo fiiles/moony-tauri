@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { savingsApi } from "@/lib/tauri-api";
-import { useCurrency } from "@/lib/currency";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
+import type { SavingsAccount } from "@shared/schema";
 
 export interface SavingsAccountsMetrics {
   totalBalance: number;
@@ -10,7 +10,7 @@ export interface SavingsAccountsMetrics {
 }
 
 export function useSavingsAccounts() {
-  const { currencyCode: userCurrency } = useCurrency();
+
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ["savings-accounts"],
@@ -19,7 +19,7 @@ export function useSavingsAccounts() {
 
   // Calculate metrics in CZK
   const totalBalance = accounts.reduce(
-    (sum, account: any) => {
+    (sum, account: SavingsAccount) => {
       const balance = parseFloat(account.balance || "0");
       const currency = account.currency || "CZK";
       return sum + convertToCzK(balance, currency as CurrencyCode);
@@ -32,7 +32,7 @@ export function useSavingsAccounts() {
     if (accounts.length === 0) return 0;
 
     const { weightedSum, totalWeight } = accounts.reduce(
-      (acc, account: any) => {
+      (acc, account: SavingsAccount) => {
         const balance = parseFloat(account.balance || "0");
         const currency = account.currency || "CZK";
         const balanceInCzk = convertToCzK(balance, currency as CurrencyCode);
@@ -55,7 +55,7 @@ export function useSavingsAccounts() {
 
   // Calculate projected yearly earnings in CZK
   const projectedYearlyEarnings = accounts.reduce(
-    (sum, account: any) => {
+    (sum, account: SavingsAccount) => {
       let earningsInOriginal = 0;
       // Use pre-calculated earnings if available (for zoned accounts)
       if (account.projectedEarnings !== undefined) {

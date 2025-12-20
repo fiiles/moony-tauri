@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
     Dialog,
     DialogContent,
@@ -60,8 +60,8 @@ export default function AddCashflowItemDialog({
 
     const isEditing = !!editItem;
 
-    // All categories are now editable
-    const availableCategories = categories ?? [];
+    // All categories are now editable - memoized to avoid useEffect dependency issues
+    const availableCategories = useMemo(() => categories ?? [], [categories]);
 
     // Reset form when dialog opens/closes or editItem changes
     useEffect(() => {
@@ -83,7 +83,7 @@ export default function AddCashflowItemDialog({
                 }
             }
         }
-    }, [open, editItem, editCategory]);
+    }, [open, editItem, editCategory, availableCategories]);
 
     // Update selected category when categories change (for new items)
     useEffect(() => {

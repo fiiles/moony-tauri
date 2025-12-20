@@ -31,7 +31,7 @@ import { Trash2 } from "lucide-react";
 import type { CryptoTransaction } from "@shared/schema";
 import type { CryptoHoldingData } from "@/components/crypto/CryptoTable";
 import { useCurrency } from "@/lib/currency";
-import { convertToCzK } from "@shared/currencies";
+import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { cryptoApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
 
@@ -118,10 +118,10 @@ export function CryptoTransactionsModal({ investment, open, onOpenChange }: Cryp
                                                     {tx.type.toUpperCase()}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="text-right">{parseFloat(tx.quantity as any).toFixed(8)}</TableCell>
-                                            <TableCell className="text-right">{parseFloat(tx.pricePerUnit as any).toFixed(2)} {tx.currency}</TableCell>
+                                            <TableCell className="text-right">{parseFloat(tx.quantity).toFixed(8)}</TableCell>
+                                            <TableCell className="text-right">{parseFloat(tx.pricePerUnit).toFixed(2)} {tx.currency}</TableCell>
                                             <TableCell>{tx.currency}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(convertToCzK(parseFloat(tx.pricePerUnit as any) * parseFloat(tx.quantity as any), tx.currency as any))}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(convertToCzK(parseFloat(tx.pricePerUnit) * parseFloat(tx.quantity), tx.currency as CurrencyCode))}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex gap-2 justify-end">
                                                     <Button

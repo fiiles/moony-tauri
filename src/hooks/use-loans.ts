@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { loansApi } from "@/lib/tauri-api";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
+import type { Loan } from "@shared/schema";
 
 export function useLoans() {
     const { data: loans = [], isLoading } = useQuery({
@@ -10,7 +11,7 @@ export function useLoans() {
 
     // Calculate metrics in CZK
     const totalPrincipal = loans.reduce(
-        (sum, loan: any) => {
+        (sum, loan: Loan) => {
             const principal = parseFloat(loan.principal || "0");
             const currency = loan.currency || "CZK";
             return sum + convertToCzK(principal, currency as CurrencyCode);
@@ -19,7 +20,7 @@ export function useLoans() {
     );
 
     const totalMonthlyPayment = loans.reduce(
-        (sum, loan: any) => {
+        (sum, loan: Loan) => {
             const payment = parseFloat(loan.monthlyPayment || "0");
             const currency = loan.currency || "CZK";
             return sum + convertToCzK(payment, currency as CurrencyCode);
@@ -32,7 +33,7 @@ export function useLoans() {
         if (loans.length === 0) return 0;
 
         const { weightedSum, totalWeight } = loans.reduce(
-            (acc, loan: any) => {
+            (acc, loan: Loan) => {
                 const principal = parseFloat(loan.principal || "0");
                 const currency = loan.currency || "CZK";
                 const principalInCzk = convertToCzK(principal, currency as CurrencyCode);

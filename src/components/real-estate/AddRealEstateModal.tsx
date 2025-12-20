@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Loader2, Pencil } from "lucide-react";
+import { Plus, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
     Select,
@@ -34,7 +34,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCurrency, currencies } from "@/lib/currency";
-import { CurrencyCode } from "@shared/currencies";
 import { realEstateApi, loansApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
 

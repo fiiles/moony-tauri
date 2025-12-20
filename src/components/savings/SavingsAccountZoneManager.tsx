@@ -11,7 +11,6 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Plus, Trash2, Edit2, AlertCircle } from "lucide-react";
-import type { SavingsAccountZone } from "@shared/schema";
 import { useCurrency } from "@/lib/currency";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 

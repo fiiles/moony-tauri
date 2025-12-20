@@ -1,6 +1,6 @@
 import { SummaryCard } from "@/components/common/SummaryCard";
 import { useCurrency } from "@/lib/currency";
-import { TrendingUp, TrendingDown, Activity, Award, Wallet } from "lucide-react";
+import { TrendingUp, TrendingDown, Award, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface InvestmentsSummaryProps {

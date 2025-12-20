@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { bondsApi } from "@/lib/tauri-api";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
+import type { Bond } from "@shared/schema";
 
 export interface BondsMetrics {
   totalCouponValue: number;
@@ -19,7 +20,7 @@ export function useBonds() {
 
   // Calculate metrics in CZK
   const totalValue = bonds.reduce(
-    (sum, bond: any) => {
+    (sum, bond: Bond) => {
       const value = parseFloat(bond.couponValue || "0");
       const currency = bond.currency || "CZK";
       return sum + convertToCzK(value, currency as CurrencyCode);
@@ -32,7 +33,7 @@ export function useBonds() {
     if (bonds.length === 0) return 0;
 
     const { weightedSum, totalWeight } = bonds.reduce(
-      (acc, bond: any) => {
+      (acc, bond: Bond) => {
         const value = parseFloat(bond.couponValue || "0");
         const currency = bond.currency || "CZK";
         const valueInCzk = convertToCzK(value, currency as CurrencyCode);
@@ -50,7 +51,7 @@ export function useBonds() {
   })();
 
   const projectedYearlyIncome = bonds.reduce(
-    (sum, bond: any) => {
+    (sum, bond: Bond) => {
       const value = parseFloat(bond.couponValue || "0");
       const rate = parseFloat(bond.interestRate || "0");
       // Calculate income in original currency

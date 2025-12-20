@@ -54,8 +54,10 @@ export function useUpdater(): UseUpdaterReturn {
         setUpdateAvailable(null);
       }
     } catch (err) {
-      console.error('Failed to check for updates:', err);
-      setError(err instanceof Error ? err.message : 'Failed to check for updates');
+      // Silently log errors - don't show to user
+      // This can fail if no releases exist yet, network issues, etc.
+      console.warn('Update check failed (this is normal if no releases exist):', err);
+      // Don't set error state - just continue silently
     } finally {
       setIsChecking(false);
     }

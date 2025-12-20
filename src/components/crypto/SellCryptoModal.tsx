@@ -27,7 +27,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { CURRENCIES, type CurrencyCode } from "@shared/currencies";
+import { CURRENCIES } from "@shared/currencies";
 import type { CryptoHoldingData } from "@/components/crypto/CryptoTable";
 import { cryptoApi } from "@/lib/tauri-api";
 import { useToast } from "@/hooks/use-toast";

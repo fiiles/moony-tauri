@@ -29,7 +29,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cryptoApi, priceApi, type CoinGeckoSearchResult } from "@/lib/tauri-api";
-import { CURRENCIES, type CurrencyCode } from "@shared/currencies";
+import { CURRENCIES } from "@shared/currencies";
 import { useState } from "react";
 import { Plus, Search, Loader2 } from "lucide-react";
 import {
@@ -93,8 +93,8 @@ export function AddCryptoModal() {
                 setSearchResults(results);
                 setShowResultsDialog(true);
             }
-        } catch (error: any) {
-            toast({ title: t('toast.searchFailed'), description: error.message, variant: "destructive" });
+        } catch (error) {
+            toast({ title: t('toast.searchFailed'), description: error instanceof Error ? error.message : 'Unknown error', variant: "destructive" });
         } finally {
             setSearching(false);
         }

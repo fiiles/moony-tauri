@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddInvestmentModal } from "@/components/investments/AddInvestmentModal";
 import { SellInvestmentModal } from "@/components/investments/SellInvestmentModal";

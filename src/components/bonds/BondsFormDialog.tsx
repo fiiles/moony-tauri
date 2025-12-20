@@ -41,7 +41,7 @@ interface BondsFormDialogProps {
 export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading = false }: BondsFormDialogProps) {
   const { t } = useTranslation('bonds');
   const { t: tc } = useTranslation('common');
-  const { convert, currencyCode: userCurrency } = useCurrency();
+  const { currencyCode: userCurrency } = useCurrency();
   const isEditMode = !!bond;
 
   const [name, setName] = useState("");

@@ -1,7 +1,7 @@
 
 import { SummaryCard } from "@/components/common/SummaryCard";
 import { useCurrency } from "@/lib/currency";
-import { TrendingUp, TrendingDown, Activity, Award, Wallet, Bitcoin } from "lucide-react";
+import { TrendingUp, TrendingDown, Award, Wallet, Bitcoin } from "lucide-react";
 
 interface CryptoSummaryProps {
     metrics: {

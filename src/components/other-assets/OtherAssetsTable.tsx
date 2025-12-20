@@ -7,14 +7,14 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, History as HistoryIcon, Trash, Pencil, ArrowUp, ArrowDown } from "lucide-react";
+import { MoreVertical, History as HistoryIcon, Trash, ArrowUp, ArrowDown } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";

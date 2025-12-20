@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Instrument, InsertInstrument, InsertPurchase } from "@shared/schema";
+import type { Instrument, InsertInstrument } from "@shared/schema";
 import { useCurrency, currencies } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
 
