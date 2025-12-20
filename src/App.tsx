@@ -27,6 +27,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { CurrencyProvider } from "@/lib/currency";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { I18nProvider } from "@/i18n/I18nProvider";
+import { UpdateNotification } from "@/components/update-notification";
 
 function Router() {
   return (
@@ -89,6 +90,7 @@ export default function App() {
                   <AppLayout />
                 </ErrorBoundary>
                 <Toaster />
+                <UpdateNotification />
               </TooltipProvider>
             </CurrencyProvider>
           </I18nProvider>

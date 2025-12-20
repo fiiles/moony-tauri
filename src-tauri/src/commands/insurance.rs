@@ -2,8 +2,10 @@
 
 use crate::db::Database;
 use crate::error::{AppError, Result};
-use crate::models::{InsurancePolicy, InsertInsurancePolicy, InsuranceDocument, InsertInsuranceDocument};
-use tauri::{State, Manager};
+use crate::models::{
+    InsertInsuranceDocument, InsertInsurancePolicy, InsuranceDocument, InsurancePolicy,
+};
+use tauri::{Manager, State};
 use uuid::Uuid;
 
 /// Get all insurance policies
@@ -14,51 +16,57 @@ pub async fn get_all_insurance(db: State<'_, Database>) -> Result<Vec<InsuranceP
             "SELECT id, type, provider, policy_name, policy_number, start_date, end_date,
                     payment_frequency, one_time_payment, one_time_payment_currency,
                     regular_payment, regular_payment_currency, limits, notes, status,
-                    created_at, updated_at 
-             FROM insurance_policies ORDER BY policy_name"
+                    created_at, updated_at
+             FROM insurance_policies ORDER BY policy_name",
         )?;
-        
-        let policies = stmt.query_map([], |row| {
-            let limits_json: String = row.get(12)?;
-            
-            Ok(InsurancePolicy {
-                id: row.get(0)?,
-                policy_type: row.get(1)?,
-                provider: row.get(2)?,
-                policy_name: row.get(3)?,
-                policy_number: row.get(4)?,
-                start_date: row.get(5)?,
-                end_date: row.get(6)?,
-                payment_frequency: row.get(7)?,
-                one_time_payment: row.get(8)?,
-                one_time_payment_currency: row.get(9)?,
-                regular_payment: row.get(10)?,
-                regular_payment_currency: row.get(11)?,
-                limits: serde_json::from_str(&limits_json).unwrap_or_default(),
-                notes: row.get(13)?,
-                status: row.get(14)?,
-                created_at: row.get(15)?,
-                updated_at: row.get(16)?,
-            })
-        })?.filter_map(|r| r.ok()).collect();
-        
+
+        let policies = stmt
+            .query_map([], |row| {
+                let limits_json: String = row.get(12)?;
+
+                Ok(InsurancePolicy {
+                    id: row.get(0)?,
+                    policy_type: row.get(1)?,
+                    provider: row.get(2)?,
+                    policy_name: row.get(3)?,
+                    policy_number: row.get(4)?,
+                    start_date: row.get(5)?,
+                    end_date: row.get(6)?,
+                    payment_frequency: row.get(7)?,
+                    one_time_payment: row.get(8)?,
+                    one_time_payment_currency: row.get(9)?,
+                    regular_payment: row.get(10)?,
+                    regular_payment_currency: row.get(11)?,
+                    limits: serde_json::from_str(&limits_json).unwrap_or_default(),
+                    notes: row.get(13)?,
+                    status: row.get(14)?,
+                    created_at: row.get(15)?,
+                    updated_at: row.get(16)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
         Ok(policies)
     })
 }
 
 /// Create insurance policy
 #[tauri::command]
-pub async fn create_insurance(db: State<'_, Database>, data: InsertInsurancePolicy) -> Result<InsurancePolicy> {
+pub async fn create_insurance(
+    db: State<'_, Database>,
+    data: InsertInsurancePolicy,
+) -> Result<InsurancePolicy> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let limits_json = serde_json::to_string(&data.limits.unwrap_or_default())?;
-    
+
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO insurance_policies 
+            "INSERT INTO insurance_policies
              (id, type, provider, policy_name, policy_number, start_date, end_date,
               payment_frequency, one_time_payment, one_time_payment_currency,
-              regular_payment, regular_payment_currency, limits, notes, status, created_at, updated_at) 
+              regular_payment, regular_payment_currency, limits, notes, status, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?16)",
             rusqlite::params![
                 id, data.policy_type, data.provider, data.policy_name, data.policy_number,
@@ -69,12 +77,12 @@ pub async fn create_insurance(db: State<'_, Database>, data: InsertInsurancePoli
                 limits_json, data.notes, data.status.unwrap_or_else(|| "active".to_string()), now
             ],
         )?;
-        
+
         conn.query_row(
             "SELECT id, type, provider, policy_name, policy_number, start_date, end_date,
                     payment_frequency, one_time_payment, one_time_payment_currency,
                     regular_payment, regular_payment_currency, limits, notes, status,
-                    created_at, updated_at 
+                    created_at, updated_at
              FROM insurance_policies WHERE id = ?1",
             [&id],
             |row| {
@@ -111,11 +119,11 @@ pub async fn update_insurance(
     data: InsertInsurancePolicy,
 ) -> Result<InsurancePolicy> {
     let now = chrono::Utc::now().timestamp();
-    let limits_json = data.limits.map(|l| serde_json::to_string(&l).ok()).flatten();
-    
+    let limits_json = data.limits.and_then(|l| serde_json::to_string(&l).ok());
+
     db.with_conn(|conn| {
         conn.execute(
-            "UPDATE insurance_policies SET 
+            "UPDATE insurance_policies SET
              type = ?1, provider = ?2, policy_name = ?3, policy_number = ?4,
              start_date = ?5, end_date = ?6, payment_frequency = ?7,
              one_time_payment = ?8, one_time_payment_currency = ?9,
@@ -124,19 +132,30 @@ pub async fn update_insurance(
              limits = COALESCE(?12, limits), notes = ?13, status = COALESCE(?14, status),
              updated_at = ?15 WHERE id = ?16",
             rusqlite::params![
-                data.policy_type, data.provider, data.policy_name, data.policy_number,
-                data.start_date, data.end_date, data.payment_frequency,
-                data.one_time_payment, data.one_time_payment_currency,
-                data.regular_payment, data.regular_payment_currency,
-                limits_json, data.notes, data.status, now, id
+                data.policy_type,
+                data.provider,
+                data.policy_name,
+                data.policy_number,
+                data.start_date,
+                data.end_date,
+                data.payment_frequency,
+                data.one_time_payment,
+                data.one_time_payment_currency,
+                data.regular_payment,
+                data.regular_payment_currency,
+                limits_json,
+                data.notes,
+                data.status,
+                now,
+                id
             ],
         )?;
-        
+
         conn.query_row(
             "SELECT id, type, provider, policy_name, policy_number, start_date, end_date,
                     payment_frequency, one_time_payment, one_time_payment_currency,
                     regular_payment, regular_payment_currency, limits, notes, status,
-                    created_at, updated_at 
+                    created_at, updated_at
              FROM insurance_policies WHERE id = ?1",
             [&id],
             |row| {
@@ -161,7 +180,8 @@ pub async fn update_insurance(
                     updated_at: row.get(16)?,
                 })
             },
-        ).map_err(|_| AppError::NotFound("Insurance policy not found".into()))
+        )
+        .map_err(|_| AppError::NotFound("Insurance policy not found".into()))
     })
 }
 
@@ -170,8 +190,14 @@ pub async fn update_insurance(
 pub async fn delete_insurance(db: State<'_, Database>, id: String) -> Result<()> {
     db.with_conn(|conn| {
         // Delete documents first
-        conn.execute("DELETE FROM insurance_documents WHERE insurance_id = ?1", [&id])?;
-        conn.execute("DELETE FROM real_estate_insurances WHERE insurance_id = ?1", [&id])?;
+        conn.execute(
+            "DELETE FROM insurance_documents WHERE insurance_id = ?1",
+            [&id],
+        )?;
+        conn.execute(
+            "DELETE FROM real_estate_insurances WHERE insurance_id = ?1",
+            [&id],
+        )?;
         let changes = conn.execute("DELETE FROM insurance_policies WHERE id = ?1", [&id])?;
         if changes == 0 {
             return Err(AppError::NotFound("Insurance policy not found".into()));
@@ -188,7 +214,7 @@ pub async fn get_insurance(db: State<'_, Database>, id: String) -> Result<Insura
             "SELECT id, type, provider, policy_name, policy_number, start_date, end_date,
                     payment_frequency, one_time_payment, one_time_payment_currency,
                     regular_payment, regular_payment_currency, limits, notes, status,
-                    created_at, updated_at 
+                    created_at, updated_at
              FROM insurance_policies WHERE id = ?1",
             [&id],
             |row| {
@@ -213,7 +239,8 @@ pub async fn get_insurance(db: State<'_, Database>, id: String) -> Result<Insura
                     updated_at: row.get(16)?,
                 })
             },
-        ).map_err(|_| AppError::NotFound("Insurance policy not found".into()))
+        )
+        .map_err(|_| AppError::NotFound("Insurance policy not found".into()))
     })
 }
 
@@ -225,10 +252,10 @@ pub async fn get_insurance_documents(
 ) -> Result<Vec<InsuranceDocument>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at 
+            "SELECT id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at
              FROM insurance_documents WHERE insurance_id = ?1 ORDER BY uploaded_at DESC"
         )?;
-        
+
         let documents = stmt.query_map([&insurance_id], |row| {
             Ok(InsuranceDocument {
                 id: row.get(0)?,
@@ -241,7 +268,7 @@ pub async fn get_insurance_documents(
                 uploaded_at: row.get(7)?,
             })
         })?.filter_map(|r| r.ok()).collect();
-        
+
         Ok(documents)
     })
 }
@@ -257,44 +284,45 @@ pub async fn add_insurance_document(
 ) -> Result<InsuranceDocument> {
     use std::fs;
     use std::path::Path;
-    
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
-    
+
     // Get app data directory for storing documents
-    let app_data_dir = app.path().app_data_dir()
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
         .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
     let documents_dir = app_data_dir.join("insurance_documents").join(&insurance_id);
-    
+
     // Create documents directory if it doesn't exist
     fs::create_dir_all(&documents_dir)
         .map_err(|e| AppError::Internal(format!("Failed to create documents dir: {}", e)))?;
-    
+
     // Get file info
     let source_path = Path::new(&file_path);
-    let file_name = source_path.file_name()
+    let file_name = source_path
+        .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("document");
-    
-    let file_size = fs::metadata(&source_path)
-        .map(|m| m.len() as i64)
-        .ok();
-    
+
+    let file_size = fs::metadata(source_path).map(|m| m.len() as i64).ok();
+
     // Copy file to app data directory
     let dest_path = documents_dir.join(format!("{}_{}", id, file_name));
-    fs::copy(&source_path, &dest_path)
+    fs::copy(source_path, &dest_path)
         .map_err(|e| AppError::Internal(format!("Failed to copy file: {}", e)))?;
-    
+
     let dest_path_str = dest_path.to_string_lossy().to_string();
     let file_type = data.file_type.unwrap_or_else(|| "other".to_string());
-    
+
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO insurance_documents (id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at) 
+            "INSERT INTO insurance_documents (id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             rusqlite::params![id, insurance_id, data.name, data.description, dest_path_str, file_type, file_size, now],
         )?;
-        
+
         Ok(InsuranceDocument {
             id,
             insurance_id,
@@ -312,28 +340,32 @@ pub async fn add_insurance_document(
 #[tauri::command]
 pub async fn delete_insurance_document(db: State<'_, Database>, document_id: String) -> Result<()> {
     use std::fs;
-    
+
     // Get file path before deleting
     let file_path: String = db.with_conn(|conn| {
         conn.query_row(
             "SELECT file_path FROM insurance_documents WHERE id = ?1",
             [&document_id],
             |row| row.get(0),
-        ).map_err(|_| AppError::NotFound("Document not found".into()))
+        )
+        .map_err(|_| AppError::NotFound("Document not found".into()))
     })?;
-    
+
     // Delete from database
     db.with_conn(|conn| {
-        let changes = conn.execute("DELETE FROM insurance_documents WHERE id = ?1", [&document_id])?;
+        let changes = conn.execute(
+            "DELETE FROM insurance_documents WHERE id = ?1",
+            [&document_id],
+        )?;
         if changes == 0 {
             return Err(AppError::NotFound("Document not found".into()));
         }
         Ok(())
     })?;
-    
+
     // Delete file (ignore errors if file doesn't exist)
     let _ = fs::remove_file(&file_path);
-    
+
     Ok(())
 }
 
@@ -345,27 +377,28 @@ pub async fn open_insurance_document(db: State<'_, Database>, document_id: Strin
             "SELECT file_path FROM insurance_documents WHERE id = ?1",
             [&document_id],
             |row| row.get(0),
-        ).map_err(|_| AppError::NotFound("Document not found".into()))
+        )
+        .map_err(|_| AppError::NotFound("Document not found".into()))
     })?;
-    
+
     // Open with system default application
     #[cfg(target_os = "macos")]
     std::process::Command::new("open")
         .arg(&file_path)
         .spawn()
         .map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
-    
+
     #[cfg(target_os = "windows")]
     std::process::Command::new("explorer")
         .arg(&file_path)
         .spawn()
         .map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
-    
+
     #[cfg(target_os = "linux")]
     std::process::Command::new("xdg-open")
         .arg(&file_path)
         .spawn()
         .map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
-    
+
     Ok(())
 }

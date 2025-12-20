@@ -12,10 +12,10 @@ use uuid::Uuid;
 pub async fn get_all_bonds(db: State<'_, Database>) -> Result<Vec<Bond>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, name, isin, coupon_value, currency, interest_rate, maturity_date, created_at, updated_at 
+            "SELECT id, name, isin, coupon_value, currency, interest_rate, maturity_date, created_at, updated_at
              FROM bonds ORDER BY name"
         )?;
-        
+
         let bonds = stmt.query_map([], |row| {
             Ok(Bond {
                 id: row.get(0)?,
@@ -29,7 +29,7 @@ pub async fn get_all_bonds(db: State<'_, Database>) -> Result<Vec<Bond>> {
                 updated_at: row.get(8)?,
             })
         })?.filter_map(|r| r.ok()).collect();
-        
+
         Ok(bonds)
     })
 }
@@ -41,14 +41,14 @@ pub async fn create_bond(db: State<'_, Database>, data: InsertBond) -> Result<Bo
     let now = chrono::Utc::now().timestamp();
     let interest_rate = data.interest_rate.unwrap_or_else(|| "0".to_string());
     let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
-    
+
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO bonds (id, name, isin, coupon_value, currency, interest_rate, maturity_date, created_at, updated_at) 
+            "INSERT INTO bonds (id, name, isin, coupon_value, currency, interest_rate, maturity_date, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)",
             rusqlite::params![id, data.name, data.isin, data.coupon_value, currency, interest_rate, data.maturity_date, now],
         )?;
-        
+
         Ok(Bond {
             id,
             name: data.name,
@@ -67,21 +67,21 @@ pub async fn create_bond(db: State<'_, Database>, data: InsertBond) -> Result<Bo
 #[tauri::command]
 pub async fn update_bond(db: State<'_, Database>, id: String, data: InsertBond) -> Result<Bond> {
     let now = chrono::Utc::now().timestamp();
-    
+
     db.with_conn(|conn| {
         conn.execute(
-            "UPDATE bonds SET name = ?1, isin = ?2, coupon_value = ?3, 
-             currency = COALESCE(?4, currency), interest_rate = COALESCE(?5, interest_rate), 
-             maturity_date = ?6, updated_at = ?7 
+            "UPDATE bonds SET name = ?1, isin = ?2, coupon_value = ?3,
+             currency = COALESCE(?4, currency), interest_rate = COALESCE(?5, interest_rate),
+             maturity_date = ?6, updated_at = ?7
              WHERE id = ?8",
             rusqlite::params![
-                data.name, data.isin, data.coupon_value, data.currency, 
+                data.name, data.isin, data.coupon_value, data.currency,
                 data.interest_rate, data.maturity_date, now, id
             ],
         )?;
-        
+
         conn.query_row(
-            "SELECT id, name, isin, coupon_value, currency, interest_rate, maturity_date, created_at, updated_at 
+            "SELECT id, name, isin, coupon_value, currency, interest_rate, maturity_date, created_at, updated_at
              FROM bonds WHERE id = ?1",
             [&id],
             |row| Ok(Bond {

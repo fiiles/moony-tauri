@@ -64,3 +64,7 @@ yahoo_finance_api = "4.1.0"
 
 # Image processing for photo gallery
 image = "0.25"
+
+# Auto-updater support
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"

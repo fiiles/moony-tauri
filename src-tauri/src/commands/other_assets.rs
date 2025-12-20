@@ -2,7 +2,9 @@
 
 use crate::db::Database;
 use crate::error::{AppError, Result};
-use crate::models::{OtherAsset, InsertOtherAsset, OtherAssetTransaction, InsertOtherAssetTransaction};
+use crate::models::{
+    InsertOtherAsset, InsertOtherAssetTransaction, OtherAsset, OtherAssetTransaction,
+};
 use tauri::State;
 use uuid::Uuid;
 
@@ -12,25 +14,28 @@ pub async fn get_all_other_assets(db: State<'_, Database>) -> Result<Vec<OtherAs
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT id, name, quantity, market_price, currency, average_purchase_price,
-                    yield_type, yield_value, created_at, updated_at 
-             FROM other_assets ORDER BY name"
+                    yield_type, yield_value, created_at, updated_at
+             FROM other_assets ORDER BY name",
         )?;
-        
-        let assets = stmt.query_map([], |row| {
-            Ok(OtherAsset {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                quantity: row.get(2)?,
-                market_price: row.get(3)?,
-                currency: row.get(4)?,
-                average_purchase_price: row.get(5)?,
-                yield_type: row.get(6)?,
-                yield_value: row.get(7)?,
-                created_at: row.get(8)?,
-                updated_at: row.get(9)?,
-            })
-        })?.filter_map(|r| r.ok()).collect();
-        
+
+        let assets = stmt
+            .query_map([], |row| {
+                Ok(OtherAsset {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    quantity: row.get(2)?,
+                    market_price: row.get(3)?,
+                    currency: row.get(4)?,
+                    average_purchase_price: row.get(5)?,
+                    yield_type: row.get(6)?,
+                    yield_value: row.get(7)?,
+                    created_at: row.get(8)?,
+                    updated_at: row.get(9)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
         Ok(assets)
     })
 }
@@ -44,11 +49,11 @@ pub async fn create_other_asset(
 ) -> Result<OtherAsset> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
-    
+
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO other_assets 
-             (id, name, quantity, market_price, currency, average_purchase_price, yield_type, yield_value, created_at, updated_at) 
+            "INSERT INTO other_assets
+             (id, name, quantity, market_price, currency, average_purchase_price, yield_type, yield_value, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
             rusqlite::params![
                 id,
@@ -62,22 +67,22 @@ pub async fn create_other_asset(
                 now,
             ],
         )?;
-        
+
         if let Some(tx) = initial_transaction {
             let tx_id = Uuid::new_v4().to_string();
             conn.execute(
-                "INSERT INTO other_asset_transactions 
-                 (id, asset_id, type, quantity, price_per_unit, currency, transaction_date, created_at) 
+                "INSERT INTO other_asset_transactions
+                 (id, asset_id, type, quantity, price_per_unit, currency, transaction_date, created_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 rusqlite::params![
                     tx_id, id, tx.tx_type, tx.quantity, tx.price_per_unit, tx.currency, tx.transaction_date, now
                 ],
             )?;
         }
-        
+
         conn.query_row(
             "SELECT id, name, quantity, market_price, currency, average_purchase_price,
-                    yield_type, yield_value, created_at, updated_at 
+                    yield_type, yield_value, created_at, updated_at
              FROM other_assets WHERE id = ?1",
             [&id],
             |row| Ok(OtherAsset {
@@ -104,23 +109,23 @@ pub async fn update_other_asset(
     data: InsertOtherAsset,
 ) -> Result<OtherAsset> {
     let now = chrono::Utc::now().timestamp();
-    
+
     db.with_conn(|conn| {
         conn.execute(
             "UPDATE other_assets SET name = ?1,
              quantity = COALESCE(?2, quantity), market_price = COALESCE(?3, market_price),
              currency = COALESCE(?4, currency), average_purchase_price = COALESCE(?5, average_purchase_price),
-             yield_type = COALESCE(?6, yield_type), yield_value = ?7, updated_at = ?8 
+             yield_type = COALESCE(?6, yield_type), yield_value = ?7, updated_at = ?8
              WHERE id = ?9",
             rusqlite::params![
                 data.name, data.quantity, data.market_price, data.currency,
                 data.average_purchase_price, data.yield_type, data.yield_value, now, id
             ],
         )?;
-        
+
         conn.query_row(
             "SELECT id, name, quantity, market_price, currency, average_purchase_price,
-                    yield_type, yield_value, created_at, updated_at 
+                    yield_type, yield_value, created_at, updated_at
              FROM other_assets WHERE id = ?1",
             [&id],
             |row| Ok(OtherAsset {
@@ -159,10 +164,10 @@ pub async fn get_other_asset_transactions(
 ) -> Result<Vec<OtherAssetTransaction>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, asset_id, type, quantity, price_per_unit, currency, transaction_date, created_at 
+            "SELECT id, asset_id, type, quantity, price_per_unit, currency, transaction_date, created_at
              FROM other_asset_transactions WHERE asset_id = ?1 ORDER BY transaction_date DESC"
         )?;
-        
+
         let txs = stmt.query_map([&asset_id], |row| {
             Ok(OtherAssetTransaction {
                 id: row.get(0)?,
@@ -175,7 +180,7 @@ pub async fn get_other_asset_transactions(
                 created_at: row.get(7)?,
             })
         })?.filter_map(|r| r.ok()).collect();
-        
+
         Ok(txs)
     })
 }
@@ -189,22 +194,28 @@ pub async fn create_other_asset_transaction(
 ) -> Result<OtherAssetTransaction> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
-    
+
     db.with_conn(|conn| {
         // 1. Insert Transaction
         conn.execute(
-            "INSERT INTO other_asset_transactions 
-             (id, asset_id, type, quantity, price_per_unit, currency, transaction_date, created_at) 
+            "INSERT INTO other_asset_transactions
+             (id, asset_id, type, quantity, price_per_unit, currency, transaction_date, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             rusqlite::params![
-                id, asset_id, data.tx_type, data.quantity, data.price_per_unit,
-                data.currency, data.transaction_date, now
+                id,
+                asset_id,
+                data.tx_type,
+                data.quantity,
+                data.price_per_unit,
+                data.currency,
+                data.transaction_date,
+                now
             ],
         )?;
 
         // 2. Recalculate Asset Totals
-         recalculate_asset_totals(conn, &asset_id)?;
-        
+        recalculate_asset_totals(conn, &asset_id)?;
+
         Ok(OtherAssetTransaction {
             id,
             asset_id,
@@ -230,7 +241,10 @@ pub async fn delete_other_asset_transaction(db: State<'_, Database>, tx_id: Stri
         )?;
 
         // 2. Delete Transaction
-        conn.execute("DELETE FROM other_asset_transactions WHERE id = ?1", [&tx_id])?;
+        conn.execute(
+            "DELETE FROM other_asset_transactions WHERE id = ?1",
+            [&tx_id],
+        )?;
 
         // 3. Recalculate Asset Totals
         recalculate_asset_totals(conn, &asset_id)?;
@@ -242,9 +256,9 @@ pub async fn delete_other_asset_transaction(db: State<'_, Database>, tx_id: Stri
 // Helper function to recalculate and update asset totals
 fn recalculate_asset_totals(conn: &rusqlite::Connection, asset_id: &str) -> Result<()> {
     let mut stmt = conn.prepare(
-        "SELECT type, quantity, price_per_unit FROM other_asset_transactions WHERE asset_id = ?1"
+        "SELECT type, quantity, price_per_unit FROM other_asset_transactions WHERE asset_id = ?1",
     )?;
-    
+
     let rows = stmt.query_map([asset_id], |row| {
         Ok((
             row.get::<_, String>(0)?,

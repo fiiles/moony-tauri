@@ -13,6 +13,8 @@
     "fs:allow-temp-write",
     "fs:allow-temp-write-recursive",
     "fs:allow-app-read-recursive",
-    "fs:allow-app-write-recursive"
+    "fs:allow-app-write-recursive",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

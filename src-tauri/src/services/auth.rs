@@ -106,7 +106,7 @@ pub fn setup_account(
 
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, exclude_personal_real_estate) 
+            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, exclude_personal_real_estate)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             rusqlite::params![
                 data.name,
@@ -279,7 +279,7 @@ pub fn confirm_setup(
 
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, exclude_personal_real_estate) 
+            "INSERT INTO user_profile (name, surname, email, menu_preferences, currency, exclude_personal_real_estate)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             rusqlite::params![
                 data.name,
@@ -424,8 +424,8 @@ pub fn logout(db: &Database) {
 pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, name, surname, email, menu_preferences, currency, 
-                    exclude_personal_real_estate, created_at 
+            "SELECT id, name, surname, email, menu_preferences, currency,
+                    exclude_personal_real_estate, created_at
              FROM user_profile LIMIT 1",
         )?;
 

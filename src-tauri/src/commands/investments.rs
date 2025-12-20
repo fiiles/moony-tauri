@@ -1,14 +1,13 @@
 //! Investment commands
 
+use crate::commands::portfolio;
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
-    StockInvestment, InsertStockInvestment, EnrichedStockInvestment, 
-    InvestmentTransaction, InsertInvestmentTransaction,
-    StockPriceOverride, DividendOverride,
+    DividendOverride, EnrichedStockInvestment, InsertInvestmentTransaction, InsertStockInvestment,
+    InvestmentTransaction, StockInvestment, StockPriceOverride,
 };
 use crate::services::currency::convert_to_czk;
-use crate::commands::portfolio;
 use tauri::State;
 use uuid::Uuid;
 
@@ -17,19 +16,22 @@ use uuid::Uuid;
 pub async fn get_all_investments(db: State<'_, Database>) -> Result<Vec<EnrichedStockInvestment>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, ticker, company_name, quantity, average_price FROM stock_investments"
+            "SELECT id, ticker, company_name, quantity, average_price FROM stock_investments",
         )?;
-        
-        let investments: Vec<StockInvestment> = stmt.query_map([], |row| {
-            Ok(StockInvestment {
-                id: row.get(0)?,
-                ticker: row.get(1)?,
-                company_name: row.get(2)?,
-                quantity: row.get(3)?,
-                average_price: row.get(4)?,
-            })
-        })?.filter_map(|r| r.ok()).collect();
-        
+
+        let investments: Vec<StockInvestment> = stmt
+            .query_map([], |row| {
+                Ok(StockInvestment {
+                    id: row.get(0)?,
+                    ticker: row.get(1)?,
+                    company_name: row.get(2)?,
+                    quantity: row.get(3)?,
+                    average_price: row.get(4)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
         // Enrich with price data
         let mut enriched = Vec::new();
         for inv in investments {
@@ -39,51 +41,57 @@ pub async fn get_all_investments(db: State<'_, Database>) -> Result<Vec<Enriched
                 [&inv.ticker],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             ).ok();
-            
+
             // Get global price
             let global_price: Option<(String, String, i64)> = conn.query_row(
                 "SELECT original_price, currency, fetched_at FROM stock_prices WHERE ticker = ?1",
                 [&inv.ticker],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             ).ok();
-            
+
             // Determine active price
             let (current_price, fetched_at, is_manual) = match (&override_price, &global_price) {
-                (Some((op, oc, ou)), Some((_, _, gu))) if *ou > *gu => {
-                    (convert_to_czk(op.parse().unwrap_or(0.0), oc), Some(*ou), true)
-                }
-                (Some((op, oc, ou)), None) => {
-                    (convert_to_czk(op.parse().unwrap_or(0.0), oc), Some(*ou), true)
-                }
-                (_, Some((gp, gc, gu))) => {
-                    (convert_to_czk(gp.parse().unwrap_or(0.0), gc), Some(*gu), false)
-                }
+                (Some((op, oc, ou)), Some((_, _, gu))) if *ou > *gu => (
+                    convert_to_czk(op.parse().unwrap_or(0.0), oc),
+                    Some(*ou),
+                    true,
+                ),
+                (Some((op, oc, ou)), None) => (
+                    convert_to_czk(op.parse().unwrap_or(0.0), oc),
+                    Some(*ou),
+                    true,
+                ),
+                (_, Some((gp, gc, gu))) => (
+                    convert_to_czk(gp.parse().unwrap_or(0.0), gc),
+                    Some(*gu),
+                    false,
+                ),
                 _ => (0.0, None, false),
             };
-            
+
             // Get dividend data
             let user_dividend: Option<(String, String)> = conn.query_row(
                 "SELECT yearly_dividend_sum, currency FROM dividend_overrides WHERE ticker = ?1",
                 [&inv.ticker],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             ).ok();
-            
-            let global_dividend: Option<(String, String)> = conn.query_row(
-                "SELECT yearly_dividend_sum, currency FROM dividend_data WHERE ticker = ?1",
-                [&inv.ticker],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            ).ok();
-            
+
+            let global_dividend: Option<(String, String)> = conn
+                .query_row(
+                    "SELECT yearly_dividend_sum, currency FROM dividend_data WHERE ticker = ?1",
+                    [&inv.ticker],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )
+                .ok();
+
             let (dividend_yield, is_manual_dividend) = match (&user_dividend, &global_dividend) {
-                (Some((sum, curr)), _) => {
-                    (convert_to_czk(sum.parse().unwrap_or(0.0), curr), true)
-                }
+                (Some((sum, curr)), _) => (convert_to_czk(sum.parse().unwrap_or(0.0), curr), true),
                 (None, Some((sum, curr))) => {
                     (convert_to_czk(sum.parse().unwrap_or(0.0), curr), false)
                 }
                 _ => (0.0, false),
             };
-            
+
             enriched.push(EnrichedStockInvestment {
                 id: inv.id,
                 ticker: inv.ticker,
@@ -98,7 +106,7 @@ pub async fn get_all_investments(db: State<'_, Database>) -> Result<Vec<Enriched
                 is_manual_dividend,
             });
         }
-        
+
         Ok(enriched)
     })
 }
@@ -111,7 +119,7 @@ pub async fn create_investment(
     initial_transaction: Option<InsertInvestmentTransaction>,
 ) -> Result<StockInvestment> {
     let ticker = data.ticker.to_uppercase();
-    
+
     db.with_conn(|conn| {
         // Check if investment already exists
         let existing: Option<String> = conn.query_row(
@@ -119,30 +127,30 @@ pub async fn create_investment(
             [&ticker],
             |row| row.get(0),
         ).ok();
-        
+
         let investment_id = if let Some(id) = existing {
             id
         } else {
             let id = Uuid::new_v4().to_string();
             let avg_price = data.average_price.clone().unwrap_or_else(|| "0".to_string());
             let qty = data.quantity.clone().unwrap_or_else(|| "0".to_string());
-            
+
             conn.execute(
-                "INSERT INTO stock_investments (id, ticker, company_name, quantity, average_price) 
+                "INSERT INTO stock_investments (id, ticker, company_name, quantity, average_price)
                  VALUES (?1, ?2, ?3, ?4, ?5)",
                 rusqlite::params![id, ticker, data.company_name, qty, avg_price],
             )?;
             id
         };
-        
+
         // Create initial transaction if provided
         if let Some(tx) = initial_transaction {
             let tx_id = Uuid::new_v4().to_string();
             let now = chrono::Utc::now().timestamp();
-            
+
             conn.execute(
-                "INSERT INTO investment_transactions 
-                 (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at) 
+                "INSERT INTO investment_transactions
+                 (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 rusqlite::params![
                     tx_id,
@@ -157,11 +165,11 @@ pub async fn create_investment(
                     now,
                 ],
             )?;
-            
+
             // Recalculate quantity and average price from the transaction
             recalculate_investment(conn, &investment_id)?;
         }
-        
+
         // Return the investment
         let inv = conn.query_row(
             "SELECT id, ticker, company_name, quantity, average_price FROM stock_investments WHERE id = ?1",
@@ -174,7 +182,7 @@ pub async fn create_investment(
                 average_price: row.get(4)?,
             }),
         )?;
-        
+
         Ok(inv)
     })
 }
@@ -199,27 +207,30 @@ pub async fn get_investment_transactions(
 ) -> Result<Vec<InvestmentTransaction>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, investment_id, type, ticker, company_name, quantity, price_per_unit, 
-                    currency, transaction_date, created_at 
-             FROM investment_transactions WHERE investment_id = ?1 
-             ORDER BY transaction_date DESC"
+            "SELECT id, investment_id, type, ticker, company_name, quantity, price_per_unit,
+                    currency, transaction_date, created_at
+             FROM investment_transactions WHERE investment_id = ?1
+             ORDER BY transaction_date DESC",
         )?;
-        
-        let txs = stmt.query_map([&investment_id], |row| {
-            Ok(InvestmentTransaction {
-                id: row.get(0)?,
-                investment_id: row.get(1)?,
-                tx_type: row.get(2)?,
-                ticker: row.get(3)?,
-                company_name: row.get(4)?,
-                quantity: row.get(5)?,
-                price_per_unit: row.get(6)?,
-                currency: row.get(7)?,
-                transaction_date: row.get(8)?,
-                created_at: row.get(9)?,
-            })
-        })?.filter_map(|r| r.ok()).collect();
-        
+
+        let txs = stmt
+            .query_map([&investment_id], |row| {
+                Ok(InvestmentTransaction {
+                    id: row.get(0)?,
+                    investment_id: row.get(1)?,
+                    tx_type: row.get(2)?,
+                    ticker: row.get(3)?,
+                    company_name: row.get(4)?,
+                    quantity: row.get(5)?,
+                    price_per_unit: row.get(6)?,
+                    currency: row.get(7)?,
+                    transaction_date: row.get(8)?,
+                    created_at: row.get(9)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
         Ok(txs)
     })
 }
@@ -233,11 +244,11 @@ pub async fn create_investment_transaction(
 ) -> Result<InvestmentTransaction> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
-    
+
     let result = db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO investment_transactions 
-             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at) 
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             rusqlite::params![
                 id,
@@ -252,9 +263,9 @@ pub async fn create_investment_transaction(
                 now,
             ],
         )?;
-        
+
         recalculate_investment(conn, &investment_id)?;
-        
+
         Ok(InvestmentTransaction {
             id,
             investment_id,
@@ -268,10 +279,10 @@ pub async fn create_investment_transaction(
             created_at: now,
         })
     })?;
-    
+
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
-    
+
     Ok(result)
 }
 
@@ -285,30 +296,36 @@ pub async fn delete_investment_transaction(db: State<'_, Database>, tx_id: Strin
             [&tx_id],
             |row| row.get(0),
         )?;
-        
-        conn.execute("DELETE FROM investment_transactions WHERE id = ?1", [&tx_id])?;
-        
+
+        conn.execute(
+            "DELETE FROM investment_transactions WHERE id = ?1",
+            [&tx_id],
+        )?;
+
         // Check if any transactions remain
         let tx_count: i64 = conn.query_row(
             "SELECT COUNT(*) FROM investment_transactions WHERE investment_id = ?1",
             [&investment_id],
             |row| row.get(0),
         )?;
-        
+
         if tx_count == 0 {
             // No transactions left - delete the investment entirely
-            conn.execute("DELETE FROM stock_investments WHERE id = ?1", [&investment_id])?;
+            conn.execute(
+                "DELETE FROM stock_investments WHERE id = ?1",
+                [&investment_id],
+            )?;
         } else {
             // Recalculate investment metrics
             recalculate_investment(conn, &investment_id)?;
         }
-        
+
         Ok(())
     })?;
-    
+
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
-    
+
     Ok(())
 }
 
@@ -326,9 +343,9 @@ pub async fn update_investment_transaction(
             [&tx_id],
             |row| row.get(0),
         )?;
-        
+
         conn.execute(
-            "UPDATE investment_transactions 
+            "UPDATE investment_transactions
              SET type = ?2, quantity = ?3, price_per_unit = ?4, currency = ?5, transaction_date = ?6
              WHERE id = ?1",
             rusqlite::params![
@@ -340,35 +357,37 @@ pub async fn update_investment_transaction(
                 data.transaction_date,
             ],
         )?;
-        
+
         recalculate_investment(conn, &investment_id)?;
-        
+
         // Fetch updated transaction
         let tx = conn.query_row(
-            "SELECT id, investment_id, type, ticker, company_name, quantity, price_per_unit, 
-                    currency, transaction_date, created_at 
+            "SELECT id, investment_id, type, ticker, company_name, quantity, price_per_unit,
+                    currency, transaction_date, created_at
              FROM investment_transactions WHERE id = ?1",
             [&tx_id],
-            |row| Ok(InvestmentTransaction {
-                id: row.get(0)?,
-                investment_id: row.get(1)?,
-                tx_type: row.get(2)?,
-                ticker: row.get(3)?,
-                company_name: row.get(4)?,
-                quantity: row.get(5)?,
-                price_per_unit: row.get(6)?,
-                currency: row.get(7)?,
-                transaction_date: row.get(8)?,
-                created_at: row.get(9)?,
-            }),
+            |row| {
+                Ok(InvestmentTransaction {
+                    id: row.get(0)?,
+                    investment_id: row.get(1)?,
+                    tx_type: row.get(2)?,
+                    ticker: row.get(3)?,
+                    company_name: row.get(4)?,
+                    quantity: row.get(5)?,
+                    price_per_unit: row.get(6)?,
+                    currency: row.get(7)?,
+                    transaction_date: row.get(8)?,
+                    created_at: row.get(9)?,
+                })
+            },
         )?;
-        
+
         Ok(tx)
     })?;
-    
+
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
-    
+
     Ok(result)
 }
 
@@ -382,7 +401,7 @@ pub async fn import_investment_transactions(
     let mut success_count = 0;
     let mut errors: Vec<String> = Vec::new();
     let mut imported: Vec<String> = Vec::new();
-    
+
     db.with_conn(|conn| {
         for (index, tx) in transactions.iter().enumerate() {
             let result = process_import_transaction(conn, tx, &default_currency);
@@ -390,21 +409,21 @@ pub async fn import_investment_transactions(
                 Ok(description) => {
                     success_count += 1;
                     imported.push(format!("Row {}: {}", index + 1, description));
-                },
+                }
                 Err(e) => errors.push(format!("Row {}: {}", index + 1, e)),
             }
         }
-        
+
         Ok(serde_json::json!({
             "success": success_count,
             "errors": errors,
             "imported": imported
         }))
     })?;
-    
+
     // Update portfolio snapshot after all imports
     portfolio::update_todays_snapshot(&db).await.ok();
-    
+
     // Return result structure
     Ok(serde_json::json!({
         "success": success_count,
@@ -419,105 +438,162 @@ fn process_import_transaction(
     default_currency: &str,
 ) -> std::result::Result<String, String> {
     // Extract fields from the transaction object
-    let ticker = tx.get("Ticker").or_else(|| tx.get("ticker"))
+    let ticker = tx
+        .get("Ticker")
+        .or_else(|| tx.get("ticker"))
         .and_then(|v| v.as_str())
         .ok_or("Missing ticker")?
         .to_uppercase();
-    
-    let tx_type = tx.get("Type").or_else(|| tx.get("type"))
+
+    let tx_type = tx
+        .get("Type")
+        .or_else(|| tx.get("type"))
         .and_then(|v| v.as_str())
         .unwrap_or("buy")
         .to_lowercase();
-    
+
     // Validate transaction type
     if tx_type != "buy" && tx_type != "sell" {
-        return Err(format!("{}: Invalid type '{}' (must be 'buy' or 'sell')", ticker, tx_type));
+        return Err(format!(
+            "{}: Invalid type '{}' (must be 'buy' or 'sell')",
+            ticker, tx_type
+        ));
     }
-    
-    let raw_quantity = tx.get("Quantity").or_else(|| tx.get("quantity"))
-        .and_then(|v| v.as_str().or_else(|| v.as_f64().map(|n| Box::leak(n.to_string().into_boxed_str()) as &str)))
+
+    let raw_quantity = tx
+        .get("Quantity")
+        .or_else(|| tx.get("quantity"))
+        .and_then(|v| {
+            v.as_str().or_else(|| {
+                v.as_f64()
+                    .map(|n| Box::leak(n.to_string().into_boxed_str()) as &str)
+            })
+        })
         .ok_or(format!("{}: Missing quantity", ticker))?;
-    
+
     // Sanitize quantity (take first non-whitespace part, replace comma with dot)
-    let quantity = raw_quantity.trim().split_whitespace().next().unwrap_or("0").replace(',', ".");
-    
+    let quantity = raw_quantity
+        .split_whitespace()
+        .next()
+        .unwrap_or("0")
+        .replace(',', ".");
+
     // Validate quantity is a positive number
-    let qty_value: f64 = quantity.parse().map_err(|_| format!("{}: Invalid quantity '{}'", ticker, raw_quantity))?;
+    let qty_value: f64 = quantity
+        .parse()
+        .map_err(|_| format!("{}: Invalid quantity '{}'", ticker, raw_quantity))?;
     if qty_value <= 0.0 {
-        return Err(format!("{}: Quantity must be positive (got {})", ticker, raw_quantity));
+        return Err(format!(
+            "{}: Quantity must be positive (got {})",
+            ticker, raw_quantity
+        ));
     }
-    
-    let raw_price = tx.get("Price").or_else(|| tx.get("price"))
-        .and_then(|v| v.as_str().or_else(|| v.as_f64().map(|n| Box::leak(n.to_string().into_boxed_str()) as &str)))
+
+    let raw_price = tx
+        .get("Price")
+        .or_else(|| tx.get("price"))
+        .and_then(|v| {
+            v.as_str().or_else(|| {
+                v.as_f64()
+                    .map(|n| Box::leak(n.to_string().into_boxed_str()) as &str)
+            })
+        })
         .ok_or(format!("{}: Missing price", ticker))?;
-    
+
     // Sanitize price (take first non-whitespace part, replace comma with dot)
-    let price = raw_price.trim().split_whitespace().next().unwrap_or("0").replace(',', ".");
-    
+    let price = raw_price
+        .split_whitespace()
+        .next()
+        .unwrap_or("0")
+        .replace(',', ".");
+
     // Validate price is a positive number
-    let price_value: f64 = price.parse().map_err(|_| format!("{}: Invalid price '{}'", ticker, raw_price))?;
+    let price_value: f64 = price
+        .parse()
+        .map_err(|_| format!("{}: Invalid price '{}'", ticker, raw_price))?;
     if price_value <= 0.0 {
-        return Err(format!("{}: Price must be positive (got {})", ticker, raw_price));
+        return Err(format!(
+            "{}: Price must be positive (got {})",
+            ticker, raw_price
+        ));
     }
-    
-    let raw_currency = tx.get("Currency").or_else(|| tx.get("currency"))
+
+    let raw_currency = tx
+        .get("Currency")
+        .or_else(|| tx.get("currency"))
         .and_then(|v| v.as_str())
         .unwrap_or(default_currency);
-    let mut currency = raw_currency.trim().split_whitespace().next().unwrap_or(default_currency);
-    
+    let mut currency = raw_currency
+        .split_whitespace()
+        .next()
+        .unwrap_or(default_currency);
+
     // If currency is numeric (e.g. "45"), fallback to default
     if currency.chars().all(char::is_numeric) {
         currency = default_currency;
     }
-    
-    let date_str = tx.get("Date").or_else(|| tx.get("date"))
+
+    let date_str = tx
+        .get("Date")
+        .or_else(|| tx.get("date"))
         .and_then(|v| v.as_str())
         .unwrap_or("");
-    
+
     // Parse date or use current timestamp
     let transaction_date = if !date_str.is_empty() {
         chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
             .or_else(|_| chrono::NaiveDate::parse_from_str(date_str, "%d.%m.%Y"))
             .or_else(|_| chrono::NaiveDate::parse_from_str(date_str, "%d/%m/%Y"))
             .map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp())
-            .map_err(|_| format!("{}: Invalid date format '{}' (use YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY)", ticker, date_str))?
+            .map_err(|_| {
+                format!(
+                    "{}: Invalid date format '{}' (use YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY)",
+                    ticker, date_str
+                )
+            })?
     } else {
         chrono::Utc::now().timestamp()
     };
-    
+
     // Check if investment exists
-    let existing: Option<String> = conn.query_row(
-        "SELECT id FROM stock_investments WHERE ticker = ?1",
-        [&ticker],
-        |row| row.get(0),
-    ).ok();
-    
+    let existing: Option<String> = conn
+        .query_row(
+            "SELECT id FROM stock_investments WHERE ticker = ?1",
+            [&ticker],
+            |row| row.get(0),
+        )
+        .ok();
+
     // For sell transactions, require existing investment
     if tx_type == "sell" && existing.is_none() {
-        return Err(format!("{}: Cannot sell - no existing position found", ticker));
+        return Err(format!(
+            "{}: Cannot sell - no existing position found",
+            ticker
+        ));
     }
-    
+
     let investment_id = match existing {
         Some(id) => id,
         None => {
             // Only create new investment for buy transactions
             let id = Uuid::new_v4().to_string();
             conn.execute(
-                "INSERT INTO stock_investments (id, ticker, company_name, quantity, average_price) 
+                "INSERT INTO stock_investments (id, ticker, company_name, quantity, average_price)
                  VALUES (?1, ?2, ?3, ?4, ?5)",
                 rusqlite::params![id, ticker, ticker.clone(), "0", "0"],
-            ).map_err(|e| format!("{}: Failed to create investment - {}", ticker, e))?;
+            )
+            .map_err(|e| format!("{}: Failed to create investment - {}", ticker, e))?;
             id
         }
     };
-    
+
     // Create transaction
     let tx_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
-    
+
     conn.execute(
-        "INSERT INTO investment_transactions 
-         (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at) 
+        "INSERT INTO investment_transactions
+         (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         rusqlite::params![
             tx_id,
@@ -532,10 +608,17 @@ fn process_import_transaction(
             now,
         ],
     ).map_err(|e| format!("{}: Failed to create transaction - {}", ticker, e))?;
-    
-    recalculate_investment(conn, &investment_id).map_err(|e| format!("{}: Failed to recalculate investment - {}", ticker, e))?;
-    
-    Ok(format!("{} {} {} @ {}", tx_type.to_uppercase(), quantity, ticker, price))
+
+    recalculate_investment(conn, &investment_id)
+        .map_err(|e| format!("{}: Failed to recalculate investment - {}", ticker, e))?;
+
+    Ok(format!(
+        "{} {} {} @ {}",
+        tx_type.to_uppercase(),
+        quantity,
+        ticker,
+        price
+    ))
 }
 
 /// Set manual price override
@@ -554,15 +637,15 @@ pub async fn set_manual_price(
     let ticker_clone = ticker.clone();
     let price_clone = price.clone();
     let currency_clone = currency.clone();
-    
+
     db.with_conn(move |conn| {
         conn.execute(
-            "INSERT INTO stock_price_overrides (id, ticker, price, currency, updated_at) 
+            "INSERT INTO stock_price_overrides (id, ticker, price, currency, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5)
              ON CONFLICT(ticker) DO UPDATE SET price = ?3, currency = ?4, updated_at = ?5",
             rusqlite::params![id, ticker, price, currency, now],
         )?;
-        
+
         Ok(StockPriceOverride {
             id,
             ticker,
@@ -571,10 +654,10 @@ pub async fn set_manual_price(
             updated_at: now,
         })
     })?;
-    
+
     // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db).await?;
-    
+
     Ok(StockPriceOverride {
         id: id_clone,
         ticker: ticker_clone,
@@ -588,7 +671,10 @@ pub async fn set_manual_price(
 #[tauri::command]
 pub async fn delete_manual_price(db: State<'_, Database>, ticker: String) -> Result<()> {
     db.with_conn(|conn| {
-        conn.execute("DELETE FROM stock_price_overrides WHERE ticker = ?1", [&ticker.to_uppercase()])?;
+        conn.execute(
+            "DELETE FROM stock_price_overrides WHERE ticker = ?1",
+            [&ticker.to_uppercase()],
+        )?;
         Ok(())
     })
 }
@@ -604,15 +690,15 @@ pub async fn set_manual_dividend(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let ticker = ticker.to_uppercase();
-    
+
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO dividend_overrides (id, ticker, yearly_dividend_sum, currency, updated_at) 
+            "INSERT INTO dividend_overrides (id, ticker, yearly_dividend_sum, currency, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5)
              ON CONFLICT(ticker) DO UPDATE SET yearly_dividend_sum = ?3, currency = ?4, updated_at = ?5",
             rusqlite::params![id, ticker, amount, currency, now],
         )?;
-        
+
         Ok(DividendOverride {
             id,
             ticker,
@@ -627,7 +713,10 @@ pub async fn set_manual_dividend(
 #[tauri::command]
 pub async fn delete_manual_dividend(db: State<'_, Database>, ticker: String) -> Result<()> {
     db.with_conn(|conn| {
-        conn.execute("DELETE FROM dividend_overrides WHERE ticker = ?1", [&ticker.to_uppercase()])?;
+        conn.execute(
+            "DELETE FROM dividend_overrides WHERE ticker = ?1",
+            [&ticker.to_uppercase()],
+        )?;
         Ok(())
     })
 }
@@ -638,27 +727,40 @@ fn recalculate_investment(conn: &rusqlite::Connection, investment_id: &str) -> R
     let mut stmt = conn.prepare(
         "SELECT type, quantity, price_per_unit, currency FROM investment_transactions WHERE investment_id = ?1"
     )?;
-    
-    let txs: Vec<(String, f64, f64, String)> = stmt.query_map([investment_id], |row| {
-         let type_: String = row.get(0)?;
-         let qty_str: String = row.get(1)?;
-         let price_str: String = row.get(2)?;
-         let currency: String = row.get(3)?;
-         
-         let qty = qty_str.trim().split_whitespace().next().unwrap_or("0").parse::<f64>().unwrap_or(0.0);
-         let price = price_str.trim().split_whitespace().next().unwrap_or("0").parse::<f64>().unwrap_or(0.0);
-         
-         Ok((type_, qty, price, currency))
-    })?.filter_map(|r| r.ok()).collect();
-    
+
+    let txs: Vec<(String, f64, f64, String)> = stmt
+        .query_map([investment_id], |row| {
+            let type_: String = row.get(0)?;
+            let qty_str: String = row.get(1)?;
+            let price_str: String = row.get(2)?;
+            let currency: String = row.get(3)?;
+
+            let qty = qty_str
+                .split_whitespace()
+                .next()
+                .unwrap_or("0")
+                .parse::<f64>()
+                .unwrap_or(0.0);
+            let price = price_str
+                .split_whitespace()
+                .next()
+                .unwrap_or("0")
+                .parse::<f64>()
+                .unwrap_or(0.0);
+
+            Ok((type_, qty, price, currency))
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+
     let mut total_quantity = 0.0;
     let mut weighted_buy_sum = 0.0;
     let mut weighted_buy_qty = 0.0;
-    
+
     for (tx_type, qty, price, currency) in txs {
         // Convert price to CZK for uniform calculation
         let price_czk = convert_to_czk(price, &currency);
-        
+
         if tx_type == "buy" {
             total_quantity += qty;
             weighted_buy_sum += qty * price_czk;
@@ -667,17 +769,21 @@ fn recalculate_investment(conn: &rusqlite::Connection, investment_id: &str) -> R
             total_quantity -= qty;
         }
     }
-    
+
     let average_price = if weighted_buy_qty > 0.0 {
         weighted_buy_sum / weighted_buy_qty
     } else {
         0.0
     };
-    
+
     conn.execute(
         "UPDATE stock_investments SET quantity = ?1, average_price = ?2 WHERE id = ?3",
-        rusqlite::params![total_quantity.to_string(), average_price.to_string(), investment_id],
+        rusqlite::params![
+            total_quantity.to_string(),
+            average_price.to_string(),
+            investment_id
+        ],
     )?;
-    
+
     Ok(())
 }
