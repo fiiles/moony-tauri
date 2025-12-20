@@ -48,5 +48,41 @@
         "noItems": "No items in this category"
     },
     "perMonth": "/month",
-    "perYear": "/year"
+    "perYear": "/year",
+    "projection": {
+        "title": "Portfolio Projection",
+        "subtitle": "See how your portfolio might grow over time",
+        "horizon": "Projection Horizon",
+        "year": "year",
+        "years": "years",
+        "month": "month",
+        "months": "months",
+        "currentNetWorth": "Current Net Worth",
+        "projectedNetWorth": "Projected Net Worth",
+        "totalContributions": "Total Contributions",
+        "totalGrowth": "Total Growth",
+        "netWorthTrend": "Net Worth Projection",
+        "assetsVsLiabilities": "Assets vs Liabilities",
+        "assetBreakdown": "Asset Breakdown",
+        "assets": "Assets",
+        "liabilities": "Liabilities",
+        "netWorth": "Net Worth",
+        "categories": {
+            "savings": "Savings",
+            "investments": "Investments",
+            "crypto": "Crypto",
+            "bonds": "Bonds",
+            "realEstate": "Real Estate",
+            "otherAssets": "Other Assets"
+        },
+        "settings": {
+            "title": "Projection Parameters",
+            "editTitle": "Edit Projection Settings",
+            "editDescription": "Configure growth rates and monthly contributions for each asset class",
+            "growthRates": "Yearly Growth Rates",
+            "contributions": "Monthly Contributions",
+            "perYear": "per year",
+            "month": "month"
+        }
+    }
 }

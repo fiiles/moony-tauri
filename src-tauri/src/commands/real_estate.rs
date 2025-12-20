@@ -5,6 +5,7 @@ use crate::error::{AppError, Result};
 use crate::models::{
     RealEstate, InsertRealEstate, RealEstateOneTimeCost, InsertRealEstateOneTimeCost, Loan,
     RealEstatePhotoBatch, RealEstatePhoto, InsertPhotoBatch, UpdatePhotoBatch,
+    RealEstateDocument, InsertRealEstateDocument,
 };
 use tauri::{State, Manager};
 use uuid::Uuid;
@@ -171,6 +172,8 @@ pub async fn update_real_estate(
 #[tauri::command]
 pub async fn delete_real_estate(db: State<'_, Database>, id: String) -> Result<()> {
     db.with_conn(|conn| {
+        // Delete documents first
+        conn.execute("DELETE FROM real_estate_documents WHERE real_estate_id = ?1", [&id])?;
         let changes = conn.execute("DELETE FROM real_estate WHERE id = ?1", [&id])?;
         if changes == 0 {
             return Err(AppError::NotFound("Real estate not found".into()));
@@ -669,6 +672,160 @@ pub async fn delete_real_estate_photo(
         .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
     let _ = fs::remove_file(app_data.join(&file_path));
     let _ = fs::remove_file(app_data.join(&thumb_path));
+    
+    Ok(())
+}
+
+// ============================================================================
+// Document Commands
+// ============================================================================
+
+/// Get all documents for a real estate property
+#[tauri::command]
+pub async fn get_real_estate_documents(
+    db: State<'_, Database>,
+    real_estate_id: String,
+) -> Result<Vec<RealEstateDocument>> {
+    db.with_conn(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at 
+             FROM real_estate_documents WHERE real_estate_id = ?1 ORDER BY uploaded_at DESC"
+        )?;
+        
+        let documents = stmt.query_map([&real_estate_id], |row| {
+            Ok(RealEstateDocument {
+                id: row.get(0)?,
+                real_estate_id: row.get(1)?,
+                name: row.get(2)?,
+                description: row.get(3)?,
+                file_path: row.get(4)?,
+                file_type: row.get(5)?,
+                file_size: row.get(6)?,
+                uploaded_at: row.get(7)?,
+            })
+        })?.filter_map(|r| r.ok()).collect();
+        
+        Ok(documents)
+    })
+}
+
+/// Add a document to a real estate property
+#[tauri::command]
+pub async fn add_real_estate_document(
+    app: tauri::AppHandle,
+    db: State<'_, Database>,
+    real_estate_id: String,
+    file_path: String,
+    data: InsertRealEstateDocument,
+) -> Result<RealEstateDocument> {
+    use std::path::Path;
+    
+    let id = Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().timestamp();
+    
+    // Get app data directory for storing documents
+    let app_data_dir = app.path().app_data_dir()
+        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
+    let documents_dir = app_data_dir.join("real_estate_documents").join(&real_estate_id);
+    
+    // Create documents directory if it doesn't exist
+    fs::create_dir_all(&documents_dir)
+        .map_err(|e| AppError::Internal(format!("Failed to create documents dir: {}", e)))?;
+    
+    // Get file info
+    let source_path = Path::new(&file_path);
+    let file_name = source_path.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("document");
+    
+    let file_size = fs::metadata(&source_path)
+        .map(|m| m.len() as i64)
+        .ok();
+    
+    // Copy file to app data directory
+    let dest_path = documents_dir.join(format!("{}_{}", id, file_name));
+    fs::copy(&source_path, &dest_path)
+        .map_err(|e| AppError::Internal(format!("Failed to copy file: {}", e)))?;
+    
+    let dest_path_str = dest_path.to_string_lossy().to_string();
+    let file_type = data.file_type.unwrap_or_else(|| "other".to_string());
+    
+    db.with_conn(|conn| {
+        conn.execute(
+            "INSERT INTO real_estate_documents (id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at) 
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![id, real_estate_id, data.name, data.description, dest_path_str, file_type, file_size, now],
+        )?;
+        
+        Ok(RealEstateDocument {
+            id,
+            real_estate_id,
+            name: data.name,
+            description: data.description,
+            file_path: dest_path_str,
+            file_type,
+            file_size,
+            uploaded_at: now,
+        })
+    })
+}
+
+/// Delete a real estate document
+#[tauri::command]
+pub async fn delete_real_estate_document(db: State<'_, Database>, document_id: String) -> Result<()> {
+    // Get file path before deleting
+    let file_path: String = db.with_conn(|conn| {
+        conn.query_row(
+            "SELECT file_path FROM real_estate_documents WHERE id = ?1",
+            [&document_id],
+            |row| row.get(0),
+        ).map_err(|_| AppError::NotFound("Document not found".into()))
+    })?;
+    
+    // Delete from database
+    db.with_conn(|conn| {
+        let changes = conn.execute("DELETE FROM real_estate_documents WHERE id = ?1", [&document_id])?;
+        if changes == 0 {
+            return Err(AppError::NotFound("Document not found".into()));
+        }
+        Ok(())
+    })?;
+    
+    // Delete file (ignore errors if file doesn't exist)
+    let _ = fs::remove_file(&file_path);
+    
+    Ok(())
+}
+
+/// Open a real estate document with the system default application
+#[tauri::command]
+pub async fn open_real_estate_document(db: State<'_, Database>, document_id: String) -> Result<()> {
+    let file_path: String = db.with_conn(|conn| {
+        conn.query_row(
+            "SELECT file_path FROM real_estate_documents WHERE id = ?1",
+            [&document_id],
+            |row| row.get(0),
+        ).map_err(|_| AppError::NotFound("Document not found".into()))
+    })?;
+    
+    // Open with system default application
+    #[cfg(target_os = "macos")]
+    std::process::Command::new("open")
+        .arg(&file_path)
+        .spawn()
+        .map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
+    
+    #[cfg(target_os = "windows")]
+    std::process::Command::new("explorer")
+        .arg(&file_path)
+        .spawn()
+        .map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
+    
+    #[cfg(target_os = "linux")]
+    std::process::Command::new("xdg-open")
+        .arg(&file_path)
+        .spawn()
+        .map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
     
     Ok(())
 }

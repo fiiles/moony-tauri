@@ -34,6 +34,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("006_add_savings_termination_date", MIGRATION_006),
         ("007_add_cashflow_items", MIGRATION_007),
         ("008_add_cashflow_category", MIGRATION_008),
+        ("009_add_projection_settings", MIGRATION_009),
+        ("010_add_real_estate_documents", MIGRATION_010),
     ];
 
     for (name, sql) in migrations {
@@ -408,4 +410,35 @@ CREATE TABLE IF NOT EXISTS cashflow_items (
 /// Migration 008: Add category column to cashflow_items
 const MIGRATION_008: &str = r#"
 ALTER TABLE cashflow_items ADD COLUMN category TEXT NOT NULL DEFAULT 'income';
+"#;
+
+/// Migration 009: Add projection_settings table for portfolio projections
+const MIGRATION_009: &str = r#"
+CREATE TABLE IF NOT EXISTS projection_settings (
+    id TEXT PRIMARY KEY,
+    asset_type TEXT NOT NULL UNIQUE,
+    yearly_growth_rate TEXT NOT NULL DEFAULT '0',
+    monthly_contribution TEXT NOT NULL DEFAULT '0',
+    contribution_currency TEXT NOT NULL DEFAULT 'CZK',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+"#;
+
+/// Migration 010: Add real estate documents table
+const MIGRATION_010: &str = r#"
+-- Real estate documents (contracts, deeds, etc.)
+CREATE TABLE IF NOT EXISTS real_estate_documents (
+    id TEXT PRIMARY KEY,
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    file_path TEXT NOT NULL,
+    file_type TEXT NOT NULL DEFAULT 'other',
+    file_size INTEGER,
+    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_real_estate_documents ON real_estate_documents(real_estate_id);
 "#;

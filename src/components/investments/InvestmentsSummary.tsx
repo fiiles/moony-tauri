@@ -1,4 +1,4 @@
-import { SummaryCard } from "@/components/SummaryCard";
+import { SummaryCard } from "@/components/common/SummaryCard";
 import { useCurrency } from "@/lib/currency";
 import { TrendingUp, TrendingDown, Activity, Award, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";

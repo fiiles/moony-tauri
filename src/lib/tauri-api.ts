@@ -1,11 +1,55 @@
 /**
  * Tauri API Client
- * 
+ *
  * Wraps Tauri invoke calls to provide a consistent API for the frontend.
  * Replaces the HTTP-based API client from the Express.js version.
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import type {
+  UserProfile,
+  SavingsAccount,
+  SavingsAccountZone,
+  InsertSavingsAccount,
+  InvestmentTransaction,
+  InsertInvestmentTransaction,
+  CryptoTransaction,
+  Bond,
+  InsertBond,
+  Loan,
+  InsertLoan,
+  RealEstate,
+  InsertRealEstate,
+  RealEstateOneTimeCost,
+  InsertRealEstateOneTimeCost,
+  RealEstatePhotoBatch,
+  RealEstatePhoto,
+  RealEstateDocument,
+  InsurancePolicy,
+  InsertInsurancePolicy,
+  InsuranceDocument,
+  OtherAsset,
+  InsertOtherAsset,
+  OtherAssetTransaction,
+  InsertOtherAssetTransaction,
+  PortfolioMetrics,
+  PortfolioMetricsHistory,
+  CashflowReport,
+  CashflowItem,
+  ProjectionSettings,
+  PortfolioProjection,
+} from '../../shared/schema';
+import type {
+  StockInvestmentWithPrice,
+  CryptoInvestmentWithPrice,
+} from '../../shared/types/extended-types';
+
+// Import result from backend
+interface ImportResult {
+  success: number;
+  imported: string[];
+  errors: string[];
+}
 
 // Generic invoke wrapper with error handling
 async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
@@ -27,7 +71,7 @@ export const authApi = {
 
   // Legacy single-step setup (kept for compatibility)
   setup: (data: { name: string; surname: string; email: string; password: string }) =>
-    tauriInvoke<{ recoveryKey: string; profile: any }>('setup', { data }),
+    tauriInvoke<{ recoveryKey: string; profile: UserProfile }>('setup', { data }),
 
   // 2-Phase Setup
   prepareSetup: () =>
@@ -41,14 +85,14 @@ export const authApi = {
     masterKeyHex: string;
     recoveryKey: string;
     salt: number[];
-  }) => tauriInvoke<any>('confirm_setup', { data }),
+  }) => tauriInvoke<UserProfile>('confirm_setup', { data }),
 
   unlock: (password: string) =>
-    tauriInvoke<any>('unlock', { password }),
+    tauriInvoke<UserProfile>('unlock', { password }),
 
   // Legacy recover (kept for compatibility)
   recover: (data: { recoveryKey: string; newPassword: string }) =>
-    tauriInvoke<{ recoveryKey: string; profile: any }>('recover', { data }),
+    tauriInvoke<{ recoveryKey: string; profile: UserProfile }>('recover', { data }),
 
   // 2-Phase Recovery (password reset using recovery key)
   prepareRecover: (data: { recoveryKey: string; newPassword: string }) =>
@@ -58,16 +102,16 @@ export const authApi = {
     oldRecoveryKey: string;
     newPassword: string;
     newRecoveryKey: string;
-  }) => tauriInvoke<any>('confirm_recover', { data }),
+  }) => tauriInvoke<UserProfile>('confirm_recover', { data }),
 
   logout: () => tauriInvoke<void>('logout'),
 
   isAuthenticated: () => tauriInvoke<boolean>('is_authenticated'),
 
-  getProfile: () => tauriInvoke<any | null>('get_user_profile'),
+  getProfile: () => tauriInvoke<UserProfile | null>('get_user_profile'),
 
-  updateProfile: (updates: any) =>
-    tauriInvoke<any>('update_user_profile', { updates }),
+  updateProfile: (updates: Partial<UserProfile>) =>
+    tauriInvoke<UserProfile>('update_user_profile', { updates }),
 
   // 2-Phase Change Password
   prepareChangePassword: (data: { currentPassword: string }) =>
@@ -87,21 +131,21 @@ export const authApi = {
 // ============================================================================
 
 export const savingsApi = {
-  getAll: () => tauriInvoke<any[]>('get_all_savings_accounts'),
+  getAll: () => tauriInvoke<SavingsAccount[]>('get_all_savings_accounts'),
 
-  get: (id: string) => tauriInvoke<any | null>('get_savings_account', { id }),
+  get: (id: string) => tauriInvoke<SavingsAccount | null>('get_savings_account', { id }),
 
-  create: (data: any) => tauriInvoke<any>('create_savings_account', { data }),
+  create: (data: InsertSavingsAccount) => tauriInvoke<SavingsAccount>('create_savings_account', { data }),
 
-  update: (id: string, data: any) =>
-    tauriInvoke<any>('update_savings_account', { id, data }),
+  update: (id: string, data: Partial<InsertSavingsAccount>) =>
+    tauriInvoke<SavingsAccount>('update_savings_account', { id, data }),
 
   delete: (id: string) => tauriInvoke<void>('delete_savings_account', { id }),
 
   getZones: (accountId: string) =>
-    tauriInvoke<any[]>('get_account_zones', { accountId }),
+    tauriInvoke<SavingsAccountZone[]>('get_account_zones', { accountId }),
 
-  createZone: (data: any) => tauriInvoke<any>('create_account_zone', { data }),
+  createZone: (data: Omit<SavingsAccountZone, 'id' | 'createdAt'>) => tauriInvoke<SavingsAccountZone>('create_account_zone', { data }),
 
   deleteZone: (zoneId: string) =>
     tauriInvoke<void>('delete_account_zone', { zoneId }),
@@ -112,24 +156,24 @@ export const savingsApi = {
 // ============================================================================
 
 export const investmentsApi = {
-  getAll: () => tauriInvoke<any[]>('get_all_investments'),
+  getAll: () => tauriInvoke<StockInvestmentWithPrice[]>('get_all_investments'),
 
-  create: (data: any, initialTransaction?: any) =>
-    tauriInvoke<any>('create_investment', { data, initialTransaction }),
+  create: (data: { ticker: string; companyName: string }, initialTransaction?: InsertInvestmentTransaction) =>
+    tauriInvoke<StockInvestmentWithPrice>('create_investment', { data, initialTransaction }),
 
   delete: (id: string) => tauriInvoke<void>('delete_investment', { id }),
 
   getTransactions: (investmentId: string) =>
-    tauriInvoke<any[]>('get_investment_transactions', { investmentId }),
+    tauriInvoke<InvestmentTransaction[]>('get_investment_transactions', { investmentId }),
 
-  createTransaction: (investmentId: string, data: any) =>
-    tauriInvoke<any>('create_investment_transaction', { investmentId, data }),
+  createTransaction: (investmentId: string, data: InsertInvestmentTransaction) =>
+    tauriInvoke<InvestmentTransaction>('create_investment_transaction', { investmentId, data }),
 
   deleteTransaction: (txId: string) =>
     tauriInvoke<void>('delete_investment_transaction', { txId }),
 
-  updateTransaction: (txId: string, data: any) =>
-    tauriInvoke<any>('update_investment_transaction', { txId, data }),
+  updateTransaction: (txId: string, data: Partial<InsertInvestmentTransaction>) =>
+    tauriInvoke<InvestmentTransaction>('update_investment_transaction', { txId, data }),
 
   setManualPrice: (ticker: string, price: string, currency: string) =>
     tauriInvoke<any>('set_manual_price', { ticker, price, currency }),
@@ -143,8 +187,8 @@ export const investmentsApi = {
   deleteManualDividend: (ticker: string) =>
     tauriInvoke<void>('delete_manual_dividend', { ticker }),
 
-  importTransactions: (transactions: any[], defaultCurrency: string) =>
-    tauriInvoke<any>('import_investment_transactions', { transactions, defaultCurrency }),
+  importTransactions: (transactions: InsertInvestmentTransaction[], defaultCurrency: string) =>
+    tauriInvoke<ImportResult>('import_investment_transactions', { transactions, defaultCurrency }),
 };
 
 // ============================================================================
@@ -152,18 +196,18 @@ export const investmentsApi = {
 // ============================================================================
 
 export const cryptoApi = {
-  getAll: () => tauriInvoke<any[]>('get_all_crypto'),
+  getAll: () => tauriInvoke<CryptoInvestmentWithPrice[]>('get_all_crypto'),
 
-  create: (data: any, initialTransaction?: any) =>
-    tauriInvoke<any>('create_crypto', { data, initialTransaction }),
+  create: (data: { ticker: string; name: string; coingeckoId?: string }, initialTransaction?: Omit<CryptoTransaction, 'id' | 'investmentId' | 'createdAt'>) =>
+    tauriInvoke<CryptoInvestmentWithPrice>('create_crypto', { data, initialTransaction }),
 
   delete: (id: string) => tauriInvoke<void>('delete_crypto', { id }),
 
   getTransactions: (investmentId: string) =>
-    tauriInvoke<any[]>('get_crypto_transactions', { investmentId }),
+    tauriInvoke<CryptoTransaction[]>('get_crypto_transactions', { investmentId }),
 
-  createTransaction: (investmentId: string, data: any) =>
-    tauriInvoke<any>('create_crypto_transaction', { investmentId, data }),
+  createTransaction: (investmentId: string, data: Omit<CryptoTransaction, 'id' | 'investmentId' | 'createdAt'>) =>
+    tauriInvoke<CryptoTransaction>('create_crypto_transaction', { investmentId, data }),
 
   deleteTransaction: (txId: string) =>
     tauriInvoke<void>('delete_crypto_transaction', { txId }),
@@ -177,11 +221,11 @@ export const cryptoApi = {
 // ============================================================================
 
 export const bondsApi = {
-  getAll: () => tauriInvoke<any[]>('get_all_bonds'),
+  getAll: () => tauriInvoke<Bond[]>('get_all_bonds'),
 
-  create: (data: any) => tauriInvoke<any>('create_bond', { data }),
+  create: (data: InsertBond) => tauriInvoke<Bond>('create_bond', { data }),
 
-  update: (id: string, data: any) => tauriInvoke<any>('update_bond', { id, data }),
+  update: (id: string, data: Partial<InsertBond>) => tauriInvoke<Bond>('update_bond', { id, data }),
 
   delete: (id: string) => tauriInvoke<void>('delete_bond', { id }),
 };
@@ -191,11 +235,11 @@ export const bondsApi = {
 // ============================================================================
 
 export const loansApi = {
-  getAll: () => tauriInvoke<any[]>('get_all_loans'),
+  getAll: () => tauriInvoke<Loan[]>('get_all_loans'),
 
-  create: (data: any) => tauriInvoke<any>('create_loan', { data }),
+  create: (data: InsertLoan) => tauriInvoke<Loan>('create_loan', { data }),
 
-  update: (id: string, data: any) => tauriInvoke<any>('update_loan', { id, data }),
+  update: (id: string, data: Partial<InsertLoan>) => tauriInvoke<Loan>('update_loan', { id, data }),
 
   delete: (id: string) => tauriInvoke<void>('delete_loan', { id }),
 };
@@ -205,31 +249,31 @@ export const loansApi = {
 // ============================================================================
 
 export const realEstateApi = {
-  getAll: () => tauriInvoke<any[]>('get_all_real_estate'),
+  getAll: () => tauriInvoke<RealEstate[]>('get_all_real_estate'),
 
-  get: (id: string) => tauriInvoke<any | null>('get_real_estate', { id }),
+  get: (id: string) => tauriInvoke<RealEstate | null>('get_real_estate', { id }),
 
-  create: (data: any) => tauriInvoke<any>('create_real_estate', { data }),
+  create: (data: InsertRealEstate) => tauriInvoke<RealEstate>('create_real_estate', { data }),
 
-  update: (id: string, data: any) =>
-    tauriInvoke<any>('update_real_estate', { id, data }),
+  update: (id: string, data: Partial<InsertRealEstate>) =>
+    tauriInvoke<RealEstate>('update_real_estate', { id, data }),
 
   delete: (id: string) => tauriInvoke<void>('delete_real_estate', { id }),
 
   getCosts: (realEstateId: string) =>
-    tauriInvoke<any[]>('get_real_estate_costs', { realEstateId }),
+    tauriInvoke<RealEstateOneTimeCost[]>('get_real_estate_costs', { realEstateId }),
 
-  createCost: (data: any) =>
-    tauriInvoke<any>('create_real_estate_cost', { data }),
+  createCost: (data: InsertRealEstateOneTimeCost) =>
+    tauriInvoke<RealEstateOneTimeCost>('create_real_estate_cost', { data }),
 
   deleteCost: (costId: string) =>
     tauriInvoke<void>('delete_real_estate_cost', { costId }),
 
-  updateCost: (costId: string, data: any) =>
-    tauriInvoke<any>('update_real_estate_cost', { costId, data }),
+  updateCost: (costId: string, data: Partial<InsertRealEstateOneTimeCost>) =>
+    tauriInvoke<RealEstateOneTimeCost>('update_real_estate_cost', { costId, data }),
 
   getLoans: (realEstateId: string) =>
-    tauriInvoke<any[]>('get_real_estate_loans', { realEstateId }),
+    tauriInvoke<Loan[]>('get_real_estate_loans', { realEstateId }),
 
   linkLoan: (realEstateId: string, loanId: string) =>
     tauriInvoke<void>('link_loan_to_real_estate', { realEstateId, loanId }),
@@ -239,22 +283,35 @@ export const realEstateApi = {
 
   // Photo batches
   getPhotoBatches: (realEstateId: string) =>
-    tauriInvoke<any[]>('get_real_estate_photo_batches', { realEstateId }),
+    tauriInvoke<RealEstatePhotoBatch[]>('get_real_estate_photo_batches', { realEstateId }),
 
   createPhotoBatch: (realEstateId: string, data: { photoDate: number; description?: string }) =>
-    tauriInvoke<any>('create_photo_batch', { realEstateId, data }),
+    tauriInvoke<RealEstatePhotoBatch>('create_photo_batch', { realEstateId, data }),
 
   addPhotosToBatch: (batchId: string, filePaths: string[]) =>
-    tauriInvoke<any[]>('add_photos_to_batch', { batchId, filePaths }),
+    tauriInvoke<RealEstatePhoto[]>('add_photos_to_batch', { batchId, filePaths }),
 
   updatePhotoBatch: (batchId: string, data: { photoDate?: number; description?: string }) =>
-    tauriInvoke<any>('update_photo_batch', { batchId, data }),
+    tauriInvoke<RealEstatePhotoBatch>('update_photo_batch', { batchId, data }),
 
   deletePhotoBatch: (batchId: string) =>
     tauriInvoke<void>('delete_photo_batch', { batchId }),
 
   deletePhoto: (photoId: string) =>
     tauriInvoke<void>('delete_real_estate_photo', { photoId }),
+
+  // Document management
+  getDocuments: (realEstateId: string) =>
+    tauriInvoke<RealEstateDocument[]>('get_real_estate_documents', { realEstateId }),
+
+  addDocument: (realEstateId: string, filePath: string, data: { name: string; description?: string; fileType?: string }) =>
+    tauriInvoke<RealEstateDocument>('add_real_estate_document', { realEstateId, filePath, data }),
+
+  deleteDocument: (documentId: string) =>
+    tauriInvoke<void>('delete_real_estate_document', { documentId }),
+
+  openDocument: (documentId: string) =>
+    tauriInvoke<void>('open_real_estate_document', { documentId }),
 };
 
 // ============================================================================
@@ -262,23 +319,23 @@ export const realEstateApi = {
 // ============================================================================
 
 export const insuranceApi = {
-  getAll: () => tauriInvoke<any[]>('get_all_insurance'),
+  getAll: () => tauriInvoke<InsurancePolicy[]>('get_all_insurance'),
 
-  get: (id: string) => tauriInvoke<any | null>('get_insurance', { id }),
+  get: (id: string) => tauriInvoke<InsurancePolicy | null>('get_insurance', { id }),
 
-  create: (data: any) => tauriInvoke<any>('create_insurance', { data }),
+  create: (data: InsertInsurancePolicy) => tauriInvoke<InsurancePolicy>('create_insurance', { data }),
 
-  update: (id: string, data: any) =>
-    tauriInvoke<any>('update_insurance', { id, data }),
+  update: (id: string, data: Partial<InsertInsurancePolicy>) =>
+    tauriInvoke<InsurancePolicy>('update_insurance', { id, data }),
 
   delete: (id: string) => tauriInvoke<void>('delete_insurance', { id }),
 
   // Document management
   getDocuments: (insuranceId: string) =>
-    tauriInvoke<any[]>('get_insurance_documents', { insuranceId }),
+    tauriInvoke<InsuranceDocument[]>('get_insurance_documents', { insuranceId }),
 
   addDocument: (insuranceId: string, filePath: string, data: { name: string; description?: string; fileType?: string }) =>
-    tauriInvoke<any>('add_insurance_document', { insuranceId, filePath, data }),
+    tauriInvoke<InsuranceDocument>('add_insurance_document', { insuranceId, filePath, data }),
 
   deleteDocument: (documentId: string) =>
     tauriInvoke<void>('delete_insurance_document', { documentId }),
@@ -292,21 +349,21 @@ export const insuranceApi = {
 // ============================================================================
 
 export const otherAssetsApi = {
-  getAll: () => tauriInvoke<any[]>('get_all_other_assets'),
+  getAll: () => tauriInvoke<OtherAsset[]>('get_all_other_assets'),
 
-  create: (data: any, initialTransaction?: any) =>
-    tauriInvoke<any>('create_other_asset', { data, initialTransaction }),
+  create: (data: InsertOtherAsset, initialTransaction?: InsertOtherAssetTransaction) =>
+    tauriInvoke<OtherAsset>('create_other_asset', { data, initialTransaction }),
 
-  update: (id: string, data: any) =>
-    tauriInvoke<any>('update_other_asset', { id, data }),
+  update: (id: string, data: Partial<InsertOtherAsset>) =>
+    tauriInvoke<OtherAsset>('update_other_asset', { id, data }),
 
   delete: (id: string) => tauriInvoke<void>('delete_other_asset', { id }),
 
   getTransactions: (assetId: string) =>
-    tauriInvoke<any[]>('get_other_asset_transactions', { assetId }),
+    tauriInvoke<OtherAssetTransaction[]>('get_other_asset_transactions', { assetId }),
 
-  createTransaction: (assetId: string, data: any) =>
-    tauriInvoke<any>('create_other_asset_transaction', { assetId, data }),
+  createTransaction: (assetId: string, data: InsertOtherAssetTransaction) =>
+    tauriInvoke<OtherAssetTransaction>('create_other_asset_transaction', { assetId, data }),
 
   deleteTransaction: (txId: string) =>
     tauriInvoke<void>('delete_other_asset_transaction', { txId }),
@@ -318,10 +375,10 @@ export const otherAssetsApi = {
 
 export const portfolioApi = {
   getMetrics: (excludePersonalRealEstate: boolean = false) =>
-    tauriInvoke<any>('get_portfolio_metrics', { excludePersonalRealEstate }),
+    tauriInvoke<PortfolioMetrics>('get_portfolio_metrics', { excludePersonalRealEstate }),
 
   getHistory: (startDate?: number, endDate?: number) =>
-    tauriInvoke<any[]>('get_portfolio_history', { startDate, endDate }),
+    tauriInvoke<PortfolioMetricsHistory[]>('get_portfolio_history', { startDate, endDate }),
 
   recordSnapshot: () => tauriInvoke<void>('record_portfolio_snapshot'),
 
@@ -394,9 +451,9 @@ export const priceApi = {
 
 export const cashflowApi = {
   getReport: (viewType: 'monthly' | 'yearly') =>
-    tauriInvoke<any>('get_cashflow_report', { viewType }),
+    tauriInvoke<CashflowReport>('get_cashflow_report', { viewType }),
 
-  getAllItems: () => tauriInvoke<any[]>('get_all_cashflow_items'),
+  getAllItems: () => tauriInvoke<CashflowItem[]>('get_all_cashflow_items'),
 
   createItem: (data: {
     name: string;
@@ -405,7 +462,7 @@ export const cashflowApi = {
     frequency: 'monthly' | 'yearly';
     itemType: 'income' | 'expense';
     category: string;
-  }) => tauriInvoke<any>('create_cashflow_item', { data }),
+  }) => tauriInvoke<CashflowItem>('create_cashflow_item', { data }),
 
   updateItem: (
     id: string,
@@ -417,9 +474,29 @@ export const cashflowApi = {
       itemType: 'income' | 'expense';
       category: string;
     }
-  ) => tauriInvoke<any>('update_cashflow_item', { id, data }),
+  ) => tauriInvoke<CashflowItem>('update_cashflow_item', { id, data }),
 
   deleteItem: (id: string) => tauriInvoke<void>('delete_cashflow_item', { id }),
+};
+
+// ============================================================================
+// Projection API
+// ============================================================================
+
+export interface ProjectionInput {
+  horizonYears: number;
+  viewType: 'monthly' | 'yearly';
+  excludePersonalRealEstate?: boolean;
+}
+
+export const projectionApi = {
+  getSettings: () => tauriInvoke<ProjectionSettings[]>('get_projection_settings'),
+
+  saveSettings: (settings: ProjectionSettings[]) =>
+    tauriInvoke<void>('save_projection_settings', { settings }),
+
+  calculate: (input: ProjectionInput) =>
+    tauriInvoke<PortfolioProjection>('calculate_portfolio_projection', { input }),
 };
 
 // ============================================================================
@@ -439,6 +516,7 @@ export const api = {
   portfolio: portfolioApi,
   price: priceApi,
   cashflow: cashflowApi,
+  projection: projectionApi,
 };
 
 export default api;

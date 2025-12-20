@@ -27,7 +27,7 @@ import { Search, MoreVertical, Trash2, History as HistoryIcon, Edit, ArrowDown, 
 import { useCurrency } from "@/lib/currency";
 import { useMemo, useState } from "react";
 import { type CryptoHoldingData } from "@shared/calculations";
-import { AssetLogo } from "@/components/AssetLogo";
+import { AssetLogo } from "@/components/common/AssetLogo";
 import { useTranslation } from "react-i18next";
 
 // Re-export the type for consumers who import from this file

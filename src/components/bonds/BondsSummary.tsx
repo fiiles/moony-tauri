@@ -1,5 +1,5 @@
-import { SummaryCard } from "@/components/SummaryCard";
-import type { BondsMetrics } from "@/hooks/useBonds";
+import { SummaryCard } from "@/components/common/SummaryCard";
+import type { BondsMetrics } from "@/hooks/use-bonds";
 import { useCurrency } from "@/lib/currency";
 import { FileText, Percent, Banknote } from "lucide-react";
 import { useTranslation } from "react-i18next";

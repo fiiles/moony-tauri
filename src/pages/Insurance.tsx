@@ -5,7 +5,7 @@ import { Plus, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { insuranceApi } from "@/lib/tauri-api";
 import { InsurancePolicy } from "@shared/schema";
-import { SummaryCard } from "@/components/SummaryCard";
+import { SummaryCard } from "@/components/common/SummaryCard";
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";

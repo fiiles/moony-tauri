@@ -28,7 +28,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import type { CryptoHoldingData } from "@/components/CryptoTable";
+import type { CryptoHoldingData } from "@/components/crypto/CryptoTable";
 import { useCurrency } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
 import { cryptoApi } from "@/lib/tauri-api";

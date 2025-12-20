@@ -54,7 +54,7 @@ export default function InsuranceDetail() {
     const { t: tc } = useTranslation('common');
     const { formatDate } = useLanguage();
 
-    const { data: policy, isLoading } = useQuery<InsurancePolicy>({
+    const { data: policy, isLoading } = useQuery<InsurancePolicy | null>({
         queryKey: ["insurance", id],
         queryFn: () => insuranceApi.get(id!),
         enabled: !!id,

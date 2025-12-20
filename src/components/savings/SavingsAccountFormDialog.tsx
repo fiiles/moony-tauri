@@ -21,7 +21,7 @@ import {
 import type { SavingsAccount, InsertSavingsAccount } from "@shared/schema";
 import { useCurrency, currencies } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
-import { SavingsAccountZoneManager } from "@/components/SavingsAccountZoneManager";
+import { SavingsAccountZoneManager } from "@/components/savings/SavingsAccountZoneManager";
 import { savingsApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
 

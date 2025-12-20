@@ -26,7 +26,7 @@ import { Search, MoreVertical, Trash2, TrendingDown, History as HistoryIcon, Edi
 import { getInstrumentIcon, type HoldingData } from "@/utils/investments";
 import { useCurrency } from "@/lib/currency";
 import { useMemo, useState } from "react";
-import { AssetLogo } from "@/components/AssetLogo";
+import { AssetLogo } from "@/components/common/AssetLogo";
 import { useTranslation } from "react-i18next";
 
 interface InvestmentsTableProps {

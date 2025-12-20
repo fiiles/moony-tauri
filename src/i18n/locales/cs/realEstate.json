@@ -177,5 +177,36 @@
         "photosAdded": "Fotografie přidány do skupiny",
         "batchUpdated": "Skupina úspěšně aktualizována",
         "batchDeleted": "Skupina úspěšně smazána"
+    },
+    "documents": {
+        "title": "Dokumenty",
+        "description": "Připojte smlouvy, listy vlastnictví, odhady a další dokumenty",
+        "add": "Přidat dokument",
+        "addFirst": "Přidat první dokument",
+        "addTitle": "Přidat dokument",
+        "noDocuments": "Zatím nejsou připojeny žádné dokumenty",
+        "file": "Soubor",
+        "clickToSelect": "Klikněte pro výběr souboru",
+        "type": "Typ dokumentu",
+        "selectType": "Vyberte typ",
+        "namePlaceholder": "např. List vlastnictví 2024",
+        "descriptionPlaceholder": "Další poznámky k tomuto dokumentu...",
+        "uploading": "Nahrávám...",
+        "upload": "Nahrát dokument",
+        "open": "Otevřít",
+        "delete": "Smazat",
+        "added": "Dokument úspěšně přidán",
+        "deleted": "Dokument úspěšně smazán",
+        "optional": "volitelné",
+        "types": {
+            "deed": "List vlastnictví",
+            "contract": "Smlouva",
+            "appraisal": "Odhad",
+            "other": "Jiné"
+        },
+        "deleteConfirm": {
+            "title": "Smazat dokument",
+            "description": "Opravdu chcete smazat \"{{name}}\"? Soubor bude trvale odstraněn."
+        }
     }
 }

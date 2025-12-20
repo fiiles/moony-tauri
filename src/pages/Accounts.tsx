@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { useSavingsAccounts } from "@/hooks/useSavingsAccounts";
-import { useSavingsAccountMutations } from "@/hooks/useSavingsAccountMutations";
-import { SavingsAccountFormDialog } from "@/components/SavingsAccountFormDialog";
-import { DeleteSavingsAccountDialog } from "@/components/DeleteSavingsAccountDialog";
-import { SavingsAccountsSummary } from "@/components/SavingsAccountsSummary";
-import { SavingsAccountsTable } from "@/components/SavingsAccountsTable";
+import { useSavingsAccounts } from "@/hooks/use-savings-accounts";
+import { useSavingsAccountMutations } from "@/hooks/use-savings-account-mutations";
+import { SavingsAccountFormDialog } from "@/components/savings/SavingsAccountFormDialog";
+import { DeleteSavingsAccountDialog } from "@/components/savings/DeleteSavingsAccountDialog";
+import { SavingsAccountsSummary } from "@/components/savings/SavingsAccountsSummary";
+import { SavingsAccountsTable } from "@/components/savings/SavingsAccountsTable";
 import type { SavingsAccount, InsertSavingsAccount } from "@shared/schema";
 import { useTranslation } from "react-i18next";
 

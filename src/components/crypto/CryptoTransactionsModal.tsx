@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Trash2 } from "lucide-react";
 import type { CryptoTransaction } from "@shared/schema";
-import type { CryptoHoldingData } from "@/components/CryptoTable";
+import type { CryptoHoldingData } from "@/components/crypto/CryptoTable";
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK } from "@shared/currencies";
 import { cryptoApi } from "@/lib/tauri-api";

@@ -1,5 +1,5 @@
-import { SummaryCard } from "@/components/SummaryCard";
-import type { SavingsAccountsMetrics } from "@/hooks/useSavingsAccounts";
+import { SummaryCard } from "@/components/common/SummaryCard";
+import type { SavingsAccountsMetrics } from "@/hooks/use-savings-accounts";
 import { useCurrency } from "@/lib/currency";
 import { TrendingUp, Percent, Banknote } from "lucide-react";
 import { useTranslation } from "react-i18next";
