@@ -37,6 +37,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("009_add_projection_settings", MIGRATION_009),
         ("010_add_real_estate_documents", MIGRATION_010),
         ("011_add_bond_quantity", MIGRATION_011),
+        ("012_add_user_language", MIGRATION_012),
     ];
 
     for (name, sql) in migrations {
@@ -447,4 +448,9 @@ CREATE INDEX IF NOT EXISTS idx_real_estate_documents ON real_estate_documents(re
 /// Migration 011: Add quantity to bonds
 const MIGRATION_011: &str = r#"
 ALTER TABLE bonds ADD COLUMN quantity TEXT NOT NULL DEFAULT '1';
+"#;
+
+/// Migration 012: Add language preference to user_profile
+const MIGRATION_012: &str = r#"
+ALTER TABLE user_profile ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
 "#;

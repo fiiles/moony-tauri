@@ -144,5 +144,24 @@
         "topPerformer": "Nejvýkonnější",
         "basedOnLastYear": "Na základě dividend z minulého roku",
         "na": "N/A"
+    },
+    "about": {
+        "title": "O aplikaci",
+        "version": "Verze",
+        "description": "Moony je aplikace pro správu osobních financí, která vám pomáhá sledovat vaše investice, spoření, nemovitosti a další. Všechna vaše data jsou uložena lokálně a bezpečně na vašem zařízení.",
+        "viewOnGithub": "Zobrazit na GitHubu",
+        "madeWith": "Vytvořeno s",
+        "byAuthor": "od Filipa Krále"
+    },
+    "update": {
+        "checking": "Kontrola...",
+        "upToDate": "Aktuální",
+        "available": "Dostupná aktualizace",
+        "newVersion": "Je dostupná nová verze {{version}}.",
+        "releaseNotes": "Poznámky k vydání",
+        "downloading": "Stahování...",
+        "installing": "Instalace aktualizace...",
+        "later": "Později",
+        "updateNow": "Aktualizovat nyní"
     }
 }

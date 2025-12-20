@@ -47,6 +47,7 @@ pub struct UserProfile {
     #[serde(rename = "menuPreferences")]
     pub menu_preferences: MenuPreferences,
     pub currency: String,
+    pub language: String,
     #[serde(rename = "excludePersonalRealEstate")]
     pub exclude_personal_real_estate: bool,
     #[serde(rename = "createdAt")]
@@ -62,6 +63,7 @@ pub struct InsertUserProfile {
     #[serde(rename = "menuPreferences")]
     pub menu_preferences: Option<MenuPreferences>,
     pub currency: Option<String>,
+    pub language: Option<String>,
     #[serde(rename = "excludePersonalRealEstate")]
     pub exclude_personal_real_estate: Option<bool>,
 }
@@ -75,6 +77,7 @@ pub struct UpdateUserProfile {
     #[serde(rename = "menuPreferences")]
     pub menu_preferences: Option<MenuPreferences>,
     pub currency: Option<String>,
+    pub language: Option<String>,
     #[serde(rename = "excludePersonalRealEstate")]
     pub exclude_personal_real_estate: Option<bool>,
 }

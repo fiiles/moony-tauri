@@ -1,6 +1,6 @@
 /**
  * Auth Page - Single User Version
- * Supports setup, unlock, and recover flows
+ * Supports setup, unlock, and recover flows with language picker
  */
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
@@ -34,13 +34,68 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { ShieldCheck, Copy, Check } from "lucide-react";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { ShieldCheck, Copy, Check, Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type SupportedLanguage } from "@/i18n/index";
+import { WelcomeModal } from "@/components/auth/WelcomeModal";
+
+// Language picker component for top-right corner
+function LanguagePicker({ 
+    language, 
+    onLanguageChange 
+}: { 
+    language: SupportedLanguage; 
+    onLanguageChange: (lang: SupportedLanguage) => void;
+}) {
+    return (
+        <div className="absolute top-4 right-4 z-10">
+            <Select value={language} onValueChange={(v) => onLanguageChange(v as SupportedLanguage)}>
+                <SelectTrigger className="w-[140px] gap-2 bg-white text-gray-900 border-gray-200 hover:bg-gray-50">
+                    <Globe className="h-4 w-4 opacity-70" />
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                            {LANGUAGE_NAMES[lang].native}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+}
 
 export default function AuthPage() {
     const { user, appStatus, setupMutation, unlockMutation, recoverMutation, confirmSetupMutation, confirmRecoveryMutation, recoveryKey, clearRecoveryKey } = useAuth();
     const [, setLocation] = useLocation();
     const [activeTab, setActiveTab] = useState<"unlock" | "recover">("unlock");
     const [copied, setCopied] = useState(false);
+    const { t, i18n } = useTranslation('auth');
+    const [showWelcome, setShowWelcome] = useState(true);
+
+    // Language state - use localStorage value if available, otherwise default to 'en'
+    const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(() => {
+        const stored = localStorage.getItem('moony-language');
+        if (stored && SUPPORTED_LANGUAGES.includes(stored as SupportedLanguage)) {
+            return stored as SupportedLanguage;
+        }
+        return 'en';
+    });
+
+    // Handle language change
+    const handleLanguageChange = (lang: SupportedLanguage) => {
+        setSelectedLanguage(lang);
+        i18n.changeLanguage(lang);
+        localStorage.setItem('moony-language', lang);
+    };
 
     useEffect(() => {
         // Only redirect if unlocked AND no recovery key pending confirmation
@@ -91,21 +146,33 @@ export default function AuthPage() {
     if (appStatus === "needs_setup") {
         return (
             <div className="min-h-screen relative">
+                <WelcomeModal 
+                    open={showWelcome} 
+                    onOpenChange={setShowWelcome}
+                    language={selectedLanguage}
+                    onLanguageChange={handleLanguageChange}
+                />
+                <LanguagePicker 
+                    language={selectedLanguage} 
+                    onLanguageChange={handleLanguageChange} 
+                />
                 <div className="flex items-center justify-center p-8 bg-background min-h-screen">
                     <Card className="w-full max-w-md border-0 shadow-none sm:border sm:shadow-sm">
                         <CardHeader className="space-y-1">
                             <div className="flex items-center gap-2">
                                 <ShieldCheck className="h-6 w-6 text-primary" />
-                                <CardTitle className="text-2xl font-bold">Welcome to Moony</CardTitle>
+                                <CardTitle className="text-2xl font-bold">{t('register.title')}</CardTitle>
                             </div>
                             <CardDescription>
-                                Set up your personal finance manager. Your data will be encrypted with your password.
+                                {t('register.description')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Form {...setupForm}>
                                 <form
-                                    onSubmit={setupForm.handleSubmit((data) => setupMutation.mutate(data))}
+                                    onSubmit={setupForm.handleSubmit((data) => 
+                                        setupMutation.mutate({ ...data, language: selectedLanguage })
+                                    )}
                                     className="space-y-4"
                                 >
                                     <FormField
@@ -113,9 +180,9 @@ export default function AuthPage() {
                                         name="name"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>First Name</FormLabel>
+                                                <FormLabel>{t('register.name')}</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="John" {...field} />
+                                                    <Input placeholder={t('register.namePlaceholder')} {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -126,9 +193,9 @@ export default function AuthPage() {
                                         name="surname"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Last Name</FormLabel>
+                                                <FormLabel>{t('register.surname')}</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="Doe" {...field} />
+                                                    <Input placeholder={t('register.surnamePlaceholder')} {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -139,9 +206,9 @@ export default function AuthPage() {
                                         name="email"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Email (optional)</FormLabel>
+                                                <FormLabel>{t('register.email')}</FormLabel>
                                                 <FormControl>
-                                                    <Input type="email" placeholder="john@example.com" {...field} />
+                                                    <Input type="email" placeholder={t('register.emailPlaceholder')} {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -152,13 +219,10 @@ export default function AuthPage() {
                                         name="password"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Password (for encryption)</FormLabel>
+                                                <FormLabel>{t('register.password')}</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" placeholder="Minimum 8 characters" {...field} />
+                                                    <Input type="password" placeholder={t('register.passwordPlaceholder')} {...field} />
                                                 </FormControl>
-                                                <p className="text-[0.8rem] text-muted-foreground">
-                                                    This password will encrypt your database.
-                                                </p>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -168,9 +232,9 @@ export default function AuthPage() {
                                         name="confirmPassword"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Confirm Password</FormLabel>
+                                                <FormLabel>{t('register.confirmPassword')}</FormLabel>
                                                 <FormControl>
-                                                    <Input type="password" {...field} />
+                                                    <Input type="password" placeholder={t('register.confirmPasswordPlaceholder')} {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -181,7 +245,7 @@ export default function AuthPage() {
                                         className="w-full"
                                         disabled={setupMutation.isPending}
                                     >
-                                        {setupMutation.isPending ? "Setting up..." : "Set Up Moony"}
+                                        {setupMutation.isPending ? t('register.settingUp') : t('register.getStarted')}
                                     </Button>
                                 </form>
                             </Form>
@@ -195,11 +259,10 @@ export default function AuthPage() {
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
                                 <ShieldCheck className="h-5 w-5 text-green-500" />
-                                Save Your Recovery Key
+                                {t('recoveryKeyModal.title')}
                             </DialogTitle>
                             <DialogDescription>
-                                This is the only way to recover your account if you forget your password.
-                                Store it in a safe place!
+                                {t('recoveryKeyModal.description')}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
@@ -208,9 +271,9 @@ export default function AuthPage() {
                             </div>
                             <Button onClick={copyRecoveryKey} className="w-full" variant="outline">
                                 {copied ? (
-                                    <><Check className="mr-2 h-4 w-4" /> Copied!</>
+                                    <><Check className="mr-2 h-4 w-4" /> {t('recoveryKeyModal.copied')}</>
                                 ) : (
-                                    <><Copy className="mr-2 h-4 w-4" /> Copy to Clipboard</>
+                                    <><Copy className="mr-2 h-4 w-4" /> {t('recoveryKeyModal.copyKey')}</>
                                 )}
                             </Button>
                             <div className="flex gap-2">
@@ -220,7 +283,7 @@ export default function AuthPage() {
                                     className="flex-1"
                                     disabled={confirmSetupMutation.isPending}
                                 >
-                                    Cancel
+                                    {t('common:buttons.cancel', 'Cancel')}
                                 </Button>
                                 <Button
                                     onClick={() => {
@@ -229,12 +292,11 @@ export default function AuthPage() {
                                     disabled={confirmSetupMutation.isPending}
                                     className="flex-1"
                                 >
-                                    {confirmSetupMutation.isPending ? "Creating Account..." : "I've Saved My Recovery Key"}
+                                    {confirmSetupMutation.isPending ? t('register.settingUp') : t('recoveryKeyModal.confirm')}
                                 </Button>
                             </div>
                             <p className="text-xs text-muted-foreground text-center">
-                                Your account will only be created after you click the button above.
-                                If you cancel, no data will be saved.
+                                {t('recoveryKeyModal.confirmHint')}
                             </p>
                         </div>
                     </DialogContent>
@@ -246,22 +308,26 @@ export default function AuthPage() {
     // Show unlock/recover page for returning users
     return (
         <div className="min-h-screen relative">
+            <LanguagePicker 
+                language={selectedLanguage} 
+                onLanguageChange={handleLanguageChange} 
+            />
             <div className="flex items-center justify-center p-8 bg-background min-h-screen">
                 <Card className="w-full max-w-md border-0 shadow-none sm:border sm:shadow-sm">
                     <CardHeader className="space-y-1">
                         <div className="flex items-center gap-2">
                             <ShieldCheck className="h-6 w-6 text-primary" />
-                            <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
+                            <CardTitle className="text-2xl font-bold">{t('login.title')}</CardTitle>
                         </div>
                         <CardDescription>
-                            Unlock your encrypted data with your password
+                            {t('login.description')}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
                             <TabsList className="grid w-full grid-cols-2 mb-4">
-                                <TabsTrigger value="unlock">Unlock</TabsTrigger>
-                                <TabsTrigger value="recover">Recover</TabsTrigger>
+                                <TabsTrigger value="unlock">{t('tabs.login')}</TabsTrigger>
+                                <TabsTrigger value="recover">{t('tabs.recover')}</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="unlock">
@@ -275,9 +341,9 @@ export default function AuthPage() {
                                             name="password"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Password</FormLabel>
+                                                    <FormLabel>{t('login.password')}</FormLabel>
                                                     <FormControl>
-                                                        <Input type="password" {...field} />
+                                                        <Input type="password" placeholder={t('login.passwordPlaceholder')} {...field} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -288,7 +354,7 @@ export default function AuthPage() {
                                             className="w-full"
                                             disabled={unlockMutation.isPending}
                                         >
-                                            {unlockMutation.isPending ? "Unlocking..." : "Unlock"}
+                                            {unlockMutation.isPending ? t('login.unlocking') : t('login.unlock')}
                                         </Button>
                                         <div className="text-center">
                                             <button
@@ -296,7 +362,7 @@ export default function AuthPage() {
                                                 onClick={() => setActiveTab("recover")}
                                                 className="text-sm text-muted-foreground hover:text-primary hover:underline"
                                             >
-                                                Forgot password? Use recovery key
+                                                {t('login.forgotPassword')} {t('login.useRecoveryKey')}
                                             </button>
                                         </div>
                                     </form>
@@ -314,9 +380,9 @@ export default function AuthPage() {
                                             name="recoveryKey"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Recovery Key</FormLabel>
+                                                    <FormLabel>{t('recover.recoveryKey')}</FormLabel>
                                                     <FormControl>
-                                                        <Input placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX" {...field} />
+                                                        <Input placeholder={t('recover.recoveryKeyPlaceholder')} {...field} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -327,9 +393,9 @@ export default function AuthPage() {
                                             name="newPassword"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>New Password</FormLabel>
+                                                    <FormLabel>{t('recover.newPassword')}</FormLabel>
                                                     <FormControl>
-                                                        <Input type="password" {...field} />
+                                                        <Input type="password" placeholder={t('recover.newPasswordPlaceholder')} {...field} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -340,9 +406,9 @@ export default function AuthPage() {
                                             name="confirmPassword"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Confirm New Password</FormLabel>
+                                                    <FormLabel>{t('recover.confirmPassword')}</FormLabel>
                                                     <FormControl>
-                                                        <Input type="password" {...field} />
+                                                        <Input type="password" placeholder={t('recover.confirmPasswordPlaceholder')} {...field} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -353,7 +419,7 @@ export default function AuthPage() {
                                             className="w-full"
                                             disabled={recoverMutation.isPending}
                                         >
-                                            {recoverMutation.isPending ? "Recovering..." : "Reset Password"}
+                                            {recoverMutation.isPending ? t('recover.recovering') : t('recover.recoverAccount')}
                                         </Button>
                                     </form>
                                 </Form>
@@ -369,10 +435,10 @@ export default function AuthPage() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <ShieldCheck className="h-5 w-5 text-green-500" />
-                            New Recovery Key Generated
+                            {t('recoveryKeyModal.title')}
                         </DialogTitle>
                         <DialogDescription>
-                            Save your new recovery key before confirming. Your password will be changed and your old recovery key will no longer work.
+                            {t('recoveryKeyModal.description')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
@@ -381,9 +447,9 @@ export default function AuthPage() {
                         </div>
                         <Button onClick={copyRecoveryKey} className="w-full" variant="outline">
                             {copied ? (
-                                <><Check className="mr-2 h-4 w-4" /> Copied!</>
+                                <><Check className="mr-2 h-4 w-4" /> {t('recoveryKeyModal.copied')}</>
                             ) : (
-                                <><Copy className="mr-2 h-4 w-4" /> Copy to Clipboard</>
+                                <><Copy className="mr-2 h-4 w-4" /> {t('recoveryKeyModal.copyKey')}</>
                             )}
                         </Button>
                         <div className="flex gap-2">
@@ -393,7 +459,7 @@ export default function AuthPage() {
                                 className="flex-1"
                                 disabled={confirmRecoveryMutation.isPending}
                             >
-                                Cancel
+                                {t('common:buttons.cancel', 'Cancel')}
                             </Button>
                             <Button
                                 onClick={() => {
@@ -402,12 +468,11 @@ export default function AuthPage() {
                                 disabled={confirmRecoveryMutation.isPending}
                                 className="flex-1"
                             >
-                                {confirmRecoveryMutation.isPending ? "Changing Password..." : "I've Saved My Recovery Key"}
+                                {confirmRecoveryMutation.isPending ? t('recover.recovering') : t('recoveryKeyModal.confirm')}
                             </Button>
                         </div>
                         <p className="text-xs text-muted-foreground text-center">
-                            Your password will only be changed after you click the button above.
-                            If you cancel, your old password and recovery key will remain unchanged.
+                            {t('recoveryKeyModal.confirmHint')}
                         </p>
                     </div>
                 </DialogContent>
