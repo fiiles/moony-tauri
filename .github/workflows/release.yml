@@ -24,7 +24,7 @@ jobs:
             args: ''
 
     runs-on: ${{ matrix.platform }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -60,6 +60,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Moony v__VERSION__'
@@ -71,6 +73,26 @@ jobs:
             - **macOS (Intel)**: `.dmg` file ending in `_x64.dmg`
             - **Windows**: `.msi` or `.exe` installer
             - **Linux**: `.deb`, `.rpm`, or `.AppImage`
+
+            ---
+
+            ### ⚠️ macOS Users - Important
+
+            Since this app is **not signed** with an Apple Developer Certificate, macOS will block it from opening by default. 
+
+            **After installing, run this command in Terminal before opening the app:**
+
+            ```bash
+            xattr -cr /Applications/Moony.app
+            ```
+
+            This removes the quarantine flag that macOS places on unsigned apps. You only need to do this once after each update.
+
+            ---
+
+            ### 🔄 Auto-Updates
+
+            This version supports automatic updates! You'll be notified when a new version is available and can update directly from within the app.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

@@ -30,8 +30,8 @@ pub struct ProjectionInput {
 pub async fn get_projection_settings(db: State<'_, Database>) -> Result<Vec<ProjectionSettings>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, asset_type, yearly_growth_rate, monthly_contribution, 
-                    contribution_currency, enabled, created_at, updated_at 
+            "SELECT id, asset_type, yearly_growth_rate, monthly_contribution,
+                    contribution_currency, enabled, created_at, updated_at
              FROM projection_settings",
         )?;
 
@@ -72,8 +72,8 @@ pub async fn save_projection_settings(
             };
 
             conn.execute(
-                "INSERT INTO projection_settings 
-                    (id, asset_type, yearly_growth_rate, monthly_contribution, 
+                "INSERT INTO projection_settings
+                    (id, asset_type, yearly_growth_rate, monthly_contribution,
                      contribution_currency, enabled, created_at, updated_at)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
                  ON CONFLICT(asset_type) DO UPDATE SET
@@ -104,14 +104,16 @@ pub async fn calculate_portfolio_projection(
     db: State<'_, Database>,
     input: ProjectionInput,
 ) -> Result<PortfolioProjection> {
-    eprintln!("[Projection] Starting calculation: horizon={}, view={}, exclude_re={}", 
-              input.horizon_years, input.view_type, input.exclude_personal_real_estate);
-    
+    eprintln!(
+        "[Projection] Starting calculation: horizon={}, view={}, exclude_re={}",
+        input.horizon_years, input.view_type, input.exclude_personal_real_estate
+    );
+
     db.with_conn(|conn| {
         // 1. Get current portfolio values (with exclude personal RE flag)
         let current = get_current_portfolio_values(conn, input.exclude_personal_real_estate)?;
-        
-        eprintln!("[Projection] Current values: savings={}, investments={}, crypto={}, bonds={}, real_estate={}, other={}", 
+
+        eprintln!("[Projection] Current values: savings={}, investments={}, crypto={}, bonds={}, real_estate={}, other={}",
                   current.savings, current.investments, current.crypto, current.bonds, current.real_estate, current.other_assets);
         eprintln!("[Projection] Calculated rates: savings_interest={:.2}%, bonds_yield={:.2}%",
                   current.savings_weighted_interest, current.bonds_weighted_yield);
@@ -290,7 +292,7 @@ fn get_current_portfolio_values(
     exclude_personal_real_estate: bool,
 ) -> Result<CurrentValues> {
     eprintln!("[Projection] get_current_portfolio_values starting...");
-    
+
     // Calculate savings
     eprintln!("[Projection] Querying savings_accounts...");
     let mut savings_stmt =
@@ -306,7 +308,11 @@ fn get_current_portfolio_values(
         .collect();
 
     let total_savings: f64 = savings_data.iter().map(|(b, _)| b).sum();
-    eprintln!("[Projection] Savings: count={}, total={}", savings_data.len(), total_savings);
+    eprintln!(
+        "[Projection] Savings: count={}, total={}",
+        savings_data.len(),
+        total_savings
+    );
 
     // Weighted average interest rate (excluding 0% accounts)
     let non_zero_savings: Vec<_> = savings_data
@@ -777,7 +783,11 @@ mod tests {
         let rate: f64 = 0.10;
         let years: f64 = 1.0;
         let result = base * (1.0_f64 + rate).powf(years);
-        assert!((result - 110_000.0).abs() < 0.01, "Expected 110,000, got {}", result);
+        assert!(
+            (result - 110_000.0).abs() < 0.01,
+            "Expected 110,000, got {}",
+            result
+        );
     }
 
     #[test]
@@ -787,7 +797,11 @@ mod tests {
         let rate: f64 = 0.10;
         let years: f64 = 5.0;
         let result = base * (1.0_f64 + rate).powf(years);
-        assert!((result - 161_051.0).abs() < 1.0, "Expected ~161,051, got {}", result);
+        assert!(
+            (result - 161_051.0).abs() < 1.0,
+            "Expected ~161,051, got {}",
+            result
+        );
     }
 
     #[test]
@@ -797,7 +811,11 @@ mod tests {
         let rate: f64 = 0.0;
         let years: f64 = 10.0;
         let result = base * (1.0_f64 + rate).powf(years);
-        assert!((result - 100_000.0).abs() < 0.01, "Expected 100,000, got {}", result);
+        assert!(
+            (result - 100_000.0).abs() < 0.01,
+            "Expected 100,000, got {}",
+            result
+        );
     }
 
     // =====================================================================
@@ -815,11 +833,14 @@ mod tests {
         let years: f64 = months as f64 / 12.0;
         let growth_factor = (1.0_f64 + annual_rate).powf(years);
         let monthly_rate = annual_rate / 12.0;
-        
+
         let contrib_value = monthly_contrib * ((growth_factor - 1.0) / monthly_rate);
         // Expected approximately $12,438 (varies slightly based on formula)
-        assert!(contrib_value > 12_000.0 && contrib_value < 13_000.0, 
-                "Expected ~12,438, got {}", contrib_value);
+        assert!(
+            contrib_value > 12_000.0 && contrib_value < 13_000.0,
+            "Expected ~12,438, got {}",
+            contrib_value
+        );
     }
 
     #[test]
@@ -839,16 +860,20 @@ mod tests {
     fn test_project_savings_growth_only() {
         let mut current = make_test_current();
         current.savings = 100_000.0;
-        
+
         let mut settings = make_test_settings();
         settings.savings_growth = 5.0;
         settings.savings_contribution = 0.0;
-        
+
         let mut contributions = 0.0;
         let result = project_savings(&current, &settings, 1.0, 12, &mut contributions);
-        
+
         // 100,000 * 1.05 = 105,000
-        assert!((result - 105_000.0).abs() < 1.0, "Expected ~105,000, got {}", result);
+        assert!(
+            (result - 105_000.0).abs() < 1.0,
+            "Expected ~105,000, got {}",
+            result
+        );
         assert!(contributions == 0.0, "No contributions expected");
     }
 
@@ -856,18 +881,21 @@ mod tests {
     fn test_project_savings_with_contributions() {
         let mut current = make_test_current();
         current.savings = 100_000.0;
-        
+
         let mut settings = make_test_settings();
         settings.savings_growth = 5.0;
         settings.savings_contribution = 1000.0;
-        
+
         let mut contributions = 0.0;
         let result = project_savings(&current, &settings, 1.0, 12, &mut contributions);
-        
+
         // Base growth: 100,000 * 1.05 = 105,000
         // Plus contributions with growth, result should be > 105,000 + 12,000 = 117,000
         assert!(result > 116_000.0, "Expected > 116,000, got {}", result);
-        assert!((contributions - 12_000.0).abs() < 0.01, "Contributions should be 12,000");
+        assert!(
+            (contributions - 12_000.0).abs() < 0.01,
+            "Contributions should be 12,000"
+        );
     }
 
     #[test]
@@ -875,16 +903,20 @@ mod tests {
         let mut current = make_test_current();
         current.savings = 100_000.0;
         current.savings_weighted_interest = 4.0; // 4% weighted average
-        
+
         let mut settings = make_test_settings();
         settings.savings_growth = 0.0; // Should use current.savings_weighted_interest
         settings.savings_contribution = 0.0;
-        
+
         let mut contributions = 0.0;
         let result = project_savings(&current, &settings, 1.0, 12, &mut contributions);
-        
+
         // 100,000 * 1.04 = 104,000
-        assert!((result - 104_000.0).abs() < 1.0, "Expected ~104,000, got {}", result);
+        assert!(
+            (result - 104_000.0).abs() < 1.0,
+            "Expected ~104,000, got {}",
+            result
+        );
     }
 
     // =====================================================================
@@ -895,33 +927,44 @@ mod tests {
     fn test_project_investments_7_percent_10_years() {
         let mut current = make_test_current();
         current.investments = 100_000.0;
-        
+
         let mut settings = make_test_settings();
         settings.investments_growth = 7.0;
         settings.investments_contribution = 0.0;
-        
+
         let mut contributions = 0.0;
         let result = project_investments(&current, &settings, 10.0, 120, &mut contributions);
-        
+
         // 100,000 * 1.07^10 = 196,715
-        assert!((result - 196_715.0).abs() < 10.0, "Expected ~196,715, got {}", result);
+        assert!(
+            (result - 196_715.0).abs() < 10.0,
+            "Expected ~196,715, got {}",
+            result
+        );
     }
 
     #[test]
     fn test_project_investments_with_dca() {
         let mut current = make_test_current();
         current.investments = 0.0; // Start from zero
-        
+
         let mut settings = make_test_settings();
         settings.investments_growth = 7.0;
         settings.investments_contribution = 1000.0;
-        
+
         let mut contributions = 0.0;
         let result = project_investments(&current, &settings, 10.0, 120, &mut contributions);
-        
+
         // Should have significant growth from DCA
-        assert!(result > 120_000.0, "DCA should grow beyond 120,000, got {}", result);
-        assert!((contributions - 120_000.0).abs() < 0.01, "Contributions should be 120,000");
+        assert!(
+            result > 120_000.0,
+            "DCA should grow beyond 120,000, got {}",
+            result
+        );
+        assert!(
+            (contributions - 120_000.0).abs() < 0.01,
+            "Contributions should be 120,000"
+        );
     }
 
     // =====================================================================
@@ -933,16 +976,20 @@ mod tests {
         let mut current = make_test_current();
         current.bonds = 100_000.0;
         current.bonds_weighted_yield = 3.0; // This should be ignored
-        
+
         let mut settings = make_test_settings();
         settings.bonds_growth = 6.0; // Override with 6%
         settings.bonds_contribution = 0.0;
-        
+
         let mut contributions = 0.0;
         let result = project_bonds(&current, &settings, 1.0, 12, &mut contributions);
-        
+
         // 100,000 * 1.06 = 106,000
-        assert!((result - 106_000.0).abs() < 1.0, "Expected ~106,000, got {}", result);
+        assert!(
+            (result - 106_000.0).abs() < 1.0,
+            "Expected ~106,000, got {}",
+            result
+        );
     }
 
     #[test]
@@ -950,16 +997,20 @@ mod tests {
         let mut current = make_test_current();
         current.bonds = 100_000.0;
         current.bonds_weighted_yield = 4.0;
-        
+
         let mut settings = make_test_settings();
         settings.bonds_growth = 0.0; // No override
         settings.bonds_contribution = 0.0;
-        
+
         let mut contributions = 0.0;
         let result = project_bonds(&current, &settings, 1.0, 12, &mut contributions);
-        
+
         // 100,000 * 1.04 = 104,000
-        assert!((result - 104_000.0).abs() < 1.0, "Expected ~104,000, got {}", result);
+        assert!(
+            (result - 104_000.0).abs() < 1.0,
+            "Expected ~104,000, got {}",
+            result
+        );
     }
 
     // =====================================================================
@@ -970,27 +1021,35 @@ mod tests {
     fn test_project_real_estate_3_percent_appreciation() {
         let mut current = make_test_current();
         current.real_estate = 500_000.0;
-        
+
         let mut settings = make_test_settings();
         settings.real_estate_growth = 3.0;
-        
+
         let result = project_real_estate(&current, &settings, 10.0);
-        
+
         // 500,000 * 1.03^10 = 671,958
-        assert!((result - 671_958.0).abs() < 10.0, "Expected ~671,958, got {}", result);
+        assert!(
+            (result - 671_958.0).abs() < 10.0,
+            "Expected ~671,958, got {}",
+            result
+        );
     }
 
     #[test]
     fn test_project_real_estate_zero_growth() {
         let mut current = make_test_current();
         current.real_estate = 500_000.0;
-        
+
         let mut settings = make_test_settings();
         settings.real_estate_growth = 0.0;
-        
+
         let result = project_real_estate(&current, &settings, 10.0);
-        
-        assert!((result - 500_000.0).abs() < 0.01, "Expected 500,000, got {}", result);
+
+        assert!(
+            (result - 500_000.0).abs() < 0.01,
+            "Expected 500,000, got {}",
+            result
+        );
     }
 
     // =====================================================================
@@ -1001,17 +1060,24 @@ mod tests {
     fn test_project_other_assets_with_contributions() {
         let mut current = make_test_current();
         current.other_assets = 10_000.0;
-        
+
         let mut settings = make_test_settings();
         settings.other_growth = 0.0;
         settings.other_contribution = 500.0;
-        
+
         let mut contributions = 0.0;
         let result = project_other_assets(&current, &settings, 1.0, 12, &mut contributions);
-        
+
         // 10,000 + (500 * 12) = 16,000
-        assert!((result - 16_000.0).abs() < 0.01, "Expected 16,000, got {}", result);
-        assert!((contributions - 6_000.0).abs() < 0.01, "Contributions should be 6,000");
+        assert!(
+            (result - 16_000.0).abs() < 0.01,
+            "Expected 16,000, got {}",
+            result
+        );
+        assert!(
+            (contributions - 6_000.0).abs() < 0.01,
+            "Contributions should be 6,000"
+        );
     }
 
     // =====================================================================
@@ -1024,10 +1090,10 @@ mod tests {
         current.total_liabilities = 100_000.0;
         current.loan_monthly_payment = 2_000.0;
         current.loan_interest_rate = 0.05; // 5% annual
-        
+
         // After 12 months, balance should be reduced
         let result = project_loans(&current, 12);
-        
+
         // With 5% interest and 2,000/month payments, balance should decrease
         assert!(result < 100_000.0, "Balance should decrease");
         assert!(result > 70_000.0, "Balance shouldn't decrease too much");
@@ -1039,10 +1105,10 @@ mod tests {
         current.total_liabilities = 10_000.0;
         current.loan_monthly_payment = 5_000.0;
         current.loan_interest_rate = 0.0; // 0% interest
-        
+
         // With 5,000/month and 0% interest, 10,000 should be paid off in 2 months
         let result = project_loans(&current, 12);
-        
+
         assert!((result - 0.0).abs() < 0.01, "Loan should be fully paid");
     }
 
@@ -1052,11 +1118,14 @@ mod tests {
         current.total_liabilities = 100_000.0;
         current.loan_monthly_payment = 0.0;
         current.loan_interest_rate = 0.05;
-        
+
         // With no payments, balance stays the same (simplified model)
         let result = project_loans(&current, 12);
-        
-        assert!((result - 100_000.0).abs() < 0.01, "Balance should stay at 100,000");
+
+        assert!(
+            (result - 100_000.0).abs() < 0.01,
+            "Balance should stay at 100,000"
+        );
     }
 
     // =====================================================================
@@ -1068,7 +1137,7 @@ mod tests {
         let current = make_test_current();
         let settings = make_test_settings();
         let mut contributions = 0.0;
-        
+
         let savings = project_savings(&current, &settings, 1.0, 12, &mut contributions);
         contributions = 0.0;
         let investments = project_investments(&current, &settings, 1.0, 12, &mut contributions);
@@ -1079,13 +1148,16 @@ mod tests {
         let real_estate = project_real_estate(&current, &settings, 1.0);
         contributions = 0.0;
         let other = project_other_assets(&current, &settings, 1.0, 12, &mut contributions);
-        
+
         let total = savings + investments + crypto + bonds + real_estate + other;
-        
+
         // Verify total is greater than initial (due to growth)
-        assert!(total > current.total_assets, 
-                "Total after 1 year ({}) should exceed initial ({})", 
-                total, current.total_assets);
+        assert!(
+            total > current.total_assets,
+            "Total after 1 year ({}) should exceed initial ({})",
+            total,
+            current.total_assets
+        );
     }
 
     #[test]
@@ -1093,7 +1165,7 @@ mod tests {
         let current = make_test_current();
         let settings = make_test_settings();
         let mut contributions = 0.0;
-        
+
         let savings = project_savings(&current, &settings, 1.0, 12, &mut contributions);
         let investments = project_investments(&current, &settings, 1.0, 12, &mut contributions);
         let crypto = project_crypto(&current, &settings, 1.0, 12, &mut contributions);
@@ -1101,14 +1173,16 @@ mod tests {
         let real_estate = project_real_estate(&current, &settings, 1.0);
         let other = project_other_assets(&current, &settings, 1.0, 12, &mut contributions);
         let loans = project_loans(&current, 12);
-        
+
         let total_assets = savings + investments + crypto + bonds + real_estate + other;
         let net_worth = total_assets - loans;
-        
+
         // Net worth should increase (assets grow faster than loans decrease)
-        assert!(net_worth > current.net_worth,
-                "Net worth after 1 year ({}) should exceed initial ({})",
-                net_worth, current.net_worth);
+        assert!(
+            net_worth > current.net_worth,
+            "Net worth after 1 year ({}) should exceed initial ({})",
+            net_worth,
+            current.net_worth
+        );
     }
 }
-
