@@ -17,7 +17,8 @@
         "settings": "Settings",
         "lockApp": "Lock Application",
         "calculators": "Calculators",
-        "annuityCalculator": "Annuity Calculator"
+        "annuityCalculator": "Annuity Calculator",
+        "estateCalculator": "Estate Calculator"
     },
     "app": {
         "name": "Moony",

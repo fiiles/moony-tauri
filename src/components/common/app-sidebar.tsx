@@ -11,7 +11,7 @@ import {
     SidebarFooter,
     SidebarRail,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, TrendingUp, Home as HomeIcon, Shield, Wallet, Settings, Lock, Bitcoin, Gem, ChevronsUpDown, CreditCard, FileText, BarChart3, Calculator } from "lucide-react";
+import { LayoutDashboard, TrendingUp, Home as HomeIcon, Shield, Wallet, Settings, Lock, Bitcoin, Gem, ChevronsUpDown, CreditCard, FileText, BarChart3, Calculator, LineChart, Building } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
@@ -117,7 +117,7 @@ export function AppSidebar() {
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild tooltip={t('nav.projection')} isActive={location === "/reports/projection"}>
                                     <Link href="/reports/projection">
-                                        <TrendingUp />
+                                        <LineChart />
                                         <span className="group-data-[collapsible=icon]:hidden">{t('nav.projection')}</span>
                                     </Link>
                                 </SidebarMenuButton>
@@ -136,6 +136,14 @@ export function AppSidebar() {
                                     <Link href="/calculators/annuity">
                                         <Calculator />
                                         <span className="group-data-[collapsible=icon]:hidden">{t('nav.annuityCalculator')}</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip={t('nav.estateCalculator')} isActive={location === "/calculators/estate"}>
+                                    <Link href="/calculators/estate">
+                                        <Building />
+                                        <span className="group-data-[collapsible=icon]:hidden">{t('nav.estateCalculator')}</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>

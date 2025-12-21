@@ -2,7 +2,12 @@
     "title": "Settings",
     "profile": {
         "title": "Profile Settings",
-        "description": "Update your personal information"
+        "description": "Update your personal information",
+        "name": "Name",
+        "surname": "Surname",
+        "email": "Email",
+        "save": "Save Changes",
+        "saving": "Saving..."
     },
     "password": {
         "title": "Change Password",

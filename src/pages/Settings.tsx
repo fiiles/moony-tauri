@@ -50,6 +50,7 @@ interface PendingPasswordChange {
 
 function ChangePasswordForm() {
   const { toast } = useToast();
+  const { t } = useTranslation('settings');
   const [step, setStep] = useState<'form' | 'confirm'>('form');
   const [pendingData, setPendingData] = useState<PendingPasswordChange | null>(null);
   const [copied, setCopied] = useState(false);
@@ -128,7 +129,7 @@ function ChangePasswordForm() {
             name="currentPassword"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Current Password</FormLabel>
+                <FormLabel>{t('password.current')}</FormLabel>
                 <FormControl>
                   <Input type="password" {...field} />
                 </FormControl>
@@ -142,7 +143,7 @@ function ChangePasswordForm() {
               name="newPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Password</FormLabel>
+                  <FormLabel>{t('password.new')}</FormLabel>
                   <FormControl>
                     <Input type="password" {...field} />
                   </FormControl>
@@ -155,7 +156,7 @@ function ChangePasswordForm() {
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormLabel>{t('password.confirm')}</FormLabel>
                   <FormControl>
                     <Input type="password" {...field} />
                   </FormControl>
@@ -165,7 +166,7 @@ function ChangePasswordForm() {
             />
           </div>
           <Button type="submit" disabled={prepareMutation.isPending}>
-            {prepareMutation.isPending ? "Verifying..." : "Change Password"}
+            {prepareMutation.isPending ? t('password.updating') : t('password.update')}
           </Button>
         </form>
       </Form>
@@ -441,7 +442,7 @@ export default function SettingsPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name</FormLabel>
+                      <FormLabel>{t('profile.name')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -454,7 +455,7 @@ export default function SettingsPage() {
                   name="surname"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Surname</FormLabel>
+                      <FormLabel>{t('profile.surname')}</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -468,7 +469,7 @@ export default function SettingsPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t('profile.email')}</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -477,7 +478,7 @@ export default function SettingsPage() {
                 )}
               />
               <Button type="submit" disabled={updateProfileMutation.isPending}>
-                {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                {updateProfileMutation.isPending ? t('profile.saving') : t('profile.save')}
               </Button>
             </form>
           </Form>
