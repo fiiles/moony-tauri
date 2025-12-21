@@ -14,7 +14,7 @@ import * as opener from "@tauri-apps/plugin-opener";
 import { useUpdater } from "@/hooks/use-updater";
 
 // App version from package.json
-const APP_VERSION = "0.3.1";
+const APP_VERSION = "0.4.1";
 
 // ⚠️ DEBUG: Set to true to simulate an update available (for testing only)
 // Keep in sync with UpdateStatusBadge.tsx
@@ -132,7 +132,7 @@ export function AboutModal() {
                                     {t("about.version")}
                                 </span>
                                 <span className="text-sm font-semibold">
-                                    v{APP_VERSION}
+                                    {APP_VERSION}
                                 </span>
                             </div>
                             <div className="border-t pt-3">
