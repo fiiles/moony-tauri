@@ -2,7 +2,12 @@
     "title": "Nastavení",
     "profile": {
         "title": "Nastavení profilu",
-        "description": "Aktualizujte své osobní údaje"
+        "description": "Aktualizujte své osobní údaje",
+        "name": "Jméno",
+        "surname": "Příjmení",
+        "email": "E-mail",
+        "save": "Uložit změny",
+        "saving": "Ukládám..."
     },
     "password": {
         "title": "Změna hesla",

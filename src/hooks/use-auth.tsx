@@ -179,9 +179,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setAppStatus("unlocked");
         },
         onError: (error: Error) => {
+            // Check if this is a password-related error and show a friendly message
+            const errorLower = error.message.toLowerCase();
+            const isPasswordError = errorLower.includes("invalid password") ||
+                                   errorLower.includes("corrupted") ||
+                                   errorLower.includes("decryption failed");
             toast({
                 title: "Unlock failed",
-                description: error.message,
+                description: isPasswordError
+                    ? "The password you entered is incorrect. Please try again."
+                    : error.message,
                 variant: "destructive",
             });
         },

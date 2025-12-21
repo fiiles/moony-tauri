@@ -17,7 +17,8 @@
         "settings": "Nastavení",
         "lockApp": "Zamknout aplikaci",
         "calculators": "Kalkulačky",
-        "annuityCalculator": "Anuitní kalkulačka"
+        "annuityCalculator": "Anuitní kalkulačka",
+        "estateCalculator": "Nemovitostní kalkulačka"
     },
     "app": {
         "name": "Moony",

@@ -11,7 +11,7 @@
         "totalGainLoss": "Celkový zisk/ztráta",
         "estimatedDividend": "Odhadovaný výnos z dividend",
         "topPerformer": "Nejvýkonnější",
-        "basedOnLastYear": "Na základě dividend z minulého roku",
+        "basedOnLastYear": "Dle dividend z minulého roku",
         "lastUpdated": "Aktualizováno: {{date}}"
     },
     "table": {

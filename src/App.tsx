@@ -23,6 +23,7 @@ import OtherAssets from "@/pages/OtherAssets";
 import Cashflow from "@/pages/Cashflow";
 import Projection from "@/pages/Projection";
 import AnnuityCalculator from "@/pages/AnnuityCalculator";
+import EstateCalculator from "@/pages/EstateCalculator";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { CurrencyProvider } from "@/lib/currency";
@@ -50,6 +51,7 @@ function Router() {
       <ProtectedRoute path="/reports/cashflow" component={Cashflow} />
       <ProtectedRoute path="/reports/projection" component={Projection} />
       <ProtectedRoute path="/calculators/annuity" component={AnnuityCalculator} />
+      <ProtectedRoute path="/calculators/estate" component={EstateCalculator} />
       <Route component={NotFound} />
     </Switch>
   );
