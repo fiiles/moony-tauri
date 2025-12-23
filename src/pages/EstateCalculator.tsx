@@ -8,7 +8,7 @@ import { calculateAnnuityPayment, getPeriodsPerYear, yearsToTotalPeriods, genera
 
 export default function EstateCalculator() {
     const { t } = useTranslation('calculators');
-    const { formatCurrency } = useCurrency();
+    const { formatCurrencyRaw } = useCurrency();
 
     // Form state - User inputs
     const [purchasePrice, setPurchasePrice] = useState<string>("5000000");
@@ -266,7 +266,7 @@ export default function EstateCalculator() {
                         <div className="p-4 bg-muted/50 rounded-lg">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.form.ownCapital')}</span>
-                                <span className="text-lg font-semibold text-primary">{formatCurrency(calculations.ownCapital)}</span>
+                                <span className="text-lg font-semibold text-primary">{formatCurrencyRaw(calculations.ownCapital)}</span>
                             </div>
                             <div className="flex justify-between items-center mt-1">
                                 <span className="text-xs text-muted-foreground">{t('estate.form.ownCapitalDescription')}</span>
@@ -279,7 +279,7 @@ export default function EstateCalculator() {
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.form.monthlyLoanPayment')}</span>
                                 <span className="text-lg font-semibold text-red-600 dark:text-red-400">
-                                    {formatCurrency(calculations.monthlyLoanPayment)}
+                                    {formatCurrencyRaw(calculations.monthlyLoanPayment)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center mt-1">
@@ -358,7 +358,7 @@ export default function EstateCalculator() {
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.results.grossCashflow')}</span>
                                 <span className={`text-lg font-semibold ${calculations.grossCashflow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                    {formatCurrency(calculations.grossCashflow)}
+                                    {formatCurrencyRaw(calculations.grossCashflow)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center mt-1">
@@ -372,7 +372,7 @@ export default function EstateCalculator() {
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.results.netCashflow')}</span>
                                 <span className={`text-lg font-semibold ${calculations.netCashflow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                    {formatCurrency(calculations.netCashflow)}
+                                    {formatCurrencyRaw(calculations.netCashflow)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center mt-1">
@@ -503,13 +503,13 @@ export default function EstateCalculator() {
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.projection.finalPrice')}</span>
                                 <span className="text-lg font-semibold">
-                                    {formatCurrency(projection.finalEstatePrice)}
+                                    {formatCurrencyRaw(projection.finalEstatePrice)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center mt-1">
                                 <span className="text-xs text-muted-foreground">{t('estate.projection.afterYears', { years: investmentDuration })}</span>
                                 <span className="text-xs text-muted-foreground">
-                                    +{formatCurrency(projection.finalEstatePrice - (parseFloat(purchasePrice) || 0))}
+                                    +{formatCurrencyRaw(projection.finalEstatePrice - (parseFloat(purchasePrice) || 0))}
                                 </span>
                             </div>
                         </div>
@@ -519,13 +519,13 @@ export default function EstateCalculator() {
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.projection.remainingLoan')}</span>
                                 <span className="text-lg font-semibold text-red-600 dark:text-red-400">
-                                    {formatCurrency(projection.remainingLoanBalance)}
+                                    {formatCurrencyRaw(projection.remainingLoanBalance)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center mt-1">
                                 <span className="text-xs text-muted-foreground">{t('estate.projection.paidOff')}</span>
                                 <span className="text-xs text-muted-foreground">
-                                    {formatCurrency((parseFloat(loanAmount) || 0) - projection.remainingLoanBalance)}
+                                    {formatCurrencyRaw((parseFloat(loanAmount) || 0) - projection.remainingLoanBalance)}
                                 </span>
                             </div>
                         </div>
@@ -535,7 +535,7 @@ export default function EstateCalculator() {
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.projection.earningsFromSale')}</span>
                                 <span className={`text-lg font-semibold ${(projection.finalEstatePrice - projection.remainingLoanBalance - calculations.ownCapital) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                    {formatCurrency(projection.finalEstatePrice - projection.remainingLoanBalance - calculations.ownCapital)}
+                                    {formatCurrencyRaw(projection.finalEstatePrice - projection.remainingLoanBalance - calculations.ownCapital)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center mt-1">
@@ -571,7 +571,7 @@ export default function EstateCalculator() {
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.projection.cumulativeRentalEarnings')}</span>
                                 <span className={`text-lg font-semibold ${projection.cumulativeNetCashflow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                    {formatCurrency(projection.cumulativeNetCashflow)}
+                                    {formatCurrencyRaw(projection.cumulativeNetCashflow)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center mt-1">
@@ -597,7 +597,7 @@ export default function EstateCalculator() {
                         <div className="flex justify-between items-center mt-1">
                             <span className="text-xs text-muted-foreground">{t('estate.projection.totalYieldDescription')}</span>
                             <span className="text-xs text-muted-foreground">
-                                {t('estate.projection.totalReturn')}: {formatCurrency(projection.totalReturn)}
+                                {t('estate.projection.totalReturn')}: {formatCurrencyRaw(projection.totalReturn)}
                             </span>
                         </div>
                     </div>

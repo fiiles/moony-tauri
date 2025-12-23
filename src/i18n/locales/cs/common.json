@@ -164,5 +164,11 @@
         "installing": "Instalace aktualizace...",
         "later": "Později",
         "updateNow": "Aktualizovat nyní"
+    },
+    "sync": {
+        "checking": "Synchronizace...",
+        "syncing": "Synchronizace {{current}}/{{total}}...",
+        "complete": "Synchronizace dokončena",
+        "loadingHistorical": "Načítání historických cen..."
     }
 }

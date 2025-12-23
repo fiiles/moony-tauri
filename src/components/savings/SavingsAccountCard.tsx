@@ -30,7 +30,6 @@ export default function SavingsAccountCard({ accounts, onAdd }: SavingsAccountCa
           size="sm" 
           variant="outline"
           onClick={() => {
-            console.log('Add savings account clicked');
             onAdd?.();
           }}
           data-testid="button-add-savings"

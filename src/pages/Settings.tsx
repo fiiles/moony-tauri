@@ -229,12 +229,10 @@ function ChangePasswordForm() {
 
 function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
   const { t } = useTranslation('settings');
-  const [showMarketstack, setShowMarketstack] = useState(false);
   const [showCoingecko, setShowCoingecko] = useState(false);
-  const [marketstackKey, setMarketstackKey] = useState("");
   const [coingeckoKey, setCoingeckoKey] = useState("");
 
-  const { data: apiKeys, isLoading } = useQuery({
+  const { data: apiKeys } = useQuery({
     queryKey: ["api-keys"],
     queryFn: () => priceApi.getApiKeys(),
   });
@@ -242,7 +240,6 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
   // Update local state when API keys are loaded
   useEffect(() => {
     if (apiKeys) {
-      setMarketstackKey(apiKeys.marketstack || "");
       setCoingeckoKey(apiKeys.coingecko || "");
     }
   }, [apiKeys]);
@@ -250,7 +247,6 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
   const saveApiKeysMutation = useMutation({
     mutationFn: async () => {
       await priceApi.setApiKeys({
-        marketstack: marketstackKey || undefined,
         coingecko: coingeckoKey || undefined,
       });
     },
@@ -272,37 +268,7 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">
-            {t('apiKeys.marketstack.label')}
-            <a
-              href="https://marketstack.com/signup"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-2 text-primary text-xs hover:underline inline-flex items-center gap-1"
-            >
-              {t('apiKeys.marketstack.getFreeKey')} <ExternalLink className="h-3 w-3" />
-            </a>
-          </label>
-          <div className="flex gap-2">
-            <Input
-              type={showMarketstack ? "text" : "password"}
-              value={marketstackKey}
-              onChange={(e) => setMarketstackKey(e.target.value)}
-              placeholder={t('apiKeys.marketstack.placeholder')}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={() => setShowMarketstack(!showMarketstack)}
-            >
-              {showMarketstack ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">{t('apiKeys.marketstack.hint')}</p>
-        </div>
-
+        {/* CoinGecko API Key - For crypto prices */}
         <div className="space-y-2">
           <label className="text-sm font-medium">
             {t('apiKeys.coingecko.label')}

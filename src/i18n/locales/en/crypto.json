@@ -122,5 +122,8 @@
         "searchFailed": "Search failed",
         "cryptoAdded": "Crypto added successfully",
         "addFailed": "Failed to add crypto"
+    },
+    "chart": {
+        "title": "Portfolio Value Trend"
     }
 }

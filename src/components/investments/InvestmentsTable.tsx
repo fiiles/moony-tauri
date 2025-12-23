@@ -28,6 +28,7 @@ import { useCurrency } from "@/lib/currency";
 import { useMemo, useState } from "react";
 import { AssetLogo } from "@/components/common/AssetLogo";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 
 interface InvestmentsTableProps {
   holdings: HoldingData[];
@@ -37,6 +38,7 @@ interface InvestmentsTableProps {
   onUpdatePrice: (holding: HoldingData) => void;
   onUpdateDividend: (holding: HoldingData) => void;
   onDelete: (holding: HoldingData) => void;
+  isLoading?: boolean;
 }
 
 export function InvestmentsTable({
@@ -47,6 +49,7 @@ export function InvestmentsTable({
   onUpdatePrice,
   onUpdateDividend,
   onDelete,
+  isLoading,
 }: InvestmentsTableProps) {
   const { formatCurrency } = useCurrency();
   const { t } = useTranslation('investments');
@@ -70,7 +73,10 @@ export function InvestmentsTable({
   }, [holdings, search]);
 
   return (
-    <Card className="border shadow-sm card-hover">
+    <Card className={cn(
+      "border shadow-sm card-hover transition-opacity duration-300",
+      isLoading && "opacity-50 animate-pulse"
+    )}>
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>

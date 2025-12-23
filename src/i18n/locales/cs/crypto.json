@@ -122,5 +122,8 @@
         "searchFailed": "Hledání selhalo",
         "cryptoAdded": "Kryptoměna úspěšně přidána",
         "addFailed": "Přidání kryptoměny selhalo"
+    },
+    "chart": {
+        "title": "Vývoj hodnoty portfolia"
     }
 }

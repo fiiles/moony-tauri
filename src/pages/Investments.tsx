@@ -11,6 +11,7 @@ import { InvestmentsTable } from "@/components/investments/InvestmentsTable";
 import { investmentsApi, priceApi } from "@/lib/tauri-api";
 import type { StockInvestmentWithPrice } from "@shared/types";
 import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from "@/utils/investments";
+import PortfolioValueTrendChart from "@/components/common/PortfolioValueTrendChart";
 
 import { BuyInvestmentModal } from "@/components/investments/BuyInvestmentModal";
 import { ManualPriceModal } from "@/components/investments/ManualPriceModal";
@@ -38,18 +39,36 @@ export default function Investments() {
     staleTime: 60 * 1000,
   });
 
-  // Refresh prices mutation - uses MarketStack API
+  // Refresh prices and dividends mutation - uses Yahoo Finance API
   const refreshPricesMutation = useMutation({
     mutationFn: async () => {
-      return priceApi.refreshStockPrices();
+      // First refresh stock prices
+      const pricesResult = await priceApi.refreshStockPrices();
+      // Then refresh dividends (runs in background, doesn't block)
+      priceApi.refreshDividends().catch(console.error);
+      return pricesResult;
     },
-    onSuccess: (results) => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["investments"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-      toast({
-        title: t('toast.pricesRefreshed', { count: results.length }),
-        description: t('toast.pricesRefreshed', { count: results.length })
-      });
+      queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
+      
+      // Check if rate limit was hit (either from API or because there were more tickers than limit)
+      if (result.rate_limit_hit) {
+        toast({
+          title: t('toast.rateLimitReached'),
+          description: t('toast.rateLimitDescription', { 
+            updated: result.updated.length, 
+            remaining: result.remaining_tickers.length 
+          }),
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: t('toast.pricesRefreshed', { count: result.updated.length }),
+          description: t('toast.pricesRefreshedDescription', { count: result.updated.length })
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -140,11 +159,12 @@ export default function Investments() {
         <div className="flex gap-2">
           <Button
             variant="outline"
+            size="icon"
             onClick={() => refreshPricesMutation.mutate()}
             disabled={refreshPricesMutation.isPending}
+            title={t('refreshPrices')}
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
-            {refreshPricesMutation.isPending ? t('refreshing') : t('refreshPrices')}
+            <RefreshCw className={`h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
           </Button>
           <ImportInvestmentsModal />
           <AddInvestmentModal />
@@ -153,6 +173,7 @@ export default function Investments() {
 
       <InvestmentsSummary
         metrics={metrics}
+        isLoading={refreshPricesMutation.isPending}
         latestFetchedAt={holdings.reduce((latest, h) => {
           if (!h.fetchedAt) return latest;
           // Handle both seconds (Unix timestamp) and ISO strings/Dates
@@ -167,16 +188,23 @@ export default function Investments() {
         }, undefined as Date | undefined)}
       />
 
+      <PortfolioValueTrendChart
+        type="investments"
+        currentValue={metrics.totalValue}
+      />
+
       <InvestmentsTable
         holdings={holdings}
+        isLoading={refreshPricesMutation.isPending}
         onBuy={handleBuyClick}
         onSell={handleSellClick}
-
         onViewTransactions={handleViewTransactionsClick}
         onUpdatePrice={handleUpdatePriceClick}
         onUpdateDividend={handleUpdateDividendClick}
         onDelete={handleDeleteClick}
       />
+
+
 
 
       <SellInvestmentModal

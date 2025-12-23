@@ -47,7 +47,6 @@ export default function InsuranceCard({ policies, onAdd }: InsuranceCardProps) {
           size="sm" 
           variant="outline"
           onClick={() => {
-            console.log('Add insurance clicked');
             onAdd?.();
           }}
           data-testid="button-add-insurance"

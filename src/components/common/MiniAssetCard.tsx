@@ -57,7 +57,6 @@ export default function MiniAssetCard({
           <button
             className="text-xs font-medium text-primary hover:text-primary/80 transition-colors duration-200"
             onClick={() => {
-              console.log(`View ${title} details clicked`);
               onViewDetails?.();
             }}
             data-testid={`button-view-${title.toLowerCase().replace(/\s+/g, '-')}`}

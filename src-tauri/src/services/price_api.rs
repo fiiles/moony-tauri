@@ -1,73 +1,12 @@
 //! External API services for price fetching
 //!
-//! - MarketStack API for stock prices
+//! - Yahoo Finance API for stock prices and dividends (via yahoo_finance_api crate)
 //! - CoinGecko API for cryptocurrency prices and search
 
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-// ============================================================================
-// Exchange to Currency Mapping (from Moony-local price-service.ts)
-// ============================================================================
-
-fn get_currency_from_exchange(exchange: Option<&str>) -> &'static str {
-    match exchange {
-        // US Exchanges
-        Some("XNAS") => "USD", // NASDAQ
-        Some("XNYS") => "USD", // NYSE
-        Some("BATS") => "USD",
-        Some("ARCX") => "USD", // NYSE Arca
-        Some("IEXG") => "USD", // IEX
-
-        // European Exchanges
-        Some("XLON") => "GBP", // London
-        Some("XPAR") => "EUR", // Paris
-        Some("XAMS") => "EUR", // Amsterdam
-        Some("XBRU") => "EUR", // Brussels
-        Some("XLIS") => "EUR", // Lisbon
-        Some("XFRA") => "EUR", // Frankfurt
-        Some("XETR") => "EUR", // XETRA
-        Some("XSWX") => "CHF", // Swiss
-        Some("XSTO") => "USD", // Stockholm (SEK not supported)
-        Some("XHEL") => "EUR", // Helsinki
-        Some("XMIL") => "EUR", // Milan
-
-        // Czech
-        Some("XPRA") => "CZK", // Prague
-
-        // Asian
-        Some("XTKS") => "JPY", // Tokyo
-        Some("XHKG") => "HKD", // Hong Kong
-        Some("XSHG") => "CNY", // Shanghai
-        Some("XSHE") => "CNY", // Shenzhen
-
-        _ => "USD", // Default
-    }
-}
-
-// ============================================================================
-// MarketStack API Types
-// ============================================================================
-
-#[derive(Debug, Deserialize)]
-struct MarketstackResponse {
-    data: Option<Vec<MarketstackEod>>,
-    error: Option<MarketstackError>,
-}
-
-#[derive(Debug, Deserialize)]
-struct MarketstackEod {
-    symbol: String,
-    close: Option<f64>,
-    exchange: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct MarketstackError {
-    message: Option<String>,
-}
 
 // ============================================================================
 // CoinGecko API Types
@@ -88,21 +27,10 @@ struct CoinGeckoSearchResponse {
 }
 
 // ============================================================================
-// MarketStack Dividend API Types
+// Dividend Cache Configuration
 // ============================================================================
 
-const DIVIDEND_CACHE_DAYS: i64 = 30;
-
-#[derive(Debug, Deserialize)]
-struct MarketstackDividendResponse {
-    data: Option<Vec<MarketstackDividend>>,
-    error: Option<MarketstackError>,
-}
-
-#[derive(Debug, Deserialize)]
-struct MarketstackDividend {
-    dividend: f64,
-}
+const DIVIDEND_CACHE_DAYS: i64 = 1; // TODO: Change back to 30 after testing
 
 #[derive(Debug, Serialize)]
 pub struct DividendResult {
@@ -118,90 +46,148 @@ pub struct StockPriceResult {
     pub currency: String,
 }
 
-/// Refresh stock prices from MarketStack API
-/// Returns list of updated prices
-pub async fn refresh_stock_prices(
+/// Result from stock price refresh
+#[derive(Debug, Serialize)]
+pub struct StockPriceRefreshResult {
+    pub updated: Vec<StockPriceResult>,
+    pub remaining_tickers: Vec<String>,
+    pub rate_limit_hit: bool,
+}
+
+/// Refresh stock prices from Yahoo Finance using yahoo_finance_api crate
+/// This crate handles the cookie/crumb authentication that Yahoo requires
+/// Works for US, European (.DE, .PA, .MI, etc.) and HK (.HK) stocks
+pub async fn refresh_stock_prices_yahoo(
     db: &Database,
-    api_key: &str,
     tickers: Vec<String>,
-) -> Result<Vec<StockPriceResult>> {
+) -> Result<StockPriceRefreshResult> {
+    use yahoo_finance_api as yahoo;
+
     if tickers.is_empty() {
-        return Ok(vec![]);
+        return Ok(StockPriceRefreshResult {
+            updated: vec![],
+            remaining_tickers: vec![],
+            rate_limit_hit: false,
+        });
     }
 
-    let symbols = tickers.join(",");
-    let url = format!(
-        "http://api.marketstack.com/v1/eod/latest?access_key={}&symbols={}",
-        api_key, symbols
-    );
-
-    log::info!("[PRICE API] Fetching stock prices for: {}", symbols);
-
-    let client = reqwest::Client::new();
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| AppError::ExternalApi(format!("MarketStack request failed: {}", e)))?;
-
-    let data: MarketstackResponse = response
-        .json::<MarketstackResponse>()
-        .await
-        .map_err(|e| AppError::ExternalApi(format!("MarketStack parse error: {}", e)))?;
-
-    if let Some(error) = data.error {
-        return Err(AppError::ExternalApi(format!(
-            "MarketStack API error: {}",
-            error.message.unwrap_or_default()
-        )));
-    }
-
-    let results = data.data.unwrap_or_default();
     let mut updated_prices = Vec::new();
+    let mut failed_tickers: Vec<(String, String)> = Vec::new();
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs() as i64;
 
-    for result in results {
-        if let Some(close_price) = result.close {
-            let currency = get_currency_from_exchange(result.exchange.as_deref());
-            let ticker = result.symbol.to_uppercase();
+    println!(
+        "[YAHOO FINANCE] Fetching prices for {} tickers",
+        tickers.len()
+    );
+    println!("[YAHOO FINANCE] Tickers: {:?}", tickers);
 
-            // Upsert into stock_prices table
-            db.with_conn(|conn| {
-                conn.execute(
-                    "INSERT INTO stock_prices (id, ticker, original_price, currency, price_date, fetched_at)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?5)
-                     ON CONFLICT(ticker) DO UPDATE SET
-                       original_price = ?3, currency = ?4, price_date = ?5, fetched_at = ?5",
-                    rusqlite::params![
-                        uuid::Uuid::new_v4().to_string(),
-                        &ticker,
-                        format!("{:.2}", close_price),
-                        currency,
-                        now,
-                    ],
-                )?;
-                Ok(())
-            })?;
+    // Create Yahoo connector (handles cookies and authentication)
+    let provider = yahoo::YahooConnector::new()
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {}", e)))?;
 
-            log::info!(
-                "[PRICE API] Updated {}: {} {}",
-                ticker,
-                close_price,
-                currency
-            );
+    // Process each ticker
+    for ticker in &tickers {
+        // Use get_latest_quotes for real-time price
+        match provider.get_latest_quotes(ticker, "1d").await {
+            Ok(response) => {
+                match response.last_quote() {
+                    Ok(quote) => {
+                        let price = quote.close;
+                        if price > 0.0 {
+                            // Determine currency from ticker suffix
+                            let currency = get_currency_from_ticker(ticker);
+                            let ticker_upper = ticker.to_uppercase();
 
-            updated_prices.push(StockPriceResult {
-                ticker,
-                price: close_price,
-                currency: currency.to_string(),
-            });
+                            // Upsert into stock_prices table
+                            if let Err(e) = db.with_conn(|conn| {
+                                conn.execute(
+                                    "INSERT INTO stock_prices (id, ticker, original_price, currency, price_date, fetched_at)
+                                     VALUES (?1, ?2, ?3, ?4, ?5, ?5)
+                                     ON CONFLICT(ticker) DO UPDATE SET
+                                       original_price = ?3, currency = ?4, price_date = ?5, fetched_at = ?5",
+                                    rusqlite::params![
+                                        uuid::Uuid::new_v4().to_string(),
+                                        &ticker_upper,
+                                        format!("{:.2}", price),
+                                        &currency,
+                                        now,
+                                    ],
+                                )?;
+                                Ok(())
+                            }) {
+                                failed_tickers.push((ticker.clone(), format!("DB error: {}", e)));
+                                continue;
+                            }
+
+                            updated_prices.push(StockPriceResult {
+                                ticker: ticker_upper,
+                                price,
+                                currency: currency.to_string(),
+                            });
+                        } else {
+                            failed_tickers.push((ticker.clone(), "price=0".to_string()));
+                        }
+                    }
+                    Err(e) => {
+                        failed_tickers.push((ticker.clone(), format!("no quote: {}", e)));
+                    }
+                }
+            }
+            Err(e) => {
+                failed_tickers.push((ticker.clone(), format!("{}", e)));
+            }
         }
     }
 
-    Ok(updated_prices)
+    // Summary logging
+    println!("[YAHOO FINANCE] ========== SUMMARY ==========");
+    println!("[YAHOO FINANCE] Updated: {} tickers", updated_prices.len());
+    if !updated_prices.is_empty() {
+        let updated_list: Vec<_> = updated_prices.iter().map(|p| p.ticker.as_str()).collect();
+        println!("[YAHOO FINANCE] Successfully updated: {:?}", updated_list);
+    }
+    if !failed_tickers.is_empty() {
+        println!("[YAHOO FINANCE] Failed: {} tickers", failed_tickers.len());
+        for (ticker, reason) in &failed_tickers {
+            println!("[YAHOO FINANCE]   - {}: {}", ticker, reason);
+        }
+    }
+    println!("[YAHOO FINANCE] ==============================");
+
+    Ok(StockPriceRefreshResult {
+        updated: updated_prices,
+        remaining_tickers: vec![],
+        rate_limit_hit: false,
+    })
+}
+
+/// Get currency from ticker suffix
+fn get_currency_from_ticker(ticker: &str) -> &'static str {
+    if let Some(suffix) = ticker.split('.').nth(1) {
+        match suffix.to_uppercase().as_str() {
+            "L" | "LON" => "GBP",          // London
+            "PA" => "EUR",                 // Paris
+            "AS" => "EUR",                 // Amsterdam
+            "BR" => "EUR",                 // Brussels
+            "DE" | "F" | "XETRA" => "EUR", // Germany
+            "SW" => "CHF",                 // Swiss
+            "ST" => "SEK",                 // Stockholm
+            "HE" => "EUR",                 // Helsinki
+            "MI" => "EUR",                 // Milan
+            "VI" => "EUR",                 // Vienna
+            "PR" => "CZK",                 // Prague
+            "T" | "TYO" => "JPY",          // Tokyo
+            "HK" => "HKD",                 // Hong Kong
+            "SS" | "SZ" => "CNY",          // Shanghai/Shenzhen
+            "AM" => "EUR",                 // Amsterdam
+            _ => "USD",
+        }
+    } else {
+        "USD" // Default for US tickers without suffix
+    }
 }
 
 // ============================================================================
@@ -411,16 +397,15 @@ pub async fn search_crypto(
 }
 
 // ============================================================================
-// Dividend Refresh (MarketStack)
+// Dividend Refresh (Yahoo Finance)
 // ============================================================================
 
-/// Refresh dividends from MarketStack API
+/// Refresh dividends from Yahoo Finance
 /// Only fetches if data is older than 30 days
-pub async fn refresh_dividends(
-    db: &Database,
-    api_key: &str,
-    tickers: Vec<String>,
-) -> Result<Vec<DividendResult>> {
+/// No API key required - uses yahoo_finance_api crate
+pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Vec<DividendResult>> {
+    use yahoo_finance_api as yahoo;
+
     if tickers.is_empty() {
         return Ok(vec![]);
     }
@@ -430,13 +415,17 @@ pub async fn refresh_dividends(
         .unwrap()
         .as_secs() as i64;
 
-    // Calculate date range (last 365 days)
-    let today = chrono::Utc::now();
-    let one_year_ago = today - chrono::Duration::days(365);
-    let date_from = one_year_ago.format("%Y-%m-%d").to_string();
-    let date_to = today.format("%Y-%m-%d").to_string();
-
     let mut results = Vec::new();
+    let mut failed_tickers: Vec<(String, String)> = Vec::new();
+
+    println!(
+        "[YAHOO DIVIDENDS] Fetching dividends for {} tickers",
+        tickers.len()
+    );
+
+    // Create Yahoo connector
+    let provider = yahoo::YahooConnector::new()
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {}", e)))?;
 
     for ticker in tickers {
         // Check if we need to refresh (data older than 30 days)
@@ -471,7 +460,7 @@ pub async fn refresh_dividends(
             })?;
 
             if let Some((sum, currency)) = cached {
-                log::info!("[DIVIDEND API] Using cached dividend for {}", ticker);
+                println!("[YAHOO DIVIDENDS] Using cached dividend for {}", ticker);
                 results.push(DividendResult {
                     ticker,
                     yearly_sum: sum.parse().unwrap_or(0.0),
@@ -481,81 +470,356 @@ pub async fn refresh_dividends(
             continue;
         }
 
-        // Fetch from MarketStack API
-        log::info!(
-            "[DIVIDEND API] Fetching dividends for {} from {} to {}",
-            ticker,
-            date_from,
-            date_to
-        );
+        // Fetch dividend history from Yahoo Finance (last 1 year + 1 day to ensure we get all)
+        // yahoo_finance_api uses time::OffsetDateTime, not chrono
+        let now_ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+        let start_ts = now_ts - (366 * 24 * 60 * 60); // 366 days ago
 
-        let url = format!(
-            "http://api.marketstack.com/v1/dividends?access_key={}&symbols={}&date_from={}&date_to={}",
-            api_key, ticker, date_from, date_to
-        );
+        let start = time::OffsetDateTime::from_unix_timestamp(start_ts)
+            .unwrap_or(time::OffsetDateTime::now_utc());
+        let end = time::OffsetDateTime::now_utc();
 
-        let client = reqwest::Client::new();
-        let response = match client.get(&url).send().await {
-            Ok(r) => r,
-            Err(e) => {
-                log::error!("[DIVIDEND API] Request failed for {}: {}", ticker, e);
-                continue;
+        match provider.get_quote_history(&ticker, start, end).await {
+            Ok(response) => {
+                // Get dividends from the response - dividends() returns Result, not Option
+                match response.dividends() {
+                    Ok(div_data) => {
+                        let yearly_sum: f64 = div_data.iter().map(|d| d.amount).sum();
+                        let currency = get_currency_from_ticker(&ticker).to_string();
+
+                        // Store in database
+                        if let Err(e) = db.with_conn(|conn| {
+                            conn.execute(
+                                "INSERT INTO dividend_data (id, ticker, yearly_dividend_sum, currency, last_fetched_at)
+                                 VALUES (?1, ?2, ?3, ?4, ?5)
+                                 ON CONFLICT(ticker) DO UPDATE SET
+                                   yearly_dividend_sum = ?3, currency = ?4, last_fetched_at = ?5",
+                                rusqlite::params![
+                                    uuid::Uuid::new_v4().to_string(),
+                                    &ticker,
+                                    format!("{:.2}", yearly_sum),
+                                    &currency,
+                                    now,
+                                ],
+                            )?;
+                            Ok(())
+                        }) {
+                            failed_tickers.push((ticker.clone(), format!("DB error: {}", e)));
+                            continue;
+                        }
+
+                        results.push(DividendResult {
+                            ticker: ticker.clone(),
+                            yearly_sum,
+                            currency,
+                        });
+                    }
+                    Err(_) => {
+                        // No dividends found - store as 0
+                        let currency = get_currency_from_ticker(&ticker).to_string();
+
+                        db.with_conn(|conn| {
+                            conn.execute(
+                                "INSERT INTO dividend_data (id, ticker, yearly_dividend_sum, currency, last_fetched_at)
+                                 VALUES (?1, ?2, ?3, ?4, ?5)
+                                 ON CONFLICT(ticker) DO UPDATE SET
+                                   yearly_dividend_sum = ?3, currency = ?4, last_fetched_at = ?5",
+                                rusqlite::params![
+                                    uuid::Uuid::new_v4().to_string(),
+                                    &ticker,
+                                    "0.00",
+                                    &currency,
+                                    now,
+                                ],
+                            )?;
+                            Ok(())
+                        })?;
+
+                        results.push(DividendResult {
+                            ticker: ticker.clone(),
+                            yearly_sum: 0.0,
+                            currency,
+                        });
+                    }
+                }
             }
-        };
-
-        let data: MarketstackDividendResponse = match response.json().await {
-            Ok(d) => d,
             Err(e) => {
-                log::error!("[DIVIDEND API] Parse failed for {}: {}", ticker, e);
-                continue;
+                failed_tickers.push((ticker.clone(), format!("{}", e)));
             }
-        };
+        }
+    }
 
-        if let Some(error) = data.error {
-            log::error!(
-                "[DIVIDEND API] API error for {}: {}",
-                ticker,
-                error.message.unwrap_or_default()
-            );
-            continue;
+    // Summary logging
+    println!("[YAHOO DIVIDENDS] ========== SUMMARY ==========");
+    println!("[YAHOO DIVIDENDS] Updated: {} tickers", results.len());
+    if !failed_tickers.is_empty() {
+        println!("[YAHOO DIVIDENDS] Failed: {} tickers", failed_tickers.len());
+        for (ticker, reason) in &failed_tickers {
+            println!("[YAHOO DIVIDENDS]   - {}: {}", ticker, reason);
+        }
+    }
+    println!("[YAHOO DIVIDENDS] ==============================");
+
+    Ok(results)
+}
+
+// ============================================================================
+// Historical Price Fetching (for snapshot backfill)
+// ============================================================================
+
+/// Historical price data for a single ticker
+#[derive(Debug, Clone, Serialize)]
+pub struct HistoricalPrice {
+    pub timestamp: i64,
+    pub price: f64,
+    pub currency: String,
+}
+
+/// Result of historical price backfill
+#[derive(Debug, Serialize)]
+pub struct BackfillProgress {
+    pub days_processed: i32,
+    pub total_days: i32,
+    pub completed: bool,
+}
+
+/// Get historical stock prices from Yahoo Finance for a date range
+/// Returns a map of ticker -> (date_timestamp -> price)
+/// Uses batched requests with throttling to avoid rate limits
+pub async fn get_historical_stock_prices_yahoo(
+    tickers: &[String],
+    start_timestamp: i64,
+    end_timestamp: i64,
+) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
+    use yahoo_finance_api as yahoo;
+
+    if tickers.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let mut results: HashMap<String, Vec<HistoricalPrice>> = HashMap::new();
+
+    println!(
+        "[YAHOO HISTORICAL] Fetching historical prices for {} tickers from {} to {}",
+        tickers.len(),
+        start_timestamp,
+        end_timestamp
+    );
+
+    // Create Yahoo connector
+    let provider = yahoo::YahooConnector::new()
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {}", e)))?;
+
+    // Convert timestamps to time::OffsetDateTime
+    let start = time::OffsetDateTime::from_unix_timestamp(start_timestamp)
+        .unwrap_or(time::OffsetDateTime::now_utc());
+    let end = time::OffsetDateTime::from_unix_timestamp(end_timestamp)
+        .unwrap_or(time::OffsetDateTime::now_utc());
+
+    // Process in batches of 5 with 500ms delay between batches
+    for (batch_idx, chunk) in tickers.chunks(5).enumerate() {
+        if batch_idx > 0 {
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         }
 
-        let dividends = data.data.unwrap_or_default();
-        let yearly_sum: f64 = dividends.iter().map(|d| d.dividend).sum();
-        let currency = "USD".to_string(); // MarketStack dividends are in USD
+        for ticker in chunk {
+            match provider.get_quote_history(ticker, start, end).await {
+                Ok(response) => {
+                    // quotes() returns a Result, not an Option
+                    match response.quotes() {
+                        Ok(quotes) => {
+                            let currency = get_currency_from_ticker(ticker).to_string();
+                            let prices: Vec<HistoricalPrice> = quotes
+                                .iter()
+                                .map(|q| HistoricalPrice {
+                                    timestamp: q.timestamp as i64,
+                                    price: q.close,
+                                    currency: currency.clone(),
+                                })
+                                .collect();
 
-        // Store in database
-        db.with_conn(|conn| {
-            conn.execute(
-                "INSERT INTO dividend_data (id, ticker, yearly_dividend_sum, currency, last_fetched_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5)
-                 ON CONFLICT(ticker) DO UPDATE SET
-                   yearly_dividend_sum = ?3, currency = ?4, last_fetched_at = ?5",
-                rusqlite::params![
-                    uuid::Uuid::new_v4().to_string(),
-                    &ticker,
-                    format!("{:.2}", yearly_sum),
-                    &currency,
-                    now,
-                ],
-            )?;
-            Ok(())
-        })?;
+                            if !prices.is_empty() {
+                                println!(
+                                    "[YAHOO HISTORICAL] {} - got {} historical prices",
+                                    ticker,
+                                    prices.len()
+                                );
+                                results.insert(ticker.clone(), prices);
+                            }
+                        }
+                        Err(e) => {
+                            println!("[YAHOO HISTORICAL] {} - no quotes: {}", ticker, e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("[YAHOO HISTORICAL] {} - error: {}", ticker, e);
+                }
+            }
+        }
+    }
 
-        log::info!(
-            "[DIVIDEND API] Updated {}: {} {} annual dividends ({} payments)",
-            ticker,
-            yearly_sum,
-            currency,
-            dividends.len()
+    println!(
+        "[YAHOO HISTORICAL] Fetched historical data for {} tickers",
+        results.len()
+    );
+
+    Ok(results)
+}
+
+/// Get historical crypto prices from CoinGecko for a specific date
+/// CoinGecko's /history endpoint returns price for a specific date
+pub async fn get_historical_crypto_price_coingecko(
+    api_key: Option<&str>,
+    coingecko_id: &str,
+    date: &str, // Format: "dd-mm-yyyy"
+) -> Result<Option<f64>> {
+    let url = format!(
+        "https://api.coingecko.com/api/v3/coins/{}/history?date={}&localization=false",
+        coingecko_id, date
+    );
+
+    let client = reqwest::Client::new();
+    let mut request = client.get(&url);
+
+    if let Some(key) = api_key {
+        if !key.is_empty() {
+            request = request.header("x-cg-demo-api-key", key);
+        }
+    }
+
+    let response = request.send().await.map_err(|e| {
+        AppError::ExternalApi(format!("CoinGecko historical request failed: {}", e))
+    })?;
+
+    if !response.status().is_success() {
+        return Ok(None);
+    }
+
+    #[derive(Deserialize)]
+    struct MarketData {
+        current_price: Option<HashMap<String, f64>>,
+    }
+
+    #[derive(Deserialize)]
+    struct HistoryResponse {
+        market_data: Option<MarketData>,
+    }
+
+    let data: HistoryResponse = response
+        .json()
+        .await
+        .map_err(|e| AppError::ExternalApi(format!("CoinGecko historical parse error: {}", e)))?;
+
+    if let Some(market_data) = data.market_data {
+        if let Some(prices) = market_data.current_price {
+            return Ok(prices.get("usd").copied());
+        }
+    }
+
+    Ok(None)
+}
+
+/// Get historical crypto prices for multiple coins over a date range
+/// Uses CoinGecko's market_chart/range endpoint which is more efficient
+pub async fn get_historical_crypto_prices_coingecko(
+    api_key: Option<&str>,
+    id_to_ticker: &HashMap<String, String>,
+    start_timestamp: i64,
+    end_timestamp: i64,
+) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
+    if id_to_ticker.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let mut results: HashMap<String, Vec<HistoricalPrice>> = HashMap::new();
+
+    println!(
+        "[COINGECKO HISTORICAL] Fetching historical prices for {} cryptos",
+        id_to_ticker.len()
+    );
+
+    let client = reqwest::Client::new();
+
+    // Process each crypto with a small delay to avoid rate limits
+    for (idx, (coingecko_id, ticker)) in id_to_ticker.iter().enumerate() {
+        if idx > 0 {
+            tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+        }
+
+        let url = format!(
+            "https://api.coingecko.com/api/v3/coins/{}/market_chart/range?vs_currency=usd&from={}&to={}",
+            coingecko_id, start_timestamp, end_timestamp
         );
 
-        results.push(DividendResult {
-            ticker,
-            yearly_sum,
-            currency,
-        });
+        let mut request = client.get(&url);
+
+        if let Some(key) = api_key {
+            if !key.is_empty() {
+                request = request.header("x-cg-demo-api-key", key);
+            }
+        }
+
+        match request.send().await {
+            Ok(response) => {
+                if response.status().is_success() {
+                    #[derive(Deserialize)]
+                    struct RangeResponse {
+                        prices: Option<Vec<(f64, f64)>>, // [[timestamp_ms, price], ...]
+                    }
+
+                    if let Ok(data) = response.json::<RangeResponse>().await {
+                        if let Some(prices) = data.prices {
+                            // Convert to daily prices (CoinGecko returns hourly for short ranges)
+                            // Group by day and take the last price for each day
+                            let mut daily_prices: HashMap<i64, f64> = HashMap::new();
+                            for (ts_ms, price) in prices {
+                                let ts = (ts_ms / 1000.0) as i64;
+                                // Round to start of day (UTC)
+                                let day_start = (ts / 86400) * 86400;
+                                daily_prices.insert(day_start, price);
+                            }
+
+                            let historical: Vec<HistoricalPrice> = daily_prices
+                                .into_iter()
+                                .map(|(ts, price)| HistoricalPrice {
+                                    timestamp: ts,
+                                    price,
+                                    currency: "USD".to_string(),
+                                })
+                                .collect();
+
+                            if !historical.is_empty() {
+                                println!(
+                                    "[COINGECKO HISTORICAL] {} - got {} daily prices",
+                                    ticker,
+                                    historical.len()
+                                );
+                                results.insert(ticker.clone(), historical);
+                            }
+                        }
+                    }
+                } else {
+                    println!(
+                        "[COINGECKO HISTORICAL] {} - HTTP error: {}",
+                        ticker,
+                        response.status()
+                    );
+                }
+            }
+            Err(e) => {
+                println!("[COINGECKO HISTORICAL] {} - error: {}", ticker, e);
+            }
+        }
     }
+
+    println!(
+        "[COINGECKO HISTORICAL] Fetched historical data for {} cryptos",
+        results.len()
+    );
 
     Ok(results)
 }
@@ -567,6 +831,7 @@ pub async fn refresh_dividends(
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct ApiKeys {
     pub marketstack: Option<String>,
+    pub finnhub: Option<String>,
     pub coingecko: Option<String>,
 }
 
@@ -576,6 +841,14 @@ pub fn get_api_keys(db: &Database) -> Result<ApiKeys> {
         let marketstack: Option<String> = conn
             .query_row(
                 "SELECT value FROM app_config WHERE key = 'api_key_marketstack'",
+                [],
+                |row| row.get(0),
+            )
+            .ok();
+
+        let finnhub: Option<String> = conn
+            .query_row(
+                "SELECT value FROM app_config WHERE key = 'api_key_finnhub'",
                 [],
                 |row| row.get(0),
             )
@@ -591,6 +864,7 @@ pub fn get_api_keys(db: &Database) -> Result<ApiKeys> {
 
         Ok(ApiKeys {
             marketstack,
+            finnhub,
             coingecko,
         })
     })
@@ -602,6 +876,14 @@ pub fn set_api_keys(db: &Database, keys: &ApiKeys) -> Result<()> {
         if let Some(ref key) = keys.marketstack {
             conn.execute(
                 "INSERT INTO app_config (key, value) VALUES ('api_key_marketstack', ?1)
+                 ON CONFLICT(key) DO UPDATE SET value = ?1",
+                [key],
+            )?;
+        }
+
+        if let Some(ref key) = keys.finnhub {
+            conn.execute(
+                "INSERT INTO app_config (key, value) VALUES ('api_key_finnhub', ?1)
                  ON CONFLICT(key) DO UPDATE SET value = ?1",
                 [key],
             )?;

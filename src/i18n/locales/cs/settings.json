@@ -21,11 +21,17 @@
     "apiKeys": {
         "title": "API klíče",
         "description": "Nastavte API klíče pro získávání cen akcií a kryptoměn.",
+        "finnhub": {
+            "label": "Finnhub API klíč",
+            "getFreeKey": "Získat zdarma",
+            "placeholder": "Zadejte Finnhub API klíč",
+            "hint": "Používá se pro aktualizace cen akcií (60 volání/min zdarma)"
+        },
         "marketstack": {
             "label": "MarketStack API klíč",
             "getFreeKey": "Získat zdarma",
             "placeholder": "Zadejte MarketStack API klíč",
-            "hint": "Používá se pro aktualizace cen akcií v reálném čase"
+            "hint": "Používá se pro data o dividendách"
         },
         "coingecko": {
             "label": "CoinGecko API klíč (volitelné)",

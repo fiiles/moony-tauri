@@ -164,5 +164,11 @@
         "installing": "Installing update...",
         "later": "Later",
         "updateNow": "Update Now"
+    },
+    "sync": {
+        "checking": "Syncing...",
+        "syncing": "Syncing {{current}}/{{total}}...",
+        "complete": "Sync complete",
+        "loadingHistorical": "Loading historical prices..."
     }
 }

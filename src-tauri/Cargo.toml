@@ -1,6 +1,6 @@
 [package]
 name = "moony"
-version = "0.4.1"
+version = "0.5.0"
 description = "Moony - Personal Finance Manager"
 authors = ["Filip Král"]
 edition = "2021"
@@ -68,3 +68,4 @@ image = "0.25"
 # Auto-updater support
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+time = "0.3.44"

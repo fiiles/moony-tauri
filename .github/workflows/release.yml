@@ -66,33 +66,27 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Moony v__VERSION__'
           releaseBody: |
-            ## Moony - Personal Wealth Manager
+            ## What's New
 
-            Download the appropriate installer for your platform:
-            - **macOS (Apple Silicon)**: `.dmg` file ending in `_aarch64.dmg`
-            - **macOS (Intel)**: `.dmg` file ending in `_x64.dmg`
-            - **Windows**: `.msi` or `.exe` installer
-            - **Linux**: `.deb`, `.rpm`, or `.AppImage`
+            See full changelog and release notes on the [GitHub Releases page](https://github.com/fiiles/moony-tauri/releases).
 
             ---
 
-            ### ⚠️ macOS Users - Important
+            ### Download
 
-            Since this app is **not signed** with an Apple Developer Certificate, macOS will block it from opening by default. 
+            | Platform | File |
+            |----------|------|
+            | macOS (Apple Silicon) | `_aarch64.dmg` |
+            | macOS (Intel) | `_x64.dmg` |
+            | Windows | `.exe` |
+            | Linux | `.AppImage`, `.deb`, or `.rpm` |
 
-            **After installing, run this command in Terminal before opening the app:**
+            ### ⚠️ macOS Users
 
+            After installing, run this command in Terminal:
             ```bash
             xattr -cr /Applications/Moony.app
             ```
-
-            This removes the quarantine flag that macOS places on unsigned apps. You only need to do this once after each update.
-
-            ---
-
-            ### 🔄 Auto-Updates
-
-            This version supports automatic updates! You'll be notified when a new version is available and can update directly from within the app.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

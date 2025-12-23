@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 
 export default function Insurance() {
   const { t } = useTranslation('insurance');
-  const { formatCurrency, currencyCode: userCurrency } = useCurrency();
+  const { formatCurrencyRaw, currencyCode: userCurrency } = useCurrency();
 
   const { data: policies, isLoading } = useQuery<InsurancePolicy[]>({
     queryKey: ["insurance"],
@@ -78,7 +78,7 @@ export default function Insurance() {
       <div className="grid gap-4 md:grid-cols-2">
         <SummaryCard
           title={t('summary.totalPremium')}
-          value={formatCurrency(totalYearlyCost)}
+          value={formatCurrencyRaw(totalYearlyCost)}
           icon={<Shield className="h-4 w-4" />}
           subtitle={t('summary.policyCount')}
         />

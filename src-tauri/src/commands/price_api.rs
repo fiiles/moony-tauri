@@ -3,8 +3,8 @@
 use crate::db::Database;
 use crate::error::Result;
 use crate::services::price_api::{
-    self, ApiKeys, CoinGeckoSearchResult, CryptoPriceResult, DividendResult, StockPriceResult,
-    StockSearchResult,
+    self, ApiKeys, CoinGeckoSearchResult, CryptoPriceResult, DividendResult,
+    StockPriceRefreshResult, StockSearchResult,
 };
 use std::collections::HashMap;
 use tauri::State;
@@ -21,18 +21,14 @@ pub async fn set_api_keys(db: State<'_, Database>, keys: ApiKeys) -> Result<()> 
     price_api::set_api_keys(&db, &keys)
 }
 
-/// Refresh stock prices from MarketStack
+/// Refresh stock prices from Yahoo Finance
+/// Batches all tickers into a single request (no rate limiting issues)
+/// No API key required
 #[tauri::command]
-pub async fn refresh_stock_prices(db: State<'_, Database>) -> Result<Vec<StockPriceResult>> {
-    // Get API key
-    let keys = price_api::get_api_keys(&db)?;
-    let api_key = keys.marketstack.ok_or_else(|| {
-        crate::error::AppError::Validation("MarketStack API key not configured".into())
-    })?;
-
+pub async fn refresh_stock_prices(db: State<'_, Database>) -> Result<StockPriceRefreshResult> {
     // Get all tickers from investments
     let tickers: Vec<String> = db.with_conn(|conn| {
-        let mut stmt = conn.prepare("SELECT DISTINCT ticker FROM stock_investments")?;
+        let mut stmt = conn.prepare("SELECT DISTINCT si.ticker FROM stock_investments si")?;
         let tickers = stmt
             .query_map([], |row| row.get(0))?
             .filter_map(|r| r.ok())
@@ -41,11 +37,15 @@ pub async fn refresh_stock_prices(db: State<'_, Database>) -> Result<Vec<StockPr
     })?;
 
     if tickers.is_empty() {
-        return Ok(vec![]);
+        return Ok(StockPriceRefreshResult {
+            updated: vec![],
+            remaining_tickers: vec![],
+            rate_limit_hit: false,
+        });
     }
 
-    // Fetch prices
-    let result = price_api::refresh_stock_prices(&db, &api_key, tickers).await?;
+    // Fetch prices using Yahoo Finance (batched request, no API key needed)
+    let result = price_api::refresh_stock_prices_yahoo(&db, tickers).await?;
 
     // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db).await?;
@@ -102,15 +102,10 @@ pub async fn search_crypto(
     price_api::search_crypto(api_key, &query).await
 }
 
-/// Refresh dividend data from MarketStack
+/// Refresh dividend data from Yahoo Finance
+/// No API key required
 #[tauri::command]
 pub async fn refresh_dividends(db: State<'_, Database>) -> Result<Vec<DividendResult>> {
-    // Get API key
-    let keys = price_api::get_api_keys(&db)?;
-    let api_key = keys.marketstack.ok_or_else(|| {
-        crate::error::AppError::Validation("MarketStack API key not configured".into())
-    })?;
-
     // Get all tickers from investments
     let tickers: Vec<String> = db.with_conn(|conn| {
         let mut stmt = conn.prepare("SELECT DISTINCT ticker FROM stock_investments")?;
@@ -125,8 +120,8 @@ pub async fn refresh_dividends(db: State<'_, Database>) -> Result<Vec<DividendRe
         return Ok(vec![]);
     }
 
-    // Fetch dividends
-    price_api::refresh_dividends(&db, &api_key, tickers).await
+    // Fetch dividends using Yahoo Finance (no API key needed)
+    price_api::refresh_dividends(&db, tickers).await
 }
 
 /// Search for stock tickers using Yahoo Finance

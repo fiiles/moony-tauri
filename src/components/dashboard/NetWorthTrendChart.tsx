@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
+import { useMemo } from "react";
 
 interface TrendData {
   date: string;
@@ -23,6 +24,23 @@ export default function NetWorthTrendChart({
   const isPositive = change >= 0;
   const { formatCurrency } = useCurrency();
   const { t } = useTranslation('dashboard');
+
+  // Calculate dynamic Y-axis domain based on data range
+  const yAxisDomain = useMemo((): [number, number] => {
+    if (data.length === 0) return [0, 0];
+    
+    const values = data.map(d => d.value);
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const range = maxValue - minValue;
+    
+    // Add 10% padding on each side, but ensure we don't go below 0 for net worth
+    const padding = range > 0 ? range * 0.1 : maxValue * 0.05;
+    const yMin = Math.max(0, minValue - padding);
+    const yMax = maxValue + padding;
+    
+    return [yMin, yMax];
+  }, [data]);
 
   return (
     <Card className="p-6 border h-full flex flex-col">
@@ -57,7 +75,7 @@ export default function NetWorthTrendChart({
               interval="preserveStartEnd"
               tickMargin={8}
             />
-            <YAxis hide />
+            <YAxis hide domain={yAxisDomain} />
             <Tooltip
               formatter={(value: number) => [formatCurrency(value), t('stats.netWorth')]}
               contentStyle={{

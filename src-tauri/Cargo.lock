@@ -2774,7 +2774,7 @@ dependencies = [
 
 [[package]]
 name = "moony"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2800,6 +2800,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-updater",
  "thiserror 1.0.69",
+ "time",
  "tokio",
  "urlencoding",
  "uuid",

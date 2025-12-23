@@ -2,6 +2,7 @@ import { SummaryCard } from "@/components/common/SummaryCard";
 import { useCurrency } from "@/lib/currency";
 import { TrendingUp, TrendingDown, Award, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 
 interface InvestmentsSummaryProps {
   metrics: {
@@ -13,14 +14,18 @@ interface InvestmentsSummaryProps {
     topPerformer: { ticker: string; gainLossPercent: number } | null;
   };
   latestFetchedAt?: Date;
+  isLoading?: boolean;
 }
 
-export function InvestmentsSummary({ metrics, latestFetchedAt }: InvestmentsSummaryProps) {
+export function InvestmentsSummary({ metrics, latestFetchedAt, isLoading }: InvestmentsSummaryProps) {
   const { formatCurrency } = useCurrency();
   const { t } = useTranslation('investments');
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+    <div className={cn(
+      "grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8 transition-opacity duration-300",
+      isLoading && "opacity-50 animate-pulse"
+    )}>
       <SummaryCard
         title={t('summary.totalValue')}
         value={formatCurrency(metrics.totalValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}

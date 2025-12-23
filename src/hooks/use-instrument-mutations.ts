@@ -5,15 +5,15 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import type { InsertInstrument } from "@shared/schema";
+import type { InsertInstrument, InsertPurchase } from "@shared/schema";
 
 export function useInstrumentMutations() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const createMutation = useMutation({
-    mutationFn: async (_data: InsertInstrument | (InsertInstrument & { purchase?: any })) => {
-      // TODO: Implement if needed - legacy instrument support
+    mutationFn: async (_data: InsertInstrument & { purchase?: InsertPurchase }) => {
+      // Legacy instrument support not available in Tauri version
       throw new Error("Instrument feature not implemented in Tauri version. Use Investments instead.");
     },
     onError: (error: Error) => {

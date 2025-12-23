@@ -101,7 +101,6 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                     const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
                     const convertedFile = new File([blob], newName, { type: 'image/jpeg' });
                     processed.push(convertedFile);
-                    console.log(`Converted HEIC: ${file.name} → ${newName}`);
                 } catch (e) {
                     console.error('HEIC conversion failed:', e);
                     errors.push(`Failed to convert "${file.name}". Please convert manually.`);
@@ -367,7 +366,6 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
             const fullPath = `${appDataPath}/${photo.thumbnailPath}`;
             // Use Tauri's convertFileSrc with 'asset' protocol
             const url = convertFileSrc(fullPath, 'asset');
-            console.log("Photo URL:", { fullPath, url });
             return url;
         }
         return "";

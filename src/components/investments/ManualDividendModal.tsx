@@ -99,7 +99,29 @@ export function ManualDividendModal({
         },
     });
 
-
+    const deleteMutation = useMutation({
+        mutationFn: async () => {
+            if (!investment) return;
+            return investmentsApi.deleteManualDividend(investment.ticker);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["investments"] });
+            queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
+            queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            toast({
+                title: tc('status.success'),
+                description: t('toast.manualDividendDeleted', { defaultValue: 'Manual dividend override removed' }),
+            });
+            onOpenChange(false);
+        },
+        onError: (error: Error) => {
+            toast({
+                title: tc('status.error'),
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
 
     const onSubmit = (data: FormData) => {
         mutation.mutate(data);
@@ -195,13 +217,25 @@ export function ManualDividendModal({
                             </div>
                         </div>
 
-                        <Button
-                            type="submit"
-                            className="w-full"
-                            disabled={mutation.isPending}
-                        >
-                            {mutation.isPending ? tc('status.updating') : t('actions.updateDividend')}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                type="submit"
+                                className="flex-1"
+                                disabled={mutation.isPending}
+                            >
+                                {mutation.isPending ? tc('status.updating') : t('actions.updateDividend')}
+                            </Button>
+                            {investment?.isManualDividend && (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    onClick={() => deleteMutation.mutate()}
+                                    disabled={deleteMutation.isPending}
+                                >
+                                    {deleteMutation.isPending ? tc('status.deleting', { defaultValue: 'Deleting...' }) : tc('actions.delete', { defaultValue: 'Delete' })}
+                                </Button>
+                            )}
+                        </div>
                     </form>
                 </Form>
             </DialogContent>

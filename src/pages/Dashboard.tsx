@@ -23,14 +23,16 @@ export default function Dashboard() {
   const dateRange = useMemo(() => {
     const now = new Date();
     switch (selectedPeriod) {
-      case '7D':
-        return { start: subDays(now, 7), end: now };
       case '30D':
         return { start: subDays(now, 30), end: now };
       case '90D':
         return { start: subDays(now, 90), end: now };
       case 'YTD':
         return { start: startOfYear(now), end: now };
+      case '1Y':
+        return { start: subDays(now, 365), end: now };
+      case '5Y':
+        return { start: subDays(now, 365 * 5), end: now };
       case 'All':
         return { start: undefined, end: now };
       default:

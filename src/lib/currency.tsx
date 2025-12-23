@@ -8,6 +8,7 @@ type CurrencyContextValue = {
   currency: CurrencyDef;
   setCurrency: (c: CurrencyCode) => void;
   formatCurrency: (value: number, opts?: Intl.NumberFormatOptions) => string;
+  formatCurrencyRaw: (value: number, opts?: Intl.NumberFormatOptions) => string;
   formatCurrencyShort: (value: number) => string;
   convert: (amount: number, from: CurrencyCode, to: CurrencyCode) => number;
 };
@@ -25,7 +26,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         const rates = await portfolioApi.refreshExchangeRates();
         if (rates && typeof rates === 'object') {
           updateExchangeRates(rates);
-          console.log("[CURRENCY] Updated exchange rates from ECB:", rates);
         }
       } catch (error) {
         console.warn("[CURRENCY] Failed to fetch ECB rates, using fallbacks:", error);
@@ -73,6 +73,25 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     return currency.position === "before" ? `${currency.symbol}${formatted}` : `${formatted} ${currency.symbol}`;
   }
 
+  /**
+   * Format a value that's already in the user's preferred currency (no conversion)
+   * Use this for:
+   * - Values already converted to user currency
+   * - Calculator inputs where user enters in their preferred currency
+   */
+  function formatCurrencyRaw(value: number, opts?: Intl.NumberFormatOptions) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return "";
+
+    const options: Intl.NumberFormatOptions = {
+      minimumFractionDigits: opts?.minimumFractionDigits ?? 0,
+      maximumFractionDigits: opts?.maximumFractionDigits ?? 0,
+      ...opts,
+    };
+
+    const formatted = value.toLocaleString(currency.locale, options);
+    return currency.position === "before" ? `${currency.symbol}${formatted}` : `${formatted} ${currency.symbol}`;
+  }
+
   function formatCurrencyShort(value: number) {
     if (value === null || value === undefined || Number.isNaN(Number(value))) return "";
 
@@ -97,7 +116,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CurrencyContext.Provider
-      value={{ currencyCode, currency, setCurrency: setCurrencyCode, formatCurrency, formatCurrencyShort, convert }}
+      value={{ currencyCode, currency, setCurrency: setCurrencyCode, formatCurrency, formatCurrencyRaw, formatCurrencyShort, convert }}
     >
       {children}
     </CurrencyContext.Provider>

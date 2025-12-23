@@ -8,9 +8,11 @@
  */
 import { createContext, ReactNode, useContext, useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { authApi } from "../lib/tauri-api";
+import { authApi, priceApi } from "../lib/tauri-api";
 import { queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { UserProfile } from "@shared/schema";
+import type { UseMutationResult } from "@tanstack/react-query";
 
 type AppStatus = "needs_setup" | "locked" | "unlocked";
 
@@ -34,16 +36,16 @@ interface PendingRecover {
 }
 
 type AuthContextType = {
-    user: any | null;
+    user: UserProfile | null;
     appStatus: AppStatus;
     isLoading: boolean;
     error: Error | null;
-    setupMutation: any;
-    unlockMutation: any;
-    lockMutation: any;
-    recoverMutation: any;
-    confirmSetupMutation: any;
-    confirmRecoveryMutation: any;
+    setupMutation: UseMutationResult<PendingSetup, Error, { name: string; surname: string; email?: string; password: string; language?: string }>;
+    unlockMutation: UseMutationResult<UserProfile, Error, { password: string }>;
+    lockMutation: UseMutationResult<void, Error, void>;
+    recoverMutation: UseMutationResult<{ recoveryKey: string; newPassword: string; newRecoveryKey: string }, Error, { recoveryKey: string; newPassword: string }>;
+    confirmSetupMutation: UseMutationResult<UserProfile, Error, void>;
+    confirmRecoveryMutation: UseMutationResult<UserProfile, Error, void>;
     recoveryKey: string | null;
     clearRecoveryKey: () => void;
     pendingSetup: PendingSetup | null;
@@ -174,9 +176,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profile = await authApi.unlock(data.password);
             return profile;
         },
-        onSuccess: (profile: any) => {
+        onSuccess: (profile) => {
             queryClient.setQueryData(["user-profile"], profile);
             setAppStatus("unlocked");
+            
+            // Refresh all prices in background after unlock
+            // Stock prices and dividends (Yahoo Finance)
+            priceApi.refreshStockPrices().then(() => {
+                queryClient.invalidateQueries({ queryKey: ["investments"] });
+                queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            }).catch(console.error);
+            priceApi.refreshDividends().then(() => {
+                queryClient.invalidateQueries({ queryKey: ["investments"] });
+                queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
+            }).catch(console.error);
+            // Crypto prices (CoinGecko)
+            priceApi.refreshCryptoPrices().then(() => {
+                queryClient.invalidateQueries({ queryKey: ["crypto"] });
+                queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            }).catch(console.error);
         },
         onError: (error: Error) => {
             // Check if this is a password-related error and show a friendly message

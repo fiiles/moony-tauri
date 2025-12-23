@@ -121,10 +121,16 @@
         "added": "Investice úspěšně přidána",
         "updated": "Investice úspěšně aktualizována",
         "deleted": "Investice úspěšně smazána",
-        "pricesRefreshed": "Aktualizováno {{count}} cen akcií z MarketStack",
+        "pricesRefreshed": "Aktualizováno {{count}} cen akcií",
+        "pricesRefreshedDescription": "Úspěšně načteny aktuální ceny z Yahoo Finance",
+        "rateLimitReached": "Dosažen limit volání",
+        "rateLimitDescription": "Aktualizováno {{updated}} cen, zbývá {{remaining}}. Zkuste to za minutu.",
         "refreshFailed": "Aktualizace cen selhala",
         "noResults": "Žádné výsledky",
         "tickerFound": "Ticker nalezen",
         "searchFailed": "Hledání selhalo"
+    },
+    "chart": {
+        "title": "Vývoj hodnoty portfolia"
     }
 }
