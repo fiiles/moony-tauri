@@ -33,7 +33,6 @@ export default function RecentTransactions({ transactions, onViewAll }: RecentTr
         <button 
           className="text-sm font-bold text-primary hover:underline"
           onClick={() => {
-            console.log('View all transactions clicked');
             onViewAll?.();
           }}
           data-testid="button-view-all-transactions"

@@ -29,6 +29,7 @@ import { useMemo, useState } from "react";
 import { type CryptoHoldingData } from "@shared/calculations";
 import { AssetLogo } from "@/components/common/AssetLogo";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 
 // Re-export the type for consumers who import from this file
 export type { CryptoHoldingData } from "@shared/calculations";
@@ -40,6 +41,7 @@ interface CryptoTableProps {
     onUpdatePrice: (holding: CryptoHoldingData) => void;
     onDelete: (holding: CryptoHoldingData) => void;
     onBuy: (holding: CryptoHoldingData) => void;
+    isLoading?: boolean;
 }
 
 export function CryptoTable({
@@ -49,6 +51,7 @@ export function CryptoTable({
     onUpdatePrice,
     onDelete,
     onBuy,
+    isLoading,
 }: CryptoTableProps) {
     const { t } = useTranslation('crypto');
     const { t: tc } = useTranslation('common');
@@ -74,7 +77,10 @@ export function CryptoTable({
     }, [holdings, search]);
 
     return (
-        <Card className="border shadow-sm card-hover">
+        <Card className={cn(
+            "border shadow-sm card-hover transition-opacity duration-300",
+            isLoading && "opacity-50 animate-pulse"
+        )}>
             <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>

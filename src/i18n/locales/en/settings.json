@@ -21,11 +21,17 @@
     "apiKeys": {
         "title": "API Keys",
         "description": "Configure API keys for stock and cryptocurrency price fetching.",
+        "finnhub": {
+            "label": "Finnhub API Key",
+            "getFreeKey": "Get free key",
+            "placeholder": "Enter Finnhub API key",
+            "hint": "Used for real-time stock price updates (60 calls/minute free)"
+        },
         "marketstack": {
             "label": "MarketStack API Key",
             "getFreeKey": "Get free key",
             "placeholder": "Enter MarketStack API key",
-            "hint": "Used for real-time stock price updates"
+            "hint": "Used for dividend data"
         },
         "coingecko": {
             "label": "CoinGecko API Key (optional)",

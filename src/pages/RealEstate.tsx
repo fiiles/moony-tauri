@@ -23,7 +23,7 @@ import { useTranslation } from "react-i18next";
 export default function RealEstatePage() {
   const { t } = useTranslation('realEstate');
   const [, setLocation] = useLocation();
-  const { formatCurrency, currencyCode: userCurrency } = useCurrency();
+  const { formatCurrency, formatCurrencyRaw, currencyCode: userCurrency } = useCurrency();
 
   const { data: realEstates, isLoading } = useQuery<RealEstate[]>({
     queryKey: ["real-estate"],
@@ -81,9 +81,9 @@ export default function RealEstatePage() {
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryCard
           title={t('summary.totalValue')}
-          value={formatCurrency(totalMarketValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          value={formatCurrencyRaw(totalMarketValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           icon={<TrendingUp className="h-4 w-4" />}
-          subtitle={`${t('table.purchasePrice')}: ${formatCurrency(totalPurchasePrice, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          subtitle={`${t('table.purchasePrice')}: ${formatCurrencyRaw(totalPurchasePrice, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
         />
         <SummaryCard
           title={t('summary.propertyCount')}
@@ -92,7 +92,7 @@ export default function RealEstatePage() {
         />
         <SummaryCard
           title={t('summary.rentalIncome')}
-          value={formatCurrency(totalMonthlyRent, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          value={formatCurrencyRaw(totalMonthlyRent, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           icon={<Home className="h-4 w-4" />}
           subtitle={t('summary.grossRentalIncome')}
         />

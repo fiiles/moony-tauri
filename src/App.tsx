@@ -32,6 +32,8 @@ import { I18nProvider } from "@/i18n/I18nProvider";
 import { UpdateNotification } from "@/components/update-notification";
 import { AboutModal } from "@/components/common/AboutModal";
 import { UpdateStatusBadge } from "@/components/common/UpdateStatusBadge";
+import { SyncStatusBadge } from "@/components/common/SyncStatusBadge";
+import { SyncProvider } from "@/hooks/SyncProvider";
 
 function Router() {
   return (
@@ -76,6 +78,7 @@ function AppLayout() {
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="flex items-center gap-2">
+            <SyncStatusBadge />
             <UpdateStatusBadge />
             <AboutModal />
           </div>
@@ -95,13 +98,15 @@ export default function App() {
         <AuthProvider>
           <I18nProvider>
             <CurrencyProvider>
-              <TooltipProvider>
-                <ErrorBoundary>
-                  <AppLayout />
-                </ErrorBoundary>
-                <Toaster />
-                <UpdateNotification />
-              </TooltipProvider>
+              <SyncProvider>
+                <TooltipProvider>
+                  <ErrorBoundary>
+                    <AppLayout />
+                  </ErrorBoundary>
+                  <Toaster />
+                  <UpdateNotification />
+                </TooltipProvider>
+              </SyncProvider>
             </CurrencyProvider>
           </I18nProvider>
         </AuthProvider>

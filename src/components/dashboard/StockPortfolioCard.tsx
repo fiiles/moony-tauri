@@ -33,7 +33,6 @@ export default function StockPortfolioCard({ holdings, onAdd }: StockPortfolioCa
           size="sm"
           variant="outline"
           onClick={() => {
-            console.log('Add stock clicked');
             onAdd?.();
           }}
           data-testid="button-add-stock"

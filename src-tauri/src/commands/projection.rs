@@ -104,19 +104,9 @@ pub async fn calculate_portfolio_projection(
     db: State<'_, Database>,
     input: ProjectionInput,
 ) -> Result<PortfolioProjection> {
-    eprintln!(
-        "[Projection] Starting calculation: horizon={}, view={}, exclude_re={}",
-        input.horizon_years, input.view_type, input.exclude_personal_real_estate
-    );
-
     db.with_conn(|conn| {
         // 1. Get current portfolio values (with exclude personal RE flag)
         let current = get_current_portfolio_values(conn, input.exclude_personal_real_estate)?;
-
-        eprintln!("[Projection] Current values: savings={}, investments={}, crypto={}, bonds={}, real_estate={}, other={}",
-                  current.savings, current.investments, current.crypto, current.bonds, current.real_estate, current.other_assets);
-        eprintln!("[Projection] Calculated rates: savings_interest={:.2}%, bonds_yield={:.2}%",
-                  current.savings_weighted_interest, current.bonds_weighted_yield);
 
         // 2. Get projection settings (use defaults if not set)
         let settings = get_settings_map(conn)?;
@@ -291,10 +281,7 @@ fn get_current_portfolio_values(
     conn: &rusqlite::Connection,
     exclude_personal_real_estate: bool,
 ) -> Result<CurrentValues> {
-    eprintln!("[Projection] get_current_portfolio_values starting...");
-
     // Calculate savings
-    eprintln!("[Projection] Querying savings_accounts...");
     let mut savings_stmt =
         conn.prepare("SELECT balance, currency, interest_rate FROM savings_accounts")?;
     let savings_data: Vec<(f64, f64)> = savings_stmt
@@ -308,11 +295,6 @@ fn get_current_portfolio_values(
         .collect();
 
     let total_savings: f64 = savings_data.iter().map(|(b, _)| b).sum();
-    eprintln!(
-        "[Projection] Savings: count={}, total={}",
-        savings_data.len(),
-        total_savings
-    );
 
     // Weighted average interest rate (excluding 0% accounts)
     let non_zero_savings: Vec<_> = savings_data
@@ -331,7 +313,6 @@ fn get_current_portfolio_values(
     };
 
     // Calculate bonds with weighted yield
-    eprintln!("[Projection] Querying bonds...");
     let mut bonds_stmt =
         conn.prepare("SELECT coupon_value, quantity, currency, interest_rate FROM bonds")?;
     let bonds_data: Vec<(f64, f64)> = bonds_stmt

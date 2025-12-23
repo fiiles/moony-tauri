@@ -144,6 +144,16 @@ export function AddInvestmentModal() {
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             setOpen(false);
             form.reset();
+            
+            // Refresh prices and dividends for the new stock (runs in background)
+            priceApi.refreshStockPrices().then(() => {
+                queryClient.invalidateQueries({ queryKey: ["investments"] });
+                queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            }).catch(console.error);
+            priceApi.refreshDividends().then(() => {
+                queryClient.invalidateQueries({ queryKey: ["investments"] });
+                queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
+            }).catch(console.error);
         },
     });
 

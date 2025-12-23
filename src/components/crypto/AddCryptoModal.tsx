@@ -135,6 +135,12 @@ export function AddCryptoModal() {
             setOpen(false);
             form.reset();
             toast({ title: tc('status.success'), description: t('toast.cryptoAdded') });
+            
+            // Refresh crypto prices via CoinGecko (runs in background)
+            priceApi.refreshCryptoPrices().then(() => {
+                queryClient.invalidateQueries({ queryKey: ["crypto"] });
+                queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            }).catch(console.error);
         },
         onError: (error: Error) => {
             console.error("Failed to add crypto:", error);

@@ -28,6 +28,7 @@ import {
 import type { CryptoInvestmentWithPrice } from "@shared/types";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import PortfolioValueTrendChart from "@/components/common/PortfolioValueTrendChart";
 
 export default function Crypto() {
     const { t } = useTranslation('crypto');
@@ -167,11 +168,12 @@ export default function Crypto() {
                 <div className="flex gap-2">
                     <Button
                         variant="outline"
+                        size="icon"
                         onClick={() => refreshPricesMutation.mutate()}
                         disabled={refreshPricesMutation.isPending}
+                        title={t('refreshPrices')}
                     >
-                        <RefreshCw className={`mr-2 h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
-                        {refreshPricesMutation.isPending ? t('refreshing') : t('refreshPrices')}
+                        <RefreshCw className={`h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
                     </Button>
                     <AddCryptoModal />
                 </div>
@@ -179,6 +181,7 @@ export default function Crypto() {
 
             <CryptoSummary
                 metrics={metrics}
+                isLoading={refreshPricesMutation.isPending}
                 latestFetchedAt={holdings.reduce((latest, h) => {
                     if (!h.fetchedAt) return latest;
                     // Handle both seconds (Unix timestamp) and ISO strings/Dates
@@ -193,8 +196,14 @@ export default function Crypto() {
                 }, undefined as Date | undefined)}
             />
 
+            <PortfolioValueTrendChart
+                type="crypto"
+                currentValue={metrics.totalValue}
+            />
+
             <CryptoTable
                 holdings={holdings}
+                isLoading={refreshPricesMutation.isPending}
                 onSell={handleSellClick}
                 onViewTransactions={handleViewTransactionsClick}
                 onUpdatePrice={handleUpdatePriceClick}

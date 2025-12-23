@@ -41,7 +41,7 @@ import {
 
 export default function AnnuityCalculator() {
     const { t } = useTranslation('calculators');
-    const { formatCurrency } = useCurrency();
+    const { formatCurrencyRaw } = useCurrency();
 
     // Form state
     const [loanAmount, setLoanAmount] = useState<string>("1000000");
@@ -202,20 +202,20 @@ export default function AnnuityCalculator() {
                     <Card className="bg-primary/5 border-primary/20">
                         <CardContent className="pt-6">
                             <p className="text-sm text-muted-foreground">{t('annuity.results.regularPayment')}</p>
-                            <p className="text-3xl font-bold text-primary">{formatCurrency(result.periodicPayment)}</p>
+                            <p className="text-3xl font-bold text-primary">{formatCurrencyRaw(result.periodicPayment)}</p>
                             <p className="text-xs text-muted-foreground mt-1">{t('annuity.results.perPeriod')}</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="pt-6">
                             <p className="text-sm text-muted-foreground">{t('annuity.results.totalPayments')}</p>
-                            <p className="text-2xl font-semibold">{formatCurrency(result.totalPayments)}</p>
+                            <p className="text-2xl font-semibold">{formatCurrencyRaw(result.totalPayments)}</p>
                         </CardContent>
                     </Card>
                     <Card>
                         <CardContent className="pt-6">
                             <p className="text-sm text-muted-foreground">{t('annuity.results.totalInterest')}</p>
-                            <p className="text-2xl font-semibold text-orange-600 dark:text-orange-400">{formatCurrency(result.totalInterest)}</p>
+                            <p className="text-2xl font-semibold text-orange-600 dark:text-orange-400">{formatCurrencyRaw(result.totalInterest)}</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -272,7 +272,7 @@ export default function AnnuityCalculator() {
                                 <YAxis hide />
                                 <Tooltip 
                                     formatter={(value: number, name: string) => [
-                                        formatCurrency(value), 
+                                        formatCurrencyRaw(value), 
                                         name === 'principal' ? t('annuity.chart.principal') : t('annuity.chart.interest')
                                     ]}
                                     contentStyle={{
@@ -346,10 +346,10 @@ export default function AnnuityCalculator() {
                                                 <TableCell className="font-medium">{row.periodNumber}</TableCell>
                                                 <TableCell>{row.year}</TableCell>
                                                 <TableCell>{row.month}</TableCell>
-                                                <TableCell className="text-right">{formatCurrency(row.payment)}</TableCell>
-                                                <TableCell className="text-right text-primary">{formatCurrency(row.principalPayment)}</TableCell>
-                                                <TableCell className="text-right text-orange-600 dark:text-orange-400">{formatCurrency(row.interestPayment)}</TableCell>
-                                                <TableCell className="text-right">{formatCurrency(row.remainingBalance)}</TableCell>
+                                                <TableCell className="text-right">{formatCurrencyRaw(row.payment)}</TableCell>
+                                                <TableCell className="text-right text-primary">{formatCurrencyRaw(row.principalPayment)}</TableCell>
+                                                <TableCell className="text-right text-orange-600 dark:text-orange-400">{formatCurrencyRaw(row.interestPayment)}</TableCell>
+                                                <TableCell className="text-right">{formatCurrencyRaw(row.remainingBalance)}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>

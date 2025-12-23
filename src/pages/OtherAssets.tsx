@@ -39,7 +39,6 @@ export default function OtherAssets() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            console.log("[DELETE ASSET] Attempting to delete asset:", id);
             await otherAssetsApi.delete(id);
         },
         onSuccess: () => {

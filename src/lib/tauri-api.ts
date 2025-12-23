@@ -374,6 +374,13 @@ export const otherAssetsApi = {
 // Portfolio API
 // ============================================================================
 
+export interface BackfillResult {
+  days_processed: number;
+  total_days: number;
+  completed: boolean;
+  message: string;
+}
+
 export const portfolioApi = {
   getMetrics: (excludePersonalRealEstate: boolean = false) =>
     tauriInvoke<PortfolioMetrics>('get_portfolio_metrics', { excludePersonalRealEstate }),
@@ -386,14 +393,17 @@ export const portfolioApi = {
   refreshExchangeRates: () => tauriInvoke<Record<string, number>>('refresh_exchange_rates'),
 
   getExchangeRates: () => tauriInvoke<Record<string, number>>('get_exchange_rates'),
+
+  startBackfill: () => tauriInvoke<BackfillResult>('start_snapshot_backfill'),
 };
 
 // ============================================================================
-// Price API (MarketStack + CoinGecko)
+// Price API (Finnhub + MarketStack + CoinGecko)
 // ============================================================================
 
 export interface ApiKeys {
   marketstack?: string;
+  finnhub?: string;
   coingecko?: string;
 }
 
@@ -401,6 +411,13 @@ export interface StockPriceResult {
   ticker: string;
   price: number;
   currency: string;
+}
+
+// Result from Finnhub stock price refresh with rate limit info
+export interface StockPriceRefreshResult {
+  updated: StockPriceResult[];
+  remaining_tickers: string[];
+  rate_limit_hit: boolean;
 }
 
 export interface CryptoPriceResult {
@@ -434,7 +451,7 @@ export const priceApi = {
 
   setApiKeys: (keys: ApiKeys) => tauriInvoke<void>('set_api_keys', { keys }),
 
-  refreshStockPrices: () => tauriInvoke<StockPriceResult[]>('refresh_stock_prices'),
+  refreshStockPrices: () => tauriInvoke<StockPriceRefreshResult>('refresh_stock_prices'),
 
   refreshCryptoPrices: () => tauriInvoke<CryptoPriceResult[]>('refresh_crypto_prices'),
 

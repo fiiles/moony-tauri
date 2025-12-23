@@ -3,6 +3,7 @@ import { SummaryCard } from "@/components/common/SummaryCard";
 import { useCurrency } from "@/lib/currency";
 import { TrendingUp, TrendingDown, Award, Wallet, Bitcoin } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 
 interface CryptoSummaryProps {
     metrics: {
@@ -13,14 +14,18 @@ interface CryptoSummaryProps {
         largestHolding: { ticker: string; value: number } | null;
     };
     latestFetchedAt?: Date;
+    isLoading?: boolean;
 }
 
-export function CryptoSummary({ metrics, latestFetchedAt }: CryptoSummaryProps) {
+export function CryptoSummary({ metrics, latestFetchedAt, isLoading }: CryptoSummaryProps) {
     const { formatCurrency } = useCurrency();
     const { t } = useTranslation('crypto');
 
     return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div className={cn(
+            "grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8 transition-opacity duration-300",
+            isLoading && "opacity-50 animate-pulse"
+        )}>
             <SummaryCard
                 title={t('summary.totalCrypto')}
                 value={formatCurrency(metrics.totalValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}

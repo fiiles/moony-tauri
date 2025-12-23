@@ -121,10 +121,16 @@
         "added": "Investment added successfully",
         "updated": "Investment updated successfully",
         "deleted": "Investment deleted successfully",
-        "pricesRefreshed": "Updated {{count}} stock prices from MarketStack",
+        "pricesRefreshed": "Updated {{count}} stock prices",
+        "pricesRefreshedDescription": "Successfully fetched latest prices from Yahoo Finance",
+        "rateLimitReached": "Rate limit reached",
+        "rateLimitDescription": "Updated {{updated}} prices, {{remaining}} remaining. Try again in a minute.",
         "refreshFailed": "Price refresh failed",
         "noResults": "No results found",
         "tickerFound": "Ticker found",
         "searchFailed": "Search failed"
+    },
+    "chart": {
+        "title": "Portfolio Value Trend"
     }
 }

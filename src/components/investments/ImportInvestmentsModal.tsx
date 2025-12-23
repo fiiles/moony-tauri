@@ -15,7 +15,7 @@ import { Upload, FileText, AlertCircle, CheckCircle, Loader2, Download } from "l
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { investmentsApi } from "@/lib/tauri-api";
+import { investmentsApi, priceApi } from "@/lib/tauri-api";
 
 export function ImportInvestmentsModal() {
     const [open, setOpen] = useState(false);
@@ -66,6 +66,16 @@ export function ImportInvestmentsModal() {
             setImportedItems(data.imported || []);
             setParsedData([]);
             setFile(null);
+            
+            // Refresh prices and dividends for imported stocks (runs in background)
+            priceApi.refreshStockPrices().then(() => {
+                queryClient.invalidateQueries({ queryKey: ["investments"] });
+                queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            }).catch(console.error);
+            priceApi.refreshDividends().then(() => {
+                queryClient.invalidateQueries({ queryKey: ["investments"] });
+                queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
+            }).catch(console.error);
         },
         onError: (err) => {
             console.error("Import mutation error:", err);
@@ -216,9 +226,8 @@ export function ImportInvestmentsModal() {
             if (!val) handleReset();
         }}>
             <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" size="icon" title="Import CSV">
                     <Upload className="h-4 w-4" />
-                    Import CSV
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">

@@ -81,7 +81,6 @@ export function useUpdater(): UseUpdaterReturn {
         switch (event.event) {
           case 'Started':
             contentLength = event.data.contentLength ?? null;
-            console.log(`Update download started: ${contentLength} bytes`);
             break;
           case 'Progress':
             downloaded += event.data.chunkLength;
@@ -91,13 +90,11 @@ export function useUpdater(): UseUpdaterReturn {
             setProgress({ downloaded, contentLength, percentage });
             break;
           case 'Finished':
-            console.log('Update download finished');
             setProgress({ downloaded, contentLength, percentage: 100 });
             break;
         }
       });
 
-      console.log('Update installed, relaunching...');
       await relaunch();
     } catch (err) {
       console.error('Failed to download/install update:', err);

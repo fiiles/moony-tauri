@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 
-const periods = ['7D', '30D', '90D', 'YTD', 'All'] as const;
+const periods = ['30D', '90D', 'YTD', '1Y', '5Y', 'All'] as const;
 export type Period = typeof periods[number];
 
 interface TimePeriodSelectorProps {

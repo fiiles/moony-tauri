@@ -125,6 +125,7 @@ pub fn run() {
             commands::portfolio::record_portfolio_snapshot,
             commands::portfolio::refresh_exchange_rates,
             commands::portfolio::get_exchange_rates,
+            commands::portfolio::start_snapshot_backfill,
             // Price API commands
             commands::price_api::get_api_keys,
             commands::price_api::set_api_keys,

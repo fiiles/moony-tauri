@@ -32,6 +32,23 @@ export default function AssetsLiabilitiesChart({
 
     const isHealthy = assetsToLiabilitiesRatio >= 100;
 
+    // Calculate dynamic Y-axis domain based on data range
+    const yAxisDomain = useMemo((): [number, number] => {
+        if (data.length === 0) return [0, 0];
+        
+        const allValues = data.flatMap(d => [d.assets, d.liabilities]);
+        const minValue = Math.min(...allValues);
+        const maxValue = Math.max(...allValues);
+        const range = maxValue - minValue;
+        
+        // Add 10% padding on each side, but ensure we don't go below 0
+        const padding = range > 0 ? range * 0.1 : maxValue * 0.05;
+        const yMin = Math.max(0, minValue - padding);
+        const yMax = maxValue + padding;
+        
+        return [yMin, yMax];
+    }, [data]);
+
     return (
         <Card className="p-6 border h-full flex flex-col">
             <div className="flex flex-col gap-2 mb-4">
@@ -70,7 +87,7 @@ export default function AssetsLiabilitiesChart({
                                 interval="preserveStartEnd"
                                 tickMargin={8}
                             />
-                            <YAxis hide />
+                            <YAxis hide domain={yAxisDomain} />
                             <Tooltip
                                 formatter={(value: number, name: string) => [
                                     formatCurrency(value, { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
