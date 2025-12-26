@@ -11,6 +11,12 @@ import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { useLanguage } from "@/i18n/I18nProvider";
 import { useTranslation } from "react-i18next";
 
+interface InsuranceLimit {
+    title: string;
+    amount: number;
+    currency: string;
+}
+
 interface InsuranceDetailModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -97,11 +103,11 @@ export function InsuranceDetailModal({ open, onOpenChange, policy }: InsuranceDe
                     </div>
 
                     {/* Coverage Limits */}
-                    {policy.limits && (policy.limits as any[]).length > 0 && (
+                    {policy.limits && (policy.limits as InsuranceLimit[]).length > 0 && (
                         <div className="space-y-2">
                             <h3 className="text-sm font-medium text-muted-foreground">Coverage Limits</h3>
                             <div className="space-y-2">
-                                {(policy.limits as any[]).map((limit, index) => (
+                                {(policy.limits as InsuranceLimit[]).map((limit, index) => (
                                     <div key={index} className="flex justify-between items-center p-3 bg-muted/50 rounded">
                                         <span className="font-medium">{limit.title}</span>
                                         <span className="text-muted-foreground">

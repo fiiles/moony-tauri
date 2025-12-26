@@ -263,7 +263,7 @@ export default function EstateCalculator() {
                     {/* Calculated Values Row */}
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Own Capital (Calculated) */}
-                        <div className="p-4 bg-muted/50 rounded-lg">
+                        <div className="p-4 bg-muted/50 rounded-lg border">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.form.ownCapital')}</span>
                                 <span className="text-lg font-semibold text-primary">{formatCurrencyRaw(calculations.ownCapital)}</span>
@@ -275,7 +275,7 @@ export default function EstateCalculator() {
                         </div>
 
                         {/* Monthly Loan Payment (Calculated) */}
-                        <div className="p-4 bg-muted/50 rounded-lg">
+                        <div className="p-4 bg-muted/50 rounded-lg border">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.form.monthlyLoanPayment')}</span>
                                 <span className="text-lg font-semibold text-red-600 dark:text-red-400">
@@ -354,7 +354,7 @@ export default function EstateCalculator() {
                     {/* Calculated Cashflow Values Row */}
                     <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Monthly Gross Cashflow */}
-                        <div className="p-4 bg-muted/50 rounded-lg">
+                        <div className="p-4 bg-muted/50 rounded-lg border">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.results.grossCashflow')}</span>
                                 <span className={`text-lg font-semibold ${calculations.grossCashflow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -368,7 +368,7 @@ export default function EstateCalculator() {
                         </div>
 
                         {/* Monthly Net Cashflow */}
-                        <div className="p-4 bg-muted/50 rounded-lg">
+                        <div className="p-4 bg-muted/50 rounded-lg border">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.results.netCashflow')}</span>
                                 <span className={`text-lg font-semibold ${calculations.netCashflow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -499,7 +499,7 @@ export default function EstateCalculator() {
                     {/* Projection Results - Row 1: Estate Values */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         {/* Final Estate Price */}
-                        <div className="p-4 bg-muted/50 rounded-lg">
+                        <div className="p-4 bg-muted/50 rounded-lg border">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.projection.finalPrice')}</span>
                                 <span className="text-lg font-semibold">
@@ -515,7 +515,7 @@ export default function EstateCalculator() {
                         </div>
 
                         {/* Remaining Loan Balance */}
-                        <div className="p-4 bg-muted/50 rounded-lg">
+                        <div className="p-4 bg-muted/50 rounded-lg border">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.projection.remainingLoan')}</span>
                                 <span className="text-lg font-semibold text-red-600 dark:text-red-400">
@@ -531,7 +531,7 @@ export default function EstateCalculator() {
                         </div>
 
                         {/* Earnings from Sale */}
-                        <div className="col-span-1 md:col-span-2 p-4 bg-muted/50 rounded-lg">
+                        <div className="col-span-1 md:col-span-2 p-4 bg-muted/50 rounded-lg border">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.projection.earningsFromSale')}</span>
                                 <span className={`text-lg font-semibold ${(projection.finalEstatePrice - projection.remainingLoanBalance - calculations.ownCapital) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -547,7 +547,7 @@ export default function EstateCalculator() {
                     {/* Row 2: Cashflow */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         {/* Positive Cashflow Month */}
-                        <div className="p-4 bg-muted/50 rounded-lg">
+                        <div className="p-4 bg-muted/50 rounded-lg border">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.projection.positiveCashflow')}</span>
                                 <span className={`text-lg font-semibold ${projection.positiveMonthCashflow ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
@@ -567,7 +567,7 @@ export default function EstateCalculator() {
                         </div>
 
                         {/* Cumulative Net Rental Earnings */}
-                        <div className="p-4 bg-muted/50 rounded-lg">
+                        <div className="p-4 bg-muted/50 rounded-lg border">
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-medium">{t('estate.projection.cumulativeRentalEarnings')}</span>
                                 <span className={`text-lg font-semibold ${projection.cumulativeNetCashflow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>

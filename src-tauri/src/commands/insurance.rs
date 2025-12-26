@@ -3,7 +3,7 @@
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
-    InsertInsuranceDocument, InsertInsurancePolicy, InsuranceDocument, InsurancePolicy,
+    InsertInsuranceDocument, InsertInsurancePolicy, InsuranceDocument, InsurancePolicy, RealEstate,
 };
 use tauri::{Manager, State};
 use uuid::Uuid;
@@ -401,4 +401,100 @@ pub async fn open_insurance_document(db: State<'_, Database>, document_id: Strin
         .map_err(|e| AppError::Internal(format!("Failed to open file: {}", e)))?;
 
     Ok(())
+}
+
+// ============================================================================
+// Real Estate Linking Commands
+// ============================================================================
+
+/// Get the real estate linked to an insurance policy (if any)
+#[tauri::command]
+pub async fn get_insurance_real_estate(
+    db: State<'_, Database>,
+    insurance_id: String,
+) -> Result<Option<RealEstate>> {
+    db.with_conn(|conn| {
+        let result = conn.query_row(
+            "SELECT r.id, r.name, r.address, r.type, r.purchase_price, r.purchase_price_currency,
+                    r.market_price, r.market_price_currency, r.monthly_rent, r.monthly_rent_currency,
+                    r.recurring_costs, r.photos, r.notes, r.created_at, r.updated_at
+             FROM real_estate r
+             INNER JOIN real_estate_insurances rei ON r.id = rei.real_estate_id
+             WHERE rei.insurance_id = ?1",
+            [&insurance_id],
+            |row| {
+                let rc_json: String = row.get(10)?;
+                let photos_json: String = row.get(11)?;
+
+                Ok(RealEstate {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    address: row.get(2)?,
+                    property_type: row.get(3)?,
+                    purchase_price: row.get(4)?,
+                    purchase_price_currency: row.get(5)?,
+                    market_price: row.get(6)?,
+                    market_price_currency: row.get(7)?,
+                    monthly_rent: row.get(8)?,
+                    monthly_rent_currency: row.get(9)?,
+                    recurring_costs: serde_json::from_str(&rc_json).unwrap_or_default(),
+                    photos: serde_json::from_str(&photos_json).unwrap_or_default(),
+                    notes: row.get(12)?,
+                    created_at: row.get(13)?,
+                    updated_at: row.get(14)?,
+                })
+            },
+        );
+
+        match result {
+            Ok(re) => Ok(Some(re)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    })
+}
+
+/// Get all insurances that are not linked to any real estate
+#[tauri::command]
+pub async fn get_available_insurances(db: State<'_, Database>) -> Result<Vec<InsurancePolicy>> {
+    db.with_conn(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT id, type, provider, policy_name, policy_number, start_date, end_date,
+                    payment_frequency, one_time_payment, one_time_payment_currency,
+                    regular_payment, regular_payment_currency, limits, notes, status,
+                    created_at, updated_at
+             FROM insurance_policies
+             WHERE id NOT IN (SELECT insurance_id FROM real_estate_insurances)
+             ORDER BY policy_name",
+        )?;
+
+        let policies = stmt
+            .query_map([], |row| {
+                let limits_json: String = row.get(12)?;
+
+                Ok(InsurancePolicy {
+                    id: row.get(0)?,
+                    policy_type: row.get(1)?,
+                    provider: row.get(2)?,
+                    policy_name: row.get(3)?,
+                    policy_number: row.get(4)?,
+                    start_date: row.get(5)?,
+                    end_date: row.get(6)?,
+                    payment_frequency: row.get(7)?,
+                    one_time_payment: row.get(8)?,
+                    one_time_payment_currency: row.get(9)?,
+                    regular_payment: row.get(10)?,
+                    regular_payment_currency: row.get(11)?,
+                    limits: serde_json::from_str(&limits_json).unwrap_or_default(),
+                    notes: row.get(13)?,
+                    status: row.get(14)?,
+                    created_at: row.get(15)?,
+                    updated_at: row.get(16)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(policies)
+    })
 }

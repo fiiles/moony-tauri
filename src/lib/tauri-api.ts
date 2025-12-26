@@ -243,6 +243,13 @@ export const loansApi = {
   update: (id: string, data: Partial<InsertLoan>) => tauriInvoke<Loan>('update_loan', { id, data }),
 
   delete: (id: string) => tauriInvoke<void>('delete_loan', { id }),
+
+  // Real estate linking
+  getRealEstate: (loanId: string) =>
+    tauriInvoke<RealEstate | null>('get_loan_real_estate', { loanId }),
+
+  getAvailable: () =>
+    tauriInvoke<Loan[]>('get_available_loans'),
 };
 
 // ============================================================================
@@ -281,6 +288,16 @@ export const realEstateApi = {
 
   unlinkLoan: (realEstateId: string, loanId: string) =>
     tauriInvoke<void>('unlink_loan_from_real_estate', { realEstateId, loanId }),
+
+  // Insurance linking
+  getInsurances: (realEstateId: string) =>
+    tauriInvoke<InsurancePolicy[]>('get_real_estate_insurances', { realEstateId }),
+
+  linkInsurance: (realEstateId: string, insuranceId: string) =>
+    tauriInvoke<void>('link_insurance_to_real_estate', { realEstateId, insuranceId }),
+
+  unlinkInsurance: (realEstateId: string, insuranceId: string) =>
+    tauriInvoke<void>('unlink_insurance_from_real_estate', { realEstateId, insuranceId }),
 
   // Photo batches
   getPhotoBatches: (realEstateId: string) =>
@@ -343,6 +360,13 @@ export const insuranceApi = {
 
   openDocument: (documentId: string) =>
     tauriInvoke<void>('open_insurance_document', { documentId }),
+
+  // Real estate linking
+  getRealEstate: (insuranceId: string) =>
+    tauriInvoke<RealEstate | null>('get_insurance_real_estate', { insuranceId }),
+
+  getAvailable: () =>
+    tauriInvoke<InsurancePolicy[]>('get_available_insurances'),
 };
 
 // ============================================================================
@@ -518,6 +542,30 @@ export const projectionApi = {
 };
 
 // ============================================================================
+// Export API
+// ============================================================================
+
+export interface ExportResult {
+  csv: string;
+  filename: string;
+  count: number;
+}
+
+export const exportApi = {
+  stockTransactions: () => tauriInvoke<ExportResult>('export_stock_transactions'),
+  cryptoTransactions: () => tauriInvoke<ExportResult>('export_crypto_transactions'),
+  bonds: () => tauriInvoke<ExportResult>('export_bonds'),
+  savingsAccounts: () => tauriInvoke<ExportResult>('export_savings_accounts'),
+  savingsAccountZones: () => tauriInvoke<ExportResult>('export_savings_account_zones'),
+  realEstate: () => tauriInvoke<ExportResult>('export_real_estate'),
+  realEstateCosts: () => tauriInvoke<ExportResult>('export_real_estate_costs'),
+  insurancePolicies: () => tauriInvoke<ExportResult>('export_insurance_policies'),
+  loans: () => tauriInvoke<ExportResult>('export_loans'),
+  otherAssets: () => tauriInvoke<ExportResult>('export_other_assets'),
+  otherAssetTransactions: () => tauriInvoke<ExportResult>('export_other_asset_transactions'),
+};
+
+// ============================================================================
 // Combined API export
 // ============================================================================
 
@@ -535,6 +583,7 @@ export const api = {
   price: priceApi,
   cashflow: cashflowApi,
   projection: projectionApi,
+  export: exportApi,
 };
 
 export default api;

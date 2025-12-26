@@ -3,12 +3,13 @@ import { InsuranceFormDialog } from "@/components/insurance/InsuranceFormDialog"
 import { Button } from "@/components/ui/button";
 import { Plus, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { insuranceApi } from "@/lib/tauri-api";
+import { insuranceApi, exportApi } from "@/lib/tauri-api";
 import { InsurancePolicy } from "@shared/schema";
 import { SummaryCard } from "@/components/common/SummaryCard";
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
+import { ExportButton } from "@/components/common/ExportButton";
 
 export default function Insurance() {
   const { t } = useTranslation('insurance');
@@ -65,14 +66,17 @@ export default function Insurance() {
           <h1 className="page-title">{t('title')}</h1>
           <p className="page-subtitle">{t('subtitle')}</p>
         </div>
-        <InsuranceFormDialog
-          trigger={
-            <Button className="transition-all duration-200">
-              <Plus className="mr-2 h-4 w-4" />
-              {t('addPolicy')}
-            </Button>
-          }
-        />
+        <div className="flex gap-2">
+          <ExportButton exportFn={exportApi.insurancePolicies} />
+          <InsuranceFormDialog
+            trigger={
+              <Button className="transition-all duration-200">
+                <Plus className="mr-2 h-4 w-4" />
+                {t('addPolicy')}
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

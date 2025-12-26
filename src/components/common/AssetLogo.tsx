@@ -1,6 +1,6 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getInstrumentIcon } from "@/utils/investments";
+import { getInstrumentIcon } from "@/utils/stocks";
 import { cn } from "@/lib/utils";
 
 interface AssetLogoProps {

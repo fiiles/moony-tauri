@@ -3,9 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cashflowApi } from "@/lib/tauri-api";
 import CashflowViewSelector, { type CashflowViewType } from "@/components/cashflow/CashflowViewSelector";
 import CashflowCategory from "@/components/cashflow/CashflowCategory";
+import CashflowSankeyChart from "@/components/cashflow/CashflowSankeyChart";
 import AddCashflowItemDialog from "@/components/cashflow/AddCashflowItemDialog";
 import { SummaryCard } from "@/components/common/SummaryCard";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet, Plus } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
@@ -20,7 +22,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { CashflowReport, CashflowReportItem } from "@shared/schema";
+import type { CashflowReport, CashflowReportItem, CashflowCategory as CashflowCategoryType } from "@shared/schema";
 
 export default function Cashflow() {
     const { t } = useTranslation('reports');
@@ -32,8 +34,10 @@ export default function Cashflow() {
     const [viewType, setViewType] = useState<CashflowViewType>('monthly');
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [addDialogType, setAddDialogType] = useState<'income' | 'expense'>('income');
+    const [addDialogSection, setAddDialogSection] = useState<'personal' | 'investments'>('personal');
     const [editItem, setEditItem] = useState<CashflowReportItem | null>(null);
     const [editCategory, setEditCategory] = useState<string>("");
+    const [editSection, setEditSection] = useState<'personal' | 'investments'>('personal');
     const [deleteItem, setDeleteItem] = useState<CashflowReportItem | null>(null);
 
     // Fetch cashflow report
@@ -84,7 +88,8 @@ export default function Cashflow() {
         },
     });
 
-    const handleOpenAddDialog = (type: 'income' | 'expense') => {
+    const handleOpenAddDialog = (section: 'personal' | 'investments', type: 'income' | 'expense') => {
+        setAddDialogSection(section);
         setAddDialogType(type);
         setAddDialogOpen(true);
     };
@@ -105,15 +110,38 @@ export default function Cashflow() {
         }
     };
 
-    const handleEditClick = (item: CashflowReportItem, categoryKey: string) => {
+    const handleEditClick = (item: CashflowReportItem, categoryKey: string, section: 'personal' | 'investments') => {
         setEditItem(item);
         setEditCategory(categoryKey);
+        setEditSection(section);
     };
 
     // Format currency without negative zero
     const formatAmount = (amount: number) => {
         const value = Math.abs(amount) < 0.01 ? 0 : amount;
         return formatCurrency(value);
+    };
+
+    // Get categories for add dialog based on section and type
+    const getAddDialogCategories = (): CashflowCategoryType[] => {
+        if (!report) return [];
+        const section = addDialogSection === 'personal' ? report.personal : report.investments;
+        return addDialogType === 'income' ? section.income : section.expenses;
+    };
+
+    // Get categories for edit dialog
+    const getEditDialogCategories = (): CashflowCategoryType[] => {
+        if (!report || !editItem) return [];
+        const section = editSection === 'personal' ? report.personal : report.investments;
+        const isIncome = section.income.some(c => c.key === editCategory);
+        return isIncome ? section.income : section.expenses;
+    };
+
+    // Determine edit item type
+    const getEditItemType = (): 'income' | 'expense' => {
+        if (!report || !editItem || !editCategory) return 'income';
+        const section = editSection === 'personal' ? report.personal : report.investments;
+        return section.income.some(c => c.key === editCategory) ? 'income' : 'expense';
     };
 
     return (
@@ -127,20 +155,18 @@ export default function Cashflow() {
                 <CashflowViewSelector value={viewType} onChange={setViewType} />
             </div>
 
-            {/* Summary Cards - neutral styling, except net cashflow */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+            {/* Overall Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <SummaryCard
                     title={t('summary.totalIncome')}
                     value={formatAmount(report?.totalIncome ?? 0)}
                     icon={<TrendingUp className="h-4 w-4" />}
                 />
-
                 <SummaryCard
                     title={t('summary.totalExpenses')}
                     value={formatAmount(report?.totalExpenses ?? 0)}
                     icon={<TrendingDown className="h-4 w-4" />}
                 />
-
                 <SummaryCard
                     title={t('summary.netCashflow')}
                     value={formatAmount(report?.netCashflow ?? 0)}
@@ -149,76 +175,216 @@ export default function Cashflow() {
                 />
             </div>
 
-            {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Income Section */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                            {t('sections.income')}
-                        </h2>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1"
-                            onClick={() => handleOpenAddDialog('income')}
-                        >
-                            <Plus className="h-4 w-4" />
-                            {t('addItem.title')}
-                        </Button>
+            {/* Overall Cashflow Sankey Chart */}
+            {report && <CashflowSankeyChart report={report} />}
+
+            {/* Personal Cashflow Section */}
+            <Card>
+                <CardContent className="pt-6">
+                    <h2 className="text-xl font-semibold mb-6">{t('sections.personal')}</h2>
+                    
+                    {/* Section Summary */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="p-4 bg-muted/50 border rounded-lg">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">{t('sections.personalIncome')}</span>
+                                <span className="text-lg font-semibold text-green-600 dark:text-green-400">
+                                    {formatAmount(report?.personal?.totalIncome ?? 0)}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-muted/50 border rounded-lg">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">{t('sections.personalExpenses')}</span>
+                                <span className="text-lg font-semibold text-red-600 dark:text-red-400">
+                                    {formatAmount(report?.personal?.totalExpenses ?? 0)}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">{t('summary.netCashflow')}</span>
+                                <span className={`text-lg font-semibold ${(report?.personal?.netCashflow ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {formatAmount(report?.personal?.netCashflow ?? 0)}
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    {isLoading ? (
-                        <div className="text-center py-8 text-muted-foreground">{tc('status.loading')}</div>
-                    ) : (
-                        <div className="space-y-3">
-                            {report?.income.map((category) => (
-                                <CashflowCategory
-                                    key={category.key}
-                                    category={category}
-                                    onEditItem={(item) => handleEditClick(item, category.key)}
-                                    onDeleteItem={(item) => setDeleteItem(item)}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
+                    {/* Income and Expenses Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Income Column */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-base font-semibold flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    {t('sections.income')}
+                                </h3>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleOpenAddDialog('personal', 'income')}
+                                >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    {t('addItem.title')}
+                                </Button>
+                            </div>
 
-                {/* Expense Section */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold flex items-center gap-2">
-                            <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
-                            {t('sections.expenses')}
-                        </h2>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1"
-                            onClick={() => handleOpenAddDialog('expense')}
-                        >
-                            <Plus className="h-4 w-4" />
-                            {t('addItem.title')}
-                        </Button>
+                            {isLoading ? (
+                                <div className="text-center py-6 text-muted-foreground text-sm">{tc('status.loading')}</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {report?.personal?.income.map((category) => (
+                                        <CashflowCategory
+                                            key={category.key}
+                                            category={category}
+                                            onEditItem={(item) => handleEditClick(item, category.key, 'personal')}
+                                            onDeleteItem={(item) => setDeleteItem(item)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Expenses Column */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-base font-semibold flex items-center gap-2">
+                                    <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                    {t('sections.expenses')}
+                                </h3>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleOpenAddDialog('personal', 'expense')}
+                                >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    {t('addItem.title')}
+                                </Button>
+                            </div>
+
+                            {isLoading ? (
+                                <div className="text-center py-6 text-muted-foreground text-sm">{tc('status.loading')}</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {report?.personal?.expenses.map((category) => (
+                                        <CashflowCategory
+                                            key={category.key}
+                                            category={category}
+                                            onEditItem={(item) => handleEditClick(item, category.key, 'personal')}
+                                            onDeleteItem={(item) => setDeleteItem(item)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Investments Cashflow Section */}
+            <Card>
+                <CardContent className="pt-6">
+                    <h2 className="text-xl font-semibold mb-6">{t('sections.investments')}</h2>
+                    
+                    {/* Section Summary */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="p-4 bg-muted/50 border rounded-lg">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">{t('sections.investmentIncome')}</span>
+                                <span className="text-lg font-semibold text-green-600 dark:text-green-400">
+                                    {formatAmount(report?.investments?.totalIncome ?? 0)}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-muted/50 border rounded-lg">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">{t('sections.investmentExpenses')}</span>
+                                <span className="text-lg font-semibold text-red-600 dark:text-red-400">
+                                    {formatAmount(report?.investments?.totalExpenses ?? 0)}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">{t('summary.netCashflow')}</span>
+                                <span className={`text-lg font-semibold ${(report?.investments?.netCashflow ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {formatAmount(report?.investments?.netCashflow ?? 0)}
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    {isLoading ? (
-                        <div className="text-center py-8 text-muted-foreground">{tc('status.loading')}</div>
-                    ) : (
-                        <div className="space-y-3">
-                            {report?.expenses.map((category) => (
-                                <CashflowCategory
-                                    key={category.key}
-                                    category={category}
-                                    onEditItem={(item) => handleEditClick(item, category.key)}
-                                    onDeleteItem={(item) => setDeleteItem(item)}
-                                />
-                            ))}
+                    {/* Income and Expenses Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Income Column */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-base font-semibold flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    {t('sections.income')}
+                                </h3>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleOpenAddDialog('investments', 'income')}
+                                >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    {t('addItem.title')}
+                                </Button>
+                            </div>
+
+                            {isLoading ? (
+                                <div className="text-center py-6 text-muted-foreground text-sm">{tc('status.loading')}</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {report?.investments?.income.map((category) => (
+                                        <CashflowCategory
+                                            key={category.key}
+                                            category={category}
+                                            onEditItem={(item) => handleEditClick(item, category.key, 'investments')}
+                                            onDeleteItem={(item) => setDeleteItem(item)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-            </div>
+
+                        {/* Expenses Column */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-base font-semibold flex items-center gap-2">
+                                    <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                    {t('sections.expenses')}
+                                </h3>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleOpenAddDialog('investments', 'expense')}
+                                >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    {t('addItem.title')}
+                                </Button>
+                            </div>
+
+                            {isLoading ? (
+                                <div className="text-center py-6 text-muted-foreground text-sm">{tc('status.loading')}</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {report?.investments?.expenses.map((category) => (
+                                        <CashflowCategory
+                                            key={category.key}
+                                            category={category}
+                                            onEditItem={(item) => handleEditClick(item, category.key, 'investments')}
+                                            onDeleteItem={(item) => setDeleteItem(item)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Add Dialog with category selection */}
             <AddCashflowItemDialog
@@ -226,7 +392,7 @@ export default function Cashflow() {
                 onOpenChange={setAddDialogOpen}
                 onSubmit={handleAddItem}
                 itemType={addDialogType}
-                categories={addDialogType === 'income' ? report?.income : report?.expenses}
+                categories={getAddDialogCategories()}
                 isLoading={createMutation.isPending}
             />
 
@@ -242,8 +408,8 @@ export default function Cashflow() {
                 onSubmit={handleEditItem}
                 editItem={editItem}
                 editCategory={editCategory}
-                itemType={editItem ? (report?.income.some(c => c.key === editCategory) ? 'income' : 'expense') : 'income'}
-                categories={editItem ? (report?.income.some(c => c.key === editCategory) ? report?.income : report?.expenses) : []}
+                itemType={getEditItemType()}
+                categories={getEditDialogCategories()}
                 isLoading={updateMutation.isPending}
             />
 

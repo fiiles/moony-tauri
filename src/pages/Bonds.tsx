@@ -9,6 +9,8 @@ import { DeleteBondDialog } from "@/components/bonds/DeleteBondDialog";
 import { useBondMutations } from "@/hooks/use-bond-mutations";
 import type { Bond, InsertBond } from "@shared/schema";
 import { useTranslation } from "react-i18next";
+import { ExportButton } from "@/components/common/ExportButton";
+import { exportApi } from "@/lib/tauri-api";
 
 export default function Bonds() {
   const { t } = useTranslation('bonds');
@@ -65,10 +67,13 @@ export default function Bonds() {
           <h1 className="page-title">{t('title')}</h1>
           <p className="page-subtitle">{t('subtitle')}</p>
         </div>
-        <Button onClick={handleAddClick} className="transition-all duration-200">
-          <Plus className="mr-2 h-4 w-4" />
-          {t('addBond')}
-        </Button>
+        <div className="flex gap-2">
+          <ExportButton exportFn={exportApi.bonds} />
+          <Button onClick={handleAddClick} className="transition-all duration-200">
+            <Plus className="mr-2 h-4 w-4" />
+            {t('addBond')}
+          </Button>
+        </div>
       </div>
 
       <BondsSummary metrics={metrics} />

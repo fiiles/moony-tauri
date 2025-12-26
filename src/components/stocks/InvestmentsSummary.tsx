@@ -19,7 +19,7 @@ interface InvestmentsSummaryProps {
 
 export function InvestmentsSummary({ metrics, latestFetchedAt, isLoading }: InvestmentsSummaryProps) {
   const { formatCurrency } = useCurrency();
-  const { t } = useTranslation('investments');
+  const { t } = useTranslation('stocks');
 
   return (
     <div className={cn(

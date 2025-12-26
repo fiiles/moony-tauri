@@ -31,7 +31,7 @@ export default function CashflowCategory({
     };
 
     return (
-        <Card className="border shadow-sm">
+        <Card className="bg-muted/50 border">
             <Collapsible open={isOpen} onOpenChange={setIsOpen}>
                 <CardHeader className="p-4">
                     <div className="flex items-center justify-between">

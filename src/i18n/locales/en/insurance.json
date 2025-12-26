@@ -93,7 +93,10 @@
             "quarterly": "Quarterly",
             "yearly": "Yearly",
             "one_time": "One Time"
-        }
+        },
+        "linkRealEstate": "Link to Real Estate",
+        "selectRealEstate": "Select Real Estate (optional)",
+        "noRealEstateAvailable": "No real estate available"
     },
     "detail": {
         "backToList": "Back to Insurance",
@@ -111,7 +114,9 @@
         "startDate": "Start Date",
         "until": "until",
         "oneTimePayment": "One-Time Payment",
-        "paidOnce": "paid once"
+        "paidOnce": "paid once",
+        "linkedRealEstate": "Linked Real Estate",
+        "noLinkedRealEstate": "No linked real estate"
     },
     "documents": {
         "description": "Attach contracts, certificates and other documents",

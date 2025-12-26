@@ -1,5 +1,5 @@
 {
-    "title": "Investice",
+    "title": "Akcie",
     "subtitle": "Sledujte své portfolio akcií a komodit",
     "loading": "Načítání vašeho investičního portfolia...",
     "addInvestment": "Přidat investici",
@@ -131,6 +131,6 @@
         "searchFailed": "Hledání selhalo"
     },
     "chart": {
-        "title": "Vývoj hodnoty portfolia"
+        "title": "Vývoj hodnoty akcií"
     }
 }

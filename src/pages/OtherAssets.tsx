@@ -11,7 +11,7 @@ import { BuyOtherAssetModal } from "@/components/other-assets/BuyOtherAssetModal
 import { SellOtherAssetModal } from "@/components/other-assets/SellOtherAssetModal";
 import { OtherAssetTransactionsModal } from "@/components/other-assets/OtherAssetTransactionsModal";
 import { DeleteOtherAssetDialog } from "@/components/other-assets/DeleteOtherAssetDialog";
-import { otherAssetsApi } from "@/lib/tauri-api";
+import { otherAssetsApi, exportApi } from "@/lib/tauri-api";
 import type { OtherAsset } from "@shared/schema";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { calculateMarketValue, calculateTotalCost, calculateAnnualYield, type YieldType } from "@shared/calculations";
@@ -19,6 +19,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
+import { ExportButton } from "@/components/common/ExportButton";
 
 export default function OtherAssets() {
     const { t } = useTranslation('otherAssets');
@@ -119,9 +120,12 @@ export default function OtherAssets() {
                     <h1 className="page-title">{t('title')}</h1>
                     <p className="page-subtitle">{t('subtitle')}</p>
                 </div>
-                <Button onClick={() => setIsAddModalOpen(true)} className="transition-all duration-200">
-                    <Plus className="mr-2 h-4 w-4" /> {t('addAsset')}
-                </Button>
+                <div className="flex gap-2">
+                    <ExportButton exportFn={exportApi.otherAssets} />
+                    <Button onClick={() => setIsAddModalOpen(true)} className="transition-all duration-200">
+                        <Plus className="mr-2 h-4 w-4" /> {t('addAsset')}
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

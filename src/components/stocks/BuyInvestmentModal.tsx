@@ -30,7 +30,7 @@ import {
 import { CURRENCIES } from "@shared/currencies";
 import { investmentsApi } from "@/lib/tauri-api";
 import { useEffect } from "react";
-import type { HoldingData } from "@/utils/investments";
+import type { HoldingData } from "@/utils/stocks";
 import { useTranslation } from "react-i18next";
 
 const formSchema = z.object({
@@ -47,7 +47,7 @@ interface BuyInvestmentModalProps {
 }
 
 export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvestmentModalProps) {
-    const { t } = useTranslation('investments');
+    const { t } = useTranslation('stocks');
     const { t: tc } = useTranslation('common');
     const queryClient = useQueryClient();
 

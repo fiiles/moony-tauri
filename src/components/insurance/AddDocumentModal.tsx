@@ -149,7 +149,7 @@ export function AddDocumentModal({ open: isOpen, onOpenChange, insuranceId }: Ad
                         <FormField
                             control={form.control}
                             name="filePath"
-                            render={({ field }) => (
+                            render={({ field: _field }) => (
                                 <FormItem>
                                     <FormLabel>{t('documents.file')}</FormLabel>
                                     <FormControl>

@@ -15,12 +15,13 @@ import {
     DollarSign,
     Trash2,
     Pencil,
+    Building2,
 } from "lucide-react";
 import { InsuranceFormDialog } from "@/components/insurance/InsuranceFormDialog";
 import { InsuranceDocuments } from "@/components/insurance/InsuranceDocuments";
-import type { InsurancePolicy } from "@shared/schema";
+import type { InsurancePolicy, RealEstate } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { insuranceApi } from "@/lib/tauri-api";
+import { insuranceApi, realEstateApi } from "@/lib/tauri-api";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { useCurrency } from "@/lib/currency";
 import {
@@ -52,6 +53,12 @@ export default function InsuranceDetail() {
     const { data: policy, isLoading } = useQuery<InsurancePolicy | null>({
         queryKey: ["insurance", id],
         queryFn: () => insuranceApi.get(id!),
+        enabled: !!id,
+    });
+
+    const { data: linkedRealEstate } = useQuery<RealEstate | null>({
+        queryKey: ["insurance-real-estate", id],
+        queryFn: () => insuranceApi.getRealEstate(id!),
         enabled: !!id,
     });
 
@@ -282,6 +289,29 @@ export default function InsuranceDetail() {
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* Linked Real Estate - only show if linked */}
+                        {linkedRealEstate && (
+                            <Card className="md:col-span-2">
+                                <CardHeader>
+                                    <CardTitle>{t('detail.linkedRealEstate')}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div 
+                                        className="flex items-center justify-between p-3 bg-muted/50 rounded cursor-pointer hover:bg-muted transition-colors"
+                                        onClick={() => window.location.href = `/real-estate/${linkedRealEstate.id}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Building2 className="h-5 w-5 text-muted-foreground" />
+                                            <div>
+                                                <p className="font-medium">{linkedRealEstate.name}</p>
+                                                <p className="text-sm text-muted-foreground">{linkedRealEstate.address}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 </TabsContent>
 

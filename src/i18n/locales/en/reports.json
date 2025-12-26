@@ -6,24 +6,40 @@
         "yearly": "Yearly"
     },
     "sections": {
-        "income": "Incomes",
-        "expenses": "Expenses"
+        "income": "Income",
+        "expenses": "Expenses",
+        "personal": "Personal Cashflow",
+        "personalDescription": "Your personal income and living expenses",
+        "investments": "Investments Cashflow",
+        "investmentsDescription": "Income and expenses from your investments",
+        "personalIncome": "Personal Income",
+        "personalExpenses": "Personal Expenses",
+        "investmentIncome": "Investment Income",
+        "investmentExpenses": "Investment Expenses"
     },
     "categories": {
-        "income": "Other Incomes",
-        "savingsInterest": "Savings Interest",
-        "investmentDividends": "Investment Dividends",
-        "bondInterest": "Bond Interest",
+        "personalIncome": "Personal Income",
+        "personalLoans": "Loan Payments",
+        "personalInsurance": "Insurance Payments",
+        "personalRealEstateCosts": "Personal Real Estate Costs",
+        "subscriptions": "Subscriptions",
+        "consumptionCosts": "Consumption Costs",
+        "otherPersonalCosts": "Other Personal Costs",
+        "interestIncome": "Interest Income",
+        "stockDividends": "Stock Dividends",
+        "bondsInterest": "Bonds Interest",
         "rentalIncome": "Rental Income",
-        "loanInterest": "Loan Interest",
-        "insurancePayments": "Insurance Payments",
-        "realEstateCosts": "Real Estate Costs",
-        "otherCosts": "Other Costs"
+        "otherInvestmentIncome": "Other Investment Income",
+        "investmentLoans": "Investment Real Estate Loans",
+        "investmentInsurance": "Investment Real Estate Insurance",
+        "investmentRealEstateCosts": "Investment Real Estate Costs",
+        "otherInvestmentCosts": "Other Investment Costs"
     },
     "summary": {
         "totalIncome": "Total Income",
         "totalExpenses": "Total Expenses",
-        "netCashflow": "Net Cashflow"
+        "netCashflow": "Net Cashflow",
+        "overallCashflow": "Overall Cashflow"
     },
     "addItem": {
         "title": "Add Item",
@@ -69,7 +85,7 @@
         "netWorth": "Net Worth",
         "categories": {
             "savings": "Savings",
-            "investments": "Investments",
+            "investments": "Stocks",
             "crypto": "Crypto",
             "bonds": "Bonds",
             "realEstate": "Real Estate",

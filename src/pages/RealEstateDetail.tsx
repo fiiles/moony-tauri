@@ -30,7 +30,7 @@ import { AddRealEstateModal } from "@/components/real-estate/AddRealEstateModal"
 import { OneTimeCostModal } from "@/components/real-estate/OneTimeCostModal";
 import { PhotoTimelineGallery } from "@/components/real-estate/PhotoTimelineGallery";
 import { RealEstateDocuments } from "@/components/real-estate/RealEstateDocuments";
-import type { RealEstate, RealEstateOneTimeCost, Loan } from "@shared/schema";
+import type { RealEstate, RealEstateOneTimeCost, Loan, InsurancePolicy } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { realEstateApi } from "@/lib/tauri-api";
 import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
@@ -78,6 +78,12 @@ export default function RealEstateDetail() {
         enabled: !!id,
     });
 
+    const { data: linkedInsurances } = useQuery<InsurancePolicy[]>({
+        queryKey: ["real-estate-insurances", id],
+        queryFn: () => realEstateApi.getInsurances(id!),
+        enabled: !!id,
+    });
+
     const deleteMutation = useMutation({
         mutationFn: () => realEstateApi.delete(id!),
         onSuccess: () => {
@@ -105,6 +111,30 @@ export default function RealEstateDetail() {
             toast({
                 title: tc('status.success'),
                 description: t('toast.costDeleted'),
+            });
+        },
+    });
+
+    const unlinkInsuranceMutation = useMutation({
+        mutationFn: (insuranceId: string) => realEstateApi.unlinkInsurance(id!, insuranceId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["real-estate-insurances", id] });
+            queryClient.invalidateQueries({ queryKey: ["available-insurances"] });
+            toast({
+                title: tc('status.success'),
+                description: "Insurance unlinked successfully",
+            });
+        },
+    });
+
+    const unlinkLoanMutation = useMutation({
+        mutationFn: (loanId: string) => realEstateApi.unlinkLoan(id!, loanId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["real-estate-loans", id] });
+            queryClient.invalidateQueries({ queryKey: ["available-loans"] });
+            toast({
+                title: tc('status.success'),
+                description: "Loan unlinked successfully",
             });
         },
     });
@@ -153,8 +183,18 @@ export default function RealEstateDetail() {
         return sum + convertToCzK(monthlyPayment * 12, currency as CurrencyCode);
     }, 0) || 0;
 
-    const netCashflowInCzk = rentInCzk - totalRecurringCostsInCzk - yearlyLoanPaymentsInCzk;
-    const netCashflow = convertFromCzK(netCashflowInCzk, userCurrency as CurrencyCode);
+    // Calculate yearly insurance payments
+    const yearlyInsurancePaymentsInCzk = linkedInsurances?.reduce((sum, ins) => {
+        const regularPayment = Number(ins.regularPayment) || 0;
+        const currency = ins.regularPaymentCurrency || "CZK";
+        let yearlyAmount = regularPayment;
+        if (ins.paymentFrequency === 'monthly') yearlyAmount *= 12;
+        if (ins.paymentFrequency === 'quarterly') yearlyAmount *= 4;
+        return sum + convertToCzK(yearlyAmount, currency as CurrencyCode);
+    }, 0) || 0;
+
+    const netCashflowInCzk = rentInCzk - totalRecurringCostsInCzk - yearlyLoanPaymentsInCzk - yearlyInsurancePaymentsInCzk;
+    const _netCashflow = convertFromCzK(netCashflowInCzk, userCurrency as CurrencyCode);
 
     return (
         <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto">
@@ -253,7 +293,7 @@ export default function RealEstateDetail() {
                             {formatCurrency(netCashflowInCzk)}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            {t('detail.cashflowFormula')}
+                            {t('detail.cashflowFormula')} - Insurance
                         </p>
                     </CardContent>
                 </Card>
@@ -262,6 +302,7 @@ export default function RealEstateDetail() {
             <Tabs defaultValue="financials" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="financials">{t('detail.financials')}</TabsTrigger>
+                    <TabsTrigger value="costs">{t('detail.recurringCosts')}</TabsTrigger>
                     <TabsTrigger value="history">{t('detail.history')}</TabsTrigger>
                     <TabsTrigger value="gallery">{t('detail.gallery')}</TabsTrigger>
                     <TabsTrigger value="documents">{t('detail.documents')}</TabsTrigger>
@@ -270,40 +311,6 @@ export default function RealEstateDetail() {
 
                 <TabsContent value="financials" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>{t('detail.recurringCosts')}</CardTitle>
-                                <CardDescription>{t('detail.recurringCostsDesc')}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>{tc('labels.name')}</TableHead>
-                                            <TableHead>{t('detail.frequency')}</TableHead>
-                                            <TableHead className="text-right">{tc('labels.amount')}</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {(realEstate.recurringCosts as any[])?.map((cost, i) => (
-                                            <TableRow key={i}>
-                                                <TableCell>{cost.name}</TableCell>
-                                                <TableCell className="capitalize">{t('modal.add.' + cost.frequency)}</TableCell>
-                                                <TableCell className="text-right">
-                                                    {formatCurrency(convertToCzK(Number(cost.amount), cost.currency as CurrencyCode || "CZK"))}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                        {(!realEstate.recurringCosts || (realEstate.recurringCosts as any[]).length === 0) && (
-                                            <TableRow>
-                                                <TableCell colSpan={3} className="text-center text-muted-foreground">{t('detail.noRecurringCosts')}</TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-
                         <Card>
                             <CardHeader>
                                 <CardTitle>{t('detail.linkedLoans')}</CardTitle>
@@ -316,6 +323,7 @@ export default function RealEstateDetail() {
                                             <TableHead>{tc('labels.name')}</TableHead>
                                             <TableHead className="text-right">{t('detail.principal')}</TableHead>
                                             <TableHead className="text-right">{t('detail.rate')}</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -326,11 +334,64 @@ export default function RealEstateDetail() {
                                                     {formatCurrency(convertToCzK(Number(loan.principal), (loan as any).currency as CurrencyCode || "CZK"))}
                                                 </TableCell>
                                                 <TableCell className="text-right">{loan.interestRate}%</TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-destructive"
+                                                        onClick={() => unlinkLoanMutation.mutate(loan.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                         {(!linkedLoans || linkedLoans.length === 0) && (
                                             <TableRow>
-                                                <TableCell colSpan={3} className="text-center text-muted-foreground">{t('detail.noLinkedLoans')}</TableCell>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground">{t('detail.noLinkedLoans')}</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>{t('detail.linkedInsurances')}</CardTitle>
+                                <CardDescription>{t('detail.linkedInsurancesDesc')}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>{tc('labels.name')}</TableHead>
+                                            <TableHead>{tc('labels.type')}</TableHead>
+                                            <TableHead>{tc('labels.provider')}</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {linkedInsurances?.map((insurance) => (
+                                            <TableRow key={insurance.id}>
+                                                <TableCell className="font-medium">{insurance.policyName}</TableCell>
+                                                <TableCell className="capitalize">{insurance.type}</TableCell>
+                                                <TableCell>{insurance.provider}</TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-destructive"
+                                                        onClick={() => unlinkInsuranceMutation.mutate(insurance.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {(!linkedInsurances || linkedInsurances.length === 0) && (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground">{t('detail.noLinkedInsurances')}</TableCell>
                                             </TableRow>
                                         )}
                                     </TableBody>
@@ -338,6 +399,42 @@ export default function RealEstateDetail() {
                             </CardContent>
                         </Card>
                     </div>
+                </TabsContent>
+
+                <TabsContent value="costs" className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{t('detail.recurringCosts')}</CardTitle>
+                            <CardDescription>{t('detail.recurringCostsDesc')}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>{tc('labels.name')}</TableHead>
+                                        <TableHead>{t('detail.frequency')}</TableHead>
+                                        <TableHead className="text-right">{tc('labels.amount')}</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {(realEstate.recurringCosts as any[])?.map((cost, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell>{cost.name}</TableCell>
+                                            <TableCell className="capitalize">{t('modal.add.' + cost.frequency)}</TableCell>
+                                            <TableCell className="text-right">
+                                                {formatCurrency(convertToCzK(Number(cost.amount), cost.currency as CurrencyCode || "CZK"))}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {(!realEstate.recurringCosts || (realEstate.recurringCosts as any[]).length === 0) && (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="text-center text-muted-foreground">{t('detail.noRecurringCosts')}</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 <TabsContent value="history">

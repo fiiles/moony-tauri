@@ -525,10 +525,18 @@ export interface CashflowCategory {
     isUserEditable: boolean;
 }
 
-export interface CashflowReport {
-    viewType: 'monthly' | 'yearly';
+export interface CashflowSection {
     income: CashflowCategory[];
     expenses: CashflowCategory[];
+    totalIncome: number;
+    totalExpenses: number;
+    netCashflow: number;
+}
+
+export interface CashflowReport {
+    viewType: 'monthly' | 'yearly';
+    personal: CashflowSection;
+    investments: CashflowSection;
     totalIncome: number;
     totalExpenses: number;
     netCashflow: number;

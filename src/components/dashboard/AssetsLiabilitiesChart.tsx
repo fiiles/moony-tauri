@@ -30,7 +30,7 @@ export default function AssetsLiabilitiesChart({
         return (totalAssets / totalLiabilities) * 100;
     }, [totalAssets, totalLiabilities]);
 
-    const isHealthy = assetsToLiabilitiesRatio >= 100;
+    const _isHealthy = assetsToLiabilitiesRatio >= 100;
 
     // Calculate dynamic Y-axis domain based on data range
     const yAxisDomain = useMemo((): [number, number] => {

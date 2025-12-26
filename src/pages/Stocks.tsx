@@ -2,26 +2,27 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AddInvestmentModal } from "@/components/investments/AddInvestmentModal";
-import { SellInvestmentModal } from "@/components/investments/SellInvestmentModal";
-import { ViewTransactionsModal } from "@/components/investments/ViewTransactionsModal";
-import { DeleteInvestmentDialog } from "@/components/investments/DeleteInvestmentDialog";
-import { InvestmentsSummary } from "@/components/investments/InvestmentsSummary";
-import { InvestmentsTable } from "@/components/investments/InvestmentsTable";
-import { investmentsApi, priceApi } from "@/lib/tauri-api";
+import { AddInvestmentModal } from "@/components/stocks/AddInvestmentModal";
+import { SellInvestmentModal } from "@/components/stocks/SellInvestmentModal";
+import { ViewTransactionsModal } from "@/components/stocks/ViewTransactionsModal";
+import { DeleteInvestmentDialog } from "@/components/stocks/DeleteInvestmentDialog";
+import { InvestmentsSummary } from "@/components/stocks/InvestmentsSummary";
+import { InvestmentsTable } from "@/components/stocks/InvestmentsTable";
+import { investmentsApi, priceApi, exportApi } from "@/lib/tauri-api";
 import type { StockInvestmentWithPrice } from "@shared/types";
-import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from "@/utils/investments";
+import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from "@/utils/stocks";
 import PortfolioValueTrendChart from "@/components/common/PortfolioValueTrendChart";
+import { ExportButton } from "@/components/common/ExportButton";
 
-import { BuyInvestmentModal } from "@/components/investments/BuyInvestmentModal";
-import { ManualPriceModal } from "@/components/investments/ManualPriceModal";
-import { ManualDividendModal } from "@/components/investments/ManualDividendModal";
-import { ImportInvestmentsModal } from "@/components/investments/ImportInvestmentsModal";
+import { BuyInvestmentModal } from "@/components/stocks/BuyInvestmentModal";
+import { ManualPriceModal } from "@/components/stocks/ManualPriceModal";
+import { ManualDividendModal } from "@/components/stocks/ManualDividendModal";
+import { ImportInvestmentsModal } from "@/components/stocks/ImportInvestmentsModal";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
-export default function Investments() {
-  const { t } = useTranslation('investments');
+export default function Stocks() {
+  const { t } = useTranslation('stocks');
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [selectedInvestment, setSelectedInvestment] = useState<HoldingData | null>(null);
@@ -166,6 +167,7 @@ export default function Investments() {
           >
             <RefreshCw className={`h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
           </Button>
+          <ExportButton exportFn={exportApi.stockTransactions} />
           <ImportInvestmentsModal />
           <AddInvestmentModal />
         </div>
@@ -191,6 +193,7 @@ export default function Investments() {
       <PortfolioValueTrendChart
         type="investments"
         currentValue={metrics.totalValue}
+        isRefreshing={refreshPricesMutation.isPending}
       />
 
       <InvestmentsTable

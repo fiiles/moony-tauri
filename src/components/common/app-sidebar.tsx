@@ -30,7 +30,7 @@ const portfolioItems = [
     { titleKey: "nav.savings", url: "/accounts", icon: Wallet, key: "savings" },
     { titleKey: "nav.loans", url: "/loans", icon: CreditCard, key: "loans" },
     { titleKey: "nav.insurance", url: "/insurance", icon: Shield, key: "insurance" },
-    { titleKey: "nav.investments", url: "/investments", icon: TrendingUp, key: "investments" },
+    { titleKey: "nav.investments", url: "/stocks", icon: TrendingUp, key: "investments" },
     { titleKey: "nav.crypto", url: "/crypto", icon: Bitcoin, key: "crypto" },
     { titleKey: "nav.bonds", url: "/bonds", icon: FileText, key: "bonds" },
     { titleKey: "nav.realEstate", url: "/real-estate", icon: HomeIcon, key: "realEstate" },

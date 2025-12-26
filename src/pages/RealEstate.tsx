@@ -12,13 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Eye, Building2, Home, TrendingUp } from "lucide-react";
 import { useLocation } from "wouter";
-import { realEstateApi } from "@/lib/tauri-api";
+import { realEstateApi, exportApi } from "@/lib/tauri-api";
 import type { RealEstate } from "@shared/schema";
 import { SummaryCard } from "@/components/common/SummaryCard";
 
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
+import { ExportButton } from "@/components/common/ExportButton";
 
 export default function RealEstatePage() {
   const { t } = useTranslation('realEstate');
@@ -75,7 +76,10 @@ export default function RealEstatePage() {
           <h1 className="page-title">{t('title')}</h1>
           <p className="page-subtitle">{t('subtitle')}</p>
         </div>
-        <AddRealEstateModal />
+        <div className="flex gap-2">
+          <ExportButton exportFn={exportApi.realEstate} />
+          <AddRealEstateModal />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

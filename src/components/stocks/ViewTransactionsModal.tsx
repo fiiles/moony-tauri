@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Pencil, Trash2 } from "lucide-react";
 import type { InvestmentTransaction } from "@shared/schema";
-import type { HoldingData } from "@/utils/investments";
+import type { HoldingData } from "@/utils/stocks";
 import { EditTransactionModal } from "./EditTransactionModal";
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK } from "@shared/currencies";
@@ -42,7 +42,7 @@ interface ViewTransactionsModalProps {
 }
 
 export function ViewTransactionsModal({ investment, open, onOpenChange }: ViewTransactionsModalProps) {
-    const { t } = useTranslation('investments');
+    const { t } = useTranslation('stocks');
     const { t: tc } = useTranslation('common');
     const queryClient = useQueryClient();
     const { formatCurrency } = useCurrency();

@@ -27,7 +27,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { CURRENCIES } from "@shared/currencies";
-import type { HoldingData } from "@/utils/investments";
+import type { HoldingData } from "@/utils/stocks";
 import { investmentsApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
 
@@ -45,7 +45,7 @@ interface SellInvestmentModalProps {
 }
 
 export function SellInvestmentModal({ investment, open, onOpenChange }: SellInvestmentModalProps) {
-    const { t } = useTranslation('investments');
+    const { t } = useTranslation('stocks');
     const { t: tc } = useTranslation('common');
     const queryClient = useQueryClient();
 

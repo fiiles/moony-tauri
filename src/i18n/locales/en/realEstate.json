@@ -76,6 +76,9 @@
         "photosDesc": "Property images",
         "noRecurringCosts": "No recurring costs",
         "noLinkedLoans": "No linked loans",
+        "linkedInsurances": "Linked Insurances",
+        "linkedInsurancesDesc": "Insurance policies for this property",
+        "noLinkedInsurances": "No linked insurances",
         "noOneTimeCosts": "No one-time costs recorded.",
         "noPhotos": "No photos added yet",
         "addPhotosHint": "Edit property to add photo URLs",
@@ -136,9 +139,14 @@
             "associatedLoans": "Associated Loans",
             "noLoans": "No loans available",
             "selectLoans": "Select loans used to finance this property.",
+            "loanRemark": "Only shows loans not attached to other real estate",
             "notes": "Notes",
             "createProperty": "Create Property",
-            "updateProperty": "Update Property"
+            "updateProperty": "Update Property",
+            "linkInsurances": "Link Insurances",
+            "selectInsurances": "Select insurance policies for this property",
+            "insuranceRemark": "Only shows insurances not attached to other real estate",
+            "noAvailableInsurances": "No available insurances"
         },
         "cost": {
             "title": "Add One-Time Cost",

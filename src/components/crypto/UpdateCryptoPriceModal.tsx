@@ -183,7 +183,7 @@ export function UpdateCryptoPriceModal({
                                         // Wait, checking UpdateCryptoPriceModal.tsx content from step 183: 
                                         // It receives `investment: CryptoHoldingData | null`.
                                         // I should verify if CryptoHoldingData has `quantity`.
-                                        const quantity = (investment as any)?.quantity || 0; // casting to any to be safe if interface is not imported to check
+                                        const quantity = investment?.quantity || 0;
                                         const total = price * quantity;
                                         const formCurrency = form.watch("currency") as CurrencyCode;
 
@@ -199,7 +199,7 @@ export function UpdateCryptoPriceModal({
                                 </span>
                             </div>
                             <div className="text-xs text-muted-foreground mt-1 text-right">
-                                Formula: {form.watch("price") || "0"} × {(investment as any)?.quantity?.toFixed(8) || "0"} units
+                                Formula: {form.watch("price") || "0"} × {investment?.quantity?.toFixed(8) || "0"} units
                             </div>
                         </div>
 

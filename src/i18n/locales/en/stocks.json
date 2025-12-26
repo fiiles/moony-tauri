@@ -1,5 +1,5 @@
 {
-    "title": "Investments",
+    "title": "Stocks",
     "subtitle": "Track your stocks and commodities portfolio",
     "loading": "Loading your investment portfolio...",
     "addInvestment": "Add Investment",
@@ -131,6 +131,6 @@
         "searchFailed": "Search failed"
     },
     "chart": {
-        "title": "Portfolio Value Trend"
+        "title": "Stocks Value Trend"
     }
 }

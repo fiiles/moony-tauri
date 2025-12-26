@@ -11,6 +11,8 @@ import { LoansSummary } from "@/components/loans/LoansSummary";
 import { LoansTable } from "@/components/loans/LoansTable";
 import type { Loan, InsertLoan } from "@shared/schema";
 import { useTranslation } from "react-i18next";
+import { ExportButton } from "@/components/common/ExportButton";
+import { exportApi } from "@/lib/tauri-api";
 
 export default function Loans() {
   const { t } = useTranslation('loans');
@@ -96,10 +98,13 @@ export default function Loans() {
           <h1 className="page-title">{t('title')}</h1>
           <p className="page-subtitle">{t('subtitle')}</p>
         </div>
-        <Button onClick={handleAddClick} className="transition-all duration-200">
-          <Plus className="mr-2 h-4 w-4" />
-          {t('addLoan')}
-        </Button>
+        <div className="flex gap-2">
+          <ExportButton exportFn={exportApi.loans} />
+          <Button onClick={handleAddClick} className="transition-all duration-200">
+            <Plus className="mr-2 h-4 w-4" />
+            {t('addLoan')}
+          </Button>
+        </div>
       </div>
 
       <LoansSummary metrics={metrics} />

@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useCurrency } from "@/lib/currency";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,14 +20,16 @@ interface TrendData {
 interface PortfolioValueTrendChartProps {
   type: 'investments' | 'crypto';
   currentValue: number;
+  isRefreshing?: boolean;
 }
 
 export default function PortfolioValueTrendChart({
   type,
   currentValue,
+  isRefreshing = false,
 }: PortfolioValueTrendChartProps) {
   const { formatCurrency } = useCurrency();
-  const { t } = useTranslation(type === 'investments' ? 'investments' : 'crypto');
+  const { t } = useTranslation(type === 'investments' ? 'stocks' : 'crypto');
   const { formatDate } = useLanguage();
   const queryClient = useQueryClient();
   const { lastResult } = useSyncStatus();
@@ -131,7 +134,10 @@ export default function PortfolioValueTrendChart({
   }, [data]);
 
   return (
-    <Card className="p-6 border h-full flex flex-col">
+    <Card className={cn(
+      "p-6 border h-full flex flex-col transition-opacity duration-300",
+      isRefreshing && "opacity-50 animate-pulse"
+    )}>
       <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
         <div className="flex flex-col gap-2">
           <p className="text-lg font-medium">{t('chart.title')}</p>
