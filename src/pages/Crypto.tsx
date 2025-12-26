@@ -20,7 +20,7 @@ import { SellCryptoModal } from "@/components/crypto/SellCryptoModal";
 import { BuyCryptoModal } from "@/components/crypto/BuyCryptoModal";
 import { CryptoTransactionsModal } from "@/components/crypto/CryptoTransactionsModal";
 import { UpdateCryptoPriceModal } from "@/components/crypto/UpdateCryptoPriceModal";
-import { cryptoApi, priceApi } from "@/lib/tauri-api";
+import { cryptoApi, priceApi, exportApi } from "@/lib/tauri-api";
 import {
     calculateCryptoPortfolioMetrics,
     mapCryptoInvestmentToHolding,
@@ -29,6 +29,7 @@ import type { CryptoInvestmentWithPrice } from "@shared/types";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import PortfolioValueTrendChart from "@/components/common/PortfolioValueTrendChart";
+import { ExportButton } from "@/components/common/ExportButton";
 
 export default function Crypto() {
     const { t } = useTranslation('crypto');
@@ -175,6 +176,7 @@ export default function Crypto() {
                     >
                         <RefreshCw className={`h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
                     </Button>
+                    <ExportButton exportFn={exportApi.cryptoTransactions} />
                     <AddCryptoModal />
                 </div>
             </div>
@@ -199,6 +201,7 @@ export default function Crypto() {
             <PortfolioValueTrendChart
                 type="crypto"
                 currentValue={metrics.totalValue}
+                isRefreshing={refreshPricesMutation.isPending}
             />
 
             <CryptoTable

@@ -93,7 +93,10 @@
             "quarterly": "Čtvrtletně",
             "yearly": "Ročně",
             "one_time": "Jednorázově"
-        }
+        },
+        "linkRealEstate": "Připojit k nemovitosti",
+        "selectRealEstate": "Vyberte nemovitost (volitelné)",
+        "noRealEstateAvailable": "Žádná nemovitost k dispozici"
     },
     "detail": {
         "backToList": "Zpět na seznam",
@@ -111,7 +114,9 @@
         "startDate": "Datum zahájení",
         "until": "do",
         "oneTimePayment": "Jednorázová platba",
-        "paidOnce": "zaplaceno jednorázově"
+        "paidOnce": "zaplaceno jednorázově",
+        "linkedRealEstate": "Připojená nemovitost",
+        "noLinkedRealEstate": "Žádná připojená nemovitost"
     },
     "documents": {
         "description": "Přiložte smlouvy, certifikáty a další dokumenty",

@@ -23,7 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Search, MoreVertical, Trash2, History as HistoryIcon, Edit, ArrowUp, ArrowDown } from "lucide-react";
-import type { HoldingData } from "@/utils/investments";
+import type { HoldingData } from "@/utils/stocks";
 import { useCurrency } from "@/lib/currency";
 import { useMemo, useState } from "react";
 import { AssetLogo } from "@/components/common/AssetLogo";
@@ -52,7 +52,7 @@ export function InvestmentsTable({
   isLoading,
 }: InvestmentsTableProps) {
   const { formatCurrency } = useCurrency();
-  const { t } = useTranslation('investments');
+  const { t } = useTranslation('stocks');
   const [search, setSearch] = useState("");
 
   const filteredHoldings = useMemo(() => {

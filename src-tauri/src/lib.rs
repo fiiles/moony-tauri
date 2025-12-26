@@ -76,6 +76,8 @@ pub fn run() {
             commands::loans::create_loan,
             commands::loans::update_loan,
             commands::loans::delete_loan,
+            commands::loans::get_loan_real_estate,
+            commands::loans::get_available_loans,
             // Real estate commands
             commands::real_estate::get_all_real_estate,
             commands::real_estate::get_real_estate,
@@ -89,6 +91,10 @@ pub fn run() {
             commands::real_estate::link_loan_to_real_estate,
             commands::real_estate::unlink_loan_from_real_estate,
             commands::real_estate::get_real_estate_loans,
+            // Real estate insurance linking commands
+            commands::real_estate::link_insurance_to_real_estate,
+            commands::real_estate::unlink_insurance_from_real_estate,
+            commands::real_estate::get_real_estate_insurances,
             // Real estate photo commands
             commands::real_estate::get_real_estate_photo_batches,
             commands::real_estate::create_photo_batch,
@@ -111,6 +117,9 @@ pub fn run() {
             commands::insurance::add_insurance_document,
             commands::insurance::delete_insurance_document,
             commands::insurance::open_insurance_document,
+            // Insurance real estate linking commands
+            commands::insurance::get_insurance_real_estate,
+            commands::insurance::get_available_insurances,
             // Other assets commands
             commands::other_assets::get_all_other_assets,
             commands::other_assets::create_other_asset,
@@ -144,6 +153,18 @@ pub fn run() {
             commands::projection::get_projection_settings,
             commands::projection::save_projection_settings,
             commands::projection::calculate_portfolio_projection,
+            // Export commands
+            commands::export::export_stock_transactions,
+            commands::export::export_crypto_transactions,
+            commands::export::export_bonds,
+            commands::export::export_savings_accounts,
+            commands::export::export_savings_account_zones,
+            commands::export::export_real_estate,
+            commands::export::export_real_estate_costs,
+            commands::export::export_insurance_policies,
+            commands::export::export_loans,
+            commands::export::export_other_assets,
+            commands::export::export_other_asset_transactions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

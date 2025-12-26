@@ -89,9 +89,9 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
             endDate: policy?.endDate ? new Date(policy.endDate * 1000) : undefined,
             paymentFrequency: policy?.paymentFrequency || "monthly",
             oneTimePayment: policy?.oneTimePayment?.toString() || undefined,
-            oneTimePaymentCurrency: (policy as any)?.oneTimePaymentCurrency || userCurrency,
+            oneTimePaymentCurrency: (policy as InsurancePolicy & { oneTimePaymentCurrency?: string })?.oneTimePaymentCurrency || userCurrency,
             regularPayment: policy?.regularPayment?.toString() || "0",
-            regularPaymentCurrency: (policy as any)?.regularPaymentCurrency || userCurrency,
+            regularPaymentCurrency: (policy as InsurancePolicy & { regularPaymentCurrency?: string })?.regularPaymentCurrency || userCurrency,
             limits: policy?.limits || [],
             notes: policy?.notes || "",
             status: policy?.status || "active",
@@ -100,7 +100,7 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
 
     const { fields, append, remove } = useFieldArray({
         control: form.control,
-        name: "limits" as any,
+        name: "limits",
     });
 
     // Reset form when policy changes or dialog opens
@@ -115,9 +115,9 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                 endDate: policy?.endDate ? new Date(policy.endDate * 1000) : undefined,
                 paymentFrequency: policy?.paymentFrequency || "monthly",
                 oneTimePayment: policy?.oneTimePayment?.toString() || undefined,
-                oneTimePaymentCurrency: (policy as any)?.oneTimePaymentCurrency || userCurrency,
+                oneTimePaymentCurrency: (policy as InsurancePolicy & { oneTimePaymentCurrency?: string })?.oneTimePaymentCurrency || userCurrency,
                 regularPayment: policy?.regularPayment?.toString() || "0",
-                regularPaymentCurrency: (policy as any)?.regularPaymentCurrency || userCurrency,
+                regularPaymentCurrency: (policy as InsurancePolicy & { regularPaymentCurrency?: string })?.regularPaymentCurrency || userCurrency,
                 limits: policy?.limits || [],
                 notes: policy?.notes || "",
                 status: policy?.status || "active",
@@ -453,7 +453,7 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                     <div key={field.id} className="flex gap-2 items-end">
                                         <FormField
                                             control={form.control}
-                                            name={`limits.${index}.title` as any}
+                                            name={`limits.${index}.title` as const}
                                             render={({ field }) => (
                                                 <FormItem className="flex-1">
                                                     <FormControl>
@@ -464,7 +464,7 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                         />
                                         <FormField
                                             control={form.control}
-                                            name={`limits.${index}.amount` as any}
+                                            name={`limits.${index}.amount` as const}
                                             render={({ field }) => (
                                                 <FormItem className="w-32">
                                                     <FormControl>
@@ -479,7 +479,7 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                         />
                                         <FormField
                                             control={form.control}
-                                            name={`limits.${index}.currency` as any}
+                                            name={`limits.${index}.currency` as const}
                                             render={({ field }) => (
                                                 <FormItem className="w-24">
                                                     <Select onValueChange={field.onChange} value={field.value}>

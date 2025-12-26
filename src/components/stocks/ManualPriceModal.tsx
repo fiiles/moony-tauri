@@ -28,7 +28,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { HoldingData } from "@/utils/investments";
+import { HoldingData } from "@/utils/stocks";
 import { useCurrency } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
 import { investmentsApi } from "@/lib/tauri-api";
@@ -52,7 +52,7 @@ export function ManualPriceModal({
     onOpenChange,
     investment,
 }: ManualPriceModalProps) {
-    const { t } = useTranslation('investments');
+    const { t } = useTranslation('stocks');
     const { t: tc } = useTranslation('common');
     const { toast } = useToast();
     const queryClient = useQueryClient();

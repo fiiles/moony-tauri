@@ -8,7 +8,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { HoldingData } from "@/utils/investments";
+import type { HoldingData } from "@/utils/stocks";
 import { useTranslation } from "react-i18next";
 
 interface DeleteInvestmentDialogProps {
@@ -26,7 +26,7 @@ export function DeleteInvestmentDialog({
     onConfirm,
     isLoading = false,
 }: DeleteInvestmentDialogProps) {
-    const { t } = useTranslation('investments');
+    const { t } = useTranslation('stocks');
     const { t: tc } = useTranslation('common');
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>

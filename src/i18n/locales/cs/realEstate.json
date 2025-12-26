@@ -76,6 +76,9 @@
         "photosDesc": "Obrázky nemovitosti",
         "noRecurringCosts": "Žádné pravidelné náklady",
         "noLinkedLoans": "Žádné připojené úvěry",
+        "linkedInsurances": "Připojená pojištění",
+        "linkedInsurancesDesc": "Pojistky pro tuto nemovitost",
+        "noLinkedInsurances": "Žádná připojená pojištění",
         "noOneTimeCosts": "Žádné jednorázové náklady.",
         "noPhotos": "Žádné fotografie",
         "addPhotosHint": "Upravte nemovitost pro přidání URL fotografií",
@@ -136,9 +139,14 @@
             "associatedLoans": "Připojené úvěry",
             "noLoans": "Žádné úvěry k dispozici",
             "selectLoans": "Vyberte úvěry použité k financování této nemovitosti.",
+            "loanRemark": "Zobrazuje pouze úvěry nepřipojené k jiné nemovitosti",
             "notes": "Poznámky",
             "createProperty": "Vytvořit nemovitost",
-            "updateProperty": "Aktualizovat nemovitost"
+            "updateProperty": "Aktualizovat nemovitost",
+            "linkInsurances": "Připojit pojištění",
+            "selectInsurances": "Vyberte pojistky pro tuto nemovitost",
+            "insuranceRemark": "Zobrazuje pouze pojištění nepřipojená k jiné nemovitosti",
+            "noAvailableInsurances": "Žádná dostupná pojištění"
         },
         "cost": {
             "title": "Přidat jednorázový náklad",

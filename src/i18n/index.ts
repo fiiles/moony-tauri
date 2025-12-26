@@ -13,7 +13,7 @@ import enCommon from './locales/en/common.json';
 import enDashboard from './locales/en/dashboard.json';
 import enSettings from './locales/en/settings.json';
 import enAuth from './locales/en/auth.json';
-import enInvestments from './locales/en/investments.json';
+import enStocks from './locales/en/stocks.json';
 import enSavings from './locales/en/savings.json';
 import enLoans from './locales/en/loans.json';
 import enCrypto from './locales/en/crypto.json';
@@ -28,7 +28,7 @@ import csCommon from './locales/cs/common.json';
 import csDashboard from './locales/cs/dashboard.json';
 import csSettings from './locales/cs/settings.json';
 import csAuth from './locales/cs/auth.json';
-import csInvestments from './locales/cs/investments.json';
+import csStocks from './locales/cs/stocks.json';
 import csSavings from './locales/cs/savings.json';
 import csLoans from './locales/cs/loans.json';
 import csCrypto from './locales/cs/crypto.json';
@@ -53,7 +53,7 @@ export const NAMESPACES = [
     'dashboard',
     'settings',
     'auth',
-    'investments',
+    'stocks',
     'savings',
     'loans',
     'crypto',
@@ -73,7 +73,7 @@ const resources = {
         dashboard: enDashboard,
         settings: enSettings,
         auth: enAuth,
-        investments: enInvestments,
+        stocks: enStocks,
         savings: enSavings,
         loans: enLoans,
         crypto: enCrypto,
@@ -89,7 +89,7 @@ const resources = {
         dashboard: csDashboard,
         settings: csSettings,
         auth: csAuth,
-        investments: csInvestments,
+        stocks: csStocks,
         savings: csSavings,
         loans: csLoans,
         crypto: csCrypto,

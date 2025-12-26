@@ -53,7 +53,7 @@ const formSchema = z.object({
 });
 
 export function AddInvestmentModal() {
-    const { t } = useTranslation('investments');
+    const { t } = useTranslation('stocks');
     const { t: tc } = useTranslation('common');
     const [open, setOpen] = useState(false);
     const [searchResults, setSearchResults] = useState<Array<{ symbol: string; shortname: string; exchange: string }>>([]);

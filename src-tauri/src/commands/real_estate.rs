@@ -4,7 +4,7 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
     InsertPhotoBatch, InsertRealEstate, InsertRealEstateDocument, InsertRealEstateOneTimeCost,
-    Loan, RealEstate, RealEstateDocument, RealEstateOneTimeCost, RealEstatePhoto,
+    InsurancePolicy, Loan, RealEstate, RealEstateDocument, RealEstateOneTimeCost, RealEstatePhoto,
     RealEstatePhotoBatch, UpdatePhotoBatch,
 };
 use std::fs;
@@ -325,7 +325,7 @@ pub async fn update_real_estate_cost(
     })
 }
 
-/// Link loan to real estate
+/// Link loan to real estate (enforces 1 loan → 1 property)
 #[tauri::command]
 pub async fn link_loan_to_real_estate(
     db: State<'_, Database>,
@@ -333,8 +333,14 @@ pub async fn link_loan_to_real_estate(
     loan_id: String,
 ) -> Result<()> {
     db.with_conn(|conn| {
+        // First, remove any existing link for this loan (enforce 1 loan → 1 property)
         conn.execute(
-            "INSERT OR IGNORE INTO real_estate_loans (real_estate_id, loan_id) VALUES (?1, ?2)",
+            "DELETE FROM real_estate_loans WHERE loan_id = ?1",
+            [&loan_id],
+        )?;
+        // Then create the new link
+        conn.execute(
+            "INSERT INTO real_estate_loans (real_estate_id, loan_id) VALUES (?1, ?2)",
             [&real_estate_id, &loan_id],
         )?;
         Ok(())
@@ -389,6 +395,92 @@ pub async fn get_real_estate_loans(
         })?.filter_map(|r| r.ok()).collect();
 
         Ok(loans)
+    })
+}
+
+// ============================================================================
+// Insurance Linking Commands
+// ============================================================================
+
+/// Link insurance to real estate
+#[tauri::command]
+pub async fn link_insurance_to_real_estate(
+    db: State<'_, Database>,
+    real_estate_id: String,
+    insurance_id: String,
+) -> Result<()> {
+    db.with_conn(|conn| {
+        // First, remove any existing link for this insurance (insurance can only have one real estate)
+        conn.execute(
+            "DELETE FROM real_estate_insurances WHERE insurance_id = ?1",
+            [&insurance_id],
+        )?;
+        // Then create the new link
+        conn.execute(
+            "INSERT INTO real_estate_insurances (real_estate_id, insurance_id) VALUES (?1, ?2)",
+            [&real_estate_id, &insurance_id],
+        )?;
+        Ok(())
+    })
+}
+
+/// Unlink insurance from real estate
+#[tauri::command]
+pub async fn unlink_insurance_from_real_estate(
+    db: State<'_, Database>,
+    real_estate_id: String,
+    insurance_id: String,
+) -> Result<()> {
+    db.with_conn(|conn| {
+        conn.execute(
+            "DELETE FROM real_estate_insurances WHERE real_estate_id = ?1 AND insurance_id = ?2",
+            [&real_estate_id, &insurance_id],
+        )?;
+        Ok(())
+    })
+}
+
+/// Get insurances linked to real estate
+#[tauri::command]
+pub async fn get_real_estate_insurances(
+    db: State<'_, Database>,
+    real_estate_id: String,
+) -> Result<Vec<InsurancePolicy>> {
+    db.with_conn(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT i.id, i.type, i.provider, i.policy_name, i.policy_number, i.start_date, i.end_date,
+                    i.payment_frequency, i.one_time_payment, i.one_time_payment_currency,
+                    i.regular_payment, i.regular_payment_currency, i.limits, i.notes, i.status,
+                    i.created_at, i.updated_at
+             FROM insurance_policies i
+             INNER JOIN real_estate_insurances rei ON i.id = rei.insurance_id
+             WHERE rei.real_estate_id = ?1"
+        )?;
+
+        let policies = stmt.query_map([&real_estate_id], |row| {
+            let limits_json: String = row.get(12)?;
+            Ok(InsurancePolicy {
+                id: row.get(0)?,
+                policy_type: row.get(1)?,
+                provider: row.get(2)?,
+                policy_name: row.get(3)?,
+                policy_number: row.get(4)?,
+                start_date: row.get(5)?,
+                end_date: row.get(6)?,
+                payment_frequency: row.get(7)?,
+                one_time_payment: row.get(8)?,
+                one_time_payment_currency: row.get(9)?,
+                regular_payment: row.get(10)?,
+                regular_payment_currency: row.get(11)?,
+                limits: serde_json::from_str(&limits_json).unwrap_or_default(),
+                notes: row.get(13)?,
+                status: row.get(14)?,
+                created_at: row.get(15)?,
+                updated_at: row.get(16)?,
+            })
+        })?.filter_map(|r| r.ok()).collect();
+
+        Ok(policies)
     })
 }
 

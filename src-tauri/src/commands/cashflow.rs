@@ -36,13 +36,26 @@ pub struct CashflowCategory {
     pub is_user_editable: bool,
 }
 
-/// Complete cashflow report
+/// A cashflow section (Personal or Investments)
+#[derive(Debug, Clone, Serialize)]
+pub struct CashflowSection {
+    pub income: Vec<CashflowCategory>,
+    pub expenses: Vec<CashflowCategory>,
+    #[serde(rename = "totalIncome")]
+    pub total_income: f64,
+    #[serde(rename = "totalExpenses")]
+    pub total_expenses: f64,
+    #[serde(rename = "netCashflow")]
+    pub net_cashflow: f64,
+}
+
+/// Complete cashflow report with Personal and Investments sections
 #[derive(Debug, Clone, Serialize)]
 pub struct CashflowReport {
     #[serde(rename = "viewType")]
     pub view_type: String, // "monthly" or "yearly"
-    pub income: Vec<CashflowCategory>,
-    pub expenses: Vec<CashflowCategory>,
+    pub personal: CashflowSection,
+    pub investments: CashflowSection,
     #[serde(rename = "totalIncome")]
     pub total_income: f64,
     #[serde(rename = "totalExpenses")]
@@ -107,6 +120,87 @@ fn get_user_items_by_category(
     Ok(map)
 }
 
+/// Get real estate IDs by type (personal vs investment)
+fn get_real_estate_ids_by_type(
+    conn: &rusqlite::Connection,
+) -> rusqlite::Result<(Vec<String>, Vec<String>)> {
+    let mut personal_ids = Vec::new();
+    let mut investment_ids = Vec::new();
+
+    let mut stmt = conn.prepare("SELECT id, type FROM real_estate")?;
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+
+    for row in rows.filter_map(|r| r.ok()) {
+        if row.1 == "investment" {
+            investment_ids.push(row.0);
+        } else {
+            personal_ids.push(row.0);
+        }
+    }
+
+    Ok((personal_ids, investment_ids))
+}
+
+/// Get loan IDs linked to investment real estate
+fn get_investment_loan_ids(
+    conn: &rusqlite::Connection,
+    investment_re_ids: &[String],
+) -> rusqlite::Result<Vec<String>> {
+    if investment_re_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let placeholders: String = investment_re_ids
+        .iter()
+        .map(|_| "?")
+        .collect::<Vec<_>>()
+        .join(",");
+    let query = format!(
+        "SELECT DISTINCT loan_id FROM real_estate_loans WHERE real_estate_id IN ({})",
+        placeholders
+    );
+
+    let mut stmt = conn.prepare(&query)?;
+    let params: Vec<&dyn rusqlite::ToSql> = investment_re_ids
+        .iter()
+        .map(|s| s as &dyn rusqlite::ToSql)
+        .collect();
+    let rows = stmt.query_map(params.as_slice(), |row| row.get::<_, String>(0))?;
+
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
+/// Get insurance IDs linked to investment real estate
+fn get_investment_insurance_ids(
+    conn: &rusqlite::Connection,
+    investment_re_ids: &[String],
+) -> rusqlite::Result<Vec<String>> {
+    if investment_re_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let placeholders: String = investment_re_ids
+        .iter()
+        .map(|_| "?")
+        .collect::<Vec<_>>()
+        .join(",");
+    let query = format!(
+        "SELECT DISTINCT insurance_id FROM real_estate_insurances WHERE real_estate_id IN ({})",
+        placeholders
+    );
+
+    let mut stmt = conn.prepare(&query)?;
+    let params: Vec<&dyn rusqlite::ToSql> = investment_re_ids
+        .iter()
+        .map(|s| s as &dyn rusqlite::ToSql)
+        .collect();
+    let rows = stmt.query_map(params.as_slice(), |row| row.get::<_, String>(0))?;
+
+    Ok(rows.filter_map(|r| r.ok()).collect())
+}
+
 /// Get cashflow report
 #[tauri::command]
 pub async fn get_cashflow_report(
@@ -123,12 +217,191 @@ pub async fn get_cashflow_report(
         // Get all user-defined items grouped by category
         let user_items = get_user_items_by_category(conn, target_period)?;
 
-        let mut income_categories: Vec<CashflowCategory> = Vec::new();
-        let mut expense_categories: Vec<CashflowCategory> = Vec::new();
+        // Get real estate IDs by type
+        let (personal_re_ids, investment_re_ids) = get_real_estate_ids_by_type(conn)?;
 
-        // ==================== INCOMES ====================
+        // Get loan/insurance IDs linked to investment real estate
+        let investment_loan_ids = get_investment_loan_ids(conn, &investment_re_ids)?;
+        let investment_insurance_ids = get_investment_insurance_ids(conn, &investment_re_ids)?;
 
-        // 1. Savings Interest
+        // ==================== PERSONAL SECTION ====================
+        let mut personal_income_categories: Vec<CashflowCategory> = Vec::new();
+        let mut personal_expense_categories: Vec<CashflowCategory> = Vec::new();
+
+        // Personal Income (user-defined only)
+        let mut personal_income_items: Vec<CashflowReportItem> = user_items.get("personalIncome").cloned().unwrap_or_default();
+        sort_items_alphabetically(&mut personal_income_items);
+        let personal_income_total: f64 = personal_income_items.iter().map(|i| i.amount).sum();
+        personal_income_categories.push(CashflowCategory {
+            key: "personalIncome".to_string(), name: "Personal Income".to_string(),
+            total: personal_income_total, items: personal_income_items, is_user_editable: true,
+        });
+
+        // Personal Loan Payments (loans NOT linked to investment real estate)
+        let mut personal_loan_items: Vec<CashflowReportItem> = Vec::new();
+        let mut loan_stmt = conn.prepare("SELECT id, name, monthly_payment, currency FROM loans")?;
+        let loans = loan_stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?, row.get::<_, String>(3)?))
+        })?;
+
+        for loan in loans.filter_map(|r| r.ok()) {
+            if !investment_loan_ids.contains(&loan.0) {
+                let monthly_payment: f64 = loan.2.parse().unwrap_or(0.0);
+                let monthly_payment_czk = convert_to_czk(monthly_payment, &loan.3);
+                let normalized = normalize_to_period(monthly_payment_czk, "monthly", target_period);
+
+                if normalized > 0.0 {
+                    personal_loan_items.push(CashflowReportItem {
+                        id: loan.0, name: loan.1, amount: normalized,
+                        original_amount: monthly_payment, original_currency: loan.3,
+                        original_frequency: "monthly".to_string(), is_user_defined: false,
+                    });
+                }
+            }
+        }
+        if let Some(mut items) = user_items.get("personalLoans").cloned() {
+            personal_loan_items.append(&mut items);
+        }
+        sort_items_alphabetically(&mut personal_loan_items);
+        let personal_loan_total: f64 = personal_loan_items.iter().map(|i| i.amount).sum();
+        personal_expense_categories.push(CashflowCategory {
+            key: "personalLoans".to_string(), name: "Loan Payments".to_string(),
+            total: personal_loan_total, items: personal_loan_items, is_user_editable: true,
+        });
+
+        // Personal Insurance Payments (insurance NOT linked to investment real estate)
+        let mut personal_insurance_items: Vec<CashflowReportItem> = Vec::new();
+        let mut ins_stmt = conn.prepare(
+            "SELECT id, policy_name, regular_payment, regular_payment_currency, payment_frequency FROM insurance_policies WHERE status = 'active'"
+        )?;
+        let insurances = ins_stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?, row.get::<_, String>(4)?))
+        })?;
+
+        for ins in insurances.filter_map(|r| r.ok()) {
+            if !investment_insurance_ids.contains(&ins.0) {
+                let payment: f64 = ins.2.parse().unwrap_or(0.0);
+                let frequency = ins.4.to_lowercase();
+                let yearly_payment = match frequency.as_str() {
+                    "monthly" => payment * 12.0,
+                    "quarterly" => payment * 4.0,
+                    "semi-annually" | "semiannually" => payment * 2.0,
+                    "yearly" | "annually" | "annual" => payment,
+                    "one-time" | "onetime" => 0.0,
+                    _ => payment * 12.0,
+                };
+                let yearly_payment_czk = convert_to_czk(yearly_payment, &ins.3);
+                let normalized = normalize_to_period(yearly_payment_czk, "yearly", target_period);
+
+                if normalized > 0.0 {
+                    personal_insurance_items.push(CashflowReportItem {
+                        id: ins.0, name: ins.1, amount: normalized,
+                        original_amount: yearly_payment, original_currency: ins.3,
+                        original_frequency: "yearly".to_string(), is_user_defined: false,
+                    });
+                }
+            }
+        }
+        if let Some(mut items) = user_items.get("personalInsurance").cloned() {
+            personal_insurance_items.append(&mut items);
+        }
+        sort_items_alphabetically(&mut personal_insurance_items);
+        let personal_insurance_total: f64 = personal_insurance_items.iter().map(|i| i.amount).sum();
+        personal_expense_categories.push(CashflowCategory {
+            key: "personalInsurance".to_string(), name: "Insurance Payments".to_string(),
+            total: personal_insurance_total, items: personal_insurance_items, is_user_editable: true,
+        });
+
+        // Personal Real Estate Costs
+        let mut personal_re_cost_items: Vec<CashflowReportItem> = Vec::new();
+        let mut re_cost_stmt = conn.prepare("SELECT id, name, recurring_costs FROM real_estate")?;
+        let re_costs = re_cost_stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
+        })?;
+
+        for re in re_costs.filter_map(|r| r.ok()) {
+            if personal_re_ids.contains(&re.0) {
+                let costs: Vec<serde_json::Value> = serde_json::from_str(&re.2).unwrap_or_default();
+                let mut property_yearly_total = 0.0;
+                for cost in costs {
+                    let amount = cost.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                    let frequency = cost.get("frequency").and_then(|v| v.as_str()).unwrap_or("monthly");
+                    let currency = cost.get("currency").and_then(|v| v.as_str()).unwrap_or("CZK");
+                    let yearly_amount = match frequency {
+                        "monthly" => amount * 12.0,
+                        "quarterly" => amount * 4.0,
+                        "yearly" | "annually" => amount,
+                        _ => amount * 12.0,
+                    };
+                    property_yearly_total += convert_to_czk(yearly_amount, currency);
+                }
+                let normalized = normalize_to_period(property_yearly_total, "yearly", target_period);
+                if normalized > 0.0 {
+                    personal_re_cost_items.push(CashflowReportItem {
+                        id: re.0, name: re.1, amount: normalized,
+                        original_amount: property_yearly_total, original_currency: "CZK".to_string(),
+                        original_frequency: "yearly".to_string(), is_user_defined: false,
+                    });
+                }
+            }
+        }
+        if let Some(mut items) = user_items.get("personalRealEstateCosts").cloned() {
+            personal_re_cost_items.append(&mut items);
+        }
+        sort_items_alphabetically(&mut personal_re_cost_items);
+        let personal_re_cost_total: f64 = personal_re_cost_items.iter().map(|i| i.amount).sum();
+        personal_expense_categories.push(CashflowCategory {
+            key: "personalRealEstateCosts".to_string(), name: "Personal Real Estate Costs".to_string(),
+            total: personal_re_cost_total, items: personal_re_cost_items, is_user_editable: true,
+        });
+
+        // Subscriptions (user-defined only)
+        let mut subscription_items: Vec<CashflowReportItem> = user_items.get("subscriptions").cloned().unwrap_or_default();
+        sort_items_alphabetically(&mut subscription_items);
+        let subscription_total: f64 = subscription_items.iter().map(|i| i.amount).sum();
+        personal_expense_categories.push(CashflowCategory {
+            key: "subscriptions".to_string(), name: "Subscriptions".to_string(),
+            total: subscription_total, items: subscription_items, is_user_editable: true,
+        });
+
+        // Consumption Costs (user-defined only)
+        let mut consumption_items: Vec<CashflowReportItem> = user_items.get("consumptionCosts").cloned().unwrap_or_default();
+        sort_items_alphabetically(&mut consumption_items);
+        let consumption_total: f64 = consumption_items.iter().map(|i| i.amount).sum();
+        personal_expense_categories.push(CashflowCategory {
+            key: "consumptionCosts".to_string(), name: "Consumption Costs".to_string(),
+            total: consumption_total, items: consumption_items, is_user_editable: true,
+        });
+
+        // Other Personal Costs (user-defined only)
+        let mut other_personal_cost_items: Vec<CashflowReportItem> = user_items.get("otherPersonalCosts").cloned().unwrap_or_default();
+        sort_items_alphabetically(&mut other_personal_cost_items);
+        let other_personal_cost_total: f64 = other_personal_cost_items.iter().map(|i| i.amount).sum();
+        personal_expense_categories.push(CashflowCategory {
+            key: "otherPersonalCosts".to_string(), name: "Other Personal Costs".to_string(),
+            total: other_personal_cost_total, items: other_personal_cost_items, is_user_editable: true,
+        });
+
+        // Calculate personal totals
+        let personal_total_income: f64 = personal_income_categories.iter().map(|c| c.total).sum();
+        let personal_total_expenses: f64 = personal_expense_categories.iter().map(|c| c.total).sum();
+        let personal_net_cashflow = personal_total_income - personal_total_expenses;
+
+        let personal_section = CashflowSection {
+            income: personal_income_categories,
+            expenses: personal_expense_categories,
+            total_income: personal_total_income,
+            total_expenses: personal_total_expenses,
+            net_cashflow: personal_net_cashflow,
+        };
+
+        // ==================== INVESTMENTS SECTION ====================
+        let mut investment_income_categories: Vec<CashflowCategory> = Vec::new();
+        let mut investment_expense_categories: Vec<CashflowCategory> = Vec::new();
+
+        // 1. Interest Income (Savings)
         let mut savings_items: Vec<CashflowReportItem> = Vec::new();
         let mut savings_stmt = conn.prepare(
             "SELECT id, name, balance, currency, interest_rate, has_zone_designation FROM savings_accounts"
@@ -199,19 +472,17 @@ pub async fn get_cashflow_report(
                 });
             }
         }
-
-        // Add user items for this category
-        if let Some(mut items) = user_items.get("savingsInterest").cloned() {
+        if let Some(mut items) = user_items.get("interestIncome").cloned() {
             savings_items.append(&mut items);
         }
         sort_items_alphabetically(&mut savings_items);
         let savings_total: f64 = savings_items.iter().map(|i| i.amount).sum();
-        income_categories.push(CashflowCategory {
-            key: "savingsInterest".to_string(), name: "Savings Interest".to_string(),
+        investment_income_categories.push(CashflowCategory {
+            key: "interestIncome".to_string(), name: "Interest Income".to_string(),
             total: savings_total, items: savings_items, is_user_editable: true,
         });
 
-        // 2. Investment Dividends
+        // 2. Stock Dividends
         let mut dividend_items: Vec<CashflowReportItem> = Vec::new();
         let mut inv_stmt = conn.prepare("SELECT ticker, company_name, quantity FROM stock_investments")?;
         let investments = inv_stmt.query_map([], |row| {
@@ -246,18 +517,17 @@ pub async fn get_cashflow_report(
                 }
             }
         }
-
-        if let Some(mut items) = user_items.get("investmentDividends").cloned() {
+        if let Some(mut items) = user_items.get("stockDividends").cloned() {
             dividend_items.append(&mut items);
         }
         sort_items_alphabetically(&mut dividend_items);
         let dividend_total: f64 = dividend_items.iter().map(|i| i.amount).sum();
-        income_categories.push(CashflowCategory {
-            key: "investmentDividends".to_string(), name: "Investment Dividends".to_string(),
+        investment_income_categories.push(CashflowCategory {
+            key: "stockDividends".to_string(), name: "Stock Dividends".to_string(),
             total: dividend_total, items: dividend_items, is_user_editable: true,
         });
 
-        // 3. Bond Interest
+        // 3. Bonds Interest
         let mut bond_items: Vec<CashflowReportItem> = Vec::new();
         let mut bond_stmt = conn.prepare("SELECT id, name, coupon_value, quantity, interest_rate, currency FROM bonds")?;
         let bonds = bond_stmt.query_map([], |row| {
@@ -276,23 +546,22 @@ pub async fn get_cashflow_report(
             if normalized > 0.0 {
                 bond_items.push(CashflowReportItem {
                     id: bond.0, name: bond.1, amount: normalized,
-                    original_amount: yearly_interest, original_currency: bond.4,
+                    original_amount: yearly_interest, original_currency: bond.5,
                     original_frequency: "yearly".to_string(), is_user_defined: false,
                 });
             }
         }
-
-        if let Some(mut items) = user_items.get("bondInterest").cloned() {
+        if let Some(mut items) = user_items.get("bondsInterest").cloned() {
             bond_items.append(&mut items);
         }
         sort_items_alphabetically(&mut bond_items);
         let bond_total: f64 = bond_items.iter().map(|i| i.amount).sum();
-        income_categories.push(CashflowCategory {
-            key: "bondInterest".to_string(), name: "Bond Interest".to_string(),
+        investment_income_categories.push(CashflowCategory {
+            key: "bondsInterest".to_string(), name: "Bonds Interest".to_string(),
             total: bond_total, items: bond_items, is_user_editable: true,
         });
 
-        // 4. Rental Income
+        // 4. Rental Income (from investment real estate only)
         let mut rental_items: Vec<CashflowReportItem> = Vec::new();
         let mut re_stmt = conn.prepare(
             "SELECT id, name, monthly_rent, monthly_rent_currency FROM real_estate WHERE monthly_rent IS NOT NULL AND monthly_rent != ''"
@@ -303,178 +572,195 @@ pub async fn get_cashflow_report(
         })?;
 
         for re in real_estates.filter_map(|r| r.ok()) {
-            if let Some(rent_str) = re.2 {
-                let monthly_rent: f64 = rent_str.parse().unwrap_or(0.0);
-                let currency = re.3.unwrap_or_else(|| "CZK".to_string());
-                let monthly_rent_czk = convert_to_czk(monthly_rent, &currency);
-                let normalized = normalize_to_period(monthly_rent_czk, "monthly", target_period);
+            if investment_re_ids.contains(&re.0) {
+                if let Some(rent_str) = re.2 {
+                    let monthly_rent: f64 = rent_str.parse().unwrap_or(0.0);
+                    let currency = re.3.unwrap_or_else(|| "CZK".to_string());
+                    let monthly_rent_czk = convert_to_czk(monthly_rent, &currency);
+                    let normalized = normalize_to_period(monthly_rent_czk, "monthly", target_period);
 
-                if normalized > 0.0 {
-                    rental_items.push(CashflowReportItem {
-                        id: re.0, name: re.1, amount: normalized,
-                        original_amount: monthly_rent, original_currency: currency,
-                        original_frequency: "monthly".to_string(), is_user_defined: false,
-                    });
+                    if normalized > 0.0 {
+                        rental_items.push(CashflowReportItem {
+                            id: re.0, name: re.1, amount: normalized,
+                            original_amount: monthly_rent, original_currency: currency,
+                            original_frequency: "monthly".to_string(), is_user_defined: false,
+                        });
+                    }
                 }
             }
         }
-
         if let Some(mut items) = user_items.get("rentalIncome").cloned() {
             rental_items.append(&mut items);
         }
         sort_items_alphabetically(&mut rental_items);
         let rental_total: f64 = rental_items.iter().map(|i| i.amount).sum();
-        income_categories.push(CashflowCategory {
+        investment_income_categories.push(CashflowCategory {
             key: "rentalIncome".to_string(), name: "Rental Income".to_string(),
             total: rental_total, items: rental_items, is_user_editable: true,
         });
 
-        // 5. Other Incomes (user-defined category only, at the end)
-        let mut other_income_items: Vec<CashflowReportItem> = user_items.get("income").cloned().unwrap_or_default();
-        sort_items_alphabetically(&mut other_income_items);
-        let other_income_total: f64 = other_income_items.iter().map(|i| i.amount).sum();
-        income_categories.push(CashflowCategory {
-            key: "income".to_string(), name: "Other Incomes".to_string(),
-            total: other_income_total, items: other_income_items, is_user_editable: true,
+        // 5. Other Investment Income (user-defined only)
+        let mut other_inv_income_items: Vec<CashflowReportItem> = user_items.get("otherInvestmentIncome").cloned().unwrap_or_default();
+        sort_items_alphabetically(&mut other_inv_income_items);
+        let other_inv_income_total: f64 = other_inv_income_items.iter().map(|i| i.amount).sum();
+        investment_income_categories.push(CashflowCategory {
+            key: "otherInvestmentIncome".to_string(), name: "Other Investment Income".to_string(),
+            total: other_inv_income_total, items: other_inv_income_items, is_user_editable: true,
         });
 
-        // ==================== EXPENSES ====================
+        // Investment Expenses
 
-        // 1. Loan Interest
-        let mut loan_items: Vec<CashflowReportItem> = Vec::new();
-        let mut loan_stmt = conn.prepare("SELECT id, name, monthly_payment, currency FROM loans")?;
-        let loans = loan_stmt.query_map([], |row| {
+        // 1. Investment Real Estate Loans
+        let mut investment_loan_items: Vec<CashflowReportItem> = Vec::new();
+        let mut loan_stmt2 = conn.prepare("SELECT id, name, monthly_payment, currency FROM loans")?;
+        let loans2 = loan_stmt2.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?, row.get::<_, String>(3)?))
         })?;
 
-        for loan in loans.filter_map(|r| r.ok()) {
-            let monthly_payment: f64 = loan.2.parse().unwrap_or(0.0);
-            let monthly_payment_czk = convert_to_czk(monthly_payment, &loan.3);
-            let normalized = normalize_to_period(monthly_payment_czk, "monthly", target_period);
+        for loan in loans2.filter_map(|r| r.ok()) {
+            if investment_loan_ids.contains(&loan.0) {
+                let monthly_payment: f64 = loan.2.parse().unwrap_or(0.0);
+                let monthly_payment_czk = convert_to_czk(monthly_payment, &loan.3);
+                let normalized = normalize_to_period(monthly_payment_czk, "monthly", target_period);
 
-            if normalized > 0.0 {
-                loan_items.push(CashflowReportItem {
-                    id: loan.0, name: loan.1, amount: normalized,
-                    original_amount: monthly_payment, original_currency: loan.3,
-                    original_frequency: "monthly".to_string(), is_user_defined: false,
-                });
+                if normalized > 0.0 {
+                    investment_loan_items.push(CashflowReportItem {
+                        id: loan.0, name: loan.1, amount: normalized,
+                        original_amount: monthly_payment, original_currency: loan.3,
+                        original_frequency: "monthly".to_string(), is_user_defined: false,
+                    });
+                }
             }
         }
-
-        if let Some(mut items) = user_items.get("loanInterest").cloned() {
-            loan_items.append(&mut items);
+        if let Some(mut items) = user_items.get("investmentLoans").cloned() {
+            investment_loan_items.append(&mut items);
         }
-        sort_items_alphabetically(&mut loan_items);
-        let loan_total: f64 = loan_items.iter().map(|i| i.amount).sum();
-        expense_categories.push(CashflowCategory {
-            key: "loanInterest".to_string(), name: "Loan Interest".to_string(),
-            total: loan_total, items: loan_items, is_user_editable: true,
+        sort_items_alphabetically(&mut investment_loan_items);
+        let investment_loan_total: f64 = investment_loan_items.iter().map(|i| i.amount).sum();
+        investment_expense_categories.push(CashflowCategory {
+            key: "investmentLoans".to_string(), name: "Investment Real Estate Loans".to_string(),
+            total: investment_loan_total, items: investment_loan_items, is_user_editable: true,
         });
 
-        // 2. Insurance Payments
-        let mut insurance_items: Vec<CashflowReportItem> = Vec::new();
-        let mut ins_stmt = conn.prepare(
+        // 2. Investment Real Estate Insurance
+        let mut investment_insurance_items: Vec<CashflowReportItem> = Vec::new();
+        let mut ins_stmt2 = conn.prepare(
             "SELECT id, policy_name, regular_payment, regular_payment_currency, payment_frequency FROM insurance_policies WHERE status = 'active'"
         )?;
-        let insurances = ins_stmt.query_map([], |row| {
+        let insurances2 = ins_stmt2.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?, row.get::<_, String>(4)?))
         })?;
 
-        for ins in insurances.filter_map(|r| r.ok()) {
-            let payment: f64 = ins.2.parse().unwrap_or(0.0);
-            let frequency = ins.4.to_lowercase();
-            let yearly_payment = match frequency.as_str() {
-                "monthly" => payment * 12.0,
-                "quarterly" => payment * 4.0,
-                "semi-annually" | "semiannually" => payment * 2.0,
-                "yearly" | "annually" | "annual" => payment,
-                "one-time" | "onetime" => 0.0,
-                _ => payment * 12.0,
-            };
-            let yearly_payment_czk = convert_to_czk(yearly_payment, &ins.3);
-            let normalized = normalize_to_period(yearly_payment_czk, "yearly", target_period);
+        for ins in insurances2.filter_map(|r| r.ok()) {
+            if investment_insurance_ids.contains(&ins.0) {
+                let payment: f64 = ins.2.parse().unwrap_or(0.0);
+                let frequency = ins.4.to_lowercase();
+                let yearly_payment = match frequency.as_str() {
+                    "monthly" => payment * 12.0,
+                    "quarterly" => payment * 4.0,
+                    "semi-annually" | "semiannually" => payment * 2.0,
+                    "yearly" | "annually" | "annual" => payment,
+                    "one-time" | "onetime" => 0.0,
+                    _ => payment * 12.0,
+                };
+                let yearly_payment_czk = convert_to_czk(yearly_payment, &ins.3);
+                let normalized = normalize_to_period(yearly_payment_czk, "yearly", target_period);
 
-            if normalized > 0.0 {
-                insurance_items.push(CashflowReportItem {
-                    id: ins.0, name: ins.1, amount: normalized,
-                    original_amount: yearly_payment, original_currency: ins.3,
-                    original_frequency: "yearly".to_string(), is_user_defined: false,
-                });
+                if normalized > 0.0 {
+                    investment_insurance_items.push(CashflowReportItem {
+                        id: ins.0, name: ins.1, amount: normalized,
+                        original_amount: yearly_payment, original_currency: ins.3,
+                        original_frequency: "yearly".to_string(), is_user_defined: false,
+                    });
+                }
             }
         }
-
-        if let Some(mut items) = user_items.get("insurancePayments").cloned() {
-            insurance_items.append(&mut items);
+        if let Some(mut items) = user_items.get("investmentInsurance").cloned() {
+            investment_insurance_items.append(&mut items);
         }
-        sort_items_alphabetically(&mut insurance_items);
-        let insurance_total: f64 = insurance_items.iter().map(|i| i.amount).sum();
-        expense_categories.push(CashflowCategory {
-            key: "insurancePayments".to_string(), name: "Insurance Payments".to_string(),
-            total: insurance_total, items: insurance_items, is_user_editable: true,
+        sort_items_alphabetically(&mut investment_insurance_items);
+        let investment_insurance_total: f64 = investment_insurance_items.iter().map(|i| i.amount).sum();
+        investment_expense_categories.push(CashflowCategory {
+            key: "investmentInsurance".to_string(), name: "Investment Real Estate Insurance".to_string(),
+            total: investment_insurance_total, items: investment_insurance_items, is_user_editable: true,
         });
 
-        // 3. Real Estate Costs
-        let mut re_cost_items: Vec<CashflowReportItem> = Vec::new();
-        let mut re_cost_stmt = conn.prepare("SELECT id, name, recurring_costs FROM real_estate")?;
-        let re_costs = re_cost_stmt.query_map([], |row| {
+        // 3. Investment Real Estate Costs
+        let mut investment_re_cost_items: Vec<CashflowReportItem> = Vec::new();
+        let mut re_cost_stmt2 = conn.prepare("SELECT id, name, recurring_costs FROM real_estate")?;
+        let re_costs2 = re_cost_stmt2.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
         })?;
 
-        for re in re_costs.filter_map(|r| r.ok()) {
-            let costs: Vec<serde_json::Value> = serde_json::from_str(&re.2).unwrap_or_default();
-            let mut property_yearly_total = 0.0;
-            for cost in costs {
-                let amount = cost.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let frequency = cost.get("frequency").and_then(|v| v.as_str()).unwrap_or("monthly");
-                let currency = cost.get("currency").and_then(|v| v.as_str()).unwrap_or("CZK");
-                let yearly_amount = match frequency {
-                    "monthly" => amount * 12.0,
-                    "quarterly" => amount * 4.0,
-                    "yearly" | "annually" => amount,
-                    _ => amount * 12.0,
-                };
-                property_yearly_total += convert_to_czk(yearly_amount, currency);
-            }
-            let normalized = normalize_to_period(property_yearly_total, "yearly", target_period);
-            if normalized > 0.0 {
-                re_cost_items.push(CashflowReportItem {
-                    id: re.0, name: re.1, amount: normalized,
-                    original_amount: property_yearly_total, original_currency: "CZK".to_string(),
-                    original_frequency: "yearly".to_string(), is_user_defined: false,
-                });
+        for re in re_costs2.filter_map(|r| r.ok()) {
+            if investment_re_ids.contains(&re.0) {
+                let costs: Vec<serde_json::Value> = serde_json::from_str(&re.2).unwrap_or_default();
+                let mut property_yearly_total = 0.0;
+                for cost in costs {
+                    let amount = cost.get("amount").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                    let frequency = cost.get("frequency").and_then(|v| v.as_str()).unwrap_or("monthly");
+                    let currency = cost.get("currency").and_then(|v| v.as_str()).unwrap_or("CZK");
+                    let yearly_amount = match frequency {
+                        "monthly" => amount * 12.0,
+                        "quarterly" => amount * 4.0,
+                        "yearly" | "annually" => amount,
+                        _ => amount * 12.0,
+                    };
+                    property_yearly_total += convert_to_czk(yearly_amount, currency);
+                }
+                let normalized = normalize_to_period(property_yearly_total, "yearly", target_period);
+                if normalized > 0.0 {
+                    investment_re_cost_items.push(CashflowReportItem {
+                        id: re.0, name: re.1, amount: normalized,
+                        original_amount: property_yearly_total, original_currency: "CZK".to_string(),
+                        original_frequency: "yearly".to_string(), is_user_defined: false,
+                    });
+                }
             }
         }
-
-        if let Some(mut items) = user_items.get("realEstateCosts").cloned() {
-            re_cost_items.append(&mut items);
+        if let Some(mut items) = user_items.get("investmentRealEstateCosts").cloned() {
+            investment_re_cost_items.append(&mut items);
         }
-        sort_items_alphabetically(&mut re_cost_items);
-        let re_cost_total: f64 = re_cost_items.iter().map(|i| i.amount).sum();
-        expense_categories.push(CashflowCategory {
-            key: "realEstateCosts".to_string(), name: "Real Estate Costs".to_string(),
-            total: re_cost_total, items: re_cost_items, is_user_editable: true,
+        sort_items_alphabetically(&mut investment_re_cost_items);
+        let investment_re_cost_total: f64 = investment_re_cost_items.iter().map(|i| i.amount).sum();
+        investment_expense_categories.push(CashflowCategory {
+            key: "investmentRealEstateCosts".to_string(), name: "Investment Real Estate Costs".to_string(),
+            total: investment_re_cost_total, items: investment_re_cost_items, is_user_editable: true,
         });
 
-        // 4. Other Costs (user-defined category only)
-        let mut other_cost_items: Vec<CashflowReportItem> = user_items.get("otherCosts").cloned().unwrap_or_default();
-        sort_items_alphabetically(&mut other_cost_items);
-        let other_cost_total: f64 = other_cost_items.iter().map(|i| i.amount).sum();
-        expense_categories.push(CashflowCategory {
-            key: "otherCosts".to_string(), name: "Other Costs".to_string(),
-            total: other_cost_total, items: other_cost_items, is_user_editable: true,
+        // 4. Other Investment Costs (user-defined only)
+        let mut other_inv_cost_items: Vec<CashflowReportItem> = user_items.get("otherInvestmentCosts").cloned().unwrap_or_default();
+        sort_items_alphabetically(&mut other_inv_cost_items);
+        let other_inv_cost_total: f64 = other_inv_cost_items.iter().map(|i| i.amount).sum();
+        investment_expense_categories.push(CashflowCategory {
+            key: "otherInvestmentCosts".to_string(), name: "Other Investment Costs".to_string(),
+            total: other_inv_cost_total, items: other_inv_cost_items, is_user_editable: true,
         });
 
-        // Calculate totals
-        let total_income: f64 = income_categories.iter().map(|c| c.total).sum();
-        let total_expenses: f64 = expense_categories.iter().map(|c| c.total).sum();
+        // Calculate investment totals
+        let investment_total_income: f64 = investment_income_categories.iter().map(|c| c.total).sum();
+        let investment_total_expenses: f64 = investment_expense_categories.iter().map(|c| c.total).sum();
+        let investment_net_cashflow = investment_total_income - investment_total_expenses;
+
+        let investments_section = CashflowSection {
+            income: investment_income_categories,
+            expenses: investment_expense_categories,
+            total_income: investment_total_income,
+            total_expenses: investment_total_expenses,
+            net_cashflow: investment_net_cashflow,
+        };
+
+        // Calculate overall totals
+        let total_income = personal_total_income + investment_total_income;
+        let total_expenses = personal_total_expenses + investment_total_expenses;
         let net_cashflow = total_income - total_expenses;
 
         Ok(CashflowReport {
             view_type: target_period.to_string(),
-            income: income_categories,
-            expenses: expense_categories,
+            personal: personal_section,
+            investments: investments_section,
             total_income,
             total_expenses,
             net_cashflow,

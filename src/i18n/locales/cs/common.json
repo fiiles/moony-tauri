@@ -9,7 +9,7 @@
         "savings": "Spoření a vklady",
         "loans": "Úvěry",
         "insurance": "Pojištění",
-        "investments": "Investice",
+        "investments": "Akcie",
         "crypto": "Kryptoměny",
         "bonds": "Dluhopisy",
         "realEstate": "Nemovitosti",
@@ -170,5 +170,13 @@
         "syncing": "Synchronizace {{current}}/{{total}}...",
         "complete": "Synchronizace dokončena",
         "loadingHistorical": "Načítání historických cen..."
+    },
+    "export": {
+        "button": "Exportovat CSV",
+        "success": "Export dokončen",
+        "successDescription": "Úspěšně exportováno {{count}} záznamů.",
+        "failed": "Export selhal",
+        "noData": "Žádná data",
+        "noDataDescription": "Nejsou žádná data k exportu."
     }
 }

@@ -9,6 +9,8 @@ import { SavingsAccountsSummary } from "@/components/savings/SavingsAccountsSumm
 import { SavingsAccountsTable } from "@/components/savings/SavingsAccountsTable";
 import type { SavingsAccount, InsertSavingsAccount } from "@shared/schema";
 import { useTranslation } from "react-i18next";
+import { ExportButton } from "@/components/common/ExportButton";
+import { exportApi } from "@/lib/tauri-api";
 
 export default function Accounts() {
   const { t } = useTranslation('savings');
@@ -90,10 +92,13 @@ export default function Accounts() {
           <h1 className="page-title">{t('title')}</h1>
           <p className="page-subtitle">{t('subtitle')}</p>
         </div>
-        <Button onClick={handleAddClick} className="transition-all duration-200">
-          <Plus className="mr-2 h-4 w-4" />
-          {t('addAccount')}
-        </Button>
+        <div className="flex gap-2">
+          <ExportButton exportFn={exportApi.savingsAccounts} />
+          <Button onClick={handleAddClick} className="transition-all duration-200">
+            <Plus className="mr-2 h-4 w-4" />
+            {t('addAccount')}
+          </Button>
+        </div>
       </div>
 
       <SavingsAccountsSummary metrics={metrics} />

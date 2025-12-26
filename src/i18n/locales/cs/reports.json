@@ -7,23 +7,39 @@
     },
     "sections": {
         "income": "Příjmy",
-        "expenses": "Výdaje"
+        "expenses": "Výdaje",
+        "personal": "Osobní cashflow",
+        "personalDescription": "Vaše osobní příjmy a životní náklady",
+        "investments": "Investiční cashflow",
+        "investmentsDescription": "Příjmy a výdaje z vašich investic",
+        "personalIncome": "Osobní příjmy",
+        "personalExpenses": "Osobní výdaje",
+        "investmentIncome": "Investiční příjmy",
+        "investmentExpenses": "Investiční výdaje"
     },
     "categories": {
-        "income": "Ostatní příjmy",
-        "savingsInterest": "Úroky ze spoření",
-        "investmentDividends": "Dividendy z investic",
-        "bondInterest": "Úroky z dluhopisů",
+        "personalIncome": "Osobní příjmy",
+        "personalLoans": "Splátky úvěrů",
+        "personalInsurance": "Platby pojištění",
+        "personalRealEstateCosts": "Náklady na osobní nemovitosti",
+        "subscriptions": "Předplatné",
+        "consumptionCosts": "Spotřební náklady",
+        "otherPersonalCosts": "Ostatní osobní náklady",
+        "interestIncome": "Úrokové příjmy",
+        "stockDividends": "Dividendy z akcií",
+        "bondsInterest": "Úroky z dluhopisů",
         "rentalIncome": "Příjem z pronájmu",
-        "loanInterest": "Úroky z úvěrů",
-        "insurancePayments": "Platby pojištění",
-        "realEstateCosts": "Náklady na nemovitosti",
-        "otherCosts": "Ostatní náklady"
+        "otherInvestmentIncome": "Ostatní investiční příjmy",
+        "investmentLoans": "Úvěry na investiční nemovitosti",
+        "investmentInsurance": "Pojištění investičních nemovitostí",
+        "investmentRealEstateCosts": "Náklady na investiční nemovitosti",
+        "otherInvestmentCosts": "Ostatní investiční náklady"
     },
     "summary": {
         "totalIncome": "Celkové příjmy",
         "totalExpenses": "Celkové výdaje",
-        "netCashflow": "Čisté cashflow"
+        "netCashflow": "Čisté cashflow",
+        "overallCashflow": "Celkový přehled cashflow"
     },
     "addItem": {
         "title": "Přidat položku",
@@ -69,7 +85,7 @@
         "netWorth": "Čisté jmění",
         "categories": {
             "savings": "Spoření",
-            "investments": "Investice",
+            "investments": "Akcie",
             "crypto": "Krypto",
             "bonds": "Dluhopisy",
             "realEstate": "Nemovitosti",

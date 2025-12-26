@@ -9,7 +9,7 @@
         "savings": "Savings and Deposits",
         "loans": "Loans",
         "insurance": "Insurance",
-        "investments": "Investments",
+        "investments": "Stocks",
         "crypto": "Cryptocurrencies",
         "bonds": "Bonds",
         "realEstate": "Real Estates",
@@ -170,5 +170,13 @@
         "syncing": "Syncing {{current}}/{{total}}...",
         "complete": "Sync complete",
         "loadingHistorical": "Loading historical prices..."
+    },
+    "export": {
+        "button": "Export CSV",
+        "success": "Export Complete",
+        "successDescription": "Successfully exported {{count}} records.",
+        "failed": "Export Failed",
+        "noData": "No Data",
+        "noDataDescription": "There is no data to export."
     }
 }

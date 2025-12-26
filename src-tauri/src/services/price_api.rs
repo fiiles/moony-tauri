@@ -635,7 +635,7 @@ pub async fn get_historical_stock_prices_yahoo(
                             let prices: Vec<HistoricalPrice> = quotes
                                 .iter()
                                 .map(|q| HistoricalPrice {
-                                    timestamp: q.timestamp as i64,
+                                    timestamp: q.timestamp,
                                     price: q.close,
                                     currency: currency.clone(),
                                 })
