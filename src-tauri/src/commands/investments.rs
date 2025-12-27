@@ -35,79 +35,135 @@ pub async fn get_all_investments(db: State<'_, Database>) -> Result<Vec<Enriched
         // Enrich with price data
         let mut enriched = Vec::new();
         for inv in investments {
-            // Get price override
-            let override_price: Option<(String, String, i64)> = conn.query_row(
-                "SELECT price, currency, updated_at FROM stock_price_overrides WHERE ticker = ?1",
-                [&inv.ticker],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-            ).ok();
-
-            // Get global price
-            let global_price: Option<(String, String, i64)> = conn.query_row(
-                "SELECT original_price, currency, fetched_at FROM stock_prices WHERE ticker = ?1",
-                [&inv.ticker],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-            ).ok();
-
-            // Determine active price
-            let (current_price, fetched_at, is_manual) = match (&override_price, &global_price) {
-                (Some((op, oc, ou)), Some((_, _, gu))) if *ou > *gu => (
-                    convert_to_czk(op.parse().unwrap_or(0.0), oc),
-                    Some(*ou),
-                    true,
-                ),
-                (Some((op, oc, ou)), None) => (
-                    convert_to_czk(op.parse().unwrap_or(0.0), oc),
-                    Some(*ou),
-                    true,
-                ),
-                (_, Some((gp, gc, gu))) => (
-                    convert_to_czk(gp.parse().unwrap_or(0.0), gc),
-                    Some(*gu),
-                    false,
-                ),
-                _ => (0.0, None, false),
-            };
-
-            // Get dividend data
-            let user_dividend: Option<(String, String)> = conn.query_row(
-                "SELECT yearly_dividend_sum, currency FROM dividend_overrides WHERE ticker = ?1",
-                [&inv.ticker],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            ).ok();
-
-            let global_dividend: Option<(String, String)> = conn
-                .query_row(
-                    "SELECT yearly_dividend_sum, currency FROM dividend_data WHERE ticker = ?1",
-                    [&inv.ticker],
-                    |row| Ok((row.get(0)?, row.get(1)?)),
-                )
-                .ok();
-
-            let (dividend_yield, is_manual_dividend) = match (&user_dividend, &global_dividend) {
-                (Some((sum, curr)), _) => (convert_to_czk(sum.parse().unwrap_or(0.0), curr), true),
-                (None, Some((sum, curr))) => {
-                    (convert_to_czk(sum.parse().unwrap_or(0.0), curr), false)
-                }
-                _ => (0.0, false),
-            };
-
-            enriched.push(EnrichedStockInvestment {
-                id: inv.id,
-                ticker: inv.ticker,
-                company_name: inv.company_name,
-                quantity: inv.quantity,
-                average_price: inv.average_price,
-                current_price: current_price.to_string(),
-                fetched_at,
-                is_manual_price: is_manual,
-                dividend_yield,
-                dividend_currency: "CZK".to_string(),
-                is_manual_dividend,
-            });
+            enriched.push(enrich_investment(conn, inv)?);
         }
 
         Ok(enriched)
+    })
+}
+
+/// Get a single investment by ID with enriched price data
+#[tauri::command]
+pub async fn get_investment(
+    db: State<'_, Database>,
+    id: String,
+) -> Result<EnrichedStockInvestment> {
+    db.with_conn(|conn| {
+        let inv = conn.query_row(
+            "SELECT id, ticker, company_name, quantity, average_price FROM stock_investments WHERE id = ?1",
+            [&id],
+            |row| {
+                Ok(StockInvestment {
+                    id: row.get(0)?,
+                    ticker: row.get(1)?,
+                    company_name: row.get(2)?,
+                    quantity: row.get(3)?,
+                    average_price: row.get(4)?,
+                })
+            },
+        )?;
+
+
+        enrich_investment(conn, inv)
+    })
+}
+
+/// Helper function to enrich a stock investment with price and dividend data
+fn enrich_investment(
+    conn: &rusqlite::Connection,
+    inv: StockInvestment,
+) -> Result<EnrichedStockInvestment> {
+    // Get price override
+    let override_price: Option<(String, String, i64)> = conn
+        .query_row(
+            "SELECT price, currency, updated_at FROM stock_price_overrides WHERE ticker = ?1",
+            [&inv.ticker],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .ok();
+
+    // Get global price
+    let global_price: Option<(String, String, i64)> = conn
+        .query_row(
+            "SELECT original_price, currency, fetched_at FROM stock_data WHERE ticker = ?1",
+            [&inv.ticker],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .ok();
+
+    // Determine active price - keep original price and currency, plus convert to CZK
+    let (original_price, currency, current_price, fetched_at, is_manual) =
+        match (&override_price, &global_price) {
+            (Some((op, oc, ou)), Some((_, _, gu))) if *ou > *gu => (
+                op.clone(),
+                oc.clone(),
+                convert_to_czk(op.parse().unwrap_or(0.0), oc),
+                Some(*ou),
+                true,
+            ),
+            (Some((op, oc, ou)), None) => (
+                op.clone(),
+                oc.clone(),
+                convert_to_czk(op.parse().unwrap_or(0.0), oc),
+                Some(*ou),
+                true,
+            ),
+            (_, Some((gp, gc, gu))) => (
+                gp.clone(),
+                gc.clone(),
+                convert_to_czk(gp.parse().unwrap_or(0.0), gc),
+                Some(*gu),
+                false,
+            ),
+            _ => ("0".to_string(), "CZK".to_string(), 0.0, None, false),
+        };
+
+    // Get dividend data
+    let user_dividend: Option<(String, String)> = conn
+        .query_row(
+            "SELECT yearly_dividend_sum, currency FROM dividend_overrides WHERE ticker = ?1",
+            [&inv.ticker],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .ok();
+
+    let global_dividend: Option<(String, String)> = conn
+        .query_row(
+            "SELECT yearly_dividend_sum, currency FROM dividend_data WHERE ticker = ?1",
+            [&inv.ticker],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .ok();
+
+    // Get original dividend and currency
+    let (original_dividend_yield, dividend_currency, dividend_yield, is_manual_dividend) =
+        match (&user_dividend, &global_dividend) {
+            (Some((sum, curr)), _) => {
+                let orig = sum.parse().unwrap_or(0.0);
+                (orig, curr.clone(), convert_to_czk(orig, curr), true)
+            }
+            (None, Some((sum, curr))) => {
+                let orig = sum.parse().unwrap_or(0.0);
+                (orig, curr.clone(), convert_to_czk(orig, curr), false)
+            }
+            _ => (0.0, "CZK".to_string(), 0.0, false),
+        };
+
+    Ok(EnrichedStockInvestment {
+        id: inv.id,
+        ticker: inv.ticker,
+        company_name: inv.company_name,
+        quantity: inv.quantity,
+        average_price: inv.average_price,
+        current_price: current_price.to_string(),
+        original_price,
+        currency,
+        fetched_at,
+        is_manual_price: is_manual,
+        dividend_yield,
+        original_dividend_yield,
+        dividend_currency,
+        is_manual_dividend,
     })
 }
 

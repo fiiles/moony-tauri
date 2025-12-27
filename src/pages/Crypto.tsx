@@ -109,7 +109,9 @@ export default function Crypto() {
             currentPrice,
             inv.fetchedAt,
             inv.isManualPrice,
-            inv.coingeckoId
+            inv.coingeckoId,
+            inv.originalPrice,
+            inv.currency
         );
     });
 

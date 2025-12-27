@@ -132,5 +132,62 @@
     },
     "chart": {
         "title": "Stocks Value Trend"
+    },
+    "detail": {
+        "backToList": "Back to Stocks",
+        "notFound": "Investment not found",
+        "deleted": "Investment deleted successfully",
+        "transactionDeleted": "Transaction deleted",
+        "pricesRefreshed": "Prices refreshed successfully",
+        "manualPrice": "Manual price override",
+        "refresh": "Refresh",
+        "currentValue": "Current Value",
+        "shares": "shares",
+        "totalInvested": "Total Invested",
+        "avgPrice": "avg",
+        "unrealizedPnL": "Unrealized P&L",
+        "dividendYield": "Dividend Yield",
+        "year": "year",
+        "noDividend": "No dividend data",
+        "manual": "manual",
+        "updatePrice": "Update Price",
+        "updateDividend": "Update Dividend",
+        "tabs": {
+            "position": "Position",
+            "transactions": "Transactions"
+        },
+        "position": {
+            "title": "Position Details",
+            "quantity": "Quantity",
+            "avgPrice": "Average Price",
+            "currentPrice": "Current Price",
+            "priceUpdated": "Price Updated"
+        },
+        "companyInfo": {
+            "title": "Company Information",
+            "peRatio": "P/E Ratio",
+            "forwardPe": "Forward P/E",
+            "marketCap": "Market Cap",
+            "beta": "Beta",
+            "fiftyTwoWeekHigh": "52W High",
+            "fiftyTwoWeekLow": "52W Low",
+            "dividendRate": "Dividend Rate",
+            "dividendYield": "Div. Yield"
+        },
+        "transactions": {
+            "title": "Transaction History",
+            "date": "Date",
+            "type": "Type",
+            "quantity": "Quantity",
+            "price": "Price",
+            "total": "Total",
+            "empty": "No transactions yet"
+        },
+        "confirmDelete": {
+            "title": "Delete Investment",
+            "description": "Are you sure you want to delete {{name}} ({{ticker}})? This will remove all transactions. This action cannot be undone."
+        },
+        "refreshMetadata": "Refresh Data",
+        "metadataRefreshed": "Company data refreshed"
     }
 }

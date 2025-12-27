@@ -159,6 +159,8 @@ export const savingsApi = {
 export const investmentsApi = {
   getAll: () => tauriInvoke<StockInvestmentWithPrice[]>('get_all_investments'),
 
+  get: (id: string) => tauriInvoke<StockInvestmentWithPrice>('get_investment', { id }),
+
   create: (data: { ticker: string; companyName: string }, initialTransaction?: InsertInvestmentTransaction) =>
     tauriInvoke<StockInvestmentWithPrice>('create_investment', { data, initialTransaction }),
 
@@ -190,6 +192,9 @@ export const investmentsApi = {
 
   importTransactions: (transactions: InsertInvestmentTransaction[], defaultCurrency: string) =>
     tauriInvoke<ImportResult>('import_investment_transactions', { transactions, defaultCurrency }),
+
+  refreshMetadata: (ticker: string) =>
+    tauriInvoke<boolean>('refresh_stock_metadata', { ticker }),
 };
 
 // ============================================================================

@@ -64,9 +64,10 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
     // Update default currency and price when investment changes
     useEffect(() => {
         if (investment) {
-            form.setValue("currency", investment.currency as any);
-            // Pre-fill with current market price if available, else 0
-            form.setValue("pricePerUnit", investment.currentPrice || 0);
+            form.setValue("currency", investment.currency as "USD" | "EUR" | "CZK");
+            // Use originalPrice (in stock's currency) for prefill, not currentPrice (which is converted to CZK)
+            const priceToShow = investment.originalPrice ?? investment.currentPrice;
+            form.setValue("pricePerUnit", priceToShow ? Math.round(priceToShow) : 0);
         }
     }, [investment, form]);
 
@@ -135,12 +136,12 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
                                         <FormControl>
                                             <Input 
                                                 type="number" 
-                                                step="0.01" 
+                                                step="1" 
                                                 {...field} 
                                                 onBlur={(e) => {
                                                     const value = parseFloat(e.target.value);
                                                     if (!isNaN(value)) {
-                                                        field.onChange(value.toFixed(2));
+                                                        field.onChange(Math.round(value));
                                                     }
                                                     field.onBlur();
                                                 }}

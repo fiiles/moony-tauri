@@ -68,9 +68,11 @@ export function UpdateCryptoPriceModal({
     // Reset form when investment changes
     useEffect(() => {
         if (investment && open) {
+            // Use originalPrice (in source currency) for prefill, not currentPrice (which is converted to CZK)
+            const priceToShow = investment.originalPrice ?? investment.currentPrice;
             form.reset({
-                price: investment.currentPrice?.toString() || "",
-                currency: "CZK",
+                price: priceToShow ? Math.round(priceToShow).toString() : "",
+                currency: investment.currency || "USD",
             });
         }
     }, [investment, open, form]);
@@ -124,13 +126,13 @@ export function UpdateCryptoPriceModal({
                                         <FormControl>
                                             <Input
                                                 type="number"
-                                                step="any"
-                                                placeholder="0.00"
+                                                step="1"
+                                                placeholder="0"
                                                 {...field}
                                                 onBlur={(e) => {
                                                     const value = parseFloat(e.target.value);
                                                     if (!isNaN(value)) {
-                                                        field.onChange(value.toFixed(2));
+                                                        field.onChange(Math.round(value).toString());
                                                     }
                                                     field.onBlur();
                                                 }}

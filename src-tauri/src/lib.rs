@@ -47,6 +47,7 @@ pub fn run() {
             commands::savings::delete_account_zone,
             // Investment commands
             commands::investments::get_all_investments,
+            commands::investments::get_investment,
             commands::investments::create_investment,
             commands::investments::delete_investment,
             commands::investments::get_investment_transactions,

@@ -28,6 +28,11 @@ pub struct EnrichedCryptoInvestment {
     pub average_price: String,
     #[serde(rename = "currentPrice")]
     pub current_price: String,
+    /// Original price in its source currency (before conversion to CZK)
+    #[serde(rename = "originalPrice")]
+    pub original_price: String,
+    /// Currency of the original price (e.g., USD, EUR)
+    pub currency: String,
     #[serde(rename = "fetchedAt")]
     pub fetched_at: Option<i64>,
 }

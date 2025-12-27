@@ -30,7 +30,8 @@ struct CoinGeckoSearchResponse {
 // Dividend Cache Configuration
 // ============================================================================
 
-const DIVIDEND_CACHE_DAYS: i64 = 1; // TODO: Change back to 30 after testing
+const DIVIDEND_CACHE_DAYS: i64 = 30; // Only refetch dividends if older than 30 days
+const PRICE_CACHE_HOURS: i64 = 4; // Skip price fetch if updated within last 4 hours
 
 #[derive(Debug, Serialize)]
 pub struct DividendResult {
@@ -88,8 +89,36 @@ pub async fn refresh_stock_prices_yahoo(
     let provider = yahoo::YahooConnector::new()
         .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {}", e)))?;
 
-    // Process each ticker
+    // Process each ticker (with caching check)
     for ticker in &tickers {
+        let ticker_upper = ticker.to_uppercase();
+
+        // Check if we have a recent price (within PRICE_CACHE_HOURS)
+        let should_fetch = db.with_conn(|conn| {
+            let last_fetched: Option<i64> = conn
+                .query_row(
+                    "SELECT fetched_at FROM stock_data WHERE ticker = ?1",
+                    [&ticker_upper],
+                    |row| row.get(0),
+                )
+                .ok();
+
+            if let Some(fetched_at) = last_fetched {
+                let hours_since = (now - fetched_at) / 3600;
+                Ok(hours_since >= PRICE_CACHE_HOURS)
+            } else {
+                Ok(true) // No cached price, should fetch
+            }
+        })?;
+
+        if !should_fetch {
+            println!(
+                "[YAHOO FINANCE] Skipping {} (cached within {} hours)",
+                ticker, PRICE_CACHE_HOURS
+            );
+            continue;
+        }
+
         // Use get_latest_quotes for real-time price
         match provider.get_latest_quotes(ticker, "1d").await {
             Ok(response) => {
@@ -99,12 +128,11 @@ pub async fn refresh_stock_prices_yahoo(
                         if price > 0.0 {
                             // Determine currency from ticker suffix
                             let currency = get_currency_from_ticker(ticker);
-                            let ticker_upper = ticker.to_uppercase();
 
-                            // Upsert into stock_prices table
+                            // Upsert into stock_data table
                             if let Err(e) = db.with_conn(|conn| {
                                 conn.execute(
-                                    "INSERT INTO stock_prices (id, ticker, original_price, currency, price_date, fetched_at)
+                                    "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, fetched_at)
                                      VALUES (?1, ?2, ?3, ?4, ?5, ?5)
                                      ON CONFLICT(ticker) DO UPDATE SET
                                        original_price = ?3, currency = ?4, price_date = ?5, fetched_at = ?5",

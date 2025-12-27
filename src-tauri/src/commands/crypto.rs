@@ -43,9 +43,14 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
                 )
                 .ok();
 
-            let (current_price, fetched_at) = match price_data {
-                Some((p, c, f)) => (convert_to_czk(p.parse().unwrap_or(0.0), &c), Some(f)),
-                None => (0.0, None),
+            let (original_price, currency, current_price, fetched_at) = match price_data {
+                Some((p, c, f)) => (
+                    p.clone(),
+                    c.clone(),
+                    convert_to_czk(p.parse().unwrap_or(0.0), &c),
+                    Some(f),
+                ),
+                None => ("0".to_string(), "USD".to_string(), 0.0, None),
             };
 
             enriched.push(EnrichedCryptoInvestment {
@@ -56,6 +61,8 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
                 quantity: inv.quantity,
                 average_price: inv.average_price,
                 current_price: current_price.to_string(),
+                original_price,
+                currency,
                 fetched_at,
             });
         }
