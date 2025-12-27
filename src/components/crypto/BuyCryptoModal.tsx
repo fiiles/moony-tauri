@@ -66,11 +66,11 @@ export function BuyCryptoModal({ crypto, open, onOpenChange }: BuyCryptoModalPro
     // Update default currency and price when crypto changes
     useEffect(() => {
         if (crypto) {
-            // Crypto holding usually doesn't store original currency, defaulting to USD or inferred
-            // But we can default to USD as it's standard for crypto
-            form.setValue("currency", "USD");
-            // Pre-fill with current market price
-            form.setValue("pricePerUnit", crypto.currentPrice || 0);
+            // Use original currency (usually USD for crypto) and originalPrice
+            form.setValue("currency", (crypto.currency as "USD" | "EUR" | "CZK") || "USD");
+            // Use originalPrice (in source currency) for prefill, not currentPrice (which is converted to CZK)
+            const priceToShow = crypto.originalPrice ?? crypto.currentPrice;
+            form.setValue("pricePerUnit", priceToShow ? Math.round(priceToShow) : 0);
         }
     }, [crypto, form]);
 
@@ -148,12 +148,12 @@ export function BuyCryptoModal({ crypto, open, onOpenChange }: BuyCryptoModalPro
                                         <FormControl>
                                             <Input 
                                                 type="number" 
-                                                step="any" 
+                                                step="1" 
                                                 {...field} 
                                                 onBlur={(e) => {
                                                     const value = parseFloat(e.target.value);
                                                     if (!isNaN(value)) {
-                                                        field.onChange(value.toFixed(2));
+                                                        field.onChange(Math.round(value));
                                                     }
                                                     field.onBlur();
                                                 }}

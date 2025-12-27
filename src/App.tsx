@@ -11,6 +11,7 @@ import Dashboard from "@/pages/Dashboard";
 import AuthPage from "@/pages/auth-page";
 import Accounts from "@/pages/Accounts";
 import Stocks from "@/pages/Stocks";
+import StockDetail from "@/pages/StockDetail";
 import RealEstate from "@/pages/RealEstate";
 import RealEstateDetail from "@/pages/RealEstateDetail";
 import Insurance from "@/pages/Insurance";
@@ -41,6 +42,7 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/accounts" component={Accounts} />
       <ProtectedRoute path="/stocks" component={Stocks} />
+      <ProtectedRoute path="/stocks/:id" component={StockDetail} />
       <ProtectedRoute path="/real-estate" component={RealEstate} />
       <ProtectedRoute path="/real-estate/:id" component={RealEstateDetail} />
       <ProtectedRoute path="/insurance" component={Insurance} />

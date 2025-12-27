@@ -29,8 +29,8 @@
     },
     "actions": {
         "viewTransactions": "Zobrazit transakce",
-        "buy": "Koupit",
-        "sell": "Prodat",
+        "buy": "Nákup",
+        "sell": "Prodej",
         "updatePrice": "Aktualizovat cenu",
         "updateDividend": "Aktualizovat odhad dividendy",
         "delete": "Smazat"
@@ -102,19 +102,19 @@
             "selected": "Vybráno"
         },
         "buy": {
-            "title": "Koupit",
+            "title": "Nákup",
             "description": "Zaznamenejte nákupní transakci pro",
             "quantity": "Množství",
             "pricePerShare": "Cena za akcii",
             "addPurchase": "Přidat nákup"
         },
         "sell": {
-            "title": "Prodat",
+            "title": "Prodej",
             "description": "Zaznamenejte prodejní transakci pro tuto investici.",
             "transactionDetails": "Detaily transakce",
             "pricePerShare": "Cena za akcii",
             "quantity": "Množství",
-            "sellInvestment": "Prodat investici"
+            "sellInvestment": "Prodej akcií"
         }
     },
     "toast": {
@@ -132,5 +132,62 @@
     },
     "chart": {
         "title": "Vývoj hodnoty akcií"
+    },
+    "detail": {
+        "backToList": "Zpět na akcie",
+        "notFound": "Investice nenalezena",
+        "deleted": "Investice úspěšně smazána",
+        "transactionDeleted": "Transakce smazána",
+        "pricesRefreshed": "Ceny úspěšně aktualizovány",
+        "manualPrice": "Ručně nastavená cena",
+        "refresh": "Aktualizovat",
+        "currentValue": "Aktuální hodnota",
+        "shares": "akcií",
+        "totalInvested": "Celkem investováno",
+        "avgPrice": "prům.",
+        "unrealizedPnL": "Nerealizovaný Z/Z",
+        "dividendYield": "Dividendový výnos",
+        "year": "rok",
+        "noDividend": "Žádná data o dividendách",
+        "manual": "ručně",
+        "updatePrice": "Upravit cenu",
+        "updateDividend": "Upravit dividendu",
+        "tabs": {
+            "position": "Pozice",
+            "transactions": "Transakce"
+        },
+        "position": {
+            "title": "Detail pozice",
+            "quantity": "Množství",
+            "avgPrice": "Průměrná cena",
+            "currentPrice": "Aktuální cena",
+            "priceUpdated": "Cena aktualizována"
+        },
+        "companyInfo": {
+            "title": "Informace o společnosti",
+            "peRatio": "P/E poměr",
+            "forwardPe": "Forward P/E",
+            "marketCap": "Tržní kapitalizace",
+            "beta": "Beta",
+            "fiftyTwoWeekHigh": "52T maximum",
+            "fiftyTwoWeekLow": "52T minimum",
+            "dividendRate": "Dividendová sazba",
+            "dividendYield": "Div. výnos"
+        },
+        "transactions": {
+            "title": "Historie transakcí",
+            "date": "Datum",
+            "type": "Typ",
+            "quantity": "Množství",
+            "price": "Cena",
+            "total": "Celkem",
+            "empty": "Zatím žádné transakce"
+        },
+        "confirmDelete": {
+            "title": "Smazat investici",
+            "description": "Opravdu chcete smazat {{name}} ({{ticker}})? Všechny transakce budou odstraněny. Tuto akci nelze vrátit zpět."
+        },
+        "refreshMetadata": "Obnovit data",
+        "metadataRefreshed": "Data společnosti obnovena"
     }
 }

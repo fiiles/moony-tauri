@@ -15,6 +15,8 @@ export interface HoldingData {
   avgCost: number;
   totalCost: number;
   currentPrice: number;
+  /** Original price in its source currency (before conversion) */
+  originalPrice?: number;
   marketValue: number;
   gainLoss: number;
   gainLossPercent: number;
@@ -22,6 +24,8 @@ export interface HoldingData {
   fetchedAt?: string | Date;
   isManualPrice?: boolean;
   dividendYield?: number;
+  /** Original dividend amount before conversion */
+  originalDividendYield?: number;
   dividendCurrency?: string;
   isManualDividend?: boolean;
 }
@@ -55,6 +59,7 @@ export function mapInvestmentToHolding(investment: StockInvestmentWithPrice): Ho
     avgCost,
     totalCost: metrics.totalCost,
     currentPrice,
+    originalPrice: investment.originalPrice,
     marketValue: metrics.marketValue,
     gainLoss: metrics.gainLoss,
     gainLossPercent: metrics.gainLossPercent,
@@ -62,6 +67,7 @@ export function mapInvestmentToHolding(investment: StockInvestmentWithPrice): Ho
     fetchedAt: investment.fetchedAt,
     isManualPrice: investment.isManualPrice,
     dividendYield: investment.dividendYield,
+    originalDividendYield: investment.originalDividendYield,
     dividendCurrency: investment.dividendCurrency,
     isManualDividend: investment.isManualDividend,
   };

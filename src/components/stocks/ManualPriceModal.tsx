@@ -68,11 +68,11 @@ export function ManualPriceModal({
     // Reset form when investment changes
     useEffect(() => {
         if (investment && open) {
-            // Pre-fill with current price if available, though it might be global price
-            // Better to start fresh or use current displayed price
+            // Use originalPrice (in stock's currency) for prefill, not currentPrice (which is converted to CZK)
+            const priceToShow = investment.originalPrice ?? investment.currentPrice;
             form.reset({
-                price: investment.currentPrice?.toString() || "",
-                currency: "CZK", // Default to CZK or user preferred currency if we knew it
+                price: priceToShow ? Math.round(priceToShow).toString() : "",
+                currency: investment.currency || "CZK",
             });
         }
     }, [investment, open, form]);
@@ -149,13 +149,13 @@ export function ManualPriceModal({
                                         <FormControl>
                                             <Input
                                                 type="number"
-                                                step="0.01"
-                                                placeholder="0.00"
+                                                step="1"
+                                                placeholder="0"
                                                 {...field}
                                                 onBlur={(e) => {
                                                     const value = parseFloat(e.target.value);
                                                     if (!isNaN(value)) {
-                                                        field.onChange(value.toFixed(2));
+                                                        field.onChange(Math.round(value).toString());
                                                     }
                                                     field.onBlur();
                                                 }}

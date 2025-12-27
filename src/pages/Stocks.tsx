@@ -1,11 +1,8 @@
-import { useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddInvestmentModal } from "@/components/stocks/AddInvestmentModal";
-import { SellInvestmentModal } from "@/components/stocks/SellInvestmentModal";
-import { ViewTransactionsModal } from "@/components/stocks/ViewTransactionsModal";
-import { DeleteInvestmentDialog } from "@/components/stocks/DeleteInvestmentDialog";
 import { InvestmentsSummary } from "@/components/stocks/InvestmentsSummary";
 import { InvestmentsTable } from "@/components/stocks/InvestmentsTable";
 import { investmentsApi, priceApi, exportApi } from "@/lib/tauri-api";
@@ -13,25 +10,15 @@ import type { StockInvestmentWithPrice } from "@shared/types";
 import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from "@/utils/stocks";
 import PortfolioValueTrendChart from "@/components/common/PortfolioValueTrendChart";
 import { ExportButton } from "@/components/common/ExportButton";
-
-import { BuyInvestmentModal } from "@/components/stocks/BuyInvestmentModal";
-import { ManualPriceModal } from "@/components/stocks/ManualPriceModal";
-import { ManualDividendModal } from "@/components/stocks/ManualDividendModal";
 import { ImportInvestmentsModal } from "@/components/stocks/ImportInvestmentsModal";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
 export default function Stocks() {
   const { t } = useTranslation('stocks');
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [selectedInvestment, setSelectedInvestment] = useState<HoldingData | null>(null);
-  const [sellModalOpen, setSellModalOpen] = useState(false);
-  const [buyModalOpen, setBuyModalOpen] = useState(false);
-  const [viewTransactionsModalOpen, setViewTransactionsModalOpen] = useState(false);
-  const [manualPriceModalOpen, setManualPriceModalOpen] = useState(false);
-  const [manualDividendModalOpen, setManualDividendModalOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const { data: investments, isLoading } = useQuery<StockInvestmentWithPrice[]>({
     queryKey: ["investments"],
@@ -80,17 +67,6 @@ export default function Stocks() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await investmentsApi.delete(id);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["investments"] });
-      setDeleteDialogOpen(false);
-      setSelectedInvestment(null);
-    },
-  });
-
   // Map investments to holdings and sort by company name (case-insensitive)
   // No grouping needed since stock_investments is unique per user+ticker
   const holdings = (investments?.map(mapInvestmentToHolding) || []).sort((a, b) =>
@@ -104,39 +80,8 @@ export default function Stocks() {
 
   const metrics = calculateMetrics(holdings, totalDividendYield);
 
-  const handleBuyClick = (holding: HoldingData) => {
-    setSelectedInvestment(holding);
-    setBuyModalOpen(true);
-  };
-
-  const handleSellClick = (holding: HoldingData) => {
-    setSelectedInvestment(holding);
-    setSellModalOpen(true);
-  };
-
-  const handleViewTransactionsClick = (holding: HoldingData) => {
-    setSelectedInvestment(holding);
-    setViewTransactionsModalOpen(true);
-  };
-
-  const handleUpdatePriceClick = (holding: HoldingData) => {
-    setSelectedInvestment(holding);
-    setManualPriceModalOpen(true);
-  };
-
-  const handleUpdateDividendClick = (holding: HoldingData) => {
-    setSelectedInvestment(holding);
-    setManualDividendModalOpen(true);
-  };
-
-  const handleDeleteClick = (holding: HoldingData) => {
-    setSelectedInvestment(holding);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = () => {
-    if (!selectedInvestment) return;
-    deleteMutation.mutate(selectedInvestment.id);
+  const handleViewDetailClick = (holding: HoldingData) => {
+    setLocation(`/stocks/${holding.id}`);
   };
 
   if (isLoading) {
@@ -199,53 +144,7 @@ export default function Stocks() {
       <InvestmentsTable
         holdings={holdings}
         isLoading={refreshPricesMutation.isPending}
-        onBuy={handleBuyClick}
-        onSell={handleSellClick}
-        onViewTransactions={handleViewTransactionsClick}
-        onUpdatePrice={handleUpdatePriceClick}
-        onUpdateDividend={handleUpdateDividendClick}
-        onDelete={handleDeleteClick}
-      />
-
-
-
-
-      <SellInvestmentModal
-        open={sellModalOpen}
-        onOpenChange={setSellModalOpen}
-        investment={selectedInvestment}
-      />
-
-      <ViewTransactionsModal
-        open={viewTransactionsModalOpen}
-        onOpenChange={setViewTransactionsModalOpen}
-        investment={selectedInvestment}
-      />
-
-      <ManualPriceModal
-        open={manualPriceModalOpen}
-        onOpenChange={setManualPriceModalOpen}
-        investment={selectedInvestment}
-      />
-
-      <ManualDividendModal
-        open={manualDividendModalOpen}
-        onOpenChange={setManualDividendModalOpen}
-        investment={selectedInvestment}
-      />
-
-      <BuyInvestmentModal
-        open={buyModalOpen}
-        onOpenChange={setBuyModalOpen}
-        investment={selectedInvestment}
-      />
-
-      <DeleteInvestmentDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        investment={selectedInvestment}
-        onConfirm={handleDeleteConfirm}
-        isLoading={deleteMutation.isPending}
+        onViewDetail={handleViewDetailClick}
       />
     </div>
   );

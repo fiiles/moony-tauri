@@ -22,12 +22,30 @@ import type {
  */
 export interface StockInvestmentWithPrice extends StockInvestment {
     currentPrice: number;
+    /** Original price in its source currency (before conversion) */
+    originalPrice?: number;
     fetchedAt?: Date | string;
     isManualPrice?: boolean;
     dividendYield?: number;
+    /** Original dividend amount before conversion */
+    originalDividendYield?: number;
     dividendCurrency?: string;
     isManualDividend?: boolean;
+    /** Currency of the original price (e.g., USD, EUR) */
     currency?: string;
+    // Yahoo Finance metadata (cached in stock_data table)
+    sector?: string;
+    industry?: string;
+    // Financial metrics
+    peRatio?: string;
+    forwardPe?: string;
+    marketCap?: string;
+    beta?: string;
+    fiftyTwoWeekHigh?: string;
+    fiftyTwoWeekLow?: string;
+    trailingDividendRate?: string;
+    trailingDividendYield?: string;
+    metadataFetchedAt?: number;
 }
 
 /**
@@ -35,6 +53,10 @@ export interface StockInvestmentWithPrice extends StockInvestment {
  */
 export interface CryptoInvestmentWithPrice extends CryptoInvestment {
     currentPrice: number;
+    /** Original price in its source currency (before conversion) */
+    originalPrice?: number;
+    /** Currency of the original price (e.g., USD, EUR) */
+    currency?: string;
     fetchedAt?: Date | string;
     isManualPrice?: boolean;
 }

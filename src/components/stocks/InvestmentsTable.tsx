@@ -11,18 +11,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, MoreVertical, Trash2, History as HistoryIcon, Edit, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Eye } from "lucide-react";
 import type { HoldingData } from "@/utils/stocks";
 import { useCurrency } from "@/lib/currency";
 import { useMemo, useState } from "react";
@@ -32,23 +26,13 @@ import { cn } from "@/lib/utils";
 
 interface InvestmentsTableProps {
   holdings: HoldingData[];
-  onBuy: (holding: HoldingData) => void;
-  onSell: (holding: HoldingData) => void;
-  onViewTransactions: (holding: HoldingData) => void;
-  onUpdatePrice: (holding: HoldingData) => void;
-  onUpdateDividend: (holding: HoldingData) => void;
-  onDelete: (holding: HoldingData) => void;
+  onViewDetail: (holding: HoldingData) => void;
   isLoading?: boolean;
 }
 
 export function InvestmentsTable({
   holdings,
-  onBuy,
-  onSell,
-  onViewTransactions,
-  onUpdatePrice,
-  onUpdateDividend,
-  onDelete,
+  onViewDetail,
   isLoading,
 }: InvestmentsTableProps) {
   const { formatCurrency } = useCurrency();
@@ -120,7 +104,11 @@ export function InvestmentsTable({
                 </TableRow>
               ) : (
                 filteredHoldings.map((holding) => (
-                  <TableRow key={holding.id} className="row-interactive">
+                  <TableRow
+                    key={holding.id}
+                    className="cursor-pointer row-interactive"
+                    onClick={() => onViewDetail(holding)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3 min-w-0">
                         <AssetLogo
@@ -206,56 +194,12 @@ export function InvestmentsTable({
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            data-testid={`button-actions-${holding.ticker}`}
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => onViewTransactions(holding)}
-                          >
-                            <HistoryIcon className="mr-2 h-4 w-4" />
-                            {t('actions.viewTransactions')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onBuy(holding)}
-                          >
-                            <ArrowUp className="mr-2 h-4 w-4" />
-                            {t('actions.buy')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onSell(holding)}
-                          >
-                            <ArrowDown className="mr-2 h-4 w-4" />
-                            {t('actions.sell')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onUpdatePrice(holding)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            {t('actions.updatePrice')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onUpdateDividend(holding)}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            {t('actions.updateDividend')}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onDelete(holding)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            {t('actions.delete')}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button variant="ghost" size="icon" onClick={(e) => {
+                        e.stopPropagation();
+                        onViewDetail(holding);
+                      }}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

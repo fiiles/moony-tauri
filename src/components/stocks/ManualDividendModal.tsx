@@ -67,9 +67,11 @@ export function ManualDividendModal({
     // Reset form when investment changes
     useEffect(() => {
         if (investment && open) {
+            // Use originalDividendYield (in stock's currency) for prefill, not dividendYield (which is converted to CZK)
+            const dividendToShow = investment.originalDividendYield ?? investment.dividendYield;
             form.reset({
-                amount: investment.dividendYield?.toString() || "",
-                currency: investment.dividendCurrency || "CZK",
+                amount: dividendToShow ? Math.round(dividendToShow).toString() : "",
+                currency: investment.dividendCurrency || investment.currency || "CZK",
             });
         }
     }, [investment, open, form]);
@@ -146,13 +148,13 @@ export function ManualDividendModal({
                                         <FormControl>
                                             <Input
                                                 type="number"
-                                                step="0.01"
-                                                placeholder="0.00"
+                                                step="1"
+                                                placeholder="0"
                                                 {...field}
                                                 onBlur={(e) => {
                                                     const value = parseFloat(e.target.value);
                                                     if (!isNaN(value)) {
-                                                        field.onChange(value.toFixed(2));
+                                                        field.onChange(Math.round(value).toString());
                                                     }
                                                     field.onBlur();
                                                 }}

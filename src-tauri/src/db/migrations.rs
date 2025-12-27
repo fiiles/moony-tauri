@@ -38,6 +38,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("010_add_real_estate_documents", MIGRATION_010),
         ("011_add_bond_quantity", MIGRATION_011),
         ("012_add_user_language", MIGRATION_012),
+        ("013_add_stock_metadata", MIGRATION_013),
     ];
 
     for (name, sql) in migrations {
@@ -453,4 +454,29 @@ ALTER TABLE bonds ADD COLUMN quantity TEXT NOT NULL DEFAULT '1';
 /// Migration 012: Add language preference to user_profile
 const MIGRATION_012: &str = r#"
 ALTER TABLE user_profile ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
+"#;
+
+/// Migration 013: Add metadata columns to stock_prices and rename to stock_data
+const MIGRATION_013: &str = r#"
+-- Add Yahoo Finance metadata columns to stock_prices
+ALTER TABLE stock_prices ADD COLUMN short_name TEXT;
+ALTER TABLE stock_prices ADD COLUMN long_name TEXT;
+ALTER TABLE stock_prices ADD COLUMN sector TEXT;
+ALTER TABLE stock_prices ADD COLUMN industry TEXT;
+ALTER TABLE stock_prices ADD COLUMN pe_ratio TEXT;
+ALTER TABLE stock_prices ADD COLUMN forward_pe TEXT;
+ALTER TABLE stock_prices ADD COLUMN market_cap TEXT;
+ALTER TABLE stock_prices ADD COLUMN beta TEXT;
+ALTER TABLE stock_prices ADD COLUMN fifty_two_week_high TEXT;
+ALTER TABLE stock_prices ADD COLUMN fifty_two_week_low TEXT;
+ALTER TABLE stock_prices ADD COLUMN trailing_dividend_rate TEXT;
+ALTER TABLE stock_prices ADD COLUMN trailing_dividend_yield TEXT;
+ALTER TABLE stock_prices ADD COLUMN ex_dividend_date INTEGER;
+ALTER TABLE stock_prices ADD COLUMN description TEXT;
+ALTER TABLE stock_prices ADD COLUMN exchange TEXT;
+ALTER TABLE stock_prices ADD COLUMN quote_type TEXT;
+ALTER TABLE stock_prices ADD COLUMN metadata_fetched_at INTEGER;
+
+-- Rename table for clarity
+ALTER TABLE stock_prices RENAME TO stock_data;
 "#;

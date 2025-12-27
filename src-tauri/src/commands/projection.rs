@@ -388,11 +388,11 @@ fn get_current_portfolio_values(
         let price_data: rusqlite::Result<(Option<String>, Option<String>)> = conn.query_row(
             "SELECT COALESCE(
                 (SELECT price FROM stock_price_overrides WHERE ticker = ?1),
-                (SELECT original_price FROM stock_prices WHERE ticker = ?1)
+                (SELECT original_price FROM stock_data WHERE ticker = ?1)
             ),
             COALESCE(
                 (SELECT currency FROM stock_price_overrides WHERE ticker = ?1),
-                (SELECT currency FROM stock_prices WHERE ticker = ?1)
+                (SELECT currency FROM stock_data WHERE ticker = ?1)
             )",
             [&inv.0],
             |row| Ok((row.get(0)?, row.get(1)?)),
