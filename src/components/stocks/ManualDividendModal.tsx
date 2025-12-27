@@ -84,6 +84,7 @@ export function ManualDividendModal({
 
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["investments"] });
+            queryClient.invalidateQueries({ queryKey: ["investment", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             toast({
@@ -108,6 +109,7 @@ export function ManualDividendModal({
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["investments"] });
+            queryClient.invalidateQueries({ queryKey: ["investment", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             toast({

@@ -34,8 +34,17 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
 
         let mut enriched = Vec::new();
         for inv in investments {
-            // Get cached price
-            let price_data: Option<(String, String, i64)> = conn
+            // Get price override (manual price) - same pattern as stocks
+            let override_price: Option<(String, String, i64)> = conn
+                .query_row(
+                    "SELECT price, currency, updated_at FROM crypto_price_overrides WHERE symbol = ?1",
+                    [&inv.ticker],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )
+                .ok();
+
+            // Get global (API) price
+            let global_price: Option<(String, String, i64)> = conn
                 .query_row(
                     "SELECT price, currency, fetched_at FROM crypto_prices WHERE symbol = ?1",
                     [&inv.ticker],
@@ -43,15 +52,32 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
                 )
                 .ok();
 
-            let (original_price, currency, current_price, fetched_at) = match price_data {
-                Some((p, c, f)) => (
-                    p.clone(),
-                    c.clone(),
-                    convert_to_czk(p.parse().unwrap_or(0.0), &c),
-                    Some(f),
-                ),
-                None => ("0".to_string(), "USD".to_string(), 0.0, None),
-            };
+            // Determine active price - prefer override if it exists and is newer
+            let (original_price, currency, current_price, fetched_at, is_manual) =
+                match (&override_price, &global_price) {
+                    (Some((op, oc, ou)), Some((_, _, gu))) if *ou > *gu => (
+                        op.clone(),
+                        oc.clone(),
+                        convert_to_czk(op.parse().unwrap_or(0.0), oc),
+                        Some(*ou),
+                        true,
+                    ),
+                    (Some((op, oc, ou)), None) => (
+                        op.clone(),
+                        oc.clone(),
+                        convert_to_czk(op.parse().unwrap_or(0.0), oc),
+                        Some(*ou),
+                        true,
+                    ),
+                    (_, Some((gp, gc, gu))) => (
+                        gp.clone(),
+                        gc.clone(),
+                        convert_to_czk(gp.parse().unwrap_or(0.0), gc),
+                        Some(*gu),
+                        false,
+                    ),
+                    _ => ("0".to_string(), "USD".to_string(), 0.0, None, false),
+                };
 
             enriched.push(EnrichedCryptoInvestment {
                 id: inv.id,
@@ -64,6 +90,7 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
                 original_price,
                 currency,
                 fetched_at,
+                is_manual_price: is_manual,
             });
         }
 
@@ -349,30 +376,45 @@ pub async fn delete_crypto_transaction(db: State<'_, Database>, tx_id: String) -
     Ok(())
 }
 
-/// Update crypto price (manual or from API)
+/// Update crypto price manually (creates or updates override)
 #[tauri::command]
 pub async fn update_crypto_price(
     db: State<'_, Database>,
     symbol: String,
     price: String,
     currency: String,
-    coingecko_id: Option<String>,
+    _coingecko_id: Option<String>,
 ) -> Result<()> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
+    let symbol_upper = symbol.to_uppercase();
 
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO crypto_prices (id, symbol, coingecko_id, price, currency, fetched_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-             ON CONFLICT(symbol) DO UPDATE SET price = ?4, currency = ?5, coingecko_id = ?3, fetched_at = ?6",
-            rusqlite::params![id, symbol.to_uppercase(), coingecko_id, price, currency, now],
+            "INSERT INTO crypto_price_overrides (id, symbol, price, currency, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(symbol) DO UPDATE SET price = ?3, currency = ?4, updated_at = ?5",
+            rusqlite::params![id, symbol_upper, price, currency, now],
         )?;
         Ok(())
     })?;
 
     // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db).await?;
+
+    Ok(())
+}
+
+/// Delete manual crypto price override (revert to API price)
+#[tauri::command]
+pub async fn delete_crypto_manual_price(db: State<'_, Database>, symbol: String) -> Result<()> {
+    db.with_conn(|conn| {
+        conn.execute(
+            "DELETE FROM crypto_price_overrides WHERE symbol = ?1",
+            [symbol.to_uppercase()],
+        )?;
+        Ok(())
+    })?;
 
     Ok(())
 }

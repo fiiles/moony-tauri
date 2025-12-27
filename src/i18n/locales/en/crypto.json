@@ -125,5 +125,42 @@
     },
     "chart": {
         "title": "Portfolio Value Trend"
+    },
+    "detail": {
+        "backToList": "Back to Cryptocurrencies",
+        "notFound": "Cryptocurrency not found",
+        "deleted": "Cryptocurrency deleted successfully",
+        "transactionDeleted": "Transaction deleted",
+        "pricesRefreshed": "Prices refreshed successfully",
+        "manualPrice": "Manual price override",
+        "refresh": "Refresh",
+        "currentValue": "Current Value",
+        "units": "units",
+        "totalInvested": "Total Invested",
+        "avgPrice": "avg",
+        "unrealizedPnL": "Unrealized P&L",
+        "manual": "manual",
+        "updatePrice": "Update Price",
+        "position": {
+            "title": "Position Details",
+            "quantity": "Quantity",
+            "avgPrice": "Average Price",
+            "currentPrice": "Current Price",
+            "priceUpdated": "Price Updated"
+        },
+        "transactions": {
+            "title": "Transaction History",
+            "date": "Date",
+            "type": "Type",
+            "quantity": "Quantity",
+            "originalPrice": "Original Price",
+            "price": "Price",
+            "total": "Total",
+            "empty": "No transactions yet"
+        },
+        "confirmDelete": {
+            "title": "Delete Cryptocurrency",
+            "description": "Are you sure you want to delete {{name}} ({{ticker}})? This will remove all transactions. This action cannot be undone."
+        }
     }
 }

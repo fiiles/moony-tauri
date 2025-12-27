@@ -35,6 +35,9 @@ pub struct EnrichedCryptoInvestment {
     pub currency: String,
     #[serde(rename = "fetchedAt")]
     pub fetched_at: Option<i64>,
+    /// Whether the price is manually overridden
+    #[serde(rename = "isManualPrice")]
+    pub is_manual_price: bool,
 }
 
 /// Data for creating crypto investment

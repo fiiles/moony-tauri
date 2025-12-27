@@ -86,6 +86,7 @@ export function UpdateCryptoPriceModal({
 
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["crypto"] });
+            queryClient.invalidateQueries({ queryKey: ["crypto-detail", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
             toast({
@@ -95,6 +96,31 @@ export function UpdateCryptoPriceModal({
             onOpenChange(false);
         },
         onError: (error) => {
+            toast({
+                title: tc('status.error'),
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: async () => {
+            if (!investment) return;
+            return cryptoApi.deleteManualPrice(investment.ticker);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["crypto"] });
+            queryClient.invalidateQueries({ queryKey: ["crypto-detail", investment?.id] });
+            queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
+            toast({
+                title: tc('status.success'),
+                description: t('toast.manualPriceDeleted', { defaultValue: 'Manual price override removed' }),
+            });
+            onOpenChange(false);
+        },
+        onError: (error: Error) => {
             toast({
                 title: tc('status.error'),
                 description: error.message,
@@ -205,13 +231,25 @@ export function UpdateCryptoPriceModal({
                             </div>
                         </div>
 
-                        <Button
-                            type="submit"
-                            className="w-full"
-                            disabled={mutation.isPending}
-                        >
-                            {mutation.isPending ? tc('status.updating') : t('actions.updatePrice')}
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                type="submit"
+                                className="flex-1"
+                                disabled={mutation.isPending}
+                            >
+                                {mutation.isPending ? tc('status.updating') : t('actions.updatePrice')}
+                            </Button>
+                            {investment?.isManualPrice && (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    onClick={() => deleteMutation.mutate()}
+                                    disabled={deleteMutation.isPending}
+                                >
+                                    {deleteMutation.isPending ? tc('status.deleting', { defaultValue: 'Deleting...' }) : tc('actions.delete', { defaultValue: 'Delete' })}
+                                </Button>
+                            )}
+                        </div>
                     </form>
                 </Form>
             </DialogContent>

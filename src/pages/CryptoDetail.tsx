@@ -24,12 +24,11 @@ import {
     Minus,
     RefreshCw,
     DollarSign,
-    BarChart2,
 } from "lucide-react";
-import type { InvestmentTransaction } from "@shared/schema";
-import type { StockInvestmentWithPrice } from "@shared/types/extended-types";
+import type { CryptoTransaction } from "@shared/schema";
+import type { CryptoInvestmentWithPrice } from "@shared/types/extended-types";
 import { useToast } from "@/hooks/use-toast";
-import { investmentsApi, priceApi } from "@/lib/tauri-api";
+import { cryptoApi, priceApi } from "@/lib/tauri-api";
 import { useCurrency } from "@/lib/currency";
 import { CurrencyCode, DisplayCurrencyCode, CURRENCIES } from "@shared/currencies";
 import {
@@ -46,20 +45,19 @@ import {
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
 import { useState } from "react";
-import { BuyInvestmentModal } from "@/components/stocks/BuyInvestmentModal";
-import { SellInvestmentModal } from "@/components/stocks/SellInvestmentModal";
-import { ManualPriceModal } from "@/components/stocks/ManualPriceModal";
-import { ManualDividendModal } from "@/components/stocks/ManualDividendModal";
-import { mapInvestmentToHolding } from "@/utils/stocks";
+import { BuyCryptoModal } from "@/components/crypto/BuyCryptoModal";
+import { SellCryptoModal } from "@/components/crypto/SellCryptoModal";
+import { UpdateCryptoPriceModal } from "@/components/crypto/UpdateCryptoPriceModal";
+import { mapCryptoInvestmentToHolding } from "@shared/calculations";
 
-export default function StockDetail() {
-    const [, params] = useRoute("/stocks/:id");
+export default function CryptoDetail() {
+    const [, params] = useRoute("/crypto/:id");
     const [, setLocation] = useLocation();
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const id = params?.id;
     const { formatCurrency, currencyCode, convert } = useCurrency();
-    const { t } = useTranslation('stocks');
+    const { t } = useTranslation('crypto');
     const { t: tc } = useTranslation('common');
     const { formatDate } = useLanguage();
 
@@ -67,34 +65,36 @@ export default function StockDetail() {
     const [showBuyModal, setShowBuyModal] = useState(false);
     const [showSellModal, setShowSellModal] = useState(false);
     const [showPriceModal, setShowPriceModal] = useState(false);
-    const [showDividendModal, setShowDividendModal] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    // Fetch investment data
-    const { data: investment, isLoading } = useQuery<StockInvestmentWithPrice | null>({
-        queryKey: ["investment", id],
-        queryFn: () => investmentsApi.get(id!),
+    // Fetch crypto data - get from list and filter
+    const { data: crypto, isLoading } = useQuery<CryptoInvestmentWithPrice | null>({
+        queryKey: ["crypto-detail", id],
+        queryFn: async () => {
+            const all = await cryptoApi.getAll();
+            return all.find(c => c.id === id) || null;
+        },
         enabled: !!id,
     });
 
     // Fetch transactions
-    const { data: transactions } = useQuery<InvestmentTransaction[]>({
-        queryKey: ["investment-transactions", id],
-        queryFn: () => investmentsApi.getTransactions(id!),
+    const { data: transactions } = useQuery<CryptoTransaction[]>({
+        queryKey: ["crypto-transactions", id],
+        queryFn: () => cryptoApi.getTransactions(id!),
         enabled: !!id,
     });
 
     // Delete mutation
     const deleteMutation = useMutation({
-        mutationFn: () => investmentsApi.delete(id!),
+        mutationFn: () => cryptoApi.delete(id!),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["investments"] });
+            queryClient.invalidateQueries({ queryKey: ["crypto"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             toast({
                 title: tc('status.success'),
                 description: t('detail.deleted'),
             });
-            setLocation("/stocks");
+            setLocation("/crypto");
         },
         onError: (error) => {
             toast({
@@ -107,11 +107,11 @@ export default function StockDetail() {
 
     // Delete transaction mutation
     const deleteTransactionMutation = useMutation({
-        mutationFn: (txId: string) => investmentsApi.deleteTransaction(txId),
+        mutationFn: (txId: string) => cryptoApi.deleteTransaction(txId),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["investment", id] });
-            queryClient.invalidateQueries({ queryKey: ["investment-transactions", id] });
-            queryClient.invalidateQueries({ queryKey: ["investments"] });
+            queryClient.invalidateQueries({ queryKey: ["crypto-detail", id] });
+            queryClient.invalidateQueries({ queryKey: ["crypto-transactions", id] });
+            queryClient.invalidateQueries({ queryKey: ["crypto"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             toast({
                 title: tc('status.success'),
@@ -124,9 +124,9 @@ export default function StockDetail() {
     const handleRefreshPrices = async () => {
         setIsRefreshing(true);
         try {
-            await priceApi.refreshStockPrices();
-            await queryClient.invalidateQueries({ queryKey: ["investment", id] });
-            await queryClient.invalidateQueries({ queryKey: ["investments"] });
+            await priceApi.refreshCryptoPrices();
+            await queryClient.invalidateQueries({ queryKey: ["crypto-detail", id] });
+            await queryClient.invalidateQueries({ queryKey: ["crypto"] });
             toast({
                 title: tc('status.success'),
                 description: t('detail.pricesRefreshed'),
@@ -152,10 +152,10 @@ export default function StockDetail() {
         );
     }
 
-    if (!investment) {
+    if (!crypto) {
         return (
             <div className="p-6">
-                <Button variant="ghost" onClick={() => setLocation("/stocks")}>
+                <Button variant="ghost" onClick={() => setLocation("/crypto")}>
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     {t('detail.backToList')}
                 </Button>
@@ -166,34 +166,44 @@ export default function StockDetail() {
         );
     }
 
-    // Map investment to HoldingData for modals
-    const holdingData = mapInvestmentToHolding(investment);
+    // Map crypto investment to holding data for modals
+    const quantity = parseFloat(String(crypto.quantity)) || 0;
+    const averagePrice = parseFloat(String(crypto.averagePrice)) || 0;
+    const currentPrice = crypto.currentPrice ?? 0;
+
+    const holdingData = mapCryptoInvestmentToHolding(
+        crypto.id,
+        crypto.ticker,
+        crypto.name || crypto.ticker,
+        quantity,
+        averagePrice,
+        currentPrice,
+        crypto.fetchedAt,
+        crypto.isManualPrice,
+        crypto.coingeckoId,
+        crypto.originalPrice,
+        crypto.currency
+    );
 
     // Calculate values
-    const quantity = holdingData.quantity;
-    const avgPrice = holdingData.avgCost;
-    const currentPrice = holdingData.currentPrice;
     const totalInvested = holdingData.totalCost;
     const currentValue = holdingData.marketValue;
     const unrealizedPnL = holdingData.gainLoss;
     const unrealizedPnLPercent = holdingData.gainLossPercent;
-    const dividendYield = investment.dividendYield || 0;
-    const yearlyDividend = quantity * dividendYield;
-    const dividendYieldPercent = currentValue > 0 ? (yearlyDividend / currentValue) * 100 : 0;
 
     return (
         <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div>
-                    <Button variant="ghost" size="sm" onClick={() => setLocation("/stocks")} className="mb-2">
+                    <Button variant="ghost" size="sm" onClick={() => setLocation("/crypto")} className="mb-2">
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         {t('detail.backToList')}
                     </Button>
                     <h1 className="text-2xl font-bold">
-                        {investment.ticker} - {investment.companyName}
+                        {crypto.ticker} - {crypto.name}
                     </h1>
-                    {investment.isManualPrice && (
+                    {crypto.isManualPrice && (
                         <span className="text-xs text-amber-600 dark:text-amber-400">
                             {t('detail.manualPrice')}
                         </span>
@@ -207,10 +217,6 @@ export default function StockDetail() {
                         <DollarSign className="h-4 w-4 mr-2" />
                         {t('detail.updatePrice')}
                     </Button>
-                    <Button variant="outline" onClick={() => setShowDividendModal(true)}>
-                        <BarChart2 className="h-4 w-4 mr-2" />
-                        {t('detail.updateDividend')}
-                    </Button>
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" size="icon" title={tc('buttons.delete')}>
@@ -222,8 +228,8 @@ export default function StockDetail() {
                                 <AlertDialogTitle>{t('detail.confirmDelete.title')}</AlertDialogTitle>
                                 <AlertDialogDescription>
                                     {t('detail.confirmDelete.description', {
-                                        name: investment.companyName,
-                                        ticker: investment.ticker
+                                        name: crypto.name,
+                                        ticker: crypto.ticker
                                     })}
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
@@ -242,7 +248,7 @@ export default function StockDetail() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">{t('detail.currentValue')}</CardTitle>
@@ -250,7 +256,7 @@ export default function StockDetail() {
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(currentValue)}</div>
                         <div className="text-sm text-muted-foreground">
-                            {quantity.toFixed(0)} {t('detail.shares')}
+                            {quantity.toFixed(8)} {t('detail.units')}
                         </div>
                     </CardContent>
                 </Card>
@@ -262,7 +268,7 @@ export default function StockDetail() {
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(totalInvested)}</div>
                         <div className="text-sm text-muted-foreground">
-                            @ {formatCurrency(avgPrice)} {t('detail.avgPrice')}
+                            @ {formatCurrency(holdingData.avgCost)} {t('detail.avgPrice')}
                         </div>
                     </CardContent>
                 </Card>
@@ -278,23 +284,6 @@ export default function StockDetail() {
                         </div>
                         <div className={`text-sm ${unrealizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {unrealizedPnL >= 0 ? '+' : ''}{unrealizedPnLPercent.toFixed(2)}%
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">{t('detail.dividendYield')}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {dividendYieldPercent > 0 ? `${dividendYieldPercent.toFixed(2)}%` : '-'}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                            {yearlyDividend > 0 ? `${formatCurrency(yearlyDividend)} / ${t('detail.year')}` : t('detail.noDividend')}
-                            {investment.isManualDividend && (
-                                <span className="ml-1 text-amber-600 dark:text-amber-400">({t('detail.manual')})</span>
-                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -322,17 +311,17 @@ export default function StockDetail() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                             <div className="text-sm text-muted-foreground">{t('detail.position.quantity')}</div>
-                            <div className="text-lg font-medium">{quantity.toFixed(0)}</div>
+                            <div className="text-lg font-medium">{quantity.toFixed(8)}</div>
                         </div>
                         <div>
                             <div className="text-sm text-muted-foreground">{t('detail.position.avgPrice')}</div>
-                            <div className="text-lg font-medium">{formatCurrency(avgPrice)}</div>
+                            <div className="text-lg font-medium">{formatCurrency(holdingData.avgCost)}</div>
                         </div>
                         <div>
                             <div className="text-sm text-muted-foreground">{t('detail.position.currentPrice')}</div>
                             <div className="text-lg font-medium">
-                                {formatCurrency(currentPrice)}
-                                {investment.isManualPrice && (
+                                {formatCurrency(holdingData.currentPrice)}
+                                {crypto.isManualPrice && (
                                     <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">
                                         ({t('detail.manual')})
                                     </span>
@@ -342,7 +331,7 @@ export default function StockDetail() {
                         <div>
                             <div className="text-sm text-muted-foreground">{t('detail.position.priceUpdated')}</div>
                             <div className="text-lg font-medium">
-                                {investment.fetchedAt ? formatDate(new Date(Number(investment.fetchedAt) * 1000)) : '-'}
+                                {crypto.fetchedAt ? formatDate(new Date(Number(crypto.fetchedAt) * 1000)) : '-'}
                             </div>
                         </div>
                     </div>
@@ -385,8 +374,8 @@ export default function StockDetail() {
                                                 const formattedOriginalPrice = originalCurrencyDef.position === "before" 
                                                     ? `${originalCurrencyDef.symbol}${txPrice.toLocaleString(originalCurrencyDef.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                     : `${txPrice.toLocaleString(originalCurrencyDef.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${originalCurrencyDef.symbol}`;
-                                                // Round quantity if it's a whole number (no decimals)
-                                                const displayQty = Number.isInteger(txQty) ? txQty.toFixed(0) : txQty.toFixed(4);
+                                                // Display quantity with 8 decimal places for crypto
+                                                const displayQty = txQty.toFixed(8);
                                                 return (
                                                     <TableRow key={tx.id}>
                                                         <TableCell>{formatDate(new Date(tx.transactionDate * 1000))}</TableCell>
@@ -427,24 +416,19 @@ export default function StockDetail() {
             </Card>
 
             {/* Modals */}
-            <BuyInvestmentModal
+            <BuyCryptoModal
+                crypto={holdingData}
                 open={showBuyModal}
                 onOpenChange={setShowBuyModal}
-                investment={holdingData}
             />
-            <SellInvestmentModal
+            <SellCryptoModal
+                investment={holdingData}
                 open={showSellModal}
                 onOpenChange={setShowSellModal}
-                investment={holdingData}
             />
-            <ManualPriceModal
+            <UpdateCryptoPriceModal
                 open={showPriceModal}
                 onOpenChange={setShowPriceModal}
-                investment={holdingData}
-            />
-            <ManualDividendModal
-                open={showDividendModal}
-                onOpenChange={setShowDividendModal}
                 investment={holdingData}
             />
         </div>

@@ -85,6 +85,7 @@ export function ManualPriceModal({
 
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["investments"] });
+            queryClient.invalidateQueries({ queryKey: ["investment", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
             toast({
@@ -109,6 +110,7 @@ export function ManualPriceModal({
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["investments"] });
+            queryClient.invalidateQueries({ queryKey: ["investment", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
             toast({

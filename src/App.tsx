@@ -19,6 +19,7 @@ import InsuranceDetail from "@/pages/InsuranceDetail";
 import Loans from "@/pages/Loans";
 import Bonds from "@/pages/Bonds";
 import Crypto from "@/pages/Crypto";
+import CryptoDetail from "@/pages/CryptoDetail";
 import Settings from "@/pages/Settings";
 import OtherAssets from "@/pages/OtherAssets";
 import Cashflow from "@/pages/Cashflow";
@@ -51,6 +52,7 @@ function Router() {
       <ProtectedRoute path="/bonds" component={Bonds} />
       <ProtectedRoute path="/settings" component={Settings} />
       <ProtectedRoute path="/crypto" component={Crypto} />
+      <ProtectedRoute path="/crypto/:id" component={CryptoDetail} />
       <ProtectedRoute path="/other-assets" component={OtherAssets} />
       <ProtectedRoute path="/reports/cashflow" component={Cashflow} />
       <ProtectedRoute path="/reports/projection" component={Projection} />

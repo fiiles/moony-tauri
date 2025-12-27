@@ -80,6 +80,8 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["crypto"] });
+            queryClient.invalidateQueries({ queryKey: ["crypto-detail", investment?.id] });
+            queryClient.invalidateQueries({ queryKey: ["crypto-transactions", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             onOpenChange(false);
             form.reset();

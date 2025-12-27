@@ -209,11 +209,6 @@ export default function Crypto() {
             <CryptoTable
                 holdings={holdings}
                 isLoading={refreshPricesMutation.isPending}
-                onSell={handleSellClick}
-                onViewTransactions={handleViewTransactionsClick}
-                onUpdatePrice={handleUpdatePriceClick}
-                onDelete={handleDeleteClick}
-                onBuy={handleBuyClick}
             />
 
 

@@ -92,6 +92,7 @@ export function BuyCryptoModal({ crypto, open, onOpenChange }: BuyCryptoModalPro
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["crypto"] });
+            queryClient.invalidateQueries({ queryKey: ["crypto-detail", crypto?.id] });
             queryClient.invalidateQueries({ queryKey: ["crypto-transactions", crypto?.id] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             onOpenChange(false);
