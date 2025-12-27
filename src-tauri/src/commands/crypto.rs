@@ -52,24 +52,17 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
                 )
                 .ok();
 
-            // Determine active price - prefer override if it exists and is newer
+            // Determine active price - prefer override if it exists (same as stocks)
             let (original_price, currency, current_price, fetched_at, is_manual) =
                 match (&override_price, &global_price) {
-                    (Some((op, oc, ou)), Some((_, _, gu))) if *ou > *gu => (
+                    (Some((op, oc, ou)), _) => (
                         op.clone(),
                         oc.clone(),
                         convert_to_czk(op.parse().unwrap_or(0.0), oc),
                         Some(*ou),
                         true,
                     ),
-                    (Some((op, oc, ou)), None) => (
-                        op.clone(),
-                        oc.clone(),
-                        convert_to_czk(op.parse().unwrap_or(0.0), oc),
-                        Some(*ou),
-                        true,
-                    ),
-                    (_, Some((gp, gc, gu))) => (
+                    (None, Some((gp, gc, gu))) => (
                         gp.clone(),
                         gc.clone(),
                         convert_to_czk(gp.parse().unwrap_or(0.0), gc),

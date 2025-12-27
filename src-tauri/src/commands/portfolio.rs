@@ -148,8 +148,16 @@ fn calculate_portfolio_metrics(
         for crypto in cryptos.filter_map(|r| r.ok()) {
             let qty: f64 = crypto.1.parse().unwrap_or(0.0);
 
+            // Try to get price - prefer override (manual) over API price
             let price_data: rusqlite::Result<(Option<String>, Option<String>)> = conn.query_row(
-                "SELECT price, currency FROM crypto_prices WHERE symbol = ?1",
+                "SELECT COALESCE(
+                    (SELECT price FROM crypto_price_overrides WHERE symbol = ?1),
+                    (SELECT price FROM crypto_prices WHERE symbol = ?1)
+                ),
+                COALESCE(
+                    (SELECT currency FROM crypto_price_overrides WHERE symbol = ?1),
+                    (SELECT currency FROM crypto_prices WHERE symbol = ?1)
+                )",
                 [&crypto.0],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             );
