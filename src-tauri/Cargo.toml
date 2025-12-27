@@ -1,6 +1,6 @@
 [package]
 name = "moony"
-version = "0.5.0"
+version = "0.5.1"
 description = "Moony - Personal Finance Manager"
 authors = ["Filip Král"]
 edition = "2021"
