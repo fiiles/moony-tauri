@@ -20,7 +20,7 @@ pub struct ExportResult {
 pub fn export_stock_transactions(db: State<'_, Database>) -> Result<ExportResult> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT 
+            "SELECT
                 t.type,
                 i.ticker,
                 i.company_name,
@@ -30,33 +30,41 @@ pub fn export_stock_transactions(db: State<'_, Database>) -> Result<ExportResult
                 t.transaction_date
             FROM investment_transactions t
             JOIN stock_investments i ON t.investment_id = i.id
-            ORDER BY t.transaction_date DESC"
+            ORDER BY t.transaction_date DESC",
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
-                row.get::<_, String>(0)?,  // type
-                row.get::<_, String>(1)?,  // ticker
-                row.get::<_, String>(2)?,  // company_name
-                row.get::<_, String>(3)?,  // quantity
-                row.get::<_, String>(4)?,  // price_per_unit
-                row.get::<_, String>(5)?,  // currency
-                row.get::<_, i64>(6)?,     // transaction_date
+                row.get::<_, String>(0)?, // type
+                row.get::<_, String>(1)?, // ticker
+                row.get::<_, String>(2)?, // company_name
+                row.get::<_, String>(3)?, // quantity
+                row.get::<_, String>(4)?, // price_per_unit
+                row.get::<_, String>(5)?, // currency
+                row.get::<_, i64>(6)?,    // transaction_date
             ))
         })?;
-        
-        let mut csv = String::from("type,ticker,company_name,quantity,price_per_unit,currency,transaction_date\n");
+
+        let mut csv = String::from(
+            "type,ticker,company_name,quantity,price_per_unit,currency,transaction_date\n",
+        );
         let mut count = 0;
-        
+
         for row in rows {
             let (tx_type, ticker, company_name, quantity, price, currency, date) = row?;
             csv.push_str(&format!(
                 "{},{},\"{}\",{},{},{},{}\n",
-                tx_type, ticker, escape_csv(&company_name), quantity, price, currency, date
+                tx_type,
+                ticker,
+                escape_csv(&company_name),
+                quantity,
+                price,
+                currency,
+                date
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "stock_transactions.csv".to_string(),
@@ -70,7 +78,7 @@ pub fn export_stock_transactions(db: State<'_, Database>) -> Result<ExportResult
 pub fn export_crypto_transactions(db: State<'_, Database>) -> Result<ExportResult> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT 
+            "SELECT
                 t.type,
                 c.ticker,
                 c.name,
@@ -80,9 +88,9 @@ pub fn export_crypto_transactions(db: State<'_, Database>) -> Result<ExportResul
                 t.transaction_date
             FROM crypto_transactions t
             JOIN crypto_investments c ON t.investment_id = c.id
-            ORDER BY t.transaction_date DESC"
+            ORDER BY t.transaction_date DESC",
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -94,19 +102,26 @@ pub fn export_crypto_transactions(db: State<'_, Database>) -> Result<ExportResul
                 row.get::<_, i64>(6)?,
             ))
         })?;
-        
-        let mut csv = String::from("type,ticker,name,quantity,price_per_unit,currency,transaction_date\n");
+
+        let mut csv =
+            String::from("type,ticker,name,quantity,price_per_unit,currency,transaction_date\n");
         let mut count = 0;
-        
+
         for row in rows {
             let (tx_type, ticker, name, quantity, price, currency, date) = row?;
             csv.push_str(&format!(
                 "{},{},\"{}\",{},{},{},{}\n",
-                tx_type, ticker, escape_csv(&name), quantity, price, currency, date
+                tx_type,
+                ticker,
+                escape_csv(&name),
+                quantity,
+                price,
+                currency,
+                date
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "crypto_transactions.csv".to_string(),
@@ -122,9 +137,9 @@ pub fn export_bonds(db: State<'_, Database>) -> Result<ExportResult> {
         let mut stmt = conn.prepare(
             "SELECT name, isin, coupon_value, quantity, currency, interest_rate, maturity_date
             FROM bonds
-            ORDER BY name"
+            ORDER BY name",
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -136,20 +151,26 @@ pub fn export_bonds(db: State<'_, Database>) -> Result<ExportResult> {
                 row.get::<_, Option<i64>>(6)?,
             ))
         })?;
-        
-        let mut csv = String::from("name,isin,coupon_value,quantity,currency,interest_rate,maturity_date\n");
+
+        let mut csv =
+            String::from("name,isin,coupon_value,quantity,currency,interest_rate,maturity_date\n");
         let mut count = 0;
-        
+
         for row in rows {
             let (name, isin, coupon, qty, currency, rate, maturity) = row?;
             csv.push_str(&format!(
                 "\"{}\",{},{},{},{},{},{}\n",
-                escape_csv(&name), isin, coupon, qty, currency, rate,
+                escape_csv(&name),
+                isin,
+                coupon,
+                qty,
+                currency,
+                rate,
                 maturity.map(|d| d.to_string()).unwrap_or_default()
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "bonds.csv".to_string(),
@@ -165,9 +186,9 @@ pub fn export_savings_accounts(db: State<'_, Database>) -> Result<ExportResult> 
         let mut stmt = conn.prepare(
             "SELECT name, balance, currency, interest_rate, has_zone_designation, termination_date
             FROM savings_accounts
-            ORDER BY name"
+            ORDER BY name",
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -178,20 +199,26 @@ pub fn export_savings_accounts(db: State<'_, Database>) -> Result<ExportResult> 
                 row.get::<_, Option<i64>>(5)?,
             ))
         })?;
-        
-        let mut csv = String::from("name,balance,currency,interest_rate,has_zone_designation,termination_date\n");
+
+        let mut csv = String::from(
+            "name,balance,currency,interest_rate,has_zone_designation,termination_date\n",
+        );
         let mut count = 0;
-        
+
         for row in rows {
             let (name, balance, currency, rate, zones, term_date) = row?;
             csv.push_str(&format!(
                 "\"{}\",{},{},{},{},{}\n",
-                escape_csv(&name), balance, currency, rate, zones,
+                escape_csv(&name),
+                balance,
+                currency,
+                rate,
+                zones,
                 term_date.map(|d| d.to_string()).unwrap_or_default()
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "savings_accounts.csv".to_string(),
@@ -208,9 +235,9 @@ pub fn export_savings_account_zones(db: State<'_, Database>) -> Result<ExportRes
             "SELECT s.name, z.from_amount, z.to_amount, z.interest_rate
             FROM savings_account_zones z
             JOIN savings_accounts s ON z.savings_account_id = s.id
-            ORDER BY s.name, z.from_amount"
+            ORDER BY s.name, z.from_amount",
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -219,19 +246,22 @@ pub fn export_savings_account_zones(db: State<'_, Database>) -> Result<ExportRes
                 row.get::<_, String>(3)?,
             ))
         })?;
-        
+
         let mut csv = String::from("savings_account_name,from_amount,to_amount,interest_rate\n");
         let mut count = 0;
-        
+
         for row in rows {
             let (name, from, to, rate) = row?;
             csv.push_str(&format!(
                 "\"{}\",{},{},{}\n",
-                escape_csv(&name), from, to.unwrap_or_default(), rate
+                escape_csv(&name),
+                from,
+                to.unwrap_or_default(),
+                rate
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "savings_account_zones.csv".to_string(),
@@ -245,13 +275,13 @@ pub fn export_savings_account_zones(db: State<'_, Database>) -> Result<ExportRes
 pub fn export_real_estate(db: State<'_, Database>) -> Result<ExportResult> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT name, address, type, purchase_price, purchase_price_currency, 
+            "SELECT name, address, type, purchase_price, purchase_price_currency,
                     market_price, market_price_currency, monthly_rent, monthly_rent_currency,
                     recurring_costs, notes
             FROM real_estate
             ORDER BY name"
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -267,10 +297,10 @@ pub fn export_real_estate(db: State<'_, Database>) -> Result<ExportResult> {
                 row.get::<_, Option<String>>(10)?,
             ))
         })?;
-        
+
         let mut csv = String::from("name,address,type,purchase_price,purchase_price_currency,market_price,market_price_currency,monthly_rent,monthly_rent_currency,recurring_costs,notes\n");
         let mut count = 0;
-        
+
         for row in rows {
             let (name, address, prop_type, pp, ppc, mp, mpc, rent, rent_c, costs, notes) = row?;
             csv.push_str(&format!(
@@ -281,7 +311,7 @@ pub fn export_real_estate(db: State<'_, Database>) -> Result<ExportResult> {
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "real_estate.csv".to_string(),
@@ -298,9 +328,9 @@ pub fn export_real_estate_costs(db: State<'_, Database>) -> Result<ExportResult>
             "SELECT r.name, c.name, c.description, c.amount, c.currency, c.date
             FROM real_estate_costs c
             JOIN real_estate r ON c.real_estate_id = r.id
-            ORDER BY r.name, c.date"
+            ORDER BY r.name, c.date",
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -311,20 +341,24 @@ pub fn export_real_estate_costs(db: State<'_, Database>) -> Result<ExportResult>
                 row.get::<_, i64>(5)?,
             ))
         })?;
-        
+
         let mut csv = String::from("real_estate_name,name,description,amount,currency,date\n");
         let mut count = 0;
-        
+
         for row in rows {
             let (re_name, name, desc, amount, currency, date) = row?;
             csv.push_str(&format!(
                 "\"{}\",\"{}\",\"{}\",{},{},{}\n",
-                escape_csv(&re_name), escape_csv(&name), escape_csv(&desc.unwrap_or_default()),
-                amount, currency, date
+                escape_csv(&re_name),
+                escape_csv(&name),
+                escape_csv(&desc.unwrap_or_default()),
+                amount,
+                currency,
+                date
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "real_estate_costs.csv".to_string(),
@@ -344,7 +378,7 @@ pub fn export_insurance_policies(db: State<'_, Database>) -> Result<ExportResult
             FROM insurance_policies
             ORDER BY policy_name"
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -363,10 +397,10 @@ pub fn export_insurance_policies(db: State<'_, Database>) -> Result<ExportResult
                 row.get::<_, String>(13)?,
             ))
         })?;
-        
+
         let mut csv = String::from("type,provider,policy_name,policy_number,start_date,end_date,payment_frequency,one_time_payment,one_time_payment_currency,regular_payment,regular_payment_currency,limits,notes,status\n");
         let mut count = 0;
-        
+
         for row in rows {
             let (ptype, provider, name, number, start, end, freq, otp, otp_c, rp, rp_c, limits, notes, status) = row?;
             csv.push_str(&format!(
@@ -378,7 +412,7 @@ pub fn export_insurance_policies(db: State<'_, Database>) -> Result<ExportResult
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "insurance_policies.csv".to_string(),
@@ -397,7 +431,7 @@ pub fn export_loans(db: State<'_, Database>) -> Result<ExportResult> {
             FROM loans
             ORDER BY name"
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -410,10 +444,10 @@ pub fn export_loans(db: State<'_, Database>) -> Result<ExportResult> {
                 row.get::<_, Option<i64>>(7)?,
             ))
         })?;
-        
+
         let mut csv = String::from("name,principal,currency,interest_rate,interest_rate_validity_date,monthly_payment,start_date,end_date\n");
         let mut count = 0;
-        
+
         for row in rows {
             let (name, principal, currency, rate, rate_valid, payment, start, end) = row?;
             csv.push_str(&format!(
@@ -424,7 +458,7 @@ pub fn export_loans(db: State<'_, Database>) -> Result<ExportResult> {
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "loans.csv".to_string(),
@@ -442,7 +476,7 @@ pub fn export_other_assets(db: State<'_, Database>) -> Result<ExportResult> {
             FROM other_assets
             ORDER BY name"
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -454,10 +488,10 @@ pub fn export_other_assets(db: State<'_, Database>) -> Result<ExportResult> {
                 row.get::<_, Option<String>>(6)?,
             ))
         })?;
-        
+
         let mut csv = String::from("name,quantity,market_price,currency,average_purchase_price,yield_type,yield_value\n");
         let mut count = 0;
-        
+
         for row in rows {
             let (name, qty, price, currency, avg_price, ytype, yvalue) = row?;
             csv.push_str(&format!(
@@ -467,7 +501,7 @@ pub fn export_other_assets(db: State<'_, Database>) -> Result<ExportResult> {
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "other_assets.csv".to_string(),
@@ -484,9 +518,9 @@ pub fn export_other_asset_transactions(db: State<'_, Database>) -> Result<Export
             "SELECT a.name, t.type, t.quantity, t.price_per_unit, t.currency, t.transaction_date
             FROM other_asset_transactions t
             JOIN other_assets a ON t.asset_id = a.id
-            ORDER BY a.name, t.transaction_date"
+            ORDER BY a.name, t.transaction_date",
         )?;
-        
+
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -497,19 +531,25 @@ pub fn export_other_asset_transactions(db: State<'_, Database>) -> Result<Export
                 row.get::<_, i64>(5)?,
             ))
         })?;
-        
-        let mut csv = String::from("asset_name,type,quantity,price_per_unit,currency,transaction_date\n");
+
+        let mut csv =
+            String::from("asset_name,type,quantity,price_per_unit,currency,transaction_date\n");
         let mut count = 0;
-        
+
         for row in rows {
             let (name, tx_type, qty, price, currency, date) = row?;
             csv.push_str(&format!(
                 "\"{}\",{},{},{},{},{}\n",
-                escape_csv(&name), tx_type, qty, price, currency, date
+                escape_csv(&name),
+                tx_type,
+                qty,
+                price,
+                currency,
+                date
             ));
             count += 1;
         }
-        
+
         Ok(ExportResult {
             csv,
             filename: "other_asset_transactions.csv".to_string(),
