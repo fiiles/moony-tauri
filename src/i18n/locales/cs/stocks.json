@@ -179,6 +179,7 @@
             "date": "Datum",
             "type": "Typ",
             "quantity": "Množství",
+            "originalPrice": "Původní cena",
             "price": "Cena",
             "total": "Celkem",
             "empty": "Zatím žádné transakce"

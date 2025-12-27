@@ -220,6 +220,9 @@ export const cryptoApi = {
 
   updatePrice: (symbol: string, price: string, currency: string, coingeckoId?: string) =>
     tauriInvoke<void>('update_crypto_price', { symbol, price, currency, coingeckoId }),
+
+  deleteManualPrice: (symbol: string) =>
+    tauriInvoke<void>('delete_crypto_manual_price', { symbol }),
 };
 
 // ============================================================================

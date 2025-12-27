@@ -179,6 +179,7 @@
             "date": "Date",
             "type": "Type",
             "quantity": "Quantity",
+            "originalPrice": "Original Price",
             "price": "Price",
             "total": "Total",
             "empty": "No transactions yet"

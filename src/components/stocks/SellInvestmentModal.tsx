@@ -77,6 +77,8 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["investments"] });
+            queryClient.invalidateQueries({ queryKey: ["investment", investment?.id] });
+            queryClient.invalidateQueries({ queryKey: ["investment-transactions", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             onOpenChange(false);
             form.reset();

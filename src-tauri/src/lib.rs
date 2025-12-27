@@ -67,6 +67,7 @@ pub fn run() {
             commands::crypto::create_crypto_transaction,
             commands::crypto::delete_crypto_transaction,
             commands::crypto::update_crypto_price,
+            commands::crypto::delete_crypto_manual_price,
             // Bond commands
             commands::bonds::get_all_bonds,
             commands::bonds::create_bond,

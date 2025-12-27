@@ -125,5 +125,42 @@
     },
     "chart": {
         "title": "Vývoj hodnoty portfolia"
+    },
+    "detail": {
+        "backToList": "Zpět na kryptoměny",
+        "notFound": "Kryptoměna nenalezena",
+        "deleted": "Kryptoměna úspěšně smazána",
+        "transactionDeleted": "Transakce smazána",
+        "pricesRefreshed": "Ceny úspěšně aktualizovány",
+        "manualPrice": "Ručně nastavená cena",
+        "refresh": "Aktualizovat",
+        "currentValue": "Aktuální hodnota",
+        "units": "jednotek",
+        "totalInvested": "Celkem investováno",
+        "avgPrice": "prům.",
+        "unrealizedPnL": "Nerealizovaný Z/Z",
+        "manual": "ručně",
+        "updatePrice": "Upravit cenu",
+        "position": {
+            "title": "Detail pozice",
+            "quantity": "Množství",
+            "avgPrice": "Průměrná cena",
+            "currentPrice": "Aktuální cena",
+            "priceUpdated": "Cena aktualizována"
+        },
+        "transactions": {
+            "title": "Historie transakcí",
+            "date": "Datum",
+            "type": "Typ",
+            "quantity": "Množství",
+            "originalPrice": "Původní cena",
+            "price": "Cena",
+            "total": "Celkem",
+            "empty": "Zatím žádné transakce"
+        },
+        "confirmDelete": {
+            "title": "Smazat kryptoměnu",
+            "description": "Opravdu chcete smazat {{name}} ({{ticker}})? Všechny transakce budou odstraněny. Tuto akci nelze vrátit zpět."
+        }
     }
 }

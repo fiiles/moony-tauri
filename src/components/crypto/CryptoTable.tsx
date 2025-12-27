@@ -12,51 +12,37 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, MoreVertical, Trash2, History as HistoryIcon, Edit, ArrowDown, ArrowUp } from "lucide-react";
+import { Search, Eye } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
 import { useMemo, useState } from "react";
 import { type CryptoHoldingData } from "@shared/calculations";
 import { AssetLogo } from "@/components/common/AssetLogo";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
 
 // Re-export the type for consumers who import from this file
 export type { CryptoHoldingData } from "@shared/calculations";
 
 interface CryptoTableProps {
     holdings: CryptoHoldingData[];
-    onSell: (holding: CryptoHoldingData) => void;
-    onViewTransactions: (holding: CryptoHoldingData) => void;
-    onUpdatePrice: (holding: CryptoHoldingData) => void;
-    onDelete: (holding: CryptoHoldingData) => void;
-    onBuy: (holding: CryptoHoldingData) => void;
     isLoading?: boolean;
 }
 
 export function CryptoTable({
     holdings,
-    onSell,
-    onViewTransactions,
-    onUpdatePrice,
-    onDelete,
-    onBuy,
     isLoading,
 }: CryptoTableProps) {
     const { t } = useTranslation('crypto');
     const { t: tc } = useTranslation('common');
     const { formatCurrency } = useCurrency();
     const [search, setSearch] = useState("");
+    const [, setLocation] = useLocation();
 
     const filteredHoldings = useMemo(() => {
         const term = search.trim().toLowerCase();
@@ -122,7 +108,11 @@ export function CryptoTable({
                                 </TableRow>
                             ) : (
                                 filteredHoldings.map((holding) => (
-                                    <TableRow key={holding.id} className="row-interactive">
+                                    <TableRow 
+                                        key={holding.id} 
+                                        className="row-interactive cursor-pointer"
+                                        onClick={() => setLocation(`/crypto/${holding.id}`)}
+                                    >
                                         <TableCell>
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <AssetLogo
@@ -185,49 +175,12 @@ export function CryptoTable({
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                    >
-                                                        <MoreVertical className="w-4 h-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() => onViewTransactions(holding)}
-                                                    >
-                                                        <HistoryIcon className="mr-2 h-4 w-4" />
-                                                        {t('actions.viewTransactions')}
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => onBuy(holding)}
-                                                    >
-                                                        <ArrowUp className="mr-2 h-4 w-4" />
-                                                        {tc('buttons.buy')}
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => onSell(holding)}
-                                                    >
-                                                        <ArrowDown className="mr-2 h-4 w-4" />
-                                                        {tc('buttons.sell')}
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => onUpdatePrice(holding)}
-                                                    >
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        {t('actions.updatePrice')}
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={() => onDelete(holding)}
-                                                        className="text-destructive focus:text-destructive"
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        {tc('buttons.delete')}
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <Button variant="ghost" size="icon" onClick={(e) => {
+                                                e.stopPropagation();
+                                                setLocation(`/crypto/${holding.id}`);
+                                            }}>
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))

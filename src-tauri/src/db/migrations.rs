@@ -39,15 +39,35 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("011_add_bond_quantity", MIGRATION_011),
         ("012_add_user_language", MIGRATION_012),
         ("013_add_stock_metadata", MIGRATION_013),
+        ("014_add_crypto_manual_price", MIGRATION_014),
     ];
 
     for (name, sql) in migrations {
         if !applied.contains(&name.to_string()) {
+            println!("[MIGRATION] Applying: {}", name);
             conn.execute_batch(sql)?;
             conn.execute("INSERT INTO _migrations (name) VALUES (?1)", [name])?;
+            println!("[MIGRATION] Applied: {}", name);
         }
     }
 
+    // Fix for migration 014 that may have been recorded but table wasn't created
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='crypto_price_overrides'",
+            [],
+            |row| row.get::<_, i32>(0),
+        )
+        .map(|count| count > 0)
+        .unwrap_or(false);
+
+    if !table_exists {
+        println!("[MIGRATION] Fixing: crypto_price_overrides table missing, creating it now");
+        conn.execute_batch(MIGRATION_014)?;
+        println!("[MIGRATION] Fixed: crypto_price_overrides table created");
+    }
+
+    println!("[MIGRATION] Already applied: {:?}", applied);
     Ok(())
 }
 
@@ -479,4 +499,15 @@ ALTER TABLE stock_prices ADD COLUMN metadata_fetched_at INTEGER;
 
 -- Rename table for clarity
 ALTER TABLE stock_prices RENAME TO stock_data;
+"#;
+
+/// Migration 014: Add crypto_price_overrides table for manual price overrides (same pattern as stocks)
+const MIGRATION_014: &str = r#"
+CREATE TABLE IF NOT EXISTS crypto_price_overrides (
+    id TEXT PRIMARY KEY,
+    symbol TEXT NOT NULL UNIQUE,
+    price TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
 "#;
