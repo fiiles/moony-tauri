@@ -129,7 +129,7 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
                                                 <FormControl>
                                                     <Input 
                                                         type="number" 
-                                                        step="any" 
+                                                        step="0.01" 
                                                         {...field} 
                                                         onBlur={(e) => {
                                                             const value = parseFloat(e.target.value);

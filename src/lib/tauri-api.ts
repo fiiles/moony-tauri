@@ -38,6 +38,31 @@ import type {
   CashflowItem,
   ProjectionSettings,
   PortfolioProjection,
+  // Bank account types
+  BankAccountWithInstitution,
+  BankAccount,
+  InsertBankAccount,
+  Institution,
+  BankTransaction,
+  InsertBankTransaction,
+  TransactionCategory,
+  InsertTransactionCategory,
+  TransactionRule,
+  InsertTransactionRule,
+  TransactionFilters,
+  TransactionQueryResult,
+  BankCsvPreset,
+  CsvPreviewResult,
+  CsvImportResult,
+  CsvImportConfigInput,
+  CsvImportBatch,
+  // Stock tags types
+  StockTag,
+  InsertStockTag,
+  StockTagGroup,
+  InsertStockTagGroup,
+  StockInvestmentWithTags,
+  TagMetrics,
 } from '../../shared/schema';
 import type {
   StockInvestmentWithPrice,
@@ -169,6 +194,9 @@ export const investmentsApi = {
   getTransactions: (investmentId: string) =>
     tauriInvoke<InvestmentTransaction[]>('get_investment_transactions', { investmentId }),
 
+  getAllTransactions: () =>
+    tauriInvoke<InvestmentTransaction[]>('get_all_stock_transactions'),
+
   createTransaction: (investmentId: string, data: InsertInvestmentTransaction) =>
     tauriInvoke<InvestmentTransaction>('create_investment_transaction', { investmentId, data }),
 
@@ -211,6 +239,9 @@ export const cryptoApi = {
 
   getTransactions: (investmentId: string) =>
     tauriInvoke<CryptoTransaction[]>('get_crypto_transactions', { investmentId }),
+
+  getAllTransactions: () =>
+    tauriInvoke<CryptoTransaction[]>('get_all_crypto_transactions'),
 
   createTransaction: (investmentId: string, data: Omit<CryptoTransaction, 'id' | 'investmentId' | 'createdAt'>) =>
     tauriInvoke<CryptoTransaction>('create_crypto_transaction', { investmentId, data }),
@@ -574,6 +605,96 @@ export const exportApi = {
 };
 
 // ============================================================================
+// Bank Accounts API
+// ============================================================================
+
+export const bankAccountsApi = {
+  // Bank accounts
+  getAll: () => tauriInvoke<BankAccountWithInstitution[]>('get_all_bank_accounts'),
+  get: (id: string) => tauriInvoke<BankAccountWithInstitution | null>('get_bank_account', { id }),
+  create: (data: InsertBankAccount) => tauriInvoke<BankAccount>('create_bank_account', { data }),
+  update: (id: string, data: InsertBankAccount) => tauriInvoke<BankAccount>('update_bank_account', { id, data }),
+  delete: (id: string) => tauriInvoke<void>('delete_bank_account', { id }),
+
+  // Institutions
+  getInstitutions: () => tauriInvoke<Institution[]>('get_all_institutions'),
+  createInstitution: (name: string) => tauriInvoke<Institution>('create_institution', { name }),
+
+  // Transactions
+  getTransactions: (accountId: string, filters?: TransactionFilters) =>
+    tauriInvoke<TransactionQueryResult>('get_bank_transactions', { accountId, filters }),
+  createTransaction: (data: InsertBankTransaction) =>
+    tauriInvoke<BankTransaction>('create_bank_transaction', { data }),
+  deleteTransaction: (id: string) => tauriInvoke<void>('delete_bank_transaction', { id }),
+
+  // Categories
+  getCategories: () => tauriInvoke<TransactionCategory[]>('get_transaction_categories'),
+  createCategory: (data: InsertTransactionCategory) =>
+    tauriInvoke<TransactionCategory>('create_transaction_category', { data }),
+  deleteCategory: (id: string) => tauriInvoke<void>('delete_transaction_category', { id }),
+
+  // Rules
+  getRules: () => tauriInvoke<TransactionRule[]>('get_transaction_rules'),
+  createRule: (data: InsertTransactionRule) =>
+    tauriInvoke<TransactionRule>('create_transaction_rule', { data }),
+  deleteRule: (id: string) => tauriInvoke<void>('delete_transaction_rule', { id }),
+
+  // CSV Import
+  getCsvPresets: () => tauriInvoke<BankCsvPreset[]>('get_csv_presets'),
+  getCsvPresetByInstitution: (institutionId: string) =>
+    tauriInvoke<BankCsvPreset | null>('get_csv_preset_by_institution', { institutionId }),
+  parseCsvFile: (filePath: string, delimiter?: string, skipRows?: number) =>
+    tauriInvoke<CsvPreviewResult>('parse_csv_file', { 
+      filePath, 
+      delimiter,  // Let backend auto-detect if undefined
+      skipRows: skipRows || 0 
+    }),
+  importCsvTransactions: (accountId: string, filePath: string, config: CsvImportConfigInput) =>
+    tauriInvoke<CsvImportResult>('import_csv_transactions', { accountId, filePath, config }),
+  getImportBatches: (accountId: string) =>
+    tauriInvoke<CsvImportBatch[]>('get_import_batches', { accountId }),
+  deleteImportBatch: (batchId: string) =>
+    tauriInvoke<void>('delete_import_batch', { batchId }),
+};
+
+// ============================================================================
+// Stock Tags API
+// ============================================================================
+
+export const stockTagsApi = {
+  getAll: () => tauriInvoke<StockTag[]>('get_all_stock_tags'),
+
+  create: (data: InsertStockTag) => tauriInvoke<StockTag>('create_stock_tag', { data }),
+
+  update: (id: string, data: InsertStockTag) =>
+    tauriInvoke<StockTag>('update_stock_tag', { id, data }),
+
+  delete: (id: string) => tauriInvoke<void>('delete_stock_tag', { id }),
+
+  getForInvestment: (investmentId: string) =>
+    tauriInvoke<StockTag[]>('get_investment_tags', { investmentId }),
+
+  setForInvestment: (investmentId: string, tagIds: string[]) =>
+    tauriInvoke<void>('set_investment_tags', { investmentId, tagIds }),
+
+  getAnalysis: () => tauriInvoke<StockInvestmentWithTags[]>('get_stocks_analysis'),
+
+  getTagMetrics: (tagIds: string[] = []) =>
+    tauriInvoke<TagMetrics[]>('get_tag_metrics', { tagIds }),
+
+  // Tag Group operations
+  getAllGroups: () => tauriInvoke<StockTagGroup[]>('get_all_stock_tag_groups'),
+
+  createGroup: (data: InsertStockTagGroup) =>
+    tauriInvoke<StockTagGroup>('create_stock_tag_group', { data }),
+
+  updateGroup: (id: string, data: InsertStockTagGroup) =>
+    tauriInvoke<StockTagGroup>('update_stock_tag_group', { id, data }),
+
+  deleteGroup: (id: string) => tauriInvoke<void>('delete_stock_tag_group', { id }),
+};
+
+// ============================================================================
 // Combined API export
 // ============================================================================
 
@@ -592,6 +713,8 @@ export const api = {
   cashflow: cashflowApi,
   projection: projectionApi,
   export: exportApi,
+  bankAccounts: bankAccountsApi,
+  stockTags: stockTagsApi,
 };
 
 export default api;

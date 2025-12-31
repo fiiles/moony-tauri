@@ -7,7 +7,7 @@ use crate::models::{
     InsertCryptoTransaction,
 };
 use crate::services::currency::convert_to_czk;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
 /// Get all crypto investments with current prices
@@ -95,12 +95,14 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
 #[tauri::command]
 pub async fn create_crypto(
     db: State<'_, Database>,
+    app: AppHandle,
     data: InsertCryptoInvestment,
     initial_transaction: Option<InsertCryptoTransaction>,
 ) -> Result<CryptoInvestment> {
     let ticker = data.ticker.to_uppercase();
+    let initial_tx_date = initial_transaction.as_ref().map(|t| t.transaction_date);
 
-    db.with_conn(|conn| {
+    let inv = db.with_conn(|conn| {
         // Check if exists
         let existing: Option<String> = conn.query_row(
             "SELECT id FROM crypto_investments WHERE ticker = ?1",
@@ -155,12 +157,44 @@ pub async fn create_crypto(
         )?;
 
         Ok(inv)
-    })
+    })?;
+
+    // Update portfolio snapshot
+    crate::commands::portfolio::update_todays_snapshot(&db)
+        .await
+        .ok();
+
+    // Trigger historical recalculation if there was an initial transaction
+    if let Some(date) = initial_tx_date {
+        crate::commands::portfolio::trigger_historical_recalculation_for_asset(
+            &db,
+            date,
+            crate::commands::portfolio::AssetType::Crypto,
+        )
+        .await
+        .ok();
+
+        app.emit("recalculation-complete", ()).ok();
+    }
+
+    Ok(inv)
 }
 
 /// Delete crypto investment
 #[tauri::command]
-pub async fn delete_crypto(db: State<'_, Database>, id: String) -> Result<()> {
+pub async fn delete_crypto(db: State<'_, Database>, app: AppHandle, id: String) -> Result<()> {
+    // Get earliest transaction date before deleting (for historical recalc)
+    let earliest_tx_date: Option<i64> = db.with_conn(|conn| {
+        Ok(conn
+            .query_row(
+                "SELECT MIN(transaction_date) FROM crypto_transactions WHERE investment_id = ?1",
+                [&id],
+                |row| row.get(0),
+            )
+            .ok()
+            .flatten())
+    })?;
+
     db.with_conn(|conn| {
         // Delete transactions first to avoid FK constraint violation
         conn.execute(
@@ -173,7 +207,27 @@ pub async fn delete_crypto(db: State<'_, Database>, id: String) -> Result<()> {
             return Err(AppError::NotFound("Crypto investment not found".into()));
         }
         Ok(())
-    })
+    })?;
+
+    // Update portfolio snapshot
+    crate::commands::portfolio::update_todays_snapshot(&db)
+        .await
+        .ok();
+
+    // Trigger historical recalculation if there were transactions
+    if let Some(tx_date) = earliest_tx_date {
+        crate::commands::portfolio::trigger_historical_recalculation_for_asset(
+            &db,
+            tx_date,
+            crate::commands::portfolio::AssetType::Crypto,
+        )
+        .await
+        .ok();
+
+        app.emit("recalculation-complete", ()).ok();
+    }
+
+    Ok(())
 }
 
 /// Get transactions for crypto
@@ -192,6 +246,41 @@ pub async fn get_crypto_transactions(
 
         let txs = stmt
             .query_map([&investment_id], |row| {
+                Ok(CryptoTransaction {
+                    id: row.get(0)?,
+                    investment_id: row.get(1)?,
+                    tx_type: row.get(2)?,
+                    ticker: row.get(3)?,
+                    name: row.get(4)?,
+                    quantity: row.get(5)?,
+                    price_per_unit: row.get(6)?,
+                    currency: row.get(7)?,
+                    transaction_date: row.get(8)?,
+                    created_at: row.get(9)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(txs)
+    })
+}
+
+/// Get all crypto transactions across all investments
+#[tauri::command]
+pub async fn get_all_crypto_transactions(
+    db: State<'_, Database>,
+) -> Result<Vec<CryptoTransaction>> {
+    db.with_conn(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT id, investment_id, type, ticker, name, quantity, price_per_unit,
+                    currency, transaction_date, created_at
+             FROM crypto_transactions
+             ORDER BY transaction_date DESC",
+        )?;
+
+        let txs = stmt
+            .query_map([], |row| {
                 Ok(CryptoTransaction {
                     id: row.get(0)?,
                     investment_id: row.get(1)?,
@@ -285,6 +374,7 @@ fn recalculate_crypto_investment(conn: &rusqlite::Connection, investment_id: &st
 #[tauri::command]
 pub async fn create_crypto_transaction(
     db: State<'_, Database>,
+    app: AppHandle,
     investment_id: String,
     data: InsertCryptoTransaction,
 ) -> Result<CryptoTransaction> {
@@ -324,12 +414,38 @@ pub async fn create_crypto_transaction(
         .await
         .ok();
 
+    // Trigger historical recalculation if transaction is retrospective
+    crate::commands::portfolio::trigger_historical_recalculation_for_asset(
+        &db,
+        result.transaction_date,
+        crate::commands::portfolio::AssetType::Crypto,
+    )
+    .await
+    .ok();
+
+    app.emit("recalculation-complete", ()).ok();
+
     Ok(result)
 }
 
 /// Delete crypto transaction
 #[tauri::command]
-pub async fn delete_crypto_transaction(db: State<'_, Database>, tx_id: String) -> Result<()> {
+pub async fn delete_crypto_transaction(
+    db: State<'_, Database>,
+    app: AppHandle,
+    tx_id: String,
+) -> Result<()> {
+    // Get transaction date before deleting (for historical recalc)
+    let tx_date: Option<i64> = db.with_conn(|conn| {
+        Ok(conn
+            .query_row(
+                "SELECT transaction_date FROM crypto_transactions WHERE id = ?1",
+                [&tx_id],
+                |row| row.get(0),
+            )
+            .ok())
+    })?;
+
     db.with_conn(|conn| {
         // Get investment_id before deleting
         let investment_id: String = conn.query_row(
@@ -365,6 +481,19 @@ pub async fn delete_crypto_transaction(db: State<'_, Database>, tx_id: String) -
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
+
+    // Trigger historical recalculation if transaction was historical
+    if let Some(date) = tx_date {
+        crate::commands::portfolio::trigger_historical_recalculation_for_asset(
+            &db,
+            date,
+            crate::commands::portfolio::AssetType::Crypto,
+        )
+        .await
+        .ok();
+
+        app.emit("recalculation-complete", ()).ok();
+    }
 
     Ok(())
 }

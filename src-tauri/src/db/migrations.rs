@@ -40,6 +40,10 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("012_add_user_language", MIGRATION_012),
         ("013_add_stock_metadata", MIGRATION_013),
         ("014_add_crypto_manual_price", MIGRATION_014),
+        ("015_add_bank_accounts", MIGRATION_015),
+        ("016_add_import_batches", MIGRATION_016),
+        ("017_add_stock_tags", MIGRATION_017),
+        ("018_add_stock_tag_groups", MIGRATION_018),
     ];
 
     for (name, sql) in migrations {
@@ -510,4 +514,219 @@ CREATE TABLE IF NOT EXISTS crypto_price_overrides (
     currency TEXT NOT NULL DEFAULT 'USD',
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
+"#;
+
+/// Migration 015: Add bank accounts, transactions, and categories system
+const MIGRATION_015: &str = r#"
+-- Institutions table (banks, financial institutions)
+CREATE TABLE IF NOT EXISTS institutions (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    bic TEXT,
+    country TEXT,
+    logo_url TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- Bank accounts table (extends/replaces savings_accounts)
+CREATE TABLE IF NOT EXISTS bank_accounts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    account_type TEXT NOT NULL DEFAULT 'checking',
+    iban TEXT,
+    bban TEXT,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    balance TEXT NOT NULL DEFAULT '0',
+    institution_id TEXT REFERENCES institutions(id),
+    external_account_id TEXT,
+    data_source TEXT NOT NULL DEFAULT 'manual',
+    last_synced_at INTEGER,
+    interest_rate TEXT,
+    has_zone_designation INTEGER NOT NULL DEFAULT 0,
+    termination_date INTEGER,
+    exclude_from_balance INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- Transaction categories
+CREATE TABLE IF NOT EXISTS transaction_categories (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    icon TEXT,
+    color TEXT,
+    parent_id TEXT REFERENCES transaction_categories(id),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_system INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- Bank transactions table
+CREATE TABLE IF NOT EXISTS bank_transactions (
+    id TEXT PRIMARY KEY,
+    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    transaction_id TEXT,
+    tx_type TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    description TEXT,
+    counterparty_name TEXT,
+    counterparty_iban TEXT,
+    booking_date INTEGER NOT NULL,
+    value_date INTEGER,
+    category_id TEXT REFERENCES transaction_categories(id),
+    merchant_category_code TEXT,
+    remittance_info TEXT,
+    variable_symbol TEXT,
+    status TEXT NOT NULL DEFAULT 'booked',
+    data_source TEXT NOT NULL DEFAULT 'manual',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    UNIQUE(bank_account_id, transaction_id)
+);
+
+-- Transaction categorization rules
+CREATE TABLE IF NOT EXISTS transaction_rules (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    rule_type TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    category_id TEXT NOT NULL REFERENCES transaction_categories(id),
+    priority INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- CSV import presets
+CREATE TABLE IF NOT EXISTS csv_import_presets (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    institution_id TEXT REFERENCES institutions(id),
+    delimiter TEXT NOT NULL DEFAULT ';',
+    encoding TEXT NOT NULL DEFAULT 'UTF-8',
+    skip_rows INTEGER NOT NULL DEFAULT 0,
+    date_column TEXT NOT NULL,
+    date_format TEXT NOT NULL DEFAULT '%d.%m.%Y',
+    amount_column TEXT NOT NULL,
+    description_column TEXT,
+    counterparty_column TEXT,
+    variable_symbol_column TEXT,
+    is_system INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- Migrate existing savings accounts to bank_accounts (preserving IDs)
+INSERT OR IGNORE INTO bank_accounts (
+    id, name, account_type, currency, balance,
+    interest_rate, has_zone_designation, termination_date,
+    data_source, created_at, updated_at
+)
+SELECT
+    id, name, 'savings', currency, balance,
+    interest_rate, has_zone_designation, termination_date,
+    'manual', created_at, updated_at
+FROM savings_accounts;
+
+-- Insert default categories
+INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, sort_order, is_system) VALUES
+    ('cat_groceries', 'Groceries', 'shopping-cart', '#4CAF50', 1, 1),
+    ('cat_dining', 'Dining & Restaurants', 'utensils', '#FF9800', 2, 1),
+    ('cat_transport', 'Transportation', 'car', '#2196F3', 3, 1),
+    ('cat_utilities', 'Utilities', 'zap', '#9C27B0', 4, 1),
+    ('cat_entertainment', 'Entertainment', 'film', '#E91E63', 5, 1),
+    ('cat_shopping', 'Shopping', 'shopping-bag', '#00BCD4', 6, 1),
+    ('cat_health', 'Health & Medical', 'heart', '#F44336', 7, 1),
+    ('cat_travel', 'Travel', 'plane', '#3F51B5', 8, 1),
+    ('cat_income', 'Income', 'trending-up', '#8BC34A', 9, 1),
+    ('cat_transfer', 'Transfers', 'repeat', '#607D8B', 10, 1),
+    ('cat_other', 'Other', 'more-horizontal', '#9E9E9E', 99, 1);
+
+-- Pre-populate Czech banks with logos
+INSERT OR IGNORE INTO institutions (id, name, bic, country, logo_url) VALUES
+    ('inst_ceska_sporitelna', 'Česká spořitelna', 'GIBACZPX', 'CZ', '/bank-logos/ceska-sporitelna.svg'),
+    ('inst_csob', 'ČSOB', 'CEKOCZPP', 'CZ', '/bank-logos/csob.svg'),
+    ('inst_komercni_banka', 'Komerční banka', 'KOMBCZPP', 'CZ', '/bank-logos/komercni-banka.svg'),
+    ('inst_moneta', 'MONETA Money Bank', 'AGBACZPP', 'CZ', '/bank-logos/moneta.svg'),
+    ('inst_raiffeisenbank', 'Raiffeisenbank', 'RZBCCZPP', 'CZ', '/bank-logos/raiffeisenbank.svg'),
+    ('inst_unicredit', 'UniCredit Bank', 'BACXCZPP', 'CZ', '/bank-logos/unicredit.svg'),
+    ('inst_fio', 'Fio banka', 'FIOBCZPP', 'CZ', '/bank-logos/fio.svg'),
+    ('inst_air_bank', 'Air Bank', 'AIRACZPP', 'CZ', '/bank-logos/air-bank.svg'),
+    ('inst_creditas', 'Banka CREDITAS', 'CTASCZ22', 'CZ', '/bank-logos/creditas.svg'),
+    ('inst_ing', 'ING Bank', 'INGBCZPP', 'CZ', '/bank-logos/ing.svg'),
+    ('inst_jt_banka', 'J&T Banka', 'JTBPCZPP', 'CZ', '/bank-logos/jt-banka.svg'),
+    ('inst_max_banka', 'MAX banka', 'EXPNCZPP', 'CZ', '/bank-logos/max-banka.svg'),
+    ('inst_ppf', 'PPF banka', 'PMBPCZPP', 'CZ', '/bank-logos/ppf.svg'),
+    ('inst_trinity', 'Trinity Bank', 'MCEKCZPP', 'CZ', '/bank-logos/trinity.svg'),
+    ('inst_nrb', 'Národní rozvojová banka', 'NROZCZPP', 'CZ', '/bank-logos/nrb.svg'),
+    ('inst_revolut', 'Revolut', 'REVOGB21', 'GB', '/bank-logos/revolut.svg'),
+    ('inst_wise', 'Wise', 'TRWIBEB1XXX', 'BE', '/bank-logos/wise.svg'),
+    ('inst_other', 'Other', NULL, NULL, NULL);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_institution ON bank_accounts(institution_id);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_type ON bank_accounts(account_type);
+CREATE INDEX IF NOT EXISTS idx_bank_transactions_account ON bank_transactions(bank_account_id);
+CREATE INDEX IF NOT EXISTS idx_bank_transactions_date ON bank_transactions(booking_date);
+CREATE INDEX IF NOT EXISTS idx_bank_transactions_category ON bank_transactions(category_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_rules_category ON transaction_rules(category_id);
+"#;
+
+/// Migration 016: Add CSV import batches for tracking imports
+const MIGRATION_016: &str = r#"
+-- CSV import batches - tracks each CSV upload
+CREATE TABLE IF NOT EXISTS csv_import_batches (
+    id TEXT PRIMARY KEY,
+    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    file_name TEXT NOT NULL,
+    imported_count INTEGER NOT NULL DEFAULT 0,
+    duplicate_count INTEGER NOT NULL DEFAULT 0,
+    error_count INTEGER NOT NULL DEFAULT 0,
+    imported_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- Add import_batch_id to bank_transactions to link transactions to their import batch
+ALTER TABLE bank_transactions ADD COLUMN import_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE CASCADE;
+
+-- Create index for faster batch lookups
+CREATE INDEX IF NOT EXISTS idx_csv_import_batches_account ON csv_import_batches(bank_account_id);
+CREATE INDEX IF NOT EXISTS idx_bank_transactions_batch ON bank_transactions(import_batch_id);
+"#;
+
+/// Migration 017: Add stock tags for analysis grouping
+const MIGRATION_017: &str = r#"
+-- Stock tags for categorizing investments (e.g., Growth, Value, Dividend)
+CREATE TABLE IF NOT EXISTS stock_tags (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    color TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- Junction table for many-to-many relationship between investments and tags
+CREATE TABLE IF NOT EXISTS stock_investment_tags (
+    investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
+    tag_id TEXT NOT NULL REFERENCES stock_tags(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    PRIMARY KEY (investment_id, tag_id)
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_stock_investment_tags_investment ON stock_investment_tags(investment_id);
+CREATE INDEX IF NOT EXISTS idx_stock_investment_tags_tag ON stock_investment_tags(tag_id);
+"#;
+
+/// Migration 018: Add stock tag groups for organizing tags
+const MIGRATION_018: &str = r#"
+-- Tag groups for organizing tags (e.g., "Strategy", "Sector", "Risk Level")
+CREATE TABLE IF NOT EXISTS stock_tag_groups (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- Add group_id to stock_tags (optional, tag can belong to 0 or 1 groups)
+ALTER TABLE stock_tags ADD COLUMN group_id TEXT REFERENCES stock_tag_groups(id) ON DELETE SET NULL;
+
+-- Create index for performance
+CREATE INDEX IF NOT EXISTS idx_stock_tags_group ON stock_tags(group_id);
 "#;

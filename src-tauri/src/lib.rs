@@ -51,6 +51,7 @@ pub fn run() {
             commands::investments::create_investment,
             commands::investments::delete_investment,
             commands::investments::get_investment_transactions,
+            commands::investments::get_all_stock_transactions,
             commands::investments::create_investment_transaction,
             commands::investments::delete_investment_transaction,
             commands::investments::update_investment_transaction,
@@ -64,6 +65,7 @@ pub fn run() {
             commands::crypto::create_crypto,
             commands::crypto::delete_crypto,
             commands::crypto::get_crypto_transactions,
+            commands::crypto::get_all_crypto_transactions,
             commands::crypto::create_crypto_transaction,
             commands::crypto::delete_crypto_transaction,
             commands::crypto::update_crypto_price,
@@ -167,6 +169,47 @@ pub fn run() {
             commands::export::export_loans,
             commands::export::export_other_assets,
             commands::export::export_other_asset_transactions,
+            // Bank account commands
+            commands::bank_accounts::get_all_bank_accounts,
+            commands::bank_accounts::get_bank_account,
+            commands::bank_accounts::create_bank_account,
+            commands::bank_accounts::update_bank_account,
+            commands::bank_accounts::delete_bank_account,
+            commands::bank_accounts::get_all_institutions,
+            commands::bank_accounts::create_institution,
+            // Bank transaction commands
+            commands::bank_accounts::get_bank_transactions,
+            commands::bank_accounts::create_bank_transaction,
+            commands::bank_accounts::delete_bank_transaction,
+            // Transaction category commands
+            commands::bank_accounts::get_transaction_categories,
+            commands::bank_accounts::create_transaction_category,
+            commands::bank_accounts::delete_transaction_category,
+            // Transaction rule commands
+            commands::bank_accounts::get_transaction_rules,
+            commands::bank_accounts::create_transaction_rule,
+            commands::bank_accounts::delete_transaction_rule,
+            // CSV import commands
+            commands::bank_accounts::get_csv_presets,
+            commands::bank_accounts::get_csv_preset_by_institution,
+            commands::bank_accounts::parse_csv_file,
+            commands::bank_accounts::import_csv_transactions,
+            commands::bank_accounts::get_import_batches,
+            commands::bank_accounts::delete_import_batch,
+            // Stock tags commands
+            commands::stock_tags::get_all_stock_tags,
+            commands::stock_tags::create_stock_tag,
+            commands::stock_tags::update_stock_tag,
+            commands::stock_tags::delete_stock_tag,
+            commands::stock_tags::get_investment_tags,
+            commands::stock_tags::set_investment_tags,
+            commands::stock_tags::get_stocks_analysis,
+            commands::stock_tags::get_tag_metrics,
+            // Stock tag group commands
+            commands::stock_tags::get_all_stock_tag_groups,
+            commands::stock_tags::create_stock_tag_group,
+            commands::stock_tags::update_stock_tag_group,
+            commands::stock_tags::delete_stock_tag_group,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

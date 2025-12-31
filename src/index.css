@@ -4,16 +4,16 @@
 
 /* LIGHT MODE */
 :root {
-  --button-outline: rgba(0, 0, 0, .10);
-  --badge-outline: rgba(0, 0, 0, .05);
+  --button-outline: rgba(0, 0, 0, 0.1);
+  --badge-outline: rgba(0, 0, 0, 0.05);
 
   /* Automatic computation of border around primary / danger buttons */
   --opaque-button-border-intensity: -8;
   /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(0, 0, 0, .03);
-  --elevate-2: rgba(0, 0, 0, .08);
+  --elevate-1: rgba(0, 0, 0, 0.03);
+  --elevate-2: rgba(0, 0, 0, 0.08);
 
   --background: 220 14.3% 95.9%;
 
@@ -82,10 +82,12 @@
   --positive: 151 76% 30%;
   --negative: 11 92% 47%;
 
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: SF Mono, Roboto Mono, Menlo, Monaco, monospace;
-  --radius: .375rem;
+  --radius: 0.375rem;
   /* 6px */
   --shadow-2xs: 0px 1px 2px 0px hsl(220 20% 12% / 0.02);
   --shadow-xs: 0px 1px 2px 0px hsl(220 20% 12% / 0.04);
@@ -93,7 +95,8 @@
   --shadow: 0px 4px 6px -1px hsl(220 20% 12% / 0.06), 0px 2px 4px -1px hsl(220 20% 12% / 0.06);
   --shadow-md: 0px 6px 12px -2px hsl(220 20% 12% / 0.08), 0px 3px 6px -3px hsl(220 20% 12% / 0.08);
   --shadow-lg: 0px 10px 15px -3px hsl(220 20% 12% / 0.08), 0px 4px 6px -2px hsl(220 20% 12% / 0.04);
-  --shadow-xl: 0px 20px 25px -5px hsl(220 20% 12% / 0.08), 0px 10px 10px -5px hsl(220 20% 12% / 0.03);
+  --shadow-xl:
+    0px 20px 25px -5px hsl(220 20% 12% / 0.08), 0px 10px 10px -5px hsl(220 20% 12% / 0.03);
   --shadow-2xl: 0px 25px 50px -12px hsl(220 20% 12% / 0.15);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
@@ -102,43 +105,57 @@
 
   /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
-  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-primary-border: hsl(
+    from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --sidebar-accent-border: hsl(var(--sidebar-accent));
-  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(
+    from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --primary-border: hsl(var(--primary));
-  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(
+    from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --secondary-border: hsl(var(--secondary));
-  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(
+    from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --muted-border: hsl(var(--muted));
-  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(
+    from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --accent-border: hsl(var(--accent));
-  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(
+    from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
-  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(
+    from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 }
 
 .dark {
-  --button-outline: rgba(255, 255, 255, .10);
-  --badge-outline: rgba(255, 255, 255, .05);
+  --button-outline: rgba(255, 255, 255, 0.1);
+  --badge-outline: rgba(255, 255, 255, 0.05);
 
   --opaque-button-border-intensity: 9;
   /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(255, 255, 255, .04);
-  --elevate-2: rgba(255, 255, 255, .09);
+  --elevate-1: rgba(255, 255, 255, 0.04);
+  --elevate-2: rgba(255, 255, 255, 0.09);
 
   --background: 224 71.4% 4.1%;
 
@@ -206,42 +223,56 @@
   --positive: 151 76% 30%;
   --negative: 11 92% 47%;
 
-  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.30);
-  --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.40);
+  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.3);
+  --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.4);
   --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.45), 0px 1px 2px -1px hsl(0 0% 0% / 0.45);
-  --shadow: 0px 2px 4px -1px hsl(0 0% 0% / 0.40), 0px 4px 6px -1px hsl(0 0% 0% / 0.50);
+  --shadow: 0px 2px 4px -1px hsl(0 0% 0% / 0.4), 0px 4px 6px -1px hsl(0 0% 0% / 0.5);
   --shadow-md: 0px 4px 6px -1px hsl(0 0% 0% / 0.45), 0px 2px 4px -2px hsl(0 0% 0% / 0.45);
-  --shadow-lg: 0px 10px 15px -3px hsl(0 0% 0% / 0.50), 0px 4px 6px -4px hsl(0 0% 0% / 0.50);
-  --shadow-xl: 0px 20px 25px -5px hsl(0 0% 0% / 0.50), 0px 8px 10px -6px hsl(0 0% 0% / 0.50);
-  --shadow-2xl: 0px 25px 50px -12px hsl(0 0% 0% / 0.60);
+  --shadow-lg: 0px 10px 15px -3px hsl(0 0% 0% / 0.5), 0px 4px 6px -4px hsl(0 0% 0% / 0.5);
+  --shadow-xl: 0px 20px 25px -5px hsl(0 0% 0% / 0.5), 0px 8px 10px -6px hsl(0 0% 0% / 0.5);
+  --shadow-2xl: 0px 25px 50px -12px hsl(0 0% 0% / 0.6);
 
   /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
-  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-primary-border: hsl(
+    from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --sidebar-accent-border: hsl(var(--sidebar-accent));
-  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(
+    from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --primary-border: hsl(var(--primary));
-  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(
+    from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --secondary-border: hsl(var(--secondary));
-  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(
+    from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --muted-border: hsl(var(--muted));
-  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(
+    from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --accent-border: hsl(var(--accent));
-  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(
+    from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 
   /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
-  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(
+    from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha
+  );
 }
 
 @layer base {
@@ -275,9 +306,8 @@
  * need to be distinguished from eachother visually.
  */
 @layer utilities {
-
   /* Hide ugly search cancel button in Chrome until we can style it properly */
-  input[type="search"]::-webkit-search-cancel-button {
+  input[type='search']::-webkit-search-cancel-button {
     @apply hidden;
   }
 
@@ -291,10 +321,11 @@
   /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
    * buttons/badges can remove the automatic brightness adjustment on interactions
    * and program their own. */
-  .no-default-hover-elevate {}
+  .no-default-hover-elevate {
+  }
 
-  .no-default-active-elevate {}
-
+  .no-default-active-elevate {
+  }
 
   /**
    * Toggleable backgrounds go behind the content. Hoverable/active goes on top.
@@ -304,7 +335,7 @@
    */
   .toggle-elevate::before,
   .toggle-elevate-2::before {
-    content: "";
+    content: '';
     pointer-events: none;
     position: absolute;
     inset: 0px;
@@ -336,7 +367,7 @@
   .active-elevate:not(.no-default-active-elevate)::after,
   .hover-elevate-2:not(.no-default-hover-elevate)::after,
   .active-elevate-2:not(.no-default-active-elevate)::after {
-    content: "";
+    content: '';
     pointer-events: none;
     position: absolute;
     inset: 0px;
@@ -372,7 +403,7 @@
   /* Tabular numbers for financial data alignment */
   .data-value {
     font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum";
+    font-feature-settings: 'tnum';
   }
 
   /* Smooth card hover effect */
@@ -458,47 +489,90 @@
   .form-grid-3 {
     @apply grid grid-cols-1 md:grid-cols-3 gap-4;
   }
+
+  /* ========================================
+   * COLORED FORM SECTIONS
+   * Reduces grey monotony with accent colors
+   * ======================================== */
+
+  /* Form section header with icon - flex layout for icon + text */
+  .form-section-header-icon {
+    @apply flex items-center gap-2 text-sm font-semibold text-foreground mb-4 pb-2 border-b border-border/50;
+  }
+
+  .form-section-header-icon svg {
+    @apply h-4 w-4 text-primary/70;
+  }
+
+  /* Toggle/checkbox section with subtle accent tint */
+  .form-toggle-section {
+    @apply flex items-center justify-between p-4 rounded-lg border;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.03), hsl(var(--primary) / 0.06));
+    border-color: hsl(var(--primary) / 0.15);
+  }
+
+  .dark .form-toggle-section {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.08), hsl(var(--primary) / 0.12));
+    border-color: hsl(var(--primary) / 0.25);
+  }
+
+  /* Checkbox section inside forms - similar tinting */
+  .form-checkbox-section {
+    @apply flex items-start space-x-3 p-4 rounded-lg border;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.02), hsl(var(--primary) / 0.05));
+    border-color: hsl(var(--primary) / 0.12);
+  }
+
+  .dark .form-checkbox-section {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.06), hsl(var(--primary) / 0.1));
+    border-color: hsl(var(--primary) / 0.2);
+  }
+
+  /* Better input field contrast in dark mode */
+  .dark [role='dialog'] input,
+  .dark [role='dialog'] select,
+  .dark [role='dialog'] [role='combobox'] {
+    background-color: hsl(var(--background));
+  }
 }
 
-
-
 /* Style the calendar icon */
-input[type="date"]::-webkit-calendar-picker-indicator {
+input[type='date']::-webkit-calendar-picker-indicator {
   opacity: 0.6;
   cursor: pointer;
   transition: opacity 0.15s;
 }
 
-input[type="date"]::-webkit-calendar-picker-indicator:hover {
+input[type='date']::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
 
 /* Firefox date input styling */
-input[type="date"]::-moz-placeholder {
+input[type='date']::-moz-placeholder {
   color: hsl(var(--muted-foreground));
 }
 
 /* Dialog content form enhancements - scoped to dialogs only */
-[role="dialog"] .space-y-4>h3.border-b {
+[role='dialog'] .space-y-4 > h3.border-b {
   @apply text-sm font-semibold text-foreground/90 pb-2 mb-3;
   border-bottom-color: hsl(var(--border) / 0.5);
 }
 
 /* Dialog background - grey to match main app */
-[role="dialog"]>div {
+[role='dialog'] > div {
   background-color: hsl(var(--background));
 }
 
 /* Force date input text to be grey, not blue - more aggressive fix */
-input[type="date"] {
+input[type='date'] {
   color: hsl(var(--foreground)) !important;
 }
 
-input[type="date"]::-webkit-datetime-edit,
-input[type="date"]::-webkit-datetime-edit-fields-wrapper,
-input[type="date"]::-webkit-datetime-edit-text,
-input[type="date"]::-webkit-datetime-edit-month-field,
-input[type="date"]::-webkit-datetime-edit-day-field,
-input[type="date"]::-webkit-datetime-edit-year-field {
+input[type='date']::-webkit-datetime-edit,
+input[type='date']::-webkit-datetime-edit-fields-wrapper,
+input[type='date']::-webkit-datetime-edit-text,
+input[type='date']::-webkit-datetime-edit-month-field,
+input[type='date']::-webkit-datetime-edit-day-field,
+input[type='date']::-webkit-datetime-edit-year-field {
   color: hsl(var(--foreground)) !important;
 }

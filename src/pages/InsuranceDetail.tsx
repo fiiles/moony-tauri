@@ -245,7 +245,7 @@ export default function InsuranceDetail() {
                             <CardHeader>
                                 <CardTitle>{t('detail.basicInfo')}</CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+                            <CardContent>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-sm text-muted-foreground">{t('form.policyNumber')}</p>

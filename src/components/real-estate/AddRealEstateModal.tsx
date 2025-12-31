@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Home, Coins, Receipt, Landmark, Shield, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
     Select,
@@ -274,8 +274,9 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
                         {/* Property Details Section */}
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Home />
                                 {t('modal.add.propertyDetails')}
                             </h3>
                             <div className="grid gap-4">
@@ -333,8 +334,9 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                         </div>
 
                         {/* Financial Details Section */}
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Coins />
                                 {t('modal.add.financialDetails')}
                             </h3>
                             <div className="grid gap-4">
@@ -463,9 +465,9 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                         </div>
 
                         {/* Recurring Costs Section */}
-                        <div className="form-section">
-                            <div className="form-section-header flex items-center justify-between !border-b-0 !pb-0 !mb-2">
-                                <span>{t('modal.add.recurringCosts')}</span>
+                        <div className="form-section-accent">
+                            <div className="form-section-header-icon flex items-center justify-between !border-b border-border/50 !pb-2 !mb-4">
+                                <span className="flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" />{t('modal.add.recurringCosts')}</span>
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -566,8 +568,9 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                         </div>
 
                         {/* Financing Section */}
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Landmark />
                                 {t('modal.add.financing')}
                             </h3>
                             <div className="space-y-2">
@@ -606,8 +609,9 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                         </div>
 
                         {/* Insurance Linking Section */}
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Shield />
                                 {t('modal.add.linkInsurances')}
                             </h3>
                             <div className="space-y-2">
@@ -645,8 +649,9 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                         </div>
 
                         {/* Additional Information Section */}
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Info />
                                 {t('modal.add.additionalInfo')}
                             </h3>
                             <FormField

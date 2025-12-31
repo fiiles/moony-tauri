@@ -4,5 +4,6 @@
 
 pub mod auth;
 pub mod crypto;
+pub mod csv_import;
 pub mod currency;
 pub mod price_api;

@@ -124,7 +124,9 @@
         "addFailed": "Přidání kryptoměny selhalo"
     },
     "chart": {
-        "title": "Vývoj hodnoty portfolia"
+        "title": "Vývoj hodnoty portfolia",
+        "bought": "Nakoupeno",
+        "sold": "Prodáno"
     },
     "detail": {
         "backToList": "Zpět na kryptoměny",

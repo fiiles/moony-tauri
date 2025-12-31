@@ -24,6 +24,7 @@ import { CurrencyCode } from "@shared/currencies";
 import { SavingsAccountZoneManager } from "@/components/savings/SavingsAccountZoneManager";
 import { savingsApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
+import { PiggyBank, Percent } from "lucide-react";
 
 type UpdateSavingsAccountData = {
   id: string;
@@ -172,8 +173,9 @@ export function SavingsAccountFormDialog({
         </DialogHeader>
         <div className="grid gap-6 py-4">
           {/* Basic Information Section */}
-          <div className="form-section">
-            <h3 className="form-section-header">
+          <div className="form-section-accent">
+            <h3 className="form-section-header-icon">
+              <PiggyBank />
               {t('modal.basicInfo')}
             </h3>
             <div className="grid gap-4">
@@ -237,13 +239,14 @@ export function SavingsAccountFormDialog({
           </div>
 
           {/* Interest Rate Section */}
-          <div className="form-section">
-            <h3 className="form-section-header">
+          <div className="form-section-accent">
+            <h3 className="form-section-header-icon">
+              <Percent />
               {t('modal.interestConfig')}
             </h3>
 
             <div className="space-y-4">
-              <div className="flex items-start space-x-3 p-4 bg-muted/50 rounded-lg border">
+              <div className="form-checkbox-section">
                 <Checkbox
                   id="hasZoneDesignation"
                   checked={hasZoneDesignation}

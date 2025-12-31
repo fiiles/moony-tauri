@@ -131,7 +131,9 @@
         "searchFailed": "Search failed"
     },
     "chart": {
-        "title": "Stocks Value Trend"
+        "title": "Stocks Value Trend",
+        "bought": "Bought",
+        "sold": "Sold"
     },
     "detail": {
         "backToList": "Back to Stocks",

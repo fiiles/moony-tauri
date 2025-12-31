@@ -147,13 +147,49 @@ pub async fn update_other_asset(
 /// Delete other asset
 #[tauri::command]
 pub async fn delete_other_asset(db: State<'_, Database>, id: String) -> Result<()> {
+    // Get earliest transaction date before deleting (for historical recalc)
+    let earliest_tx_date: Option<i64> = db.with_conn(|conn| {
+        Ok(conn
+            .query_row(
+                "SELECT MIN(transaction_date) FROM other_asset_transactions WHERE asset_id = ?1",
+                [&id],
+                |row| row.get(0),
+            )
+            .ok()
+            .flatten())
+    })?;
+
     db.with_conn(|conn| {
+        // Delete transactions first (due to foreign key)
+        conn.execute(
+            "DELETE FROM other_asset_transactions WHERE asset_id = ?1",
+            [&id],
+        )?;
+
         let changes = conn.execute("DELETE FROM other_assets WHERE id = ?1", [&id])?;
         if changes == 0 {
             return Err(AppError::NotFound("Other asset not found".into()));
         }
         Ok(())
-    })
+    })?;
+
+    // Update portfolio snapshot
+    crate::commands::portfolio::update_todays_snapshot(&db)
+        .await
+        .ok();
+
+    // Trigger historical recalculation if there were transactions
+    if let Some(tx_date) = earliest_tx_date {
+        crate::commands::portfolio::trigger_historical_recalculation_for_asset(
+            &db,
+            tx_date,
+            crate::commands::portfolio::AssetType::OtherAssets,
+        )
+        .await
+        .ok();
+    }
+
+    Ok(())
 }
 
 /// Get transactions for other asset
@@ -194,8 +230,9 @@ pub async fn create_other_asset_transaction(
 ) -> Result<OtherAssetTransaction> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
+    let transaction_date = data.transaction_date;
 
-    db.with_conn(|conn| {
+    let result = db.with_conn(|conn| {
         // 1. Insert Transaction
         conn.execute(
             "INSERT INTO other_asset_transactions
@@ -226,12 +263,39 @@ pub async fn create_other_asset_transaction(
             transaction_date: data.transaction_date,
             created_at: now,
         })
-    })
+    })?;
+
+    // Update portfolio snapshot
+    crate::commands::portfolio::update_todays_snapshot(&db)
+        .await
+        .ok();
+
+    // Trigger historical recalculation if transaction is retrospective
+    crate::commands::portfolio::trigger_historical_recalculation_for_asset(
+        &db,
+        transaction_date,
+        crate::commands::portfolio::AssetType::OtherAssets,
+    )
+    .await
+    .ok();
+
+    Ok(result)
 }
 
 /// Delete other asset transaction
 #[tauri::command]
 pub async fn delete_other_asset_transaction(db: State<'_, Database>, tx_id: String) -> Result<()> {
+    // Get transaction date before deleting (for historical recalc)
+    let tx_date: Option<i64> = db.with_conn(|conn| {
+        Ok(conn
+            .query_row(
+                "SELECT transaction_date FROM other_asset_transactions WHERE id = ?1",
+                [&tx_id],
+                |row| row.get(0),
+            )
+            .ok())
+    })?;
+
     db.with_conn(|conn| {
         // 1. Get asset_id before deleting
         let asset_id: String = conn.query_row(
@@ -250,7 +314,25 @@ pub async fn delete_other_asset_transaction(db: State<'_, Database>, tx_id: Stri
         recalculate_asset_totals(conn, &asset_id)?;
 
         Ok(())
-    })
+    })?;
+
+    // Update portfolio snapshot
+    crate::commands::portfolio::update_todays_snapshot(&db)
+        .await
+        .ok();
+
+    // Trigger historical recalculation if transaction was historical
+    if let Some(date) = tx_date {
+        crate::commands::portfolio::trigger_historical_recalculation_for_asset(
+            &db,
+            date,
+            crate::commands::portfolio::AssetType::OtherAssets,
+        )
+        .await
+        .ok();
+    }
+
+    Ok(())
 }
 
 // Helper function to recalculate and update asset totals

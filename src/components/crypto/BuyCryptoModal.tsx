@@ -69,8 +69,8 @@ export function BuyCryptoModal({ crypto, open, onOpenChange }: BuyCryptoModalPro
             // Use original currency (usually USD for crypto) and originalPrice
             form.setValue("currency", (crypto.currency as "USD" | "EUR" | "CZK") || "USD");
             // Use originalPrice (in source currency) for prefill, not currentPrice (which is converted to CZK)
-            const priceToShow = crypto.originalPrice ?? crypto.currentPrice;
-            form.setValue("pricePerUnit", priceToShow ? Math.round(priceToShow) : 0);
+            const priceToShow = Number(crypto.originalPrice ?? crypto.currentPrice);
+            form.setValue("pricePerUnit", priceToShow ? Number(priceToShow.toFixed(2)) : 0);
         }
     }, [crypto, form]);
 
@@ -149,12 +149,12 @@ export function BuyCryptoModal({ crypto, open, onOpenChange }: BuyCryptoModalPro
                                         <FormControl>
                                             <Input 
                                                 type="number" 
-                                                step="1" 
+                                                step="0.01" 
                                                 {...field} 
                                                 onBlur={(e) => {
                                                     const value = parseFloat(e.target.value);
                                                     if (!isNaN(value)) {
-                                                        field.onChange(Math.round(value));
+                                                        field.onChange(value.toFixed(2));
                                                     }
                                                     field.onBlur();
                                                 }}

@@ -1,0 +1,146 @@
+{
+  "title": "Bank Accounts",
+  "subtitle": "Manage your bank accounts and transactions",
+  "addAccount": "Add Account",
+  "editAccount": "Edit Account",
+  "deleteAccount": "Delete Account",
+  
+  "table": {
+    "title": "All Accounts"
+  },
+  
+  "detail": {
+    "accountInfo": "Account Information"
+  },
+  
+  "form": {
+    "basicInfo": "Basic Information",
+    "accountDetails": "Account Details",
+    "interestConfig": "Interest Configuration",
+    "namePlaceholder": "e.g., Main Checking Account",
+    "selectBank": "Select a bank...",
+    "searchBank": "Search bank...",
+    "noBankFound": "No bank found.",
+    "addNewBank": "Add new bank...",
+    "addNewBankDesc": "Enter the name of the bank to add.",
+    "bankName": "Bank Name",
+    "bankNamePlaceholder": "e.g. Česká spořitelna",
+    "useZones": "Use tiered interest rates",
+    "zonesHelp": "Enable if your bank offers different interest rates for different balance ranges",
+    "zonesLabel": "Interest Rate Tiers",
+    "zonesDescription": "Define the balance ranges and their corresponding interest rates",
+    "apyHelp": "Annual percentage yield (APY)"
+  },
+  "accounts": "Accounts",
+  "transactions": "Transactions",
+  "categories": "Categories",
+  
+  "accountTypes": {
+    "checking": "Checking",
+    "savings": "Savings",
+    "credit_card": "Credit Card",
+    "investment": "Investment"
+  },
+  
+  "fields": {
+    "name": "Account Name",
+    "accountType": "Account Type",
+    "balance": "Balance",
+    "currency": "Currency",
+    "institution": "Bank/Institution",
+    "iban": "IBAN",
+    "bban": "BBAN",
+    "interestRate": "Interest Rate",
+    "interestType": "Interest Type",
+    "excludeFromBalance": "Excluded from balance",
+    "excludeFromBalanceHint": "When enabled, this account won't be included in your portfolio totals"
+  },
+  
+  "interestType": {
+    "simple": "Simple",
+    "zoned": "Zoned"
+  },
+  
+  "transaction": {
+    "add": "Add Transaction",
+    "date": "Date",
+    "amount": "Amount",
+    "type": "Type",
+    "description": "Description",
+    "counterparty": "Counterparty",
+    "category": "Category",
+    "credit": "Income",
+    "debit": "Expense",
+    "variableSymbol": "Variable Symbol"
+  },
+  
+  "metrics": {
+    "totalBalance": "Total Balance",
+    "savingsBalance": "Savings Balance",
+    "checkingBalance": "Checking Balance",
+    "accountCount": "Accounts",
+    "averageInterestRate": "Avg. Interest Rate",
+    "expectedYearlyInterest": "Expected Yearly Interest",
+    "weightedAverage": "Weighted by balance"
+  },
+  
+  "messages": {
+    "accountCreated": "Account created",
+    "accountCreatedDesc": "The bank account has been created successfully.",
+    "accountUpdated": "Account updated",
+    "accountUpdatedDesc": "The bank account has been updated successfully.",
+    "accountDeleted": "Account deleted",
+    "accountDeletedDesc": "The bank account has been deleted.",
+    "transactionCreated": "Transaction created",
+    "transactionDeleted": "Transaction deleted",
+    "categoryCreated": "Category created",
+    "categoryDeleted": "Category deleted",
+    "ruleCreated": "Rule created",
+    "ruleDeleted": "Rule deleted",
+    "error": "Error",
+    "confirmDelete": "Are you sure you want to delete this account? This will also delete all transactions."
+  },
+  
+  "empty": {
+    "title": "No bank accounts yet",
+    "description": "Add your first bank account to start tracking your finances."
+  },
+
+  "csvImport": {
+    "button": "Import CSV",
+    "title": "Import Transactions from CSV",
+    "selectFile": "Select a CSV file exported from your bank",
+    "mapColumns": "Map CSV columns to transaction fields",
+    "importing": "Importing transactions...",
+    "complete": "Import complete!",
+    "clickToSelect": "Click to select CSV file",
+    "presetDetected": "Preset detected for this bank",
+    "autoDetect": "Column headers will be auto-detected",
+    "rows": "rows",
+    "dateColumn": "Date Column",
+    "dateFormat": "Date Format",
+    "amountColumn": "Amount Column",
+    "descriptionColumn": "Description Column",
+    "counterpartyColumn": "Counterparty Column",
+    "variableSymbol": "Variable Symbol (VS)",
+    "selectColumn": "Select column",
+    "optional": "Optional",
+    "processing": "Processing transactions...",
+    "success": "Import Complete!",
+    "imported": "Imported",
+    "duplicates": "Duplicates Skipped",
+    "errors": "Errors",
+    "importButton": "Import Transactions"
+  },
+
+  "zones": {
+    "title": "Interest Rate Zones",
+    "fromAmount": "From Amount",
+    "toAmount": "To Amount",
+    "interestRate": "Interest Rate",
+    "effective": "effective",
+    "effectiveRate": "Effective Rate",
+    "active": "Active",
+    "noZones": "No interest rate zones configured"
+  }
+}

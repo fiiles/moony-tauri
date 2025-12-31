@@ -6,6 +6,7 @@ export interface SyncContextType {
   progress: { current: number; total: number };
   lastResult: BackfillResult | null;
   startBackfill: () => Promise<void>;
+  recordTodaySnapshot: () => Promise<void>;
 }
 
 export const SyncContext = createContext<SyncContextType | undefined>(undefined);

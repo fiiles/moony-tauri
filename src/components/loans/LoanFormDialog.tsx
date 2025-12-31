@@ -31,6 +31,7 @@ import { format } from "date-fns";
 import { useCurrency, currencies } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
+import { FileText, Coins } from "lucide-react";
 
 interface LoanFormDialogProps {
     open: boolean;
@@ -141,8 +142,9 @@ export function LoanFormDialog({
                         onSubmit={form.handleSubmit(handleSubmit)}
                         className="grid gap-6 py-4"
                     >
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <FileText />
                                 {t('modal.basicInfo')}
                             </h3>
                             <FormField
@@ -160,8 +162,9 @@ export function LoanFormDialog({
                             />
                         </div>
 
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Coins />
                                 {t('modal.financialDetails')}
                             </h3>
                             <div className="space-y-4">
