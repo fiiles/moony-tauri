@@ -3,6 +3,7 @@
 //! All commands are registered in lib.rs and called via invoke() from frontend
 
 pub mod auth;
+pub mod bank_accounts;
 pub mod bonds;
 pub mod cashflow;
 pub mod crypto;
@@ -16,3 +17,4 @@ pub mod price_api;
 pub mod projection;
 pub mod real_estate;
 pub mod savings;
+pub mod stock_tags;

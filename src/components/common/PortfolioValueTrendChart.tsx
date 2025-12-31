@@ -1,32 +1,125 @@
 import { Card } from "@/components/ui/card";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Scatter, Cell } from "recharts";
 import { useCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { portfolioApi } from "@/lib/tauri-api";
-import { subDays, startOfYear } from "date-fns";
+import { subDays, startOfYear, format } from "date-fns";
 import TimePeriodSelector, { type Period } from "@/components/cashflow/TimePeriodSelector";
 import type { PortfolioMetricsHistory } from "@shared/schema";
 import { useLanguage } from "@/i18n/I18nProvider";
 import { useSyncStatus } from "@/hooks/sync-context";
+import { listen } from "@tauri-apps/api/event";
 
 interface TrendData {
   date: string;
+  dateTimestamp: number;
   value: number;
+  // Transaction marker data (optional)
+  hasBuy?: boolean;
+  hasSell?: boolean;
+  buyAmount?: number;
+  sellAmount?: number;
+}
+
+// Transaction marker data passed from parent
+export interface TransactionMarker {
+  date: number; // Unix timestamp
+  buyAmount: number; // Total bought in user currency
+  sellAmount: number; // Total sold in user currency
 }
 
 interface PortfolioValueTrendChartProps {
   type: 'investments' | 'crypto';
   currentValue: number;
   isRefreshing?: boolean;
+  transactionMarkers?: TransactionMarker[];
 }
+
+// Custom tooltip content component
+const CustomTooltip = ({ 
+  active, 
+  payload, 
+  formatCurrency, 
+  t 
+}: { 
+  active?: boolean; 
+  payload?: { payload: TrendData }[]; 
+  formatCurrency: (value: number) => string;
+  t: (key: string) => string;
+}) => {
+  if (!active || !payload || payload.length === 0) return null;
+  
+  const data = payload[0].payload;
+  
+  return (
+    <div 
+      className="rounded-lg border bg-popover p-3 text-popover-foreground shadow-md"
+      style={{ minWidth: '150px' }}
+    >
+      <div className="font-medium">{data.date}</div>
+      <div className="text-sm text-muted-foreground mt-1">
+        {t('summary.totalValue')}: {formatCurrency(data.value)}
+      </div>
+      {(data.hasBuy || data.hasSell) && (
+        <div className="mt-2 pt-2 border-t border-border space-y-1">
+          {data.hasBuy && data.buyAmount !== undefined && data.buyAmount > 0 && (
+            <div className="text-sm text-green-600 dark:text-green-400 font-medium">
+              {t('chart.bought')}: {formatCurrency(data.buyAmount)}
+            </div>
+          )}
+          {data.hasSell && data.sellAmount !== undefined && data.sellAmount > 0 && (
+            <div className="text-sm text-red-600 dark:text-red-400 font-medium">
+              {t('chart.sold')}: {formatCurrency(data.sellAmount)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Custom dot component for transaction markers
+const TransactionDot = (props: {
+  cx?: number;
+  cy?: number;
+  payload?: TrendData;
+}) => {
+  const { cx, cy, payload } = props;
+  
+  if (!payload || (!payload.hasBuy && !payload.hasSell)) return null;
+  if (cx === undefined || cy === undefined) return null;
+  
+  // Determine dot color based on transaction type
+  let fill: string;
+  if (payload.hasBuy && payload.hasSell) {
+    fill = '#f97316'; // Orange for both
+  } else if (payload.hasBuy) {
+    fill = '#22c55e'; // Green for buy
+  } else {
+    fill = '#ef4444'; // Red for sell
+  }
+  
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={6}
+      fill={fill}
+      stroke="white"
+      strokeWidth={2}
+      style={{ filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))' }}
+    />
+  );
+};
 
 export default function PortfolioValueTrendChart({
   type,
   currentValue,
   isRefreshing = false,
+  transactionMarkers = [],
 }: PortfolioValueTrendChartProps) {
   const { formatCurrency } = useCurrency();
   const { t } = useTranslation(type === 'investments' ? 'stocks' : 'crypto');
@@ -41,6 +134,18 @@ export default function PortfolioValueTrendChart({
       queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
     }
   }, [lastResult, queryClient]);
+
+  // Listen for backend recalculation events
+  useEffect(() => {
+    const unlisten = listen('recalculation-complete', () => {
+      console.log('Recalculation complete, refreshing chart...');
+      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+    });
+
+    return () => {
+      unlisten.then(f => f());
+    };
+  }, [queryClient]);
 
   // Calculate date range based on selected period
   const dateRange = useMemo(() => {
@@ -75,6 +180,24 @@ export default function PortfolioValueTrendChart({
     refetchOnMount: 'always',
   });
 
+  // Create a map of transaction markers by date string for quick lookup
+  const markerMap = useMemo(() => {
+    const map = new Map<string, TransactionMarker>();
+    for (const marker of transactionMarkers) {
+      // Convert timestamp to date string (using format to match chart dates)
+      const dateStr = format(new Date(marker.date * 1000), 'MMM d');
+      const existing = map.get(dateStr);
+      if (existing) {
+        // Aggregate amounts for same date
+        existing.buyAmount += marker.buyAmount;
+        existing.sellAmount += marker.sellAmount;
+      } else {
+        map.set(dateStr, { ...marker });
+      }
+    }
+    return map;
+  }, [transactionMarkers]);
+
   // Extract value based on type and calculate chart data
   const { data, change } = useMemo(() => {
     // Reverse history to get chronological order (Oldest -> Newest)
@@ -86,22 +209,43 @@ export default function PortfolioValueTrendChart({
       } else {
         value = Number(h.totalCrypto || 0);
       }
+      
+      const dateStr = formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric' });
+      const marker = markerMap.get(dateStr);
+      
       return {
-        date: formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric' }),
-        value
+        date: dateStr,
+        dateTimestamp: h.recordedAt,
+        value,
+        hasBuy: marker ? marker.buyAmount > 0 : false,
+        hasSell: marker ? marker.sellAmount > 0 : false,
+        buyAmount: marker?.buyAmount,
+        sellAmount: marker?.sellAmount,
       };
     });
 
     // Append or update with current live value
     const todayStr = formatDate(new Date(), { month: 'short', day: 'numeric' });
     const lastPoint = historyData[historyData.length - 1];
+    const todayMarker = markerMap.get(todayStr);
 
     if (lastPoint && lastPoint.date === todayStr) {
       lastPoint.value = currentValue;
+      if (todayMarker) {
+        lastPoint.hasBuy = todayMarker.buyAmount > 0;
+        lastPoint.hasSell = todayMarker.sellAmount > 0;
+        lastPoint.buyAmount = todayMarker.buyAmount;
+        lastPoint.sellAmount = todayMarker.sellAmount;
+      }
     } else {
       historyData.push({
         date: todayStr,
-        value: currentValue
+        dateTimestamp: Math.floor(Date.now() / 1000),
+        value: currentValue,
+        hasBuy: todayMarker ? todayMarker.buyAmount > 0 : false,
+        hasSell: todayMarker ? todayMarker.sellAmount > 0 : false,
+        buyAmount: todayMarker?.buyAmount,
+        sellAmount: todayMarker?.sellAmount,
       });
     }
 
@@ -112,7 +256,7 @@ export default function PortfolioValueTrendChart({
       : 0;
 
     return { data: historyData, change: changePercent };
-  }, [portfolioHistory, currentValue, type, formatDate]);
+  }, [portfolioHistory, currentValue, type, formatDate, markerMap]);
 
   const isPositive = change >= 0;
 
@@ -131,6 +275,11 @@ export default function PortfolioValueTrendChart({
     const yMax = maxValue + padding;
 
     return [yMin, yMax];
+  }, [data]);
+
+  // Filter data points that have transactions for scatter plot
+  const transactionPoints = useMemo(() => {
+    return data.filter(d => d.hasBuy || d.hasSell);
   }, [data]);
 
   return (
@@ -155,7 +304,7 @@ export default function PortfolioValueTrendChart({
 
       <div className="min-h-[300px]">
         <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+          <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
             <defs>
               <linearGradient id={`colorValue-${type}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
@@ -173,13 +322,8 @@ export default function PortfolioValueTrendChart({
               tickMargin={8}
             />
             <YAxis hide domain={yAxisDomain} />
-            <Tooltip
-              formatter={(value: number) => [formatCurrency(value), t('summary.totalValue')]}
-              contentStyle={{
-                backgroundColor: 'hsl(var(--popover))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '6px',
-              }}
+            <Tooltip 
+              content={<CustomTooltip formatCurrency={formatCurrency} t={t} />}
             />
             <Area
               type="monotone"
@@ -187,8 +331,10 @@ export default function PortfolioValueTrendChart({
               stroke="hsl(var(--chart-1))"
               strokeWidth={2}
               fill={`url(#colorValue-${type})`}
+              dot={<TransactionDot />}
+              activeDot={{ r: 5 }}
             />
-          </AreaChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </Card>

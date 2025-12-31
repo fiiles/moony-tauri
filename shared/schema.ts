@@ -583,3 +583,297 @@ export interface CalculatedDefaults {
     bondsRate: number;
 }
 
+// Bank Accounts
+export type AccountType = 'checking' | 'savings' | 'credit_card' | 'investment';
+export type DataSource = 'manual' | 'csv_import' | 'api_sync';
+export type TransactionType = 'credit' | 'debit';
+export type TransactionStatus = 'booked' | 'pending';
+
+export interface Institution {
+    id: string;
+    name: string;
+    bic: string | null;
+    country: string | null;
+    logoUrl: string | null;
+    createdAt: number;
+}
+
+export interface BankAccount {
+    id: string;
+    name: string;
+    accountType: AccountType;
+    iban: string | null;
+    bban: string | null;
+    currency: string;
+    balance: string;
+    institutionId: string | null;
+    externalAccountId: string | null;
+    dataSource: DataSource;
+    lastSyncedAt: number | null;
+    interestRate: string | null;
+    hasZoneDesignation: boolean;
+    terminationDate: number | null;
+    /** Exclude from portfolio balance (for operational/checking accounts) */
+    excludeFromBalance: boolean;
+    createdAt: number;
+    updatedAt: number;
+}
+
+export interface BankAccountWithInstitution extends BankAccount {
+    institution: Institution | null;
+    effectiveInterestRate: number | null;
+    projectedEarnings: number | null;
+}
+
+export interface InsertBankAccount {
+    name: string;
+    accountType?: AccountType;
+    iban?: string | null;
+    bban?: string | null;
+    currency?: string;
+    balance?: string;
+    institutionId?: string | null;
+    interestRate?: string | null;
+    hasZoneDesignation?: boolean;
+    terminationDate?: number | null;
+    /** Exclude from portfolio balance (for operational/checking accounts) */
+    excludeFromBalance?: boolean;
+}
+
+export interface BankTransaction {
+    id: string;
+    bankAccountId: string;
+    transactionId: string | null;
+    type: TransactionType;
+    amount: string;
+    currency: string;
+    description: string | null;
+    counterpartyName: string | null;
+    counterpartyIban: string | null;
+    bookingDate: number;
+    valueDate: number | null;
+    categoryId: string | null;
+    merchantCategoryCode: string | null;
+    remittanceInfo: string | null;
+    variableSymbol: string | null;
+    status: TransactionStatus;
+    dataSource: DataSource;
+    createdAt: number;
+}
+
+export interface InsertBankTransaction {
+    bankAccountId: string;
+    transactionId?: string | null;
+    type: TransactionType;
+    amount: string;
+    currency?: string;
+    description?: string | null;
+    counterpartyName?: string | null;
+    counterpartyIban?: string | null;
+    bookingDate: number;
+    valueDate?: number | null;
+    categoryId?: string | null;
+    variableSymbol?: string | null;
+    status?: TransactionStatus;
+}
+
+export interface TransactionCategory {
+    id: string;
+    name: string;
+    icon: string | null;
+    color: string | null;
+    parentId: string | null;
+    sortOrder: number;
+    isSystem: boolean;
+    createdAt: number;
+}
+
+export interface InsertTransactionCategory {
+    name: string;
+    icon?: string | null;
+    color?: string | null;
+    parentId?: string | null;
+    sortOrder?: number;
+}
+
+export interface TransactionRule {
+    id: string;
+    name: string;
+    ruleType: string;
+    pattern: string;
+    categoryId: string;
+    priority: number;
+    isActive: boolean;
+    createdAt: number;
+}
+
+export interface InsertTransactionRule {
+    name: string;
+    ruleType: string;
+    pattern: string;
+    categoryId: string;
+    priority?: number;
+    isActive?: boolean;
+}
+
+export interface TransactionFilters {
+    dateFrom?: number;
+    dateTo?: number;
+    categoryId?: string;
+    txType?: TransactionType;
+    search?: string;
+    limit?: number;
+    offset?: number;
+}
+
+export interface TransactionQueryResult {
+    transactions: BankTransaction[];
+    total: number;
+}
+
+// ============================================================================
+// CSV Import Types
+// ============================================================================
+
+export interface BankCsvPreset {
+    institutionId: string;
+    bankName: string;
+    delimiter: string;
+    encoding: string;
+    skipRows: number;
+    dateColumn: string;
+    dateFormat: string;
+    amountColumn: string;
+    descriptionColumn?: string | null;
+    counterpartyColumn?: string | null;
+    variableSymbolColumn?: string | null;
+    currencyColumn?: string | null;
+    creditColumn?: string | null;
+    debitColumn?: string | null;
+}
+
+export interface CsvImportConfig {
+    delimiter: string;
+    encoding: string;
+    skipRows: number;
+    dateColumn: string;
+    dateFormat: string;
+    amountColumn: string;
+    descriptionColumn?: string | null;
+    counterpartyColumn?: string | null;
+    variableSymbolColumn?: string | null;
+    currencyColumn?: string | null;
+    creditColumn?: string | null;
+    debitColumn?: string | null;
+}
+
+export interface ColumnMapping {
+    columnName: string;
+    mapsTo: string;
+    confidence: number;
+}
+
+export interface CsvFormatDetection {
+    detectedPreset?: string | null;
+    delimiter: string;
+    encoding: string;
+    skipRows: number;
+    headers: string[];
+    columnMappings: ColumnMapping[];
+    sampleRows: string[][];
+    confidence: number;
+}
+
+export interface CsvImportResult {
+    importedCount: number;
+    duplicateCount: number;
+    errorCount: number;
+    errors: string[];
+    errorList?: string[];
+}
+
+export interface CsvPreviewResult {
+    headers: string[];
+    sampleRows: string[][];
+    totalRows: number;
+    delimiter: string;
+    suggestedMappings: Record<string, [string, number]>;
+}
+
+export interface CsvImportConfigInput {
+    delimiter: string;
+    skipRows: number;
+    dateColumn: string;
+    dateFormat: string;
+    amountColumn: string;
+    descriptionColumns?: string[] | null;
+    counterpartyColumn?: string | null;
+    counterpartyIbanColumn?: string | null;
+    currencyColumn?: string | null;
+    variableSymbolColumn?: string | null;
+}
+
+export interface CsvImportBatch {
+    id: string;
+    bankAccountId: string;
+    fileName: string;
+    importedCount: number;
+    duplicateCount: number;
+    errorCount: number;
+    importedAt: number;
+}
+
+// ============================================================================
+// Stock Tags Types
+// ============================================================================
+
+export interface StockTagGroup {
+    id: string;
+    name: string;
+    description: string | null;
+    createdAt: number;
+}
+
+export interface InsertStockTagGroup {
+    name: string;
+    description?: string | null;
+}
+
+export interface StockTag {
+    id: string;
+    name: string;
+    color: string | null;
+    groupId: string | null;
+    createdAt: number;
+}
+
+export interface InsertStockTag {
+    name: string;
+    color?: string | null;
+    groupId?: string | null;
+}
+
+export interface StockInvestmentWithTags {
+    id: string;
+    ticker: string;
+    companyName: string;
+    quantity: string;
+    averagePrice: string;
+    currentPrice: string;
+    currentValue: number;
+    gainLoss: number;
+    gainLossPercent: number;
+    dividendYield: number;
+    tags: StockTag[];
+}
+
+export interface TagMetrics {
+    tag: StockTag;
+    totalValue: number;
+    totalCost: number;
+    gainLoss: number;
+    gainLossPercent: number;
+    estimatedYearlyDividend: number;
+    portfolioPercent: number;
+    holdingsCount: number;
+}

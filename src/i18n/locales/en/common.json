@@ -3,6 +3,8 @@
         "dashboard": "Dashboard",
         "platform": "Platform",
         "portfolio": "Portfolio",
+        "financialServices": "Financial Services",
+        "bankAccounts": "Bank Accounts",
         "reports": "Reports",
         "cashflow": "Cashflow",
         "projection": "Projection",
@@ -18,7 +20,8 @@
         "lockApp": "Lock Application",
         "calculators": "Calculators",
         "annuityCalculator": "Annuity Calculator",
-        "estateCalculator": "Estate Calculator"
+        "estateCalculator": "Estate Calculator",
+        "stocksAnalysis": "Stocks Analysis"
     },
     "app": {
         "name": "Moony",
@@ -49,7 +52,9 @@
         "sell": "Sell",
         "updatePrice": "Update Price Manually",
         "updateDividend": "Update Dividend Estimate",
-        "addNew": "Add New"
+        "addNew": "Add New",
+        "create": "Create",
+        "clearAll": "Clear All"
     },
     "labels": {
         "name": "Name",

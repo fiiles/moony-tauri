@@ -11,7 +11,7 @@ import {
     SidebarFooter,
     SidebarRail,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, TrendingUp, Home as HomeIcon, Shield, Wallet, Settings, Lock, Bitcoin, Gem, ChevronsUpDown, CreditCard, FileText, BarChart3, Calculator, LineChart, Building } from "lucide-react";
+import { LayoutDashboard, TrendingUp, Home as HomeIcon, Shield, Settings, Lock, Bitcoin, Gem, ChevronsUpDown, CreditCard, FileText, BarChart3, Calculator, LineChart, Building, Landmark, Tag } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
@@ -27,9 +27,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const portfolioItems = [
-    { titleKey: "nav.savings", url: "/accounts", icon: Wallet, key: "savings" },
-    { titleKey: "nav.loans", url: "/loans", icon: CreditCard, key: "loans" },
-    { titleKey: "nav.insurance", url: "/insurance", icon: Shield, key: "insurance" },
     { titleKey: "nav.investments", url: "/stocks", icon: TrendingUp, key: "investments" },
     { titleKey: "nav.crypto", url: "/crypto", icon: Bitcoin, key: "crypto" },
     { titleKey: "nav.bonds", url: "/bonds", icon: FileText, key: "bonds" },
@@ -80,6 +77,43 @@ export function AppSidebar() {
                     </SidebarGroupContent>
                 </SidebarGroup>
 
+                {/* Financial Services Section */}
+                <SidebarGroup>
+                    <SidebarGroupLabel>{t('nav.financialServices')}</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip={t('nav.bankAccounts')} isActive={location === "/bank-accounts" || location.startsWith("/bank-accounts/")}>
+                                    <Link href="/bank-accounts">
+                                        <Landmark />
+                                        <span className="group-data-[collapsible=icon]:hidden">{t('nav.bankAccounts')}</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            {(user?.menuPreferences?.loans ?? true) && (
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton asChild tooltip={t('nav.loans')} isActive={location === "/loans" || location.startsWith("/loans/")}>
+                                        <Link href="/loans">
+                                            <CreditCard />
+                                            <span className="group-data-[collapsible=icon]:hidden">{t('nav.loans')}</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            )}
+                            {(user?.menuPreferences?.insurance ?? true) && (
+                                <SidebarMenuItem>
+                                    <SidebarMenuButton asChild tooltip={t('nav.insurance')} isActive={location === "/insurance" || location.startsWith("/insurance/")}>
+                                        <Link href="/insurance">
+                                            <Shield />
+                                            <span className="group-data-[collapsible=icon]:hidden">{t('nav.insurance')}</span>
+                                        </Link>
+                                    </SidebarMenuButton>
+                                </SidebarMenuItem>
+                            )}
+                        </SidebarMenu>
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
                 {/* Portfolio Section */}
                 <SidebarGroup>
                     <SidebarGroupLabel>{t('nav.portfolio')}</SidebarGroupLabel>
@@ -119,6 +153,14 @@ export function AppSidebar() {
                                     <Link href="/reports/projection">
                                         <LineChart />
                                         <span className="group-data-[collapsible=icon]:hidden">{t('nav.projection')}</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip={t('nav.stocksAnalysis')} isActive={location === "/reports/stocks-analysis"}>
+                                    <Link href="/reports/stocks-analysis">
+                                        <Tag />
+                                        <span className="group-data-[collapsible=icon]:hidden">{t('nav.stocksAnalysis')}</span>
                                     </Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>

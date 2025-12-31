@@ -1,0 +1,145 @@
+{
+  "title": "Bankovní účty",
+  "subtitle": "Správa bankovních účtů a transakcí",
+  "addAccount": "Přidat bankovní účet",
+  "editAccount": "Upravit bankovní účet",
+  "deleteAccount": "Smazat bankovní účet",
+  "table": {
+    "title": "Všechny účty"
+  },
+  
+  "detail": {
+    "accountInfo": "Informace o účtu"
+  },
+  
+  "form": {
+    "basicInfo": "Základní informace",
+    "accountDetails": "Detaily účtu",
+    "interestConfig": "Nastavení úroků",
+    "namePlaceholder": "např. Hlavní běžný účet",
+    "selectBank": "Vyberte banku...",
+    "searchBank": "Hledat banku...",
+    "noBankFound": "Banka nenalezena.",
+    "addNewBank": "Přidat novou banku...",
+    "addNewBankDesc": "Zadejte název banky, kterou chcete přidat.",
+    "bankName": "Název banky",
+    "bankNamePlaceholder": "např. Česká spořitelna",
+    "useZones": "Použít pásmové úroky",
+    "zonesHelp": "Zapněte, pokud vaše banka nabízí různé úrokové sazby pro různé výše zůstatku",
+    "zonesLabel": "Pásma úrokových sazeb",
+    "zonesDescription": "Definujte rozsahy zůstatků a jejich odpovídající úrokové sazby",
+    "apyHelp": "Roční procentní výnos"
+  },
+  "accounts": "Účty",
+  "transactions": "Transakce",
+  "categories": "Kategorie",
+  
+  "accountTypes": {
+    "checking": "Běžný účet",
+    "savings": "Spořicí účet",
+    "credit_card": "Kreditní karta",
+    "investment": "Investiční účet"
+  },
+  
+  "fields": {
+    "name": "Název účtu",
+    "accountType": "Typ účtu",
+    "balance": "Zůstatek",
+    "currency": "Měna",
+    "institution": "Banka/Instituce",
+    "iban": "IBAN",
+    "bban": "Číslo účtu",
+    "interestRate": "Úroková sazba",
+    "interestType": "Typ úročení",
+    "excludeFromBalance": "Vyloučit z portfolia",
+    "excludeFromBalanceHint": "Zapněte pro provozní účty, kde zůstatek není relevantní pro sledování"
+  },
+  
+  "interestType": {
+    "simple": "Jednoduché",
+    "zoned": "Pásmové"
+  },
+  
+  "transaction": {
+    "add": "Přidat transakci",
+    "date": "Datum",
+    "amount": "Částka",
+    "type": "Typ",
+    "description": "Popis",
+    "counterparty": "Protistrana",
+    "category": "Kategorie",
+    "credit": "Příjem",
+    "debit": "Výdaj",
+    "variableSymbol": "Variabilní symbol"
+  },
+  
+  "metrics": {
+    "totalBalance": "Celkový zůstatek",
+    "savingsBalance": "Spořicí účty",
+    "checkingBalance": "Běžné účty",
+    "accountCount": "Počet účtů",
+    "averageInterestRate": "Průměrná úroková sazba",
+    "expectedYearlyInterest": "Očekávaný roční úrok",
+    "weightedAverage": "Vážený průměr podle zůstatku"
+  },
+  
+  "messages": {
+    "accountCreated": "Účet vytvořen",
+    "accountCreatedDesc": "Bankovní účet byl úspěšně vytvořen.",
+    "accountUpdated": "Účet aktualizován",
+    "accountUpdatedDesc": "Bankovní účet byl úspěšně aktualizován.",
+    "accountDeleted": "Účet smazán",
+    "accountDeletedDesc": "Bankovní účet byl smazán.",
+    "transactionCreated": "Transakce vytvořena",
+    "transactionDeleted": "Transakce smazána",
+    "categoryCreated": "Kategorie vytvořena",
+    "categoryDeleted": "Kategorie smazána",
+    "ruleCreated": "Pravidlo vytvořeno",
+    "ruleDeleted": "Pravidlo smazáno",
+    "error": "Chyba",
+    "confirmDelete": "Opravdu chcete smazat tento účet? Tím se smažou i všechny transakce."
+  },
+  
+  "empty": {
+    "title": "Zatím nemáte žádné bankovní účty",
+    "description": "Přidejte svůj první bankovní účet a začněte sledovat své finance."
+  },
+
+  "csvImport": {
+    "button": "Import CSV",
+    "title": "Import transakcí z CSV",
+    "selectFile": "Vyberte CSV soubor exportovaný z vaší banky",
+    "mapColumns": "Namapujte sloupce CSV na pole transakcí",
+    "importing": "Importuji transakce...",
+    "complete": "Import dokončen!",
+    "clickToSelect": "Klikněte pro výběr CSV souboru",
+    "presetDetected": "Rozpoznán preset pro tuto banku",
+    "autoDetect": "Záhlaví sloupců budou automaticky rozpoznána",
+    "rows": "řádků",
+    "dateColumn": "Sloupec datum",
+    "dateFormat": "Formát data",
+    "amountColumn": "Sloupec částka",
+    "descriptionColumn": "Sloupec popis",
+    "counterpartyColumn": "Sloupec protistrana",
+    "variableSymbol": "Variabilní symbol (VS)",
+    "selectColumn": "Vyberte sloupec",
+    "optional": "Volitelné",
+    "processing": "Zpracovávám transakce...",
+    "success": "Import dokončen!",
+    "imported": "Importováno",
+    "duplicates": "Přeskočeno duplicit",
+    "errors": "Chyby",
+    "importButton": "Importovat transakce"
+  },
+
+  "zones": {
+    "title": "Úrokové pásma",
+    "fromAmount": "Od částky",
+    "toAmount": "Do částky",
+    "interestRate": "Úroková sazba",
+    "effective": "efektivní",
+    "effectiveRate": "Efektivní sazba",
+    "active": "Aktivní",
+    "noZones": "Nejsou nakonfigurována žádná úroková pásma"
+  }
+}

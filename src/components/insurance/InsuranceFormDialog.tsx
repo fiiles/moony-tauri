@@ -30,7 +30,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Shield, Wallet, Info } from "lucide-react";
 import { useCurrency, currencies } from "@/lib/currency";
 import { insuranceApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
@@ -183,8 +183,9 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
                         {/* Basic Information Section */}
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Shield />
                                 {t('modal.basicInfo')}
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -281,8 +282,9 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                         </div>
 
                         {/* Payment Details Section */}
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Wallet />
                                 {t('modal.paymentDetails')}
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -431,8 +433,9 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                         </div>
 
                         {/* Additional Information Section */}
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Info />
                                 {t('modal.additionalInfo')}
                             </h3>
 

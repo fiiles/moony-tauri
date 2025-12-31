@@ -3,6 +3,8 @@
         "dashboard": "Přehled",
         "platform": "Platforma",
         "portfolio": "Portfolio",
+        "financialServices": "Finanční služby",
+        "bankAccounts": "Bankovní účty",
         "reports": "Reporty",
         "cashflow": "Cashflow",
         "projection": "Projekce",
@@ -18,7 +20,8 @@
         "lockApp": "Zamknout aplikaci",
         "calculators": "Kalkulačky",
         "annuityCalculator": "Anuitní kalkulačka",
-        "estateCalculator": "Nemovitostní kalkulačka"
+        "estateCalculator": "Nemovitostní kalkulačka",
+        "stocksAnalysis": "Analýza akcií"
     },
     "app": {
         "name": "Moony",
@@ -49,7 +52,9 @@
         "sell": "Prodat",
         "updatePrice": "Ručně aktualizovat cenu",
         "updateDividend": "Aktualizovat odhad dividendy",
-        "addNew": "Přidat nový"
+        "addNew": "Přidat nový",
+        "create": "Vytvořit",
+        "clearAll": "Vymazat vše"
     },
     "labels": {
         "name": "Jméno",

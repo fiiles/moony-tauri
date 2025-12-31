@@ -31,7 +31,7 @@ import {
 import { cryptoApi, priceApi, type CoinGeckoSearchResult } from "@/lib/tauri-api";
 import { CURRENCIES } from "@shared/currencies";
 import { useState } from "react";
-import { Plus, Search, Loader2 } from "lucide-react";
+import { Plus, Search, Loader2, Bitcoin, Coins } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -173,8 +173,9 @@ export function AddCryptoModal() {
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Bitcoin />
                                 {t('modal.add.cryptoDetails')}
                             </h3>
                             <div className="grid gap-4">
@@ -225,8 +226,9 @@ export function AddCryptoModal() {
                             </div>
                         </div>
 
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="form-section-accent">
+                            <h3 className="form-section-header-icon">
+                                <Coins />
                                 {t('modal.add.purchaseDetails')}
                             </h3>
                             <div className="grid gap-4">
@@ -238,7 +240,18 @@ export function AddCryptoModal() {
                                             <FormItem>
                                                 <FormLabel>{t('modal.add.pricePerUnit')} *</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" step="0.00000001" {...field} />
+                                                    <Input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        {...field} 
+                                                        onBlur={(e) => {
+                                                            const value = parseFloat(e.target.value);
+                                                            if (!isNaN(value)) {
+                                                                field.onChange(value.toFixed(2));
+                                                            }
+                                                            field.onBlur();
+                                                        }}
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

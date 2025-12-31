@@ -8,7 +8,7 @@ use crate::models::{
     InvestmentTransaction, StockInvestment, StockPriceOverride,
 };
 use crate::services::currency::convert_to_czk;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
 /// Get all investments with enriched price data
@@ -171,12 +171,14 @@ fn enrich_investment(
 #[tauri::command]
 pub async fn create_investment(
     db: State<'_, Database>,
+    app: AppHandle,
     data: InsertStockInvestment,
     initial_transaction: Option<InsertInvestmentTransaction>,
 ) -> Result<StockInvestment> {
     let ticker = data.ticker.to_uppercase();
+    let initial_transaction_clone = initial_transaction.clone();
 
-    db.with_conn(|conn| {
+    let inv_result = db.with_conn(move |conn| {
         // Check if investment already exists
         let existing: Option<String> = conn.query_row(
             "SELECT id FROM stock_investments WHERE ticker = ?1",
@@ -200,7 +202,7 @@ pub async fn create_investment(
         };
 
         // Create initial transaction if provided
-        if let Some(tx) = initial_transaction {
+        if let Some(tx) = initial_transaction_clone {
             let tx_id = Uuid::new_v4().to_string();
             let now = chrono::Utc::now().timestamp();
 
@@ -240,19 +242,79 @@ pub async fn create_investment(
         )?;
 
         Ok(inv)
-    })
+    });
+
+    // We need to resolve the Result from db.with_conn
+    let inv = match inv_result {
+        Ok(i) => i,
+        Err(e) => return Err(e),
+    };
+
+    // Update portfolio snapshot
+    portfolio::update_todays_snapshot(&db).await.ok();
+
+    // Trigger historical recalculation if there was an initial transaction
+    if let Some(tx) = initial_transaction {
+        portfolio::trigger_historical_recalculation_for_asset(
+            &db,
+            tx.transaction_date,
+            portfolio::AssetType::Stocks,
+        )
+        .await
+        .ok();
+
+        app.emit("recalculation-complete", ()).ok();
+    }
+
+    Ok(inv)
 }
 
 /// Delete investment
 #[tauri::command]
-pub async fn delete_investment(db: State<'_, Database>, id: String) -> Result<()> {
+pub async fn delete_investment(db: State<'_, Database>, app: AppHandle, id: String) -> Result<()> {
+    // Get earliest transaction date before deleting (for historical recalc)
+    let earliest_tx_date: Option<i64> = db.with_conn(|conn| {
+        Ok(conn
+            .query_row(
+                "SELECT MIN(transaction_date) FROM investment_transactions WHERE investment_id = ?1",
+                [&id],
+                |row| row.get(0),
+            )
+            .ok()
+            .flatten())
+    })?;
+
     db.with_conn(|conn| {
+        // Delete transactions first (due to foreign key)
+        conn.execute(
+            "DELETE FROM investment_transactions WHERE investment_id = ?1",
+            [&id],
+        )?;
+
         let changes = conn.execute("DELETE FROM stock_investments WHERE id = ?1", [&id])?;
         if changes == 0 {
             return Err(AppError::NotFound("Investment not found".into()));
         }
         Ok(())
-    })
+    })?;
+
+    // Update portfolio snapshot
+    portfolio::update_todays_snapshot(&db).await.ok();
+
+    // Trigger historical recalculation if there were transactions
+    if let Some(tx_date) = earliest_tx_date {
+        portfolio::trigger_historical_recalculation_for_asset(
+            &db,
+            tx_date,
+            portfolio::AssetType::Stocks,
+        )
+        .await
+        .ok();
+
+        app.emit("recalculation-complete", ()).ok();
+    }
+
+    Ok(())
 }
 
 /// Get transactions for investment
@@ -291,10 +353,46 @@ pub async fn get_investment_transactions(
     })
 }
 
+/// Get all stock transactions across all investments
+#[tauri::command]
+pub async fn get_all_stock_transactions(
+    db: State<'_, Database>,
+) -> Result<Vec<InvestmentTransaction>> {
+    db.with_conn(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT id, investment_id, type, ticker, company_name, quantity, price_per_unit,
+                    currency, transaction_date, created_at
+             FROM investment_transactions
+             ORDER BY transaction_date DESC",
+        )?;
+
+        let txs = stmt
+            .query_map([], |row| {
+                Ok(InvestmentTransaction {
+                    id: row.get(0)?,
+                    investment_id: row.get(1)?,
+                    tx_type: row.get(2)?,
+                    ticker: row.get(3)?,
+                    company_name: row.get(4)?,
+                    quantity: row.get(5)?,
+                    price_per_unit: row.get(6)?,
+                    currency: row.get(7)?,
+                    transaction_date: row.get(8)?,
+                    created_at: row.get(9)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(txs)
+    })
+}
+
 /// Create transaction
 #[tauri::command]
 pub async fn create_investment_transaction(
     db: State<'_, Database>,
+    app: AppHandle,
     investment_id: String,
     data: InsertInvestmentTransaction,
 ) -> Result<InvestmentTransaction> {
@@ -339,12 +437,38 @@ pub async fn create_investment_transaction(
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
 
+    // Trigger historical recalculation if transaction is retrospective
+    portfolio::trigger_historical_recalculation_for_asset(
+        &db,
+        result.transaction_date,
+        portfolio::AssetType::Stocks,
+    )
+    .await
+    .ok();
+
+    app.emit("recalculation-complete", ()).ok();
+
     Ok(result)
 }
 
 /// Delete transaction
 #[tauri::command]
-pub async fn delete_investment_transaction(db: State<'_, Database>, tx_id: String) -> Result<()> {
+pub async fn delete_investment_transaction(
+    db: State<'_, Database>,
+    app: AppHandle,
+    tx_id: String,
+) -> Result<()> {
+    // Get transaction date before deleting (for historical recalc)
+    let tx_date: Option<i64> = db.with_conn(|conn| {
+        Ok(conn
+            .query_row(
+                "SELECT transaction_date FROM investment_transactions WHERE id = ?1",
+                [&tx_id],
+                |row| row.get(0),
+            )
+            .ok())
+    })?;
+
     db.with_conn(|conn| {
         // Get investment_id before deleting
         let investment_id: String = conn.query_row(
@@ -382,6 +506,19 @@ pub async fn delete_investment_transaction(db: State<'_, Database>, tx_id: Strin
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
 
+    // Trigger historical recalculation if transaction was historical
+    if let Some(date) = tx_date {
+        portfolio::trigger_historical_recalculation_for_asset(
+            &db,
+            date,
+            portfolio::AssetType::Stocks,
+        )
+        .await
+        .ok();
+
+        app.emit("recalculation-complete", ()).ok();
+    }
+
     Ok(())
 }
 
@@ -389,6 +526,7 @@ pub async fn delete_investment_transaction(db: State<'_, Database>, tx_id: Strin
 #[tauri::command]
 pub async fn update_investment_transaction(
     db: State<'_, Database>,
+    app: AppHandle,
     tx_id: String,
     data: InsertInvestmentTransaction,
 ) -> Result<InvestmentTransaction> {
@@ -444,6 +582,17 @@ pub async fn update_investment_transaction(
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
 
+    // Trigger historical recalculation if transaction date is retrospective
+    portfolio::trigger_historical_recalculation_for_asset(
+        &db,
+        result.transaction_date,
+        portfolio::AssetType::Stocks,
+    )
+    .await
+    .ok();
+
+    app.emit("recalculation-complete", ()).ok();
+
     Ok(result)
 }
 
@@ -451,6 +600,7 @@ pub async fn update_investment_transaction(
 #[tauri::command]
 pub async fn import_investment_transactions(
     db: State<'_, Database>,
+    app: AppHandle,
     transactions: Vec<serde_json::Value>,
     default_currency: String,
 ) -> Result<serde_json::Value> {
@@ -479,6 +629,8 @@ pub async fn import_investment_transactions(
 
     // Update portfolio snapshot after all imports
     portfolio::update_todays_snapshot(&db).await.ok();
+
+    app.emit("recalculation-complete", ()).ok();
 
     // Return result structure
     Ok(serde_json::json!({

@@ -7,18 +7,23 @@ import { InvestmentsSummary } from "@/components/stocks/InvestmentsSummary";
 import { InvestmentsTable } from "@/components/stocks/InvestmentsTable";
 import { investmentsApi, priceApi, exportApi } from "@/lib/tauri-api";
 import type { StockInvestmentWithPrice } from "@shared/types";
+import type { InvestmentTransaction } from "@shared/schema";
 import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from "@/utils/stocks";
-import PortfolioValueTrendChart from "@/components/common/PortfolioValueTrendChart";
+import PortfolioValueTrendChart, { type TransactionMarker } from "@/components/common/PortfolioValueTrendChart";
 import { ExportButton } from "@/components/common/ExportButton";
 import { ImportInvestmentsModal } from "@/components/stocks/ImportInvestmentsModal";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { useMemo } from "react";
+import { useCurrency } from "@/lib/currency";
+import type { CurrencyCode } from "@shared/currencies";
 
 export default function Stocks() {
   const { t } = useTranslation('stocks');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { convert } = useCurrency();
 
   const { data: investments, isLoading } = useQuery<StockInvestmentWithPrice[]>({
     queryKey: ["investments"],
@@ -26,6 +31,52 @@ export default function Stocks() {
     refetchOnMount: true,
     staleTime: 60 * 1000,
   });
+
+  // Fetch all stock transactions for chart markers
+  const { data: allTransactions } = useQuery<InvestmentTransaction[]>({
+    queryKey: ["all-stock-transactions"],
+    queryFn: () => investmentsApi.getAllTransactions(),
+    staleTime: 60 * 1000,
+  });
+
+  // Compute transaction markers grouped by date
+  const transactionMarkers = useMemo((): TransactionMarker[] => {
+    if (!allTransactions || allTransactions.length === 0) return [];
+
+    // Group transactions by date (day granularity)
+    const markersByDate = new Map<number, { buyAmount: number; sellAmount: number }>();
+
+    for (const tx of allTransactions) {
+      // Normalize to start of day (in user's timezone)
+      const txDate = new Date(tx.transactionDate * 1000);
+      const dayStart = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime() / 1000;
+
+      const existing = markersByDate.get(dayStart) || { buyAmount: 0, sellAmount: 0 };
+      
+      // Calculate total value in CZK (base currency)
+      const quantity = parseFloat(tx.quantity) || 0;
+      const pricePerUnit = parseFloat(tx.pricePerUnit) || 0;
+      const txCurrency = (tx.currency || "CZK") as CurrencyCode;
+      
+      // Convert to CZK for consistency
+      const totalInCzk = convert(quantity * pricePerUnit, txCurrency, "CZK");
+
+      if (tx.type === "buy") {
+        existing.buyAmount += totalInCzk;
+      } else if (tx.type === "sell") {
+        existing.sellAmount += totalInCzk;
+      }
+
+      markersByDate.set(dayStart, existing);
+    }
+
+    // Convert map to array of TransactionMarker
+    return Array.from(markersByDate.entries()).map(([date, amounts]) => ({
+      date,
+      buyAmount: amounts.buyAmount,
+      sellAmount: amounts.sellAmount,
+    }));
+  }, [allTransactions, convert]);
 
   // Refresh prices and dividends mutation - uses Yahoo Finance API
   const refreshPricesMutation = useMutation({
@@ -139,6 +190,7 @@ export default function Stocks() {
         type="investments"
         currentValue={metrics.totalValue}
         isRefreshing={refreshPricesMutation.isPending}
+        transactionMarkers={transactionMarkers}
       />
 
       <InvestmentsTable

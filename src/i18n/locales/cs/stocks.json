@@ -131,7 +131,9 @@
         "searchFailed": "Hledání selhalo"
     },
     "chart": {
-        "title": "Vývoj hodnoty akcií"
+        "title": "Vývoj hodnoty akcií",
+        "bought": "Nakoupeno",
+        "sold": "Prodáno"
     },
     "detail": {
         "backToList": "Zpět na akcie",

@@ -69,7 +69,7 @@ export function UpdateCryptoPriceModal({
     useEffect(() => {
         if (investment && open) {
             // Use originalPrice (in source currency) for prefill, not currentPrice (which is converted to CZK)
-            const priceToShow = investment.originalPrice ?? investment.currentPrice;
+            const priceToShow = Number(investment.originalPrice ?? investment.currentPrice);
             form.reset({
                 price: priceToShow ? Math.round(priceToShow).toString() : "",
                 currency: investment.currency || "USD",

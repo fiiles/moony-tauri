@@ -49,9 +49,11 @@ fn calculate_portfolio_metrics(
     exclude_personal_real_estate: bool,
 ) -> Result<PortfolioMetrics> {
     db.with_conn(|conn| {
-        // Calculate total savings
-        let mut savings_stmt = conn.prepare("SELECT balance, currency FROM savings_accounts")?;
-        let total_savings: f64 = savings_stmt
+        // Calculate total savings from bank_accounts (only those included in portfolio)
+        let mut bank_stmt = conn.prepare(
+            "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
+        )?;
+        let total_savings: f64 = bank_stmt
             .query_map([], |row| {
                 let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
                 let currency: String = row.get(1)?;
@@ -465,9 +467,11 @@ fn calculate_metrics_for_day(
     use crate::services::currency::convert_to_czk;
 
     db.with_conn(|conn| {
-        // Calculate total savings (same as current - static values)
-        let mut savings_stmt = conn.prepare("SELECT balance, currency FROM savings_accounts")?;
-        let total_savings: f64 = savings_stmt
+        // Calculate total savings from bank_accounts (only those included in portfolio)
+        let mut bank_stmt = conn.prepare(
+            "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
+        )?;
+        let total_savings: f64 = bank_stmt
             .query_map([], |row| {
                 let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
                 let currency: String = row.get(1)?;
@@ -794,4 +798,660 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
 #[tauri::command]
 pub async fn start_snapshot_backfill(db: State<'_, Database>) -> Result<BackfillResult> {
     backfill_missing_snapshots(&db).await
+}
+
+// ============================================================================
+// Historical Recalculation for Retrospective Transactions
+// ============================================================================
+
+/// Calculate stock quantity at a specific point in time by summing transactions
+fn get_stock_quantity_at_date(
+    conn: &rusqlite::Connection,
+    ticker: &str,
+    date_timestamp: i64,
+) -> f64 {
+    let result: rusqlite::Result<f64> = conn.query_row(
+        "SELECT COALESCE(
+            SUM(CASE WHEN type = 'buy' THEN CAST(quantity AS REAL) ELSE -CAST(quantity AS REAL) END),
+            0.0
+        ) FROM investment_transactions 
+        WHERE ticker = ?1 AND transaction_date <= ?2",
+        rusqlite::params![ticker, date_timestamp],
+        |row| row.get(0),
+    );
+    result.unwrap_or(0.0).max(0.0)
+}
+
+/// Calculate crypto quantity at a specific point in time by summing transactions
+fn get_crypto_quantity_at_date(
+    conn: &rusqlite::Connection,
+    ticker: &str,
+    date_timestamp: i64,
+) -> f64 {
+    let result: rusqlite::Result<f64> = conn.query_row(
+        "SELECT COALESCE(
+            SUM(CASE WHEN type = 'buy' THEN CAST(quantity AS REAL) ELSE -CAST(quantity AS REAL) END),
+            0.0
+        ) FROM crypto_transactions 
+        WHERE ticker = ?1 AND transaction_date <= ?2",
+        rusqlite::params![ticker, date_timestamp],
+        |row| row.get(0),
+    );
+    result.unwrap_or(0.0).max(0.0)
+}
+
+/// Calculate other asset quantity at a specific point in time by summing transactions
+fn get_other_asset_quantity_at_date(
+    conn: &rusqlite::Connection,
+    asset_id: &str,
+    date_timestamp: i64,
+) -> f64 {
+    let result: rusqlite::Result<f64> = conn.query_row(
+        "SELECT COALESCE(
+            SUM(CASE WHEN type = 'buy' THEN CAST(quantity AS REAL) ELSE -CAST(quantity AS REAL) END),
+            0.0
+        ) FROM other_asset_transactions 
+        WHERE asset_id = ?1 AND transaction_date <= ?2",
+        rusqlite::params![asset_id, date_timestamp],
+        |row| row.get(0),
+    );
+    result.unwrap_or(0.0).max(0.0)
+}
+
+/// Calculate portfolio metrics for a specific day using historical quantities
+fn calculate_metrics_for_day_historical(
+    db: &Database,
+    day_timestamp: i64,
+    stock_prices: &HashMap<String, Vec<HistoricalPrice>>,
+    crypto_prices: &HashMap<String, Vec<HistoricalPrice>>,
+) -> Result<PortfolioMetrics> {
+    use crate::services::currency::convert_to_czk;
+
+    db.with_conn(|conn| {
+        // Calculate total savings from bank_accounts (current values - static)
+        let mut bank_stmt = conn.prepare(
+            "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
+        )?;
+        let total_savings: f64 = bank_stmt
+            .query_map([], |row| {
+                let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                let currency: String = row.get(1)?;
+                Ok(convert_to_czk(balance, &currency))
+            })?
+            .filter_map(|r| r.ok())
+            .sum();
+
+        // Calculate total bonds (static values)
+        let mut bonds_stmt = conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
+        let total_bonds: f64 = bonds_stmt
+            .query_map([], |row| {
+                let value: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                let quantity: f64 = row.get::<_, String>(1)?.parse().unwrap_or(1.0);
+                let currency: String = row.get(2)?;
+                Ok(convert_to_czk(value * quantity, &currency))
+            })?
+            .filter_map(|r| r.ok())
+            .sum();
+
+        // Calculate total loans (static values)
+        let mut loans_stmt = conn.prepare("SELECT principal, currency FROM loans")?;
+        let total_liabilities: f64 = loans_stmt
+            .query_map([], |row| {
+                let principal: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                let currency: String = row.get(1)?;
+                Ok(convert_to_czk(principal, &currency))
+            })?
+            .filter_map(|r| r.ok())
+            .sum();
+
+        // Calculate real estate (static values)
+        let mut re_stmt =
+            conn.prepare("SELECT type, market_price, market_price_currency FROM real_estate")?;
+        let mut total_re_personal = 0.0;
+        let mut total_re_investment = 0.0;
+
+        let re_rows = re_stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })?;
+
+        for row in re_rows.filter_map(|r| r.ok()) {
+            let price: f64 = row.1.parse().unwrap_or(0.0);
+            let price_czk = convert_to_czk(price, &row.2);
+            if row.0 == "personal" {
+                total_re_personal += price_czk;
+            } else {
+                total_re_investment += price_czk;
+            }
+        }
+
+        // Calculate other assets using HISTORICAL quantities
+        let mut other_stmt = conn.prepare("SELECT id, market_price, currency FROM other_assets")?;
+        let mut total_other_assets = 0.0;
+        let other_rows: Vec<(String, f64, String)> = other_stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?.parse().unwrap_or(0.0),
+                    row.get::<_, String>(2)?,
+                ))
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        for (asset_id, price, currency) in other_rows {
+            let qty = get_other_asset_quantity_at_date(conn, &asset_id, day_timestamp);
+            total_other_assets += convert_to_czk(qty * price, &currency);
+        }
+
+        // Calculate investments using HISTORICAL quantities and prices
+        let mut total_investments = 0.0;
+        let mut inv_stmt = conn.prepare("SELECT DISTINCT ticker FROM stock_investments")?;
+        let tickers: Vec<String> = inv_stmt
+            .query_map([], |row| row.get(0))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        for ticker in tickers {
+            let qty = get_stock_quantity_at_date(conn, &ticker, day_timestamp);
+            if qty > 0.0 {
+                if let Some(prices) = stock_prices.get(&ticker) {
+                    if let Some(price) = find_closest_price(prices, day_timestamp) {
+                        let value_in_czk = convert_to_czk(price.price * qty, &price.currency);
+                        total_investments += value_in_czk;
+                    }
+                }
+            }
+        }
+
+        // Calculate crypto using HISTORICAL quantities and prices
+        let mut total_crypto = 0.0;
+        let mut crypto_stmt = conn.prepare("SELECT DISTINCT ticker FROM crypto_investments")?;
+        let crypto_tickers: Vec<String> = crypto_stmt
+            .query_map([], |row| row.get(0))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        for ticker in crypto_tickers {
+            let qty = get_crypto_quantity_at_date(conn, &ticker, day_timestamp);
+            if qty > 0.0 {
+                if let Some(prices) = crypto_prices.get(&ticker) {
+                    if let Some(price) = find_closest_price(prices, day_timestamp) {
+                        let value_in_czk = convert_to_czk(price.price * qty, &price.currency);
+                        total_crypto += value_in_czk;
+                    }
+                }
+            }
+        }
+
+        // Calculate totals
+        let total_real_estate = total_re_personal + total_re_investment;
+        let total_assets = total_savings
+            + total_investments
+            + total_crypto
+            + total_bonds
+            + total_real_estate
+            + total_other_assets;
+        let net_worth = total_assets - total_liabilities;
+
+        Ok(PortfolioMetrics {
+            total_savings,
+            total_investments,
+            total_crypto,
+            total_bonds,
+            total_real_estate_personal: total_re_personal,
+            total_real_estate_investment: total_re_investment,
+            total_real_estate,
+            total_other_assets,
+            total_liabilities,
+            total_assets,
+            net_worth,
+        })
+    })
+}
+
+/// Update or insert a snapshot for a specific day
+fn update_or_insert_snapshot(
+    db: &Database,
+    metrics: &PortfolioMetrics,
+    day_timestamp: i64,
+) -> Result<()> {
+    db.with_conn(|conn| {
+        // Normalize to start of day
+        let day_start = (day_timestamp / 86400) * 86400;
+        let day_end = day_start + 86399;
+
+        // Check if snapshot exists for this day
+        let existing_id: Option<String> = conn
+            .query_row(
+                "SELECT id FROM portfolio_metrics_history WHERE recorded_at >= ?1 AND recorded_at <= ?2 LIMIT 1",
+                [day_start, day_end],
+                |row| row.get(0),
+            )
+            .ok();
+
+        if let Some(id) = existing_id {
+            // Update existing snapshot
+            conn.execute(
+                "UPDATE portfolio_metrics_history
+                 SET total_savings = ?2, total_loans_principal = ?3, total_investments = ?4,
+                     total_crypto = ?5, total_bonds = ?6, total_real_estate_personal = ?7,
+                     total_real_estate_investment = ?8, total_other_assets = ?9
+                 WHERE id = ?1",
+                rusqlite::params![
+                    id,
+                    metrics.total_savings.to_string(),
+                    metrics.total_liabilities.to_string(),
+                    metrics.total_investments.to_string(),
+                    metrics.total_crypto.to_string(),
+                    metrics.total_bonds.to_string(),
+                    metrics.total_real_estate_personal.to_string(),
+                    metrics.total_real_estate_investment.to_string(),
+                    metrics.total_other_assets.to_string(),
+                ],
+            )?;
+        } else {
+            // Insert new snapshot
+            let id = Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO portfolio_metrics_history
+                 (id, total_savings, total_loans_principal, total_investments, total_crypto,
+                  total_bonds, total_real_estate_personal, total_real_estate_investment, total_other_assets, recorded_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                rusqlite::params![
+                    id,
+                    metrics.total_savings.to_string(),
+                    metrics.total_liabilities.to_string(),
+                    metrics.total_investments.to_string(),
+                    metrics.total_crypto.to_string(),
+                    metrics.total_bonds.to_string(),
+                    metrics.total_real_estate_personal.to_string(),
+                    metrics.total_real_estate_investment.to_string(),
+                    metrics.total_other_assets.to_string(),
+                    day_start,
+                ],
+            )?;
+        }
+        Ok(())
+    })
+}
+
+/// Recalculate portfolio history from a given date
+/// This is called when a retrospective transaction is created/deleted
+pub async fn recalculate_history_from_date(db: &Database, from_timestamp: i64) -> Result<()> {
+    println!(
+        "[RECALC] Starting historical recalculation from timestamp {}",
+        from_timestamp
+    );
+
+    // Get the oldest snapshot date
+    let (min_date, _, _) = get_snapshot_date_info(db)?;
+
+    let oldest_snapshot = match min_date {
+        Some(date) => (date / 86400) * 86400,
+        None => {
+            println!("[RECALC] No existing snapshots, nothing to recalculate");
+            return Ok(());
+        }
+    };
+
+    // Start recalculation from the later of: from_timestamp or oldest_snapshot
+    let from_day = (from_timestamp / 86400) * 86400;
+    let recalc_start = from_day.max(oldest_snapshot);
+
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+
+    // Build list of days to recalculate
+    let mut days_to_recalc: Vec<i64> = Vec::new();
+    let mut check_day = recalc_start;
+    while check_day <= today_start {
+        days_to_recalc.push(check_day);
+        check_day += 86400;
+    }
+
+    if days_to_recalc.is_empty() {
+        println!("[RECALC] No days to recalculate");
+        return Ok(());
+    }
+
+    println!(
+        "[RECALC] Recalculating {} days from {} to {}",
+        days_to_recalc.len(),
+        recalc_start,
+        today_start
+    );
+
+    // Get tickers for fetching historical prices
+    let stock_tickers = get_stock_tickers(db)?;
+    let crypto_id_map = get_crypto_id_map(db)?;
+
+    // Fetch historical prices for the date range
+    let fetch_start = recalc_start;
+    let fetch_end = today_start;
+
+    let stock_prices = if !stock_tickers.is_empty() {
+        get_historical_stock_prices_yahoo(&stock_tickers, fetch_start, fetch_end).await?
+    } else {
+        HashMap::new()
+    };
+
+    let api_keys = get_api_keys(db)?;
+    let crypto_prices = if !crypto_id_map.is_empty() {
+        get_historical_crypto_prices_coingecko(
+            api_keys.coingecko.as_deref(),
+            &crypto_id_map,
+            fetch_start,
+            fetch_end,
+        )
+        .await?
+    } else {
+        HashMap::new()
+    };
+
+    // Recalculate each day
+    let mut days_processed = 0;
+    for day_timestamp in days_to_recalc {
+        let metrics =
+            calculate_metrics_for_day_historical(db, day_timestamp, &stock_prices, &crypto_prices)?;
+
+        update_or_insert_snapshot(db, &metrics, day_timestamp)?;
+        days_processed += 1;
+    }
+
+    println!(
+        "[RECALC] Historical recalculation complete! Recalculated {} snapshots",
+        days_processed
+    );
+
+    Ok(())
+}
+
+/// Asset type for targeted recalculation
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AssetType {
+    Stocks,
+    Crypto,
+    OtherAssets,
+    Savings,
+}
+
+/// Calculate historical value for a specific asset type on a given day
+/// Calculate historical value for a specific asset type on a given day
+fn calculate_asset_value_for_day(
+    db: &Database,
+    day_timestamp: i64,
+    asset_type: AssetType,
+    stock_prices: Option<&HashMap<String, Vec<HistoricalPrice>>>,
+    crypto_prices: Option<&HashMap<String, Vec<HistoricalPrice>>>,
+) -> Result<f64> {
+    use crate::services::currency::convert_to_czk;
+
+    match asset_type {
+        AssetType::Stocks => {
+            let empty_map = HashMap::new();
+            let prices_map = stock_prices.unwrap_or(&empty_map);
+            let stock_tickers = get_stock_tickers(db)?;
+
+            db.with_conn(move |conn| {
+                let mut total = 0.0;
+                for ticker in &stock_tickers {
+                    let qty = get_stock_quantity_at_date(conn, ticker, day_timestamp);
+                    if qty > 0.0 {
+                        if let Some(prices) = prices_map.get(ticker) {
+                            if let Some(price) = find_closest_price(prices, day_timestamp) {
+                                total += convert_to_czk(price.price * qty, &price.currency);
+                            }
+                        }
+                    }
+                }
+                Ok(total)
+            })
+        }
+        AssetType::Crypto => {
+            let empty_map = HashMap::new();
+            let prices_map = crypto_prices.unwrap_or(&empty_map);
+
+            db.with_conn(move |conn| {
+                let mut total = 0.0;
+                let mut stmt = conn.prepare("SELECT DISTINCT ticker FROM crypto_investments")?;
+                let crypto_tickers: Vec<String> = stmt
+                    .query_map([], |row| row.get(0))?
+                    .filter_map(|r| r.ok())
+                    .collect();
+
+                for ticker in crypto_tickers {
+                    let qty = get_crypto_quantity_at_date(conn, &ticker, day_timestamp);
+                    if qty > 0.0 {
+                        if let Some(prices) = prices_map.get(&ticker) {
+                            if let Some(price) = find_closest_price(prices, day_timestamp) {
+                                total += convert_to_czk(price.price * qty, &price.currency);
+                            }
+                        }
+                    }
+                }
+                Ok(total)
+            })
+        }
+        AssetType::OtherAssets => db.with_conn(|conn| {
+            let mut stmt = conn.prepare("SELECT id, market_price, currency FROM other_assets")?;
+            let mut total = 0.0;
+            let rows: Vec<(String, f64, String)> = stmt
+                .query_map([], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?.parse().unwrap_or(0.0),
+                        row.get::<_, String>(2)?,
+                    ))
+                })?
+                .filter_map(|r| r.ok())
+                .collect();
+
+            for (asset_id, price, currency) in rows {
+                let qty = get_other_asset_quantity_at_date(conn, &asset_id, day_timestamp);
+                total += convert_to_czk(qty * price, &currency);
+            }
+            Ok(total)
+        }),
+        AssetType::Savings => db.with_conn(|conn| {
+            // Calculate total savings from bank_accounts (current values - static for now)
+            let mut bank_stmt = conn.prepare(
+                "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
+            )?;
+            let total_savings: f64 = bank_stmt
+                .query_map([], |row| {
+                    let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                    let currency: String = row.get(1)?;
+                    Ok(convert_to_czk(balance, &currency))
+                })?
+                .filter_map(|r| r.ok())
+                .sum();
+            Ok(total_savings)
+        }),
+    }
+}
+
+/// Update only a specific asset column in portfolio_metrics_history
+fn update_asset_column_for_day(
+    db: &Database,
+    day_timestamp: i64,
+    asset_type: AssetType,
+    value: f64,
+) -> Result<()> {
+    db.with_conn(|conn| {
+        let day_start = (day_timestamp / 86400) * 86400;
+        let day_end = day_start + 86399;
+
+        let column_name = match asset_type {
+            AssetType::Stocks => "total_investments",
+            AssetType::Crypto => "total_crypto",
+            AssetType::OtherAssets => "total_other_assets",
+            AssetType::Savings => "total_savings",
+        };
+
+        // Check if snapshot exists for this day
+        let existing: bool = conn
+            .query_row(
+                "SELECT 1 FROM portfolio_metrics_history WHERE recorded_at >= ?1 AND recorded_at <= ?2 LIMIT 1",
+                [day_start, day_end],
+                |_| Ok(true),
+            )
+            .unwrap_or(false);
+
+        if existing {
+            // Update only the specific column
+            let sql = format!(
+                "UPDATE portfolio_metrics_history SET {} = ?1 WHERE recorded_at >= ?2 AND recorded_at <= ?3",
+                column_name
+            );
+            conn.execute(&sql, rusqlite::params![value.to_string(), day_start, day_end])?;
+        }
+        // If no snapshot exists, we don't create one - the full recalc will handle it
+
+        Ok(())
+    })
+}
+
+/// Recalculate only a specific asset type's history from a given date
+pub async fn recalculate_asset_history_from_date(
+    db: &Database,
+    from_timestamp: i64,
+    asset_type: AssetType,
+) -> Result<()> {
+    println!(
+        "[RECALC] Starting {:?} recalculation from timestamp {}",
+        asset_type, from_timestamp
+    );
+
+    // Get the oldest snapshot date
+    let (min_date, _, _) = get_snapshot_date_info(db)?;
+
+    let oldest_snapshot = match min_date {
+        Some(date) => (date / 86400) * 86400,
+        None => {
+            println!("[RECALC] No existing snapshots, nothing to recalculate");
+            return Ok(());
+        }
+    };
+
+    let from_day = (from_timestamp / 86400) * 86400;
+    let recalc_start = from_day.max(oldest_snapshot);
+
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+
+    // Build list of days to recalculate
+    let mut days_to_recalc: Vec<i64> = Vec::new();
+    let mut check_day = recalc_start;
+    while check_day <= today_start {
+        days_to_recalc.push(check_day);
+        check_day += 86400;
+    }
+
+    if days_to_recalc.is_empty() {
+        println!("[RECALC] No days to recalculate");
+        return Ok(());
+    }
+
+    println!(
+        "[RECALC] Recalculating {:?} for {} days",
+        asset_type,
+        days_to_recalc.len()
+    );
+
+    // Fetch necessary prices upfront
+    let stock_prices = if asset_type == AssetType::Stocks {
+        // Get tickers for fetching historical prices
+        let stock_tickers = get_stock_tickers(db)?;
+        if !stock_tickers.is_empty() {
+            Some(
+                get_historical_stock_prices_yahoo(&stock_tickers, recalc_start, today_start)
+                    .await?,
+            )
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let crypto_prices = if asset_type == AssetType::Crypto {
+        let crypto_id_map = get_crypto_id_map(db)?;
+        if !crypto_id_map.is_empty() {
+            let api_keys = get_api_keys(db)?;
+            Some(
+                get_historical_crypto_prices_coingecko(
+                    api_keys.coingecko.as_deref(),
+                    &crypto_id_map,
+                    recalc_start,
+                    today_start,
+                )
+                .await?,
+            )
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // Recalculate each day
+    for day_timestamp in days_to_recalc {
+        let value = calculate_asset_value_for_day(
+            db,
+            day_timestamp,
+            asset_type,
+            stock_prices.as_ref(),
+            crypto_prices.as_ref(), // Passed as Optional references
+        )?;
+        update_asset_column_for_day(db, day_timestamp, asset_type, value)?;
+    }
+
+    println!("[RECALC] {:?} recalculation complete!", asset_type);
+
+    Ok(())
+}
+
+/// Trigger historical recalculation for a specific asset type
+/// Only triggers if transaction_date is before today
+pub async fn trigger_historical_recalculation_for_asset(
+    db: &Database,
+    transaction_date: i64,
+    asset_type: AssetType,
+) -> Result<()> {
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+    let tx_day = (transaction_date / 86400) * 86400;
+
+    // Only recalculate if transaction is historical (before today)
+    if tx_day < today_start {
+        println!(
+            "[RECALC] Transaction date {} is historical, triggering {:?} recalculation",
+            tx_day, asset_type
+        );
+        recalculate_asset_history_from_date(db, transaction_date, asset_type).await?;
+    }
+
+    Ok(())
+}
+
+/// Legacy function - recalculates all asset types (kept for backward compatibility)
+pub async fn trigger_historical_recalculation(db: &Database, transaction_date: i64) -> Result<()> {
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+    let tx_day = (transaction_date / 86400) * 86400;
+
+    // Only recalculate if transaction is historical (before today)
+    if tx_day < today_start {
+        println!(
+            "[RECALC] Transaction date {} is historical, triggering recalculation",
+            tx_day
+        );
+        recalculate_history_from_date(db, transaction_date).await?;
+    }
+
+    Ok(())
 }

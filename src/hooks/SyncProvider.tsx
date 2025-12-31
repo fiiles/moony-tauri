@@ -69,8 +69,21 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [startBackfill]);
 
+  // Record today's snapshot (called after asset changes)
+  const recordTodaySnapshot = useCallback(async () => {
+    console.log('[Sync] Recording today snapshot...');
+    try {
+      await portfolioApi.recordSnapshot();
+      console.log('[Sync] Snapshot recorded, invalidating queries...');
+      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+    } catch (error) {
+      console.error('[Sync] Failed to record snapshot:', error);
+    }
+  }, [queryClient]);
+
   return (
-    <SyncContext.Provider value={{ isSyncing, progress, lastResult, startBackfill }}>
+    <SyncContext.Provider value={{ isSyncing, progress, lastResult, startBackfill, recordTodaySnapshot }}>
       {children}
     </SyncContext.Provider>
   );
