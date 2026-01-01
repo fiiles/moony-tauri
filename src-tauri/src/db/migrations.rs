@@ -44,6 +44,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("016_add_import_batches", MIGRATION_016),
         ("017_add_stock_tags", MIGRATION_017),
         ("018_add_stock_tag_groups", MIGRATION_018),
+        ("019_add_ticker_history", MIGRATION_019),
     ];
 
     for (name, sql) in migrations {
@@ -729,4 +730,39 @@ ALTER TABLE stock_tags ADD COLUMN group_id TEXT REFERENCES stock_tag_groups(id) 
 
 -- Create index for performance
 CREATE INDEX IF NOT EXISTS idx_stock_tags_group ON stock_tags(group_id);
+"#;
+
+/// Migration 019: Add per-ticker value history tables for efficient recalculation
+const MIGRATION_019: &str = r#"
+-- Stock value history per ticker per day
+CREATE TABLE IF NOT EXISTS stock_value_history (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    recorded_at INTEGER NOT NULL,
+    value_czk TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    price TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    UNIQUE(ticker, recorded_at)
+);
+
+-- Crypto value history per ticker per day
+CREATE TABLE IF NOT EXISTS crypto_value_history (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    recorded_at INTEGER NOT NULL,
+    value_czk TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    price TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    UNIQUE(ticker, recorded_at)
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_stock_value_history_ticker ON stock_value_history(ticker);
+CREATE INDEX IF NOT EXISTS idx_stock_value_history_date ON stock_value_history(recorded_at);
+CREATE INDEX IF NOT EXISTS idx_stock_value_history_ticker_date ON stock_value_history(ticker, recorded_at);
+CREATE INDEX IF NOT EXISTS idx_crypto_value_history_ticker ON crypto_value_history(ticker);
+CREATE INDEX IF NOT EXISTS idx_crypto_value_history_date ON crypto_value_history(recorded_at);
+CREATE INDEX IF NOT EXISTS idx_crypto_value_history_ticker_date ON crypto_value_history(ticker, recorded_at);
 "#;

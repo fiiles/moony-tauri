@@ -76,6 +76,16 @@ interface ImportResult {
   errors: string[];
 }
 
+// Per-ticker value history record
+export interface TickerValueHistory {
+  ticker: string;
+  recordedAt: number;
+  valueCzk: string;
+  quantity: string;
+  price: string;
+  currency: string;
+}
+
 // Generic invoke wrapper with error handling
 async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   try {
@@ -207,22 +217,26 @@ export const investmentsApi = {
     tauriInvoke<InvestmentTransaction>('update_investment_transaction', { txId, data }),
 
   setManualPrice: (ticker: string, price: string, currency: string) =>
-    tauriInvoke<any>('set_manual_price', { ticker, price, currency }),
+    tauriInvoke<void>('set_manual_price', { ticker, price, currency }),
 
   deleteManualPrice: (ticker: string) =>
     tauriInvoke<void>('delete_manual_price', { ticker }),
 
   setManualDividend: (ticker: string, amount: string, currency: string) =>
-    tauriInvoke<any>('set_manual_dividend', { ticker, amount, currency }),
+    tauriInvoke<void>('set_manual_dividend', { ticker, amount, currency }),
 
   deleteManualDividend: (ticker: string) =>
     tauriInvoke<void>('delete_manual_dividend', { ticker }),
 
-  importTransactions: (transactions: InsertInvestmentTransaction[], defaultCurrency: string) =>
+  importTransactions: (transactions: Record<string, any>[], defaultCurrency: string) =>
     tauriInvoke<ImportResult>('import_investment_transactions', { transactions, defaultCurrency }),
+
 
   refreshMetadata: (ticker: string) =>
     tauriInvoke<boolean>('refresh_stock_metadata', { ticker }),
+
+  getHistory: (ticker: string, startDate?: number, endDate?: number) =>
+    tauriInvoke<TickerValueHistory[]>('get_stock_value_history', { ticker, startDate, endDate }),
 };
 
 // ============================================================================
@@ -254,6 +268,9 @@ export const cryptoApi = {
 
   deleteManualPrice: (symbol: string) =>
     tauriInvoke<void>('delete_crypto_manual_price', { symbol }),
+
+  getHistory: (ticker: string, startDate?: number, endDate?: number) =>
+    tauriInvoke<TickerValueHistory[]>('get_crypto_value_history', { ticker, startDate, endDate }),
 };
 
 // ============================================================================

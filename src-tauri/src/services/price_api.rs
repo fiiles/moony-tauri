@@ -769,6 +769,10 @@ pub async fn get_historical_crypto_prices_coingecko(
         "[COINGECKO HISTORICAL] Fetching historical prices for {} cryptos",
         id_to_ticker.len()
     );
+    println!(
+        "[COINGECKO HISTORICAL] API key present: {}",
+        api_key.map(|k| !k.is_empty()).unwrap_or(false)
+    );
 
     let client = reqwest::Client::new();
 
@@ -831,10 +835,12 @@ pub async fn get_historical_crypto_prices_coingecko(
                         }
                     }
                 } else {
+                    // Log the actual error response body
+                    let status = response.status();
+                    let error_body = response.text().await.unwrap_or_default();
                     println!(
-                        "[COINGECKO HISTORICAL] {} - HTTP error: {}",
-                        ticker,
-                        response.status()
+                        "[COINGECKO HISTORICAL] {} - HTTP error: {} - Body: {}",
+                        ticker, status, error_body
                     );
                 }
             }

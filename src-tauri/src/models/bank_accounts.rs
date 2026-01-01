@@ -3,19 +3,14 @@
 use serde::{Deserialize, Serialize};
 
 /// Bank account types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AccountType {
+    #[default]
     Checking,
     Savings,
     CreditCard,
     Investment,
-}
-
-impl Default for AccountType {
-    fn default() -> Self {
-        AccountType::Checking
-    }
 }
 
 impl std::fmt::Display for AccountType {
@@ -43,18 +38,13 @@ impl std::str::FromStr for AccountType {
 }
 
 /// Data source for accounts and transactions
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum DataSource {
+    #[default]
     Manual,
     CsvImport,
     ApiSync,
-}
-
-impl Default for DataSource {
-    fn default() -> Self {
-        DataSource::Manual
-    }
 }
 
 impl std::fmt::Display for DataSource {

@@ -125,6 +125,7 @@
     },
     "chart": {
         "title": "Vývoj hodnoty portfolia",
+        "positionTitle": "Vývoj hodnoty pozice",
         "bought": "Nakoupeno",
         "sold": "Prodáno"
     },

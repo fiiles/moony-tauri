@@ -102,7 +102,7 @@ export function InstitutionCombobox({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-10 font-normal bg-background hover:bg-background"
+            className="w-full justify-between h-10 font-normal bg-card hover:bg-card border-input"
           >
             <span className="truncate">
               {selectedInstitution ? (

@@ -1017,7 +1017,7 @@ pub async fn import_csv_transactions(
             format!(
                 "Required columns not found. Looking for date='{}', amount='{}'. Available headers: {:?}",
                 config.date_column, config.amount_column, headers
-            ).into(),
+            ),
         ));
     }
 

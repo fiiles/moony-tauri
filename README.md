@@ -14,7 +14,7 @@ A modern, privacy-focused personal finance management application built with Tau
 - 💰 **Stock Investments** - Track stocks with live price updates via Marketstack API
 - 🪙 **Cryptocurrency** - Monitor crypto holdings with CoinGecko integration
 - 🏠 **Real Estate** - Manage property portfolio with photo galleries and valuation tracking
-- 💵 **Savings Accounts** - Track savings with zone-based goal management
+- 💵 **Savings Accounts** - Track savings with simple or zoned interest rates
 - 📈 **Bonds** - Monitor fixed-income investments
 - 💳 **Loans** - Track liabilities and loan payments
 - 🛡️ **Insurance** - Keep track of insurance policies
@@ -22,7 +22,6 @@ A modern, privacy-focused personal finance management application built with Tau
 - 💱 **Multi-currency Support** - Automatic currency conversion with ECB exchange rates
 - 🔒 **Local-first & Encrypted** - SQLCipher encrypted database, your data never leaves your device
 - 🌍 **Internationalization** - Multi-language support (i18n)
-- 🌙 **Dark/Light Mode** - Beautiful UI with theme support
 
 ## Tech Stack
 

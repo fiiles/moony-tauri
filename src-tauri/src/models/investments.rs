@@ -25,7 +25,7 @@ pub struct EnrichedStockInvestment {
     #[serde(rename = "averagePrice")]
     pub average_price: String,
     #[serde(rename = "currentPrice")]
-    pub current_price: String,
+    pub current_price: f64,
     /// Original price in its source currency (before conversion to CZK)
     #[serde(rename = "originalPrice")]
     pub original_price: String,
@@ -175,4 +175,17 @@ pub struct DividendOverride {
     pub currency: String,
     #[serde(rename = "updatedAt")]
     pub updated_at: i64,
+}
+
+/// Per-ticker value history record
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TickerValueHistory {
+    pub ticker: String,
+    #[serde(rename = "recordedAt")]
+    pub recorded_at: i64,
+    #[serde(rename = "valueCzk")]
+    pub value_czk: String,
+    pub quantity: String,
+    pub price: String,
+    pub currency: String,
 }

@@ -71,7 +71,7 @@
 
   --destructive-foreground: 210 20% 98%;
 
-  --input: 220 13% 91%;
+  --input: 220 13% 80%;
   --ring: 262.1 83.3% 57.8%;
   --chart-1: 262.1 83.3% 57.8%;
   --chart-2: 273.5 83.3% 57.8%;
@@ -321,11 +321,7 @@
   /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
    * buttons/badges can remove the automatic brightness adjustment on interactions
    * and program their own. */
-  .no-default-hover-elevate {
-  }
 
-  .no-default-active-elevate {
-  }
 
   /**
    * Toggleable backgrounds go behind the content. Hoverable/active goes on top.
@@ -532,7 +528,7 @@
   .dark [role='dialog'] input,
   .dark [role='dialog'] select,
   .dark [role='dialog'] [role='combobox'] {
-    background-color: hsl(var(--background));
+    background-color: hsl(var(--card));
   }
 }
 

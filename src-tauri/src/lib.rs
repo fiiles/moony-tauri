@@ -60,6 +60,7 @@ pub fn run() {
             commands::investments::delete_manual_price,
             commands::investments::set_manual_dividend,
             commands::investments::delete_manual_dividend,
+            commands::investments::get_stock_value_history,
             // Crypto commands
             commands::crypto::get_all_crypto,
             commands::crypto::create_crypto,
@@ -70,6 +71,7 @@ pub fn run() {
             commands::crypto::delete_crypto_transaction,
             commands::crypto::update_crypto_price,
             commands::crypto::delete_crypto_manual_price,
+            commands::crypto::get_crypto_value_history,
             // Bond commands
             commands::bonds::get_all_bonds,
             commands::bonds::create_bond,
