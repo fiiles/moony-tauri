@@ -783,13 +783,13 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
 
     // Also populate per-ticker history tables
     println!("[BACKFILL] Populating per-ticker history tables...");
-    
+
     // Populate stock_value_history
     for ticker in &stock_tickers {
         db.with_conn(|conn| {
             for day_timestamp in &missing_days {
                 let quantity = get_stock_quantity_at_date(conn, ticker, *day_timestamp);
-                
+
                 if quantity <= 0.0 {
                     continue;
                 }
@@ -835,7 +835,7 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
         db.with_conn(|conn| {
             for day_timestamp in &missing_days {
                 let quantity = get_crypto_quantity_at_date(conn, ticker, *day_timestamp);
-                
+
                 if quantity <= 0.0 {
                     continue;
                 }
@@ -1610,9 +1610,12 @@ pub async fn recalculate_stock_ticker_history(
     );
 
     // Fetch historical prices for just this ticker
-    let stock_prices =
-        crate::services::price_api::get_historical_stock_prices_yahoo(&[ticker.to_string()], from_day, today_start)
-            .await?;
+    let stock_prices = crate::services::price_api::get_historical_stock_prices_yahoo(
+        &[ticker.to_string()],
+        from_day,
+        today_start,
+    )
+    .await?;
 
     // Calculate and store value for each day
     let ticker_clone = ticker.to_string();
@@ -1620,7 +1623,7 @@ pub async fn recalculate_stock_ticker_history(
         for day_timestamp in days_to_recalc {
             // Get quantity at this date
             let quantity = get_stock_quantity_at_date(conn, &ticker_clone, day_timestamp);
-            
+
             if quantity <= 0.0 {
                 // No holdings at this date, delete any existing entry
                 conn.execute(
@@ -1705,7 +1708,7 @@ pub async fn recalculate_crypto_ticker_history(
     // Note: id_to_ticker map uses coingecko_id as key, ticker as value
     let mut crypto_map = HashMap::new();
     crypto_map.insert(coingecko_id.to_string(), ticker.to_string());
-    
+
     let api_keys = crate::services::price_api::get_api_keys(db)?;
     let crypto_prices = crate::services::price_api::get_historical_crypto_prices_coingecko(
         api_keys.coingecko.as_deref(),
@@ -1720,7 +1723,7 @@ pub async fn recalculate_crypto_ticker_history(
     db.with_conn(move |conn| {
         for day_timestamp in days_to_recalc {
             let quantity = get_crypto_quantity_at_date(conn, &ticker_clone, day_timestamp);
-            
+
             if quantity <= 0.0 {
                 conn.execute(
                     "DELETE FROM crypto_value_history WHERE ticker = ?1 AND recorded_at = ?2",
@@ -1764,13 +1767,19 @@ pub async fn recalculate_crypto_ticker_history(
         Ok(())
     })?;
 
-    println!("[RECALC] Crypto ticker {} history recalculation complete!", ticker);
+    println!(
+        "[RECALC] Crypto ticker {} history recalculation complete!",
+        ticker
+    );
 
     Ok(())
 }
 
 /// Update portfolio_metrics_history by summing values from per-ticker history tables
-pub fn update_portfolio_history_from_ticker_tables(db: &Database, from_timestamp: i64) -> Result<()> {
+pub fn update_portfolio_history_from_ticker_tables(
+    db: &Database,
+    from_timestamp: i64,
+) -> Result<()> {
     let from_day = (from_timestamp / 86400) * 86400;
     let now = chrono::Utc::now().timestamp();
     let today_start = (now / 86400) * 86400;
@@ -1841,10 +1850,10 @@ pub async fn trigger_historical_recalculation_for_stock_ticker(
             "[RECALC] Stock transaction for {} on {} is historical, triggering ticker recalculation",
             ticker, tx_day
         );
-        
+
         // Recalculate just this ticker's history
         recalculate_stock_ticker_history(db, ticker, transaction_date).await?;
-        
+
         // Update aggregate portfolio history from ticker tables
         update_portfolio_history_from_ticker_tables(db, transaction_date)?;
     }
@@ -1868,7 +1877,7 @@ pub async fn trigger_historical_recalculation_for_crypto_ticker(
             "[RECALC] Crypto transaction for {} on {} is historical, triggering ticker recalculation",
             ticker, tx_day
         );
-        
+
         recalculate_crypto_ticker_history(db, ticker, coingecko_id, transaction_date).await?;
         update_portfolio_history_from_ticker_tables(db, transaction_date)?;
     }
