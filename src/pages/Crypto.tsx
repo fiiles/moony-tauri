@@ -1,25 +1,11 @@
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddCryptoModal } from "@/components/crypto/AddCryptoModal";
 import { CryptoSummary } from "@/components/crypto/CryptoSummary";
 import { CryptoTable, type CryptoHoldingData } from "@/components/crypto/CryptoTable";
-import { SellCryptoModal } from "@/components/crypto/SellCryptoModal";
-import { BuyCryptoModal } from "@/components/crypto/BuyCryptoModal";
-import { CryptoTransactionsModal } from "@/components/crypto/CryptoTransactionsModal";
-import { UpdateCryptoPriceModal } from "@/components/crypto/UpdateCryptoPriceModal";
 import { cryptoApi, priceApi, exportApi } from "@/lib/tauri-api";
 import {
     calculateCryptoPortfolioMetrics,
@@ -36,17 +22,9 @@ import type { CurrencyCode } from "@shared/currencies";
 
 export default function Crypto() {
     const { t } = useTranslation('crypto');
-    const { t: tc } = useTranslation('common');
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const { convert } = useCurrency();
-    const [selectedHolding, setSelectedHolding] = useState<CryptoHoldingData | null>(null);
-    const [sellModalOpen, setSellModalOpen] = useState(false);
-    const [viewTransactionsModalOpen, setViewTransactionsModalOpen] = useState(false);
-    const [updatePriceModalOpen, setUpdatePriceModalOpen] = useState(false);
-    const [buyModalOpen, setBuyModalOpen] = useState(false);
-    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-    const [holdingToDelete, setHoldingToDelete] = useState<CryptoHoldingData | null>(null);
 
     const { data: cryptoInvestments, isLoading } = useQuery<CryptoInvestmentWithPrice[]>({
         queryKey: ["crypto"],
@@ -67,14 +45,14 @@ export default function Crypto() {
         if (!allTransactions || allTransactions.length === 0) return [];
 
         // Group transactions by date (day granularity)
-        const markersByDate = new Map<number, { buyAmount: number; sellAmount: number }>();
+        const markersByDate = new Map<number, { buyAmount: number; sellAmount: number; buyTickers: string[]; sellTickers: string[] }>();
 
         for (const tx of allTransactions) {
             // Normalize to start of day (in user's timezone)
             const txDate = new Date(tx.transactionDate * 1000);
             const dayStart = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime() / 1000;
 
-            const existing = markersByDate.get(dayStart) || { buyAmount: 0, sellAmount: 0 };
+            const existing = markersByDate.get(dayStart) || { buyAmount: 0, sellAmount: 0, buyTickers: [], sellTickers: [] };
             
             // Calculate total value in CZK (base currency)
             const quantity = parseFloat(tx.quantity) || 0;
@@ -86,8 +64,14 @@ export default function Crypto() {
 
             if (tx.type === "buy") {
                 existing.buyAmount += totalInCzk;
+                if (!existing.buyTickers.includes(tx.ticker)) {
+                    existing.buyTickers.push(tx.ticker);
+                }
             } else if (tx.type === "sell") {
                 existing.sellAmount += totalInCzk;
+                if (!existing.sellTickers.includes(tx.ticker)) {
+                    existing.sellTickers.push(tx.ticker);
+                }
             }
 
             markersByDate.set(dayStart, existing);
@@ -98,6 +82,8 @@ export default function Crypto() {
             date,
             buyAmount: amounts.buyAmount,
             sellAmount: amounts.sellAmount,
+            buyTickers: amounts.buyTickers,
+            sellTickers: amounts.sellTickers,
         }));
     }, [allTransactions, convert]);
 
@@ -123,23 +109,7 @@ export default function Crypto() {
         },
     });
 
-    const deleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            await cryptoApi.delete(id);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["crypto"] });
-            toast({ title: "Success", description: "Crypto asset deleted successfully" });
-        },
-        onError: (error: Error) => {
-            console.error("Failed to delete crypto:", error);
-            toast({
-                title: "Error",
-                description: "Failed to delete crypto: " + error.message,
-                variant: "destructive"
-            });
-        }
-    });
+
 
 
 
@@ -166,31 +136,6 @@ export default function Crypto() {
     });
 
     const metrics = calculateCryptoPortfolioMetrics(holdings);
-
-    const handleSellClick = (holding: CryptoHoldingData) => {
-        setSelectedHolding(holding);
-        setSellModalOpen(true);
-    };
-
-    const handleViewTransactionsClick = (holding: CryptoHoldingData) => {
-        setSelectedHolding(holding);
-        setViewTransactionsModalOpen(true);
-    };
-
-    const handleUpdatePriceClick = (holding: CryptoHoldingData) => {
-        setSelectedHolding(holding);
-        setUpdatePriceModalOpen(true);
-    };
-
-    const handleDeleteClick = (holding: CryptoHoldingData) => {
-        setHoldingToDelete(holding);
-        setDeleteDialogOpen(true);
-    };
-
-    const handleBuyClick = (holding: CryptoHoldingData) => {
-        setSelectedHolding(holding);
-        setBuyModalOpen(true);
-    };
 
     if (isLoading) {
         return (
@@ -261,56 +206,6 @@ export default function Crypto() {
                 holdings={holdings}
                 isLoading={refreshPricesMutation.isPending}
             />
-
-
-            <SellCryptoModal
-                investment={selectedHolding}
-                open={sellModalOpen}
-                onOpenChange={setSellModalOpen}
-            />
-
-            <CryptoTransactionsModal
-                investment={selectedHolding}
-                open={viewTransactionsModalOpen}
-                onOpenChange={setViewTransactionsModalOpen}
-            />
-
-            <UpdateCryptoPriceModal
-                investment={selectedHolding}
-                open={updatePriceModalOpen}
-                onOpenChange={setUpdatePriceModalOpen}
-            />
-
-            <BuyCryptoModal
-                crypto={selectedHolding}
-                open={buyModalOpen}
-                onOpenChange={setBuyModalOpen}
-            />
-
-            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t('confirmDelete.title')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {t('confirmDelete.description', { name: holdingToDelete?.name })}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setHoldingToDelete(null)}>{tc('buttons.cancel')}</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            onClick={() => {
-                                if (holdingToDelete) {
-                                    deleteMutation.mutate(holdingToDelete.id);
-                                    setDeleteDialogOpen(false);
-                                }
-                            }}
-                        >
-                            {tc('buttons.delete')}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
 
         </div>
     );

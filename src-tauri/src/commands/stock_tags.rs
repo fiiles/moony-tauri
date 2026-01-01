@@ -10,6 +10,19 @@ use crate::services::currency::convert_to_czk;
 use tauri::State;
 use uuid::Uuid;
 
+/// Type alias for investment row data (id, ticker, company_name, quantity, avg_price, current_price, price_currency, dividend, dividend_currency)
+type InvestmentRow = (
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+);
+
 // ============================================================================
 // Tag Group Commands
 // ============================================================================
@@ -288,17 +301,7 @@ pub async fn get_stocks_analysis(db: State<'_, Database>) -> Result<Vec<StockInv
              ORDER BY si.company_name",
         )?;
 
-        let investments: Vec<(
-            String,
-            String,
-            String,
-            String,
-            String,
-            String,
-            String,
-            String,
-            String,
-        )> = stmt
+        let investments: Vec<InvestmentRow> = stmt
             .query_map([], |row| {
                 Ok((
                     row.get::<_, String>(0)?,

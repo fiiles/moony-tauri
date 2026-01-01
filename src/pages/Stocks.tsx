@@ -44,14 +44,14 @@ export default function Stocks() {
     if (!allTransactions || allTransactions.length === 0) return [];
 
     // Group transactions by date (day granularity)
-    const markersByDate = new Map<number, { buyAmount: number; sellAmount: number }>();
+    const markersByDate = new Map<number, { buyAmount: number; sellAmount: number; buyTickers: string[]; sellTickers: string[] }>();
 
     for (const tx of allTransactions) {
       // Normalize to start of day (in user's timezone)
       const txDate = new Date(tx.transactionDate * 1000);
       const dayStart = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime() / 1000;
 
-      const existing = markersByDate.get(dayStart) || { buyAmount: 0, sellAmount: 0 };
+      const existing = markersByDate.get(dayStart) || { buyAmount: 0, sellAmount: 0, buyTickers: [], sellTickers: [] };
       
       // Calculate total value in CZK (base currency)
       const quantity = parseFloat(tx.quantity) || 0;
@@ -63,8 +63,14 @@ export default function Stocks() {
 
       if (tx.type === "buy") {
         existing.buyAmount += totalInCzk;
+        if (!existing.buyTickers.includes(tx.ticker)) {
+          existing.buyTickers.push(tx.ticker);
+        }
       } else if (tx.type === "sell") {
         existing.sellAmount += totalInCzk;
+        if (!existing.sellTickers.includes(tx.ticker)) {
+          existing.sellTickers.push(tx.ticker);
+        }
       }
 
       markersByDate.set(dayStart, existing);
@@ -75,6 +81,8 @@ export default function Stocks() {
       date,
       buyAmount: amounts.buyAmount,
       sellAmount: amounts.sellAmount,
+      buyTickers: amounts.buyTickers,
+      sellTickers: amounts.sellTickers,
     }));
   }, [allTransactions, convert]);
 

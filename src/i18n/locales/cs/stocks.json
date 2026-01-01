@@ -132,6 +132,7 @@
     },
     "chart": {
         "title": "Vývoj hodnoty akcií",
+        "positionTitle": "Vývoj hodnoty pozice",
         "bought": "Nakoupeno",
         "sold": "Prodáno"
     },

@@ -44,11 +44,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { BuyCryptoModal } from "@/components/crypto/BuyCryptoModal";
 import { SellCryptoModal } from "@/components/crypto/SellCryptoModal";
 import { UpdateCryptoPriceModal } from "@/components/crypto/UpdateCryptoPriceModal";
 import { mapCryptoInvestmentToHolding } from "@shared/calculations";
+import TickerValueTrendChart, { type TransactionMarker } from "@/components/common/TickerValueTrendChart";
 
 export default function CryptoDetail() {
     const [, params] = useRoute("/crypto/:id");
@@ -83,6 +84,39 @@ export default function CryptoDetail() {
         queryFn: () => cryptoApi.getTransactions(id!),
         enabled: !!id,
     });
+
+    // Compute transaction markers for this crypto only
+    const transactionMarkers = useMemo((): TransactionMarker[] => {
+        if (!transactions || transactions.length === 0) return [];
+
+        const markersByDate = new Map<number, { buyAmount: number; sellAmount: number }>();
+
+        for (const tx of transactions) {
+            const txDate = new Date(tx.transactionDate * 1000);
+            const dayStart = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime() / 1000;
+
+            const existing = markersByDate.get(dayStart) || { buyAmount: 0, sellAmount: 0 };
+            
+            const quantity = parseFloat(tx.quantity) || 0;
+            const pricePerUnit = parseFloat(tx.pricePerUnit) || 0;
+            const txCurrency = (tx.currency || "CZK") as CurrencyCode;
+            const totalInCzk = convert(quantity * pricePerUnit, txCurrency, "CZK");
+
+            if (tx.type === "buy") {
+                existing.buyAmount += totalInCzk;
+            } else if (tx.type === "sell") {
+                existing.sellAmount += totalInCzk;
+            }
+
+            markersByDate.set(dayStart, existing);
+        }
+
+        return Array.from(markersByDate.entries()).map(([date, amounts]) => ({
+            date,
+            buyAmount: amounts.buyAmount,
+            sellAmount: amounts.sellAmount,
+        }));
+    }, [transactions, convert]);
 
     // Delete mutation
     const deleteMutation = useMutation({
@@ -288,6 +322,15 @@ export default function CryptoDetail() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Value Chart */}
+            <TickerValueTrendChart
+                type="crypto"
+                ticker={crypto.ticker}
+                currentValue={currentValue}
+                isRefreshing={isRefreshing}
+                transactionMarkers={transactionMarkers}
+            />
 
             {/* Position & Transactions Section (merged) */}
             <Card>

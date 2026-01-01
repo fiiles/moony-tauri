@@ -766,7 +766,7 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
     // Create snapshots for each missing day
     let mut days_processed = 0;
 
-    for day_timestamp in missing_days {
+    for day_timestamp in missing_days.clone() {
         // Calculate metrics for this day using historical prices
         let metrics = calculate_metrics_for_day(db, day_timestamp, &stock_prices, &crypto_prices)?;
 
@@ -779,6 +779,101 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
             "[BACKFILL] Created snapshot for day {}/{}",
             days_processed, total_missing
         );
+    }
+
+    // Also populate per-ticker history tables
+    println!("[BACKFILL] Populating per-ticker history tables...");
+    
+    // Populate stock_value_history
+    for ticker in &stock_tickers {
+        db.with_conn(|conn| {
+            for day_timestamp in &missing_days {
+                let quantity = get_stock_quantity_at_date(conn, ticker, *day_timestamp);
+                
+                if quantity <= 0.0 {
+                    continue;
+                }
+
+                let (price, currency) = if let Some(prices) = stock_prices.get(ticker) {
+                    if let Some(hp) = find_closest_price(prices, *day_timestamp) {
+                        (hp.price, hp.currency.clone())
+                    } else {
+                        continue;
+                    }
+                } else {
+                    continue;
+                };
+
+                let value_czk = convert_to_czk(quantity * price, &currency);
+                let id = Uuid::new_v4().to_string();
+
+                conn.execute(
+                    "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                     ON CONFLICT(ticker, recorded_at) DO UPDATE SET
+                         value_czk = excluded.value_czk,
+                         quantity = excluded.quantity,
+                         price = excluded.price,
+                         currency = excluded.currency",
+                    rusqlite::params![
+                        id,
+                        ticker,
+                        day_timestamp,
+                        value_czk.to_string(),
+                        quantity.to_string(),
+                        price.to_string(),
+                        currency,
+                    ],
+                )?;
+            }
+            Ok(())
+        })?;
+    }
+
+    // Populate crypto_value_history
+    for (ticker, _coingecko_id) in &crypto_id_map {
+        db.with_conn(|conn| {
+            for day_timestamp in &missing_days {
+                let quantity = get_crypto_quantity_at_date(conn, ticker, *day_timestamp);
+                
+                if quantity <= 0.0 {
+                    continue;
+                }
+
+                let (price, currency) = if let Some(prices) = crypto_prices.get(ticker) {
+                    if let Some(hp) = find_closest_price(prices, *day_timestamp) {
+                        (hp.price, hp.currency.clone())
+                    } else {
+                        continue;
+                    }
+                } else {
+                    continue;
+                };
+
+                let value_czk = convert_to_czk(quantity * price, &currency);
+                let id = Uuid::new_v4().to_string();
+
+                conn.execute(
+                    "INSERT INTO crypto_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                     ON CONFLICT(ticker, recorded_at) DO UPDATE SET
+                         value_czk = excluded.value_czk,
+                         quantity = excluded.quantity,
+                         price = excluded.price,
+                         currency = excluded.currency",
+                    rusqlite::params![
+                        id,
+                        ticker,
+                        day_timestamp,
+                        value_czk.to_string(),
+                        quantity.to_string(),
+                        price.to_string(),
+                        currency,
+                    ],
+                )?;
+            }
+            Ok(())
+        })?;
     }
 
     println!(
@@ -1081,29 +1176,41 @@ fn update_or_insert_snapshot(
 
 /// Recalculate portfolio history from a given date
 /// This is called when a retrospective transaction is created/deleted
+/// Will create new snapshots for dates before the oldest existing snapshot
 pub async fn recalculate_history_from_date(db: &Database, from_timestamp: i64) -> Result<()> {
     println!(
         "[RECALC] Starting historical recalculation from timestamp {}",
         from_timestamp
     );
 
-    // Get the oldest snapshot date
+    // Get the oldest snapshot date (if any)
     let (min_date, _, _) = get_snapshot_date_info(db)?;
+    let oldest_snapshot = min_date.map(|d| (d / 86400) * 86400);
 
-    let oldest_snapshot = match min_date {
-        Some(date) => (date / 86400) * 86400,
-        None => {
-            println!("[RECALC] No existing snapshots, nothing to recalculate");
-            return Ok(());
-        }
-    };
-
-    // Start recalculation from the later of: from_timestamp or oldest_snapshot
+    // Start recalculation from the transaction date
+    // This allows creating new snapshots for dates before any existing snapshots
     let from_day = (from_timestamp / 86400) * 86400;
-    let recalc_start = from_day.max(oldest_snapshot);
+    let recalc_start = from_day;
 
     let now = chrono::Utc::now().timestamp();
     let today_start = (now / 86400) * 86400;
+
+    // Log whether we're extending history backwards
+    if let Some(oldest) = oldest_snapshot {
+        if from_day < oldest {
+            println!(
+                "[RECALC] Extending history backwards from {} to {} (creating {} new days)",
+                oldest,
+                from_day,
+                (oldest - from_day) / 86400
+            );
+        }
+    } else {
+        println!(
+            "[RECALC] No existing snapshots, will create new history from {}",
+            from_day
+        );
+    }
 
     // Build list of days to recalculate
     let mut days_to_recalc: Vec<i64> = Vec::new();
@@ -1316,6 +1423,7 @@ fn update_asset_column_for_day(
 }
 
 /// Recalculate only a specific asset type's history from a given date
+/// If the date is before existing snapshots, creates full snapshots for those days
 pub async fn recalculate_asset_history_from_date(
     db: &Database,
     from_timestamp: i64,
@@ -1326,22 +1434,29 @@ pub async fn recalculate_asset_history_from_date(
         asset_type, from_timestamp
     );
 
-    // Get the oldest snapshot date
+    // Get the oldest snapshot date (if any)
     let (min_date, _, _) = get_snapshot_date_info(db)?;
-
-    let oldest_snapshot = match min_date {
-        Some(date) => (date / 86400) * 86400,
-        None => {
-            println!("[RECALC] No existing snapshots, nothing to recalculate");
-            return Ok(());
-        }
-    };
+    let oldest_snapshot = min_date.map(|d| (d / 86400) * 86400);
 
     let from_day = (from_timestamp / 86400) * 86400;
-    let recalc_start = from_day.max(oldest_snapshot);
-
     let now = chrono::Utc::now().timestamp();
     let today_start = (now / 86400) * 86400;
+
+    // If from_day is before oldest_snapshot (or no snapshots exist),
+    // we need to create full snapshots using recalculate_history_from_date
+    let needs_full_recalc = match oldest_snapshot {
+        Some(oldest) => from_day < oldest,
+        None => true,
+    };
+
+    if needs_full_recalc {
+        println!("[RECALC] Transaction date precedes existing snapshots, using full recalculation");
+        // Fall back to full recalculation which creates complete snapshots
+        return recalculate_history_from_date(db, from_timestamp).await;
+    }
+
+    // If we're only updating existing snapshots, proceed with asset-specific update
+    let recalc_start = from_day;
 
     // Build list of days to recalculate
     let mut days_to_recalc: Vec<i64> = Vec::new();
@@ -1451,6 +1566,311 @@ pub async fn trigger_historical_recalculation(db: &Database, transaction_date: i
             tx_day
         );
         recalculate_history_from_date(db, transaction_date).await?;
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// Per-Ticker Historical Recalculation
+// ============================================================================
+
+/// Recalculate stock value history for a single ticker from a given date
+pub async fn recalculate_stock_ticker_history(
+    db: &Database,
+    ticker: &str,
+    from_timestamp: i64,
+) -> Result<()> {
+    println!(
+        "[RECALC] Starting ticker-specific recalculation for {} from {}",
+        ticker, from_timestamp
+    );
+
+    let from_day = (from_timestamp / 86400) * 86400;
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+
+    // Build list of days to recalculate
+    let mut days_to_recalc: Vec<i64> = Vec::new();
+    let mut check_day = from_day;
+    while check_day <= today_start {
+        days_to_recalc.push(check_day);
+        check_day += 86400;
+    }
+
+    if days_to_recalc.is_empty() {
+        println!("[RECALC] No days to recalculate for {}", ticker);
+        return Ok(());
+    }
+
+    println!(
+        "[RECALC] Recalculating {} days for ticker {}",
+        days_to_recalc.len(),
+        ticker
+    );
+
+    // Fetch historical prices for just this ticker
+    let stock_prices =
+        crate::services::price_api::get_historical_stock_prices_yahoo(&[ticker.to_string()], from_day, today_start)
+            .await?;
+
+    // Calculate and store value for each day
+    let ticker_clone = ticker.to_string();
+    db.with_conn(move |conn| {
+        for day_timestamp in days_to_recalc {
+            // Get quantity at this date
+            let quantity = get_stock_quantity_at_date(conn, &ticker_clone, day_timestamp);
+            
+            if quantity <= 0.0 {
+                // No holdings at this date, delete any existing entry
+                conn.execute(
+                    "DELETE FROM stock_value_history WHERE ticker = ?1 AND recorded_at = ?2",
+                    rusqlite::params![ticker_clone, day_timestamp],
+                )?;
+                continue;
+            }
+
+            // Get price for this ticker at this date
+            let (price, currency) = if let Some(prices) = stock_prices.get(&ticker_clone) {
+                if let Some(hp) = find_closest_price(prices, day_timestamp) {
+                    (hp.price, hp.currency.clone())
+                } else {
+                    continue; // No price data available
+                }
+            } else {
+                continue; // No price data available
+            };
+
+            let value_czk = convert_to_czk(quantity * price, &currency);
+
+            // Upsert into stock_value_history
+            let id = Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                 ON CONFLICT(ticker, recorded_at) DO UPDATE SET
+                     value_czk = excluded.value_czk,
+                     quantity = excluded.quantity,
+                     price = excluded.price,
+                     currency = excluded.currency",
+                rusqlite::params![
+                    id,
+                    ticker_clone,
+                    day_timestamp,
+                    value_czk.to_string(),
+                    quantity.to_string(),
+                    price.to_string(),
+                    currency,
+                ],
+            )?;
+        }
+        Ok(())
+    })?;
+
+    println!("[RECALC] Ticker {} history recalculation complete!", ticker);
+
+    Ok(())
+}
+
+/// Recalculate crypto value history for a single ticker from a given date
+pub async fn recalculate_crypto_ticker_history(
+    db: &Database,
+    ticker: &str,
+    coingecko_id: &str,
+    from_timestamp: i64,
+) -> Result<()> {
+    println!(
+        "[RECALC] Starting crypto ticker-specific recalculation for {} from {}",
+        ticker, from_timestamp
+    );
+
+    let from_day = (from_timestamp / 86400) * 86400;
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+
+    // Build list of days to recalculate
+    let mut days_to_recalc: Vec<i64> = Vec::new();
+    let mut check_day = from_day;
+    while check_day <= today_start {
+        days_to_recalc.push(check_day);
+        check_day += 86400;
+    }
+
+    if days_to_recalc.is_empty() {
+        println!("[RECALC] No days to recalculate for crypto {}", ticker);
+        return Ok(());
+    }
+
+    // Fetch historical prices for just this crypto
+    // Note: id_to_ticker map uses coingecko_id as key, ticker as value
+    let mut crypto_map = HashMap::new();
+    crypto_map.insert(coingecko_id.to_string(), ticker.to_string());
+    
+    let api_keys = crate::services::price_api::get_api_keys(db)?;
+    let crypto_prices = crate::services::price_api::get_historical_crypto_prices_coingecko(
+        api_keys.coingecko.as_deref(),
+        &crypto_map,
+        from_day,
+        today_start,
+    )
+    .await?;
+
+    // Calculate and store value for each day
+    let ticker_clone = ticker.to_string();
+    db.with_conn(move |conn| {
+        for day_timestamp in days_to_recalc {
+            let quantity = get_crypto_quantity_at_date(conn, &ticker_clone, day_timestamp);
+            
+            if quantity <= 0.0 {
+                conn.execute(
+                    "DELETE FROM crypto_value_history WHERE ticker = ?1 AND recorded_at = ?2",
+                    rusqlite::params![ticker_clone, day_timestamp],
+                )?;
+                continue;
+            }
+
+            let (price, currency) = if let Some(prices) = crypto_prices.get(&ticker_clone) {
+                if let Some(hp) = find_closest_price(prices, day_timestamp) {
+                    (hp.price, hp.currency.clone())
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            };
+
+            let value_czk = convert_to_czk(quantity * price, &currency);
+
+            let id = Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO crypto_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                 ON CONFLICT(ticker, recorded_at) DO UPDATE SET
+                     value_czk = excluded.value_czk,
+                     quantity = excluded.quantity,
+                     price = excluded.price,
+                     currency = excluded.currency",
+                rusqlite::params![
+                    id,
+                    ticker_clone,
+                    day_timestamp,
+                    value_czk.to_string(),
+                    quantity.to_string(),
+                    price.to_string(),
+                    currency,
+                ],
+            )?;
+        }
+        Ok(())
+    })?;
+
+    println!("[RECALC] Crypto ticker {} history recalculation complete!", ticker);
+
+    Ok(())
+}
+
+/// Update portfolio_metrics_history by summing values from per-ticker history tables
+pub fn update_portfolio_history_from_ticker_tables(db: &Database, from_timestamp: i64) -> Result<()> {
+    let from_day = (from_timestamp / 86400) * 86400;
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+
+    db.with_conn(|conn| {
+        // Get all distinct dates in the range that have data
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT recorded_at FROM stock_value_history 
+             WHERE recorded_at >= ?1 AND recorded_at <= ?2
+             UNION
+             SELECT DISTINCT recorded_at FROM crypto_value_history 
+             WHERE recorded_at >= ?1 AND recorded_at <= ?2",
+        )?;
+        let dates: Vec<i64> = stmt
+            .query_map([from_day, today_start], |row| row.get(0))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        for day_timestamp in dates {
+            // Sum stock values for this day
+            let total_investments: f64 = conn
+                .query_row(
+                    "SELECT COALESCE(SUM(CAST(value_czk AS REAL)), 0) FROM stock_value_history WHERE recorded_at = ?1",
+                    [day_timestamp],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0.0);
+
+            // Sum crypto values for this day
+            let total_crypto: f64 = conn
+                .query_row(
+                    "SELECT COALESCE(SUM(CAST(value_czk AS REAL)), 0) FROM crypto_value_history WHERE recorded_at = ?1",
+                    [day_timestamp],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0.0);
+
+            // Update portfolio_metrics_history
+            conn.execute(
+                "UPDATE portfolio_metrics_history 
+                 SET total_investments = ?2, total_crypto = ?3 
+                 WHERE (recorded_at / 86400) * 86400 = ?1",
+                rusqlite::params![
+                    day_timestamp,
+                    total_investments.to_string(),
+                    total_crypto.to_string(),
+                ],
+            )?;
+        }
+        Ok(())
+    })
+}
+
+/// Trigger historical recalculation for a specific stock ticker
+/// Only triggers if transaction_date is before today
+pub async fn trigger_historical_recalculation_for_stock_ticker(
+    db: &Database,
+    transaction_date: i64,
+    ticker: &str,
+) -> Result<()> {
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+    let tx_day = (transaction_date / 86400) * 86400;
+
+    // Only recalculate if transaction is historical (before today)
+    if tx_day < today_start {
+        println!(
+            "[RECALC] Stock transaction for {} on {} is historical, triggering ticker recalculation",
+            ticker, tx_day
+        );
+        
+        // Recalculate just this ticker's history
+        recalculate_stock_ticker_history(db, ticker, transaction_date).await?;
+        
+        // Update aggregate portfolio history from ticker tables
+        update_portfolio_history_from_ticker_tables(db, transaction_date)?;
+    }
+
+    Ok(())
+}
+
+/// Trigger historical recalculation for a specific crypto ticker
+pub async fn trigger_historical_recalculation_for_crypto_ticker(
+    db: &Database,
+    transaction_date: i64,
+    ticker: &str,
+    coingecko_id: &str,
+) -> Result<()> {
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+    let tx_day = (transaction_date / 86400) * 86400;
+
+    if tx_day < today_start {
+        println!(
+            "[RECALC] Crypto transaction for {} on {} is historical, triggering ticker recalculation",
+            ticker, tx_day
+        );
+        
+        recalculate_crypto_ticker_history(db, ticker, coingecko_id, transaction_date).await?;
+        update_portfolio_history_from_ticker_tables(db, transaction_date)?;
     }
 
     Ok(())

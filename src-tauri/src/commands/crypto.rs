@@ -100,6 +100,7 @@ pub async fn create_crypto(
     initial_transaction: Option<InsertCryptoTransaction>,
 ) -> Result<CryptoInvestment> {
     let ticker = data.ticker.to_uppercase();
+    let coingecko_id = data.coingecko_id.clone();
     let initial_tx_date = initial_transaction.as_ref().map(|t| t.transaction_date);
 
     let inv = db.with_conn(|conn| {
@@ -164,12 +165,13 @@ pub async fn create_crypto(
         .await
         .ok();
 
-    // Trigger historical recalculation if there was an initial transaction
+    // Trigger per-ticker historical recalculation if there was an initial transaction
     if let Some(date) = initial_tx_date {
-        crate::commands::portfolio::trigger_historical_recalculation_for_asset(
+        crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
             &db,
             date,
-            crate::commands::portfolio::AssetType::Crypto,
+            &ticker,
+            &coingecko_id,
         )
         .await
         .ok();
@@ -183,16 +185,33 @@ pub async fn create_crypto(
 /// Delete crypto investment
 #[tauri::command]
 pub async fn delete_crypto(db: State<'_, Database>, app: AppHandle, id: String) -> Result<()> {
-    // Get earliest transaction date before deleting (for historical recalc)
-    let earliest_tx_date: Option<i64> = db.with_conn(|conn| {
-        Ok(conn
+    // Get earliest transaction date and crypto info before deleting (for historical recalc)
+    let crypto_info: Option<(i64, String, String)> = db.with_conn(|conn| {
+        // Get ticker and coingecko_id from the investment
+        let info: Option<(String, String)> = conn
             .query_row(
-                "SELECT MIN(transaction_date) FROM crypto_transactions WHERE investment_id = ?1",
+                "SELECT ticker, coingecko_id FROM crypto_investments WHERE id = ?1",
                 [&id],
-                |row| row.get(0),
+                |row| Ok((row.get(0)?, row.get::<_, Option<String>>(1)?.unwrap_or_default())),
             )
-            .ok()
-            .flatten())
+            .ok();
+
+        if let Some((ticker, coingecko_id)) = info {
+            // Get earliest transaction date
+            let earliest: Option<i64> = conn
+                .query_row(
+                    "SELECT MIN(transaction_date) FROM crypto_transactions WHERE investment_id = ?1",
+                    [&id],
+                    |row| row.get(0),
+                )
+                .ok()
+                .flatten();
+
+            if let Some(date) = earliest {
+                return Ok(Some((date, ticker, coingecko_id)));
+            }
+        }
+        Ok(None)
     })?;
 
     db.with_conn(|conn| {
@@ -214,15 +233,18 @@ pub async fn delete_crypto(db: State<'_, Database>, app: AppHandle, id: String) 
         .await
         .ok();
 
-    // Trigger historical recalculation if there were transactions
-    if let Some(tx_date) = earliest_tx_date {
-        crate::commands::portfolio::trigger_historical_recalculation_for_asset(
-            &db,
-            tx_date,
-            crate::commands::portfolio::AssetType::Crypto,
-        )
-        .await
-        .ok();
+    // Trigger per-ticker historical recalculation if there were transactions
+    if let Some((tx_date, ticker, coingecko_id)) = crypto_info {
+        if !coingecko_id.is_empty() {
+            crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
+                &db,
+                tx_date,
+                &ticker,
+                &coingecko_id,
+            )
+            .await
+            .ok();
+        }
 
         app.emit("recalculation-complete", ()).ok();
     }
@@ -381,6 +403,18 @@ pub async fn create_crypto_transaction(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
 
+    // Get coingecko_id for per-ticker recalculation
+    let coingecko_id: Option<String> = db.with_conn(|conn| {
+        Ok(conn
+            .query_row(
+                "SELECT coingecko_id FROM crypto_investments WHERE id = ?1",
+                [&investment_id],
+                |row| row.get(0),
+            )
+            .ok()
+            .flatten())
+    })?;
+
     let result = db.with_conn(|conn| {
         conn.execute(
             "INSERT INTO crypto_transactions
@@ -414,14 +448,17 @@ pub async fn create_crypto_transaction(
         .await
         .ok();
 
-    // Trigger historical recalculation if transaction is retrospective
-    crate::commands::portfolio::trigger_historical_recalculation_for_asset(
-        &db,
-        result.transaction_date,
-        crate::commands::portfolio::AssetType::Crypto,
-    )
-    .await
-    .ok();
+    // Trigger per-ticker historical recalculation if transaction is retrospective
+    if let Some(cg_id) = coingecko_id {
+        crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
+            &db,
+            result.transaction_date,
+            &result.ticker,
+            &cg_id,
+        )
+        .await
+        .ok();
+    }
 
     app.emit("recalculation-complete", ()).ok();
 
@@ -435,15 +472,37 @@ pub async fn delete_crypto_transaction(
     app: AppHandle,
     tx_id: String,
 ) -> Result<()> {
-    // Get transaction date before deleting (for historical recalc)
-    let tx_date: Option<i64> = db.with_conn(|conn| {
-        Ok(conn
+    // Get transaction info before deleting (for historical recalc)
+    let tx_info: Option<(i64, String, String)> = db.with_conn(|conn| {
+        // Get transaction date and investment_id
+        let info: Option<(i64, String)> = conn
             .query_row(
-                "SELECT transaction_date FROM crypto_transactions WHERE id = ?1",
+                "SELECT transaction_date, investment_id FROM crypto_transactions WHERE id = ?1",
                 [&tx_id],
-                |row| row.get(0),
+                |row| Ok((row.get(0)?, row.get(1)?)),
             )
-            .ok())
+            .ok();
+
+        if let Some((date, inv_id)) = info {
+            // Get ticker and coingecko_id from the investment
+            let crypto_info: Option<(String, String)> = conn
+                .query_row(
+                    "SELECT ticker, coingecko_id FROM crypto_investments WHERE id = ?1",
+                    [&inv_id],
+                    |row| {
+                        Ok((
+                            row.get(0)?,
+                            row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                        ))
+                    },
+                )
+                .ok();
+
+            if let Some((ticker, coingecko_id)) = crypto_info {
+                return Ok(Some((date, ticker, coingecko_id)));
+            }
+        }
+        Ok(None)
     })?;
 
     db.with_conn(|conn| {
@@ -482,15 +541,18 @@ pub async fn delete_crypto_transaction(
         .await
         .ok();
 
-    // Trigger historical recalculation if transaction was historical
-    if let Some(date) = tx_date {
-        crate::commands::portfolio::trigger_historical_recalculation_for_asset(
-            &db,
-            date,
-            crate::commands::portfolio::AssetType::Crypto,
-        )
-        .await
-        .ok();
+    // Trigger per-ticker historical recalculation if transaction was historical
+    if let Some((date, ticker, coingecko_id)) = tx_info {
+        if !coingecko_id.is_empty() {
+            crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
+                &db,
+                date,
+                &ticker,
+                &coingecko_id,
+            )
+            .await
+            .ok();
+        }
 
         app.emit("recalculation-complete", ()).ok();
     }
@@ -539,4 +601,97 @@ pub async fn delete_crypto_manual_price(db: State<'_, Database>, symbol: String)
     })?;
 
     Ok(())
+}
+
+/// Get value history for a specific crypto ticker
+#[tauri::command]
+pub async fn get_crypto_value_history(
+    db: State<'_, Database>,
+    ticker: String,
+    start_date: Option<i64>,
+    end_date: Option<i64>,
+) -> Result<Vec<crate::models::TickerValueHistory>> {
+    let ticker_upper = ticker.to_uppercase();
+
+    db.with_conn(|conn| {
+        let mut query = String::from(
+            "SELECT ticker, recorded_at, value_czk, quantity, price, currency 
+             FROM crypto_value_history 
+             WHERE ticker = ?1",
+        );
+
+        if start_date.is_some() {
+            query.push_str(" AND recorded_at >= ?2");
+        }
+        if end_date.is_some() {
+            query.push_str(" AND recorded_at <= ?3");
+        }
+
+        query.push_str(" ORDER BY recorded_at DESC");
+
+        let mut stmt = conn.prepare(&query)?;
+
+        let histories: Vec<crate::models::TickerValueHistory> =
+            if start_date.is_some() && end_date.is_some() {
+                stmt.query_map(
+                    rusqlite::params![&ticker_upper, start_date.unwrap(), end_date.unwrap()],
+                    |row| {
+                        Ok(crate::models::TickerValueHistory {
+                            ticker: row.get(0)?,
+                            recorded_at: row.get(1)?,
+                            value_czk: row.get(2)?,
+                            quantity: row.get(3)?,
+                            price: row.get(4)?,
+                            currency: row.get(5)?,
+                        })
+                    },
+                )?
+                .filter_map(|r| r.ok())
+                .collect()
+            } else if start_date.is_some() {
+                stmt.query_map(
+                    rusqlite::params![&ticker_upper, start_date.unwrap()],
+                    |row| {
+                        Ok(crate::models::TickerValueHistory {
+                            ticker: row.get(0)?,
+                            recorded_at: row.get(1)?,
+                            value_czk: row.get(2)?,
+                            quantity: row.get(3)?,
+                            price: row.get(4)?,
+                            currency: row.get(5)?,
+                        })
+                    },
+                )?
+                .filter_map(|r| r.ok())
+                .collect()
+            } else if end_date.is_some() {
+                stmt.query_map(rusqlite::params![&ticker_upper], |row| {
+                    Ok(crate::models::TickerValueHistory {
+                        ticker: row.get(0)?,
+                        recorded_at: row.get(1)?,
+                        value_czk: row.get(2)?,
+                        quantity: row.get(3)?,
+                        price: row.get(4)?,
+                        currency: row.get(5)?,
+                    })
+                })?
+                .filter_map(|r| r.ok())
+                .collect()
+            } else {
+                stmt.query_map(rusqlite::params![&ticker_upper], |row| {
+                    Ok(crate::models::TickerValueHistory {
+                        ticker: row.get(0)?,
+                        recorded_at: row.get(1)?,
+                        value_czk: row.get(2)?,
+                        quantity: row.get(3)?,
+                        price: row.get(4)?,
+                        currency: row.get(5)?,
+                    })
+                })?
+                .filter_map(|r| r.ok())
+                .collect()
+            };
+
+        Ok(histories)
+    })
 }

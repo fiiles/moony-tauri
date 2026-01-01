@@ -31,17 +31,12 @@ impl std::str::FromStr for TransactionType {
 }
 
 /// Transaction status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum TransactionStatus {
+    #[default]
     Booked,
     Pending,
-}
-
-impl Default for TransactionStatus {
-    fn default() -> Self {
-        TransactionStatus::Booked
-    }
 }
 
 impl std::fmt::Display for TransactionStatus {

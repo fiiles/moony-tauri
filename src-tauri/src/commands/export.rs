@@ -16,8 +16,11 @@ pub struct ExportResult {
 }
 
 /// Export stock investment transactions as CSV
+/// Format matches the import format: Date, Type, Ticker, Name, Quantity, Price, Currency
 #[tauri::command]
 pub fn export_stock_transactions(db: State<'_, Database>) -> Result<ExportResult> {
+    use chrono::{TimeZone, Utc};
+
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT
@@ -45,22 +48,26 @@ pub fn export_stock_transactions(db: State<'_, Database>) -> Result<ExportResult
             ))
         })?;
 
-        let mut csv = String::from(
-            "type,ticker,company_name,quantity,price_per_unit,currency,transaction_date\n",
-        );
+        let mut csv = String::from("Date,Type,Ticker,Name,Quantity,Price,Currency\n");
         let mut count = 0;
 
         for row in rows {
-            let (tx_type, ticker, company_name, quantity, price, currency, date) = row?;
+            let (tx_type, ticker, company_name, quantity, price, currency, date_ts) = row?;
+            // Convert Unix timestamp to YYYY-MM-DD format
+            let date_str = Utc
+                .timestamp_opt(date_ts, 0)
+                .single()
+                .map(|dt| dt.format("%Y-%m-%d").to_string())
+                .unwrap_or_else(|| date_ts.to_string());
             csv.push_str(&format!(
-                "{},{},\"{}\",{},{},{},{}\n",
+                "{},{},{},\"{}\",{},{},{}\n",
+                date_str,
                 tx_type,
                 ticker,
                 escape_csv(&company_name),
                 quantity,
                 price,
-                currency,
-                date
+                currency
             ));
             count += 1;
         }
@@ -74,8 +81,11 @@ pub fn export_stock_transactions(db: State<'_, Database>) -> Result<ExportResult
 }
 
 /// Export crypto transactions as CSV
+/// Format matches the import format: Date, Type, Ticker, Name, Quantity, Price, Currency
 #[tauri::command]
 pub fn export_crypto_transactions(db: State<'_, Database>) -> Result<ExportResult> {
+    use chrono::{TimeZone, Utc};
+
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT
@@ -103,21 +113,26 @@ pub fn export_crypto_transactions(db: State<'_, Database>) -> Result<ExportResul
             ))
         })?;
 
-        let mut csv =
-            String::from("type,ticker,name,quantity,price_per_unit,currency,transaction_date\n");
+        let mut csv = String::from("Date,Type,Ticker,Name,Quantity,Price,Currency\n");
         let mut count = 0;
 
         for row in rows {
-            let (tx_type, ticker, name, quantity, price, currency, date) = row?;
+            let (tx_type, ticker, name, quantity, price, currency, date_ts) = row?;
+            // Convert Unix timestamp to YYYY-MM-DD format
+            let date_str = Utc
+                .timestamp_opt(date_ts, 0)
+                .single()
+                .map(|dt| dt.format("%Y-%m-%d").to_string())
+                .unwrap_or_else(|| date_ts.to_string());
             csv.push_str(&format!(
-                "{},{},\"{}\",{},{},{},{}\n",
+                "{},{},{},\"{}\",{},{},{}\n",
+                date_str,
                 tx_type,
                 ticker,
                 escape_csv(&name),
                 quantity,
                 price,
-                currency,
-                date
+                currency
             ));
             count += 1;
         }

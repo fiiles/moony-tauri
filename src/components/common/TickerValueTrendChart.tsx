@@ -5,12 +5,10 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useMemo, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { portfolioApi } from "@/lib/tauri-api";
+import { investmentsApi, cryptoApi, type TickerValueHistory } from "@/lib/tauri-api";
 import { subDays, startOfYear } from "date-fns";
 import TimePeriodSelector, { type Period } from "@/components/cashflow/TimePeriodSelector";
-import type { PortfolioMetricsHistory } from "@shared/schema";
 import { useLanguage } from "@/i18n/I18nProvider";
-import { useSyncStatus } from "@/hooks/sync-context";
 import { listen } from "@tauri-apps/api/event";
 
 interface TrendData {
@@ -22,8 +20,6 @@ interface TrendData {
   hasSell?: boolean;
   buyAmount?: number;
   sellAmount?: number;
-  buyTickers?: string[];
-  sellTickers?: string[];
 }
 
 // Transaction marker data passed from parent
@@ -31,12 +27,11 @@ export interface TransactionMarker {
   date: number; // Unix timestamp
   buyAmount: number; // Total bought in user currency
   sellAmount: number; // Total sold in user currency
-  buyTickers: string[]; // Tickers bought on this date
-  sellTickers: string[]; // Tickers sold on this date
 }
 
-interface PortfolioValueTrendChartProps {
-  type: 'investments' | 'crypto';
+interface TickerValueTrendChartProps {
+  type: 'stock' | 'crypto';
+  ticker: string;
   currentValue: number;
   isRefreshing?: boolean;
   transactionMarkers?: TransactionMarker[];
@@ -72,17 +67,11 @@ const CustomTooltip = ({
           {data.hasBuy && data.buyAmount !== undefined && data.buyAmount > 0 && (
             <div className="text-sm text-green-600 dark:text-green-400 font-medium">
               {t('chart.bought')}: {formatCurrency(data.buyAmount)}
-              {data.buyTickers && data.buyTickers.length > 0 && (
-                <span className="text-muted-foreground font-normal"> [{data.buyTickers.join(', ')}]</span>
-              )}
             </div>
           )}
           {data.hasSell && data.sellAmount !== undefined && data.sellAmount > 0 && (
             <div className="text-sm text-red-600 dark:text-red-400 font-medium">
               {t('chart.sold')}: {formatCurrency(data.sellAmount)}
-              {data.sellTickers && data.sellTickers.length > 0 && (
-                <span className="text-muted-foreground font-normal"> [{data.sellTickers.join(', ')}]</span>
-              )}
             </div>
           )}
         </div>
@@ -125,37 +114,30 @@ const TransactionDot = (props: {
   );
 };
 
-export default function PortfolioValueTrendChart({
+export default function TickerValueTrendChart({
   type,
+  ticker,
   currentValue,
   isRefreshing = false,
   transactionMarkers = [],
-}: PortfolioValueTrendChartProps) {
+}: TickerValueTrendChartProps) {
   const { formatCurrency } = useCurrency();
-  const { t } = useTranslation(type === 'investments' ? 'stocks' : 'crypto');
+  const { t } = useTranslation(type === 'stock' ? 'stocks' : 'crypto');
   const { formatDate } = useLanguage();
   const queryClient = useQueryClient();
-  const { lastResult } = useSyncStatus();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('30D');
-
-  // Invalidate portfolio-history when backfill completes
-  useEffect(() => {
-    if (lastResult && lastResult.days_processed > 0) {
-      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
-    }
-  }, [lastResult, queryClient]);
 
   // Listen for backend recalculation events
   useEffect(() => {
     const unlisten = listen('recalculation-complete', () => {
-      console.log('Recalculation complete, refreshing chart...');
-      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+      console.log('Recalculation complete, refreshing ticker chart...');
+      queryClient.invalidateQueries({ queryKey: ['ticker-history', type, ticker] });
     });
 
     return () => {
       unlisten.then(f => f());
     };
-  }, [queryClient]);
+  }, [queryClient, type, ticker]);
 
   // Calculate date range based on selected period
   const dateRange = useMemo(() => {
@@ -178,54 +160,44 @@ export default function PortfolioValueTrendChart({
     }
   }, [selectedPeriod]);
 
-  // Fetch portfolio history
-  const { data: portfolioHistory } = useQuery<PortfolioMetricsHistory[]>({
-    queryKey: ["portfolio-history", dateRange.start?.toISOString(), dateRange.end.toISOString()],
+  // Fetch ticker history
+  const { data: tickerHistory } = useQuery<TickerValueHistory[]>({
+    queryKey: ["ticker-history", type, ticker, dateRange.start?.toISOString(), dateRange.end.toISOString()],
     queryFn: async () => {
       const startDate = dateRange.start ? Math.floor(dateRange.start.getTime() / 1000) : undefined;
       const endDate = Math.floor(dateRange.end.getTime() / 1000);
-      return portfolioApi.getHistory(startDate, endDate);
+      
+      if (type === 'stock') {
+        return investmentsApi.getHistory(ticker, startDate, endDate);
+      } else {
+        return cryptoApi.getHistory(ticker, startDate, endDate);
+      }
     },
     staleTime: 0,
     refetchOnMount: 'always',
   });
 
   // Create a map of transaction markers by day-start timestamp for quick lookup
-  // Using timestamps instead of date strings to correctly distinguish between different years
   const markerMap = useMemo(() => {
     const map = new Map<number, TransactionMarker>();
     for (const marker of transactionMarkers) {
-      // The marker.date is already normalized to day-start in Stocks.tsx/Crypto.tsx
       const existing = map.get(marker.date);
       if (existing) {
-        // Aggregate amounts and tickers for same date
         existing.buyAmount += marker.buyAmount;
         existing.sellAmount += marker.sellAmount;
-        // Merge tickers, avoiding duplicates
-        for (const t of marker.buyTickers) {
-          if (!existing.buyTickers.includes(t)) existing.buyTickers.push(t);
-        }
-        for (const t of marker.sellTickers) {
-          if (!existing.sellTickers.includes(t)) existing.sellTickers.push(t);
-        }
       } else {
-        map.set(marker.date, { ...marker, buyTickers: [...marker.buyTickers], sellTickers: [...marker.sellTickers] });
+        map.set(marker.date, { ...marker });
       }
     }
     return map;
   }, [transactionMarkers]);
 
-  // Extract value based on type and calculate chart data
+  // Extract value and calculate chart data
   const { data, change } = useMemo(() => {
     // Reverse history to get chronological order (Oldest -> Newest)
-    // portfolioHistory is DESC (Newest -> Oldest)
-    const historyData: TrendData[] = [...(portfolioHistory || [])].reverse().map(h => {
-      let value: number;
-      if (type === 'investments') {
-        value = Number(h.totalInvestments);
-      } else {
-        value = Number(h.totalCrypto || 0);
-      }
+    // tickerHistory is DESC (Newest -> Oldest)
+    const historyData: TrendData[] = [...(tickerHistory || [])].reverse().map(h => {
+      const value = Number(h.valueCzk) || 0;
       
       // Include year in date format for multi-year periods
       const includeYear = selectedPeriod === '1Y' || selectedPeriod === '5Y' || selectedPeriod === 'All';
@@ -233,7 +205,7 @@ export default function PortfolioValueTrendChart({
         ? formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric', year: '2-digit' })
         : formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric' });
       
-      // Normalize recordedAt to day-start for marker lookup (same normalization as in Stocks/Crypto)
+      // Normalize recordedAt to day-start for marker lookup
       const recordedDate = new Date(h.recordedAt * 1000);
       const dayStart = new Date(recordedDate.getFullYear(), recordedDate.getMonth(), recordedDate.getDate()).getTime() / 1000;
       const marker = markerMap.get(dayStart);
@@ -246,8 +218,6 @@ export default function PortfolioValueTrendChart({
         hasSell: marker ? marker.sellAmount > 0 : false,
         buyAmount: marker?.buyAmount,
         sellAmount: marker?.sellAmount,
-        buyTickers: marker?.buyTickers,
-        sellTickers: marker?.sellTickers,
       };
     });
 
@@ -268,8 +238,6 @@ export default function PortfolioValueTrendChart({
         lastPoint.hasSell = todayMarker.sellAmount > 0;
         lastPoint.buyAmount = todayMarker.buyAmount;
         lastPoint.sellAmount = todayMarker.sellAmount;
-        lastPoint.buyTickers = todayMarker.buyTickers;
-        lastPoint.sellTickers = todayMarker.sellTickers;
       }
     } else {
       historyData.push({
@@ -280,8 +248,6 @@ export default function PortfolioValueTrendChart({
         hasSell: todayMarker ? todayMarker.sellAmount > 0 : false,
         buyAmount: todayMarker?.buyAmount,
         sellAmount: todayMarker?.sellAmount,
-        buyTickers: todayMarker?.buyTickers,
-        sellTickers: todayMarker?.sellTickers,
       });
     }
 
@@ -292,7 +258,7 @@ export default function PortfolioValueTrendChart({
       : 0;
 
     return { data: historyData, change: changePercent };
-  }, [portfolioHistory, currentValue, type, formatDate, markerMap, selectedPeriod]);
+  }, [tickerHistory, currentValue, formatDate, markerMap, selectedPeriod]);
 
   const isPositive = change >= 0;
 
@@ -325,22 +291,20 @@ export default function PortfolioValueTrendChart({
     // Ensure minimum interval based on period
     switch (selectedPeriod) {
       case '30D':
-        return Math.max(interval, 4); // Show ~7-8 labels
+        return Math.max(interval, 4);
       case '90D':
-        return Math.max(interval, 10); // Show ~9 labels
+        return Math.max(interval, 10);
       case 'YTD':
       case '1Y':
-        return Math.max(interval, 30); // Show monthly ~12 labels
+        return Math.max(interval, 30);
       case '5Y':
-        return Math.max(interval, 90); // Show quarterly ~20 labels
+        return Math.max(interval, 90);
       case 'All':
-        return Math.max(interval, 120); // Show fewer labels for long periods
+        return Math.max(interval, 120);
       default:
         return interval;
     }
   }, [data.length, selectedPeriod]);
-
-
 
   return (
     <Card className={cn(
@@ -349,7 +313,7 @@ export default function PortfolioValueTrendChart({
     )}>
       <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
         <div className="flex flex-col gap-2">
-          <p className="text-lg font-medium">{t('chart.title')}</p>
+          <p className="text-lg font-medium">{t('chart.positionTitle')}</p>
           <p className="text-4xl font-bold tracking-tight">
             {formatCurrency(currentValue)}
           </p>
@@ -366,7 +330,7 @@ export default function PortfolioValueTrendChart({
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
             <defs>
-              <linearGradient id={`colorValue-${type}`} x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={`colorValue-ticker-${type}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.2} />
                 <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
               </linearGradient>
@@ -390,7 +354,7 @@ export default function PortfolioValueTrendChart({
               dataKey="value"
               stroke="hsl(var(--chart-1))"
               strokeWidth={2}
-              fill={`url(#colorValue-${type})`}
+              fill={`url(#colorValue-ticker-${type})`}
               dot={<TransactionDot />}
               activeDot={{ r: 5 }}
             />

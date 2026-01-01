@@ -20,7 +20,7 @@ import { investmentsApi, priceApi } from "@/lib/tauri-api";
 export function ImportInvestmentsModal() {
     const [open, setOpen] = useState(false);
     const [file, setFile] = useState<File | null>(null);
-    const [parsedData, setParsedData] = useState<any[]>([]);
+    const [parsedData, setParsedData] = useState<Record<string, string>[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [successCount, setSuccessCount] = useState<number | null>(null);
     const [importErrors, setImportErrors] = useState<string[]>([]);
@@ -28,12 +28,12 @@ export function ImportInvestmentsModal() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
 
-    const exampleCSVContent = `Date,Type,Ticker,Quantity,Price,Currency
-2024-01-15,buy,AAPL,10,180.50,USD
-2024-02-20,buy,MSFT,5,395.00,USD
-2024-03-10,sell,AAPL,3,185.25,USD
-2024-04-05,buy,GOOGL,2,155.75,USD
-2024-05-15,buy,NVDA,8,850.00,USD`;
+    const exampleCSVContent = `Date,Type,Ticker,Name,Quantity,Price,Currency
+2024-01-15,buy,AAPL,Apple Inc.,10,180.50,USD
+2024-02-20,buy,MSFT,Microsoft Corporation,5,395.00,USD
+2024-03-10,sell,AAPL,Apple Inc.,3,185.25,USD
+2024-04-05,buy,GOOGL,Alphabet Inc.,2,155.75,USD
+2024-05-15,buy,NVDA,NVIDIA Corporation,8,850.00,USD`;
 
     const downloadExampleCSV = async () => {
         try {
@@ -54,7 +54,7 @@ export function ImportInvestmentsModal() {
     };
 
     const importMutation = useMutation({
-        mutationFn: async (transactions: any[]) => {
+        mutationFn: async (transactions: Record<string, string>[]) => {
             return investmentsApi.importTransactions(transactions, "USD");
         },
         onSuccess: (data) => {
@@ -144,6 +144,7 @@ export function ImportInvestmentsModal() {
                         if (["date", "datum"].includes(h)) return "Date";
                         if (["type", "typ"].includes(h)) return "Type";
                         if (["ticker", "symbol"].includes(h)) return "Ticker";
+                        if (["name", "company_name", "company", "název", "nazev"].includes(h)) return "Name";
                         if (["quantity", "množství", "pocet", "amount"].includes(h)) return "Quantity";
                         if (["price", "cena", "price_per_unit", "cost"].includes(h)) return "Price";
                         if (["currency", "měna", "mena"].includes(h)) return "Currency";
@@ -194,8 +195,9 @@ export function ImportInvestmentsModal() {
                 }
 
                 setParsedData(data);
-            } catch (err: any) {
-                setError("Failed to parse CSV: " + err.message);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : "Unknown error";
+                setError("Failed to parse CSV: " + message);
                 setParsedData([]);
             }
         };
@@ -239,7 +241,7 @@ export function ImportInvestmentsModal() {
                             Date, Type, Ticker, Quantity, Price, Currency
                         </code>
                         <span className="block text-xs text-muted-foreground mt-1">
-                            Date formats: YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY. Type: buy or sell.
+                            Optional: Name (company name). Date formats: YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY. Type: buy or sell.
                         </span>
                         <button
                             type="button"
@@ -252,7 +254,7 @@ export function ImportInvestmentsModal() {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-hidden flex flex-col gap-4 py-4">
+                <div className="flex-1 overflow-y-auto flex flex-col gap-4 py-4">
                     {!file && !successCount && (
                         <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 text-center hover:bg-muted/50 cursor-pointer"
                             onClick={() => fileInputRef.current?.click()}>
@@ -307,9 +309,10 @@ export function ImportInvestmentsModal() {
                                             <TableBody>
                                                 {parsedData.slice(0, 5).map((row, i) => (
                                                     <TableRow key={i}>
-                                                        {Object.values(row).slice(0, 6).map((v: any, j) => (
+                                                        {Object.values(row).slice(0, 6).map((v, j) => (
                                                             <TableCell key={j}>{v}</TableCell>
                                                         ))}
+
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
@@ -324,7 +327,7 @@ export function ImportInvestmentsModal() {
                         <div className="flex flex-col gap-4 items-center justify-center p-8 w-full">
                             <CheckCircle className="h-16 w-16 text-green-500" />
                             <h3 className="text-xl font-bold">Import Complete</h3>
-                            <p className="text-muted-foreground">Processed {successCount + importErrors.length} rows.</p>
+                        <p className="text-muted-foreground">Processed {successCount + importErrors.length} rows.</p>
 
                             <div className={`grid gap-4 w-full ${importedItems.length > 0 && importErrors.length > 0 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
                                 {importedItems.length > 0 && (

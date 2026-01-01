@@ -155,7 +155,7 @@ fn enrich_investment(
         company_name: inv.company_name,
         quantity: inv.quantity,
         average_price: inv.average_price,
-        current_price: current_price.to_string(),
+        current_price,
         original_price,
         currency,
         fetched_at,
@@ -176,6 +176,7 @@ pub async fn create_investment(
     initial_transaction: Option<InsertInvestmentTransaction>,
 ) -> Result<StockInvestment> {
     let ticker = data.ticker.to_uppercase();
+    let ticker_for_recalc = ticker.clone();
     let initial_transaction_clone = initial_transaction.clone();
 
     let inv_result = db.with_conn(move |conn| {
@@ -253,12 +254,12 @@ pub async fn create_investment(
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
 
-    // Trigger historical recalculation if there was an initial transaction
+    // Trigger ticker-specific historical recalculation if there was an initial transaction
     if let Some(tx) = initial_transaction {
-        portfolio::trigger_historical_recalculation_for_asset(
+        portfolio::trigger_historical_recalculation_for_stock_ticker(
             &db,
             tx.transaction_date,
-            portfolio::AssetType::Stocks,
+            &ticker_for_recalc,
         )
         .await
         .ok();
@@ -272,16 +273,26 @@ pub async fn create_investment(
 /// Delete investment
 #[tauri::command]
 pub async fn delete_investment(db: State<'_, Database>, app: AppHandle, id: String) -> Result<()> {
-    // Get earliest transaction date before deleting (for historical recalc)
-    let earliest_tx_date: Option<i64> = db.with_conn(|conn| {
+    // Get earliest transaction date and ticker before deleting (for historical recalc)
+    let tx_info: Option<(i64, String)> = db.with_conn(|conn| {
         Ok(conn
             .query_row(
-                "SELECT MIN(transaction_date) FROM investment_transactions WHERE investment_id = ?1",
+                "SELECT MIN(transaction_date), ticker FROM investment_transactions WHERE investment_id = ?1",
+                [&id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .ok())
+    })?;
+
+    // Also get ticker from the investment itself (in case there are no transactions)
+    let ticker: Option<String> = db.with_conn(|conn| {
+        Ok(conn
+            .query_row(
+                "SELECT ticker FROM stock_investments WHERE id = ?1",
                 [&id],
                 |row| row.get(0),
             )
-            .ok()
-            .flatten())
+            .ok())
     })?;
 
     db.with_conn(|conn| {
@@ -298,21 +309,23 @@ pub async fn delete_investment(db: State<'_, Database>, app: AppHandle, id: Stri
         Ok(())
     })?;
 
+    // Delete this ticker's history from stock_value_history
+    if let Some(ref t) = ticker {
+        db.with_conn(|conn| {
+            conn.execute("DELETE FROM stock_value_history WHERE ticker = ?1", [t])?;
+            Ok(())
+        })?;
+    }
+
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
 
-    // Trigger historical recalculation if there were transactions
-    if let Some(tx_date) = earliest_tx_date {
-        portfolio::trigger_historical_recalculation_for_asset(
-            &db,
-            tx_date,
-            portfolio::AssetType::Stocks,
-        )
-        .await
-        .ok();
-
-        app.emit("recalculation-complete", ()).ok();
+    // Update aggregate portfolio history from ticker tables
+    if let Some((tx_date, _)) = tx_info {
+        portfolio::update_portfolio_history_from_ticker_tables(&db, tx_date)?;
     }
+
+    app.emit("recalculation-complete", ()).ok();
 
     Ok(())
 }
@@ -437,11 +450,11 @@ pub async fn create_investment_transaction(
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
 
-    // Trigger historical recalculation if transaction is retrospective
-    portfolio::trigger_historical_recalculation_for_asset(
+    // Trigger ticker-specific historical recalculation
+    portfolio::trigger_historical_recalculation_for_stock_ticker(
         &db,
         result.transaction_date,
-        portfolio::AssetType::Stocks,
+        &result.ticker,
     )
     .await
     .ok();
@@ -458,13 +471,13 @@ pub async fn delete_investment_transaction(
     app: AppHandle,
     tx_id: String,
 ) -> Result<()> {
-    // Get transaction date before deleting (for historical recalc)
-    let tx_date: Option<i64> = db.with_conn(|conn| {
+    // Get transaction date and ticker before deleting (for historical recalc)
+    let tx_info: Option<(i64, String)> = db.with_conn(|conn| {
         Ok(conn
             .query_row(
-                "SELECT transaction_date FROM investment_transactions WHERE id = ?1",
+                "SELECT transaction_date, ticker FROM investment_transactions WHERE id = ?1",
                 [&tx_id],
-                |row| row.get(0),
+                |row| Ok((row.get(0)?, row.get(1)?)),
             )
             .ok())
     })?;
@@ -506,15 +519,11 @@ pub async fn delete_investment_transaction(
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
 
-    // Trigger historical recalculation if transaction was historical
-    if let Some(date) = tx_date {
-        portfolio::trigger_historical_recalculation_for_asset(
-            &db,
-            date,
-            portfolio::AssetType::Stocks,
-        )
-        .await
-        .ok();
+    // Trigger ticker-specific historical recalculation if transaction was historical
+    if let Some((date, ticker)) = tx_info {
+        portfolio::trigger_historical_recalculation_for_stock_ticker(&db, date, &ticker)
+            .await
+            .ok();
 
         app.emit("recalculation-complete", ()).ok();
     }
@@ -582,11 +591,11 @@ pub async fn update_investment_transaction(
     // Update portfolio snapshot
     portfolio::update_todays_snapshot(&db).await.ok();
 
-    // Trigger historical recalculation if transaction date is retrospective
-    portfolio::trigger_historical_recalculation_for_asset(
+    // Trigger ticker-specific historical recalculation
+    portfolio::trigger_historical_recalculation_for_stock_ticker(
         &db,
         result.transaction_date,
-        portfolio::AssetType::Stocks,
+        &result.ticker,
     )
     .await
     .ok();
@@ -604,17 +613,114 @@ pub async fn import_investment_transactions(
     transactions: Vec<serde_json::Value>,
     default_currency: String,
 ) -> Result<serde_json::Value> {
+    use crate::services::price_api;
+    use std::collections::HashMap;
+
     let mut success_count = 0;
     let mut errors: Vec<String> = Vec::new();
     let mut imported: Vec<String> = Vec::new();
+    // Track earliest date per ticker for per-ticker recalculation
+    let mut ticker_earliest_dates: HashMap<String, i64> = HashMap::new();
 
+    // First pass: collect tickers that need name lookup
+    let mut name_cache: HashMap<String, String> = HashMap::new();
+    let mut tickers_needing_lookup: Vec<String> = Vec::new();
+
+    for tx in &transactions {
+        if let Some(ticker) = tx
+            .get("Ticker")
+            .or_else(|| tx.get("ticker"))
+            .and_then(|v| v.as_str())
+        {
+            let ticker_upper = ticker.to_uppercase();
+
+            // Check if name is provided and not empty/same as ticker
+            let name = tx
+                .get("Name")
+                .or_else(|| tx.get("name"))
+                .or_else(|| tx.get("Company_name"))
+                .or_else(|| tx.get("company_name"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty() && s.to_uppercase() != ticker_upper);
+
+            if name.is_none() && !name_cache.contains_key(&ticker_upper) {
+                // Check if investment already exists with a name
+                let existing_name: Option<String> = db
+                    .with_conn(|conn| {
+                        conn.query_row(
+                            "SELECT company_name FROM stock_investments WHERE ticker = ?1",
+                            [&ticker_upper],
+                            |row| row.get(0),
+                        )
+                        .ok()
+                        .map(Ok)
+                        .transpose()
+                    })
+                    .ok()
+                    .flatten();
+
+                if let Some(existing) = existing_name {
+                    // Use existing company name from database
+                    name_cache.insert(ticker_upper.clone(), existing);
+                } else if !tickers_needing_lookup.contains(&ticker_upper) {
+                    tickers_needing_lookup.push(ticker_upper.clone());
+                }
+            } else if let Some(n) = name {
+                name_cache.insert(ticker_upper, n);
+            }
+        }
+    }
+
+    // Look up company names from Yahoo Finance for tickers without names
+    if !tickers_needing_lookup.is_empty() {
+        println!(
+            "[IMPORT] Looking up company names for {} tickers from Yahoo Finance",
+            tickers_needing_lookup.len()
+        );
+
+        for ticker in &tickers_needing_lookup {
+            // Add small delay between lookups to avoid rate limiting
+            tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+
+            match price_api::search_stock_tickers(ticker).await {
+                Ok(results) => {
+                    // Find exact match or first result
+                    if let Some(result) = results
+                        .iter()
+                        .find(|r| r.symbol.to_uppercase() == ticker.to_uppercase())
+                        .or_else(|| results.first())
+                    {
+                        println!("[IMPORT] Found name for {}: {}", ticker, result.shortname);
+                        name_cache.insert(ticker.clone(), result.shortname.clone());
+                    } else {
+                        println!("[IMPORT] No name found for {}, using ticker", ticker);
+                        name_cache.insert(ticker.clone(), ticker.clone());
+                    }
+                }
+                Err(e) => {
+                    println!("[IMPORT] Failed to lookup {}: {}, using ticker", ticker, e);
+                    name_cache.insert(ticker.clone(), ticker.clone());
+                }
+            }
+        }
+    }
+
+    // Second pass: process transactions with enriched names
     db.with_conn(|conn| {
         for (index, tx) in transactions.iter().enumerate() {
-            let result = process_import_transaction(conn, tx, &default_currency);
+            let result = process_import_transaction(conn, tx, &default_currency, &name_cache);
             match result {
-                Ok(description) => {
+                Ok((description, tx_date, ticker)) => {
                     success_count += 1;
                     imported.push(format!("Row {}: {}", index + 1, description));
+                    // Track the earliest transaction date per ticker
+                    if let Some(date) = tx_date {
+                        ticker_earliest_dates
+                            .entry(ticker)
+                            .and_modify(|e| *e = (*e).min(date))
+                            .or_insert(date);
+                    }
                 }
                 Err(e) => errors.push(format!("Row {}: {}", index + 1, e)),
             }
@@ -630,6 +736,17 @@ pub async fn import_investment_transactions(
     // Update portfolio snapshot after all imports
     portfolio::update_todays_snapshot(&db).await.ok();
 
+    // Trigger ticker-specific historical recalculation for each imported ticker
+    for (ticker, earliest_date) in ticker_earliest_dates.iter() {
+        println!(
+            "[IMPORT] Triggering ticker-specific recalculation for {} from {}",
+            ticker, earliest_date
+        );
+        portfolio::trigger_historical_recalculation_for_stock_ticker(&db, *earliest_date, ticker)
+            .await
+            .ok();
+    }
+
     app.emit("recalculation-complete", ()).ok();
 
     // Return result structure
@@ -644,7 +761,8 @@ fn process_import_transaction(
     conn: &rusqlite::Connection,
     tx: &serde_json::Value,
     default_currency: &str,
-) -> std::result::Result<String, String> {
+    name_cache: &std::collections::HashMap<String, String>,
+) -> std::result::Result<(String, Option<i64>, String), String> {
     // Extract fields from the transaction object
     let ticker = tx
         .get("Ticker")
@@ -780,6 +898,21 @@ fn process_import_transaction(
         ));
     }
 
+    // Get name from cache (with Yahoo Finance lookup), CSV value, or fall back to ticker
+    let name = name_cache
+        .get(&ticker)
+        .cloned()
+        .or_else(|| {
+            tx.get("Name")
+                .or_else(|| tx.get("name"))
+                .or_else(|| tx.get("Company_name"))
+                .or_else(|| tx.get("company_name"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        })
+        .unwrap_or_else(|| ticker.clone());
+
     let investment_id = match existing {
         Some(id) => id,
         None => {
@@ -788,7 +921,7 @@ fn process_import_transaction(
             conn.execute(
                 "INSERT INTO stock_investments (id, ticker, company_name, quantity, average_price)
                  VALUES (?1, ?2, ?3, ?4, ?5)",
-                rusqlite::params![id, ticker, ticker.clone(), "0", "0"],
+                rusqlite::params![id, ticker, name, "0", "0"],
             )
             .map_err(|e| format!("{}: Failed to create investment - {}", ticker, e))?;
             id
@@ -808,7 +941,7 @@ fn process_import_transaction(
             investment_id,
             tx_type,
             ticker,
-            ticker.clone(),
+            name,
             quantity,
             price,
             currency,
@@ -820,12 +953,16 @@ fn process_import_transaction(
     recalculate_investment(conn, &investment_id)
         .map_err(|e| format!("{}: Failed to recalculate investment - {}", ticker, e))?;
 
-    Ok(format!(
-        "{} {} {} @ {}",
-        tx_type.to_uppercase(),
-        quantity,
-        ticker,
-        price
+    Ok((
+        format!(
+            "{} {} {} @ {}",
+            tx_type.to_uppercase(),
+            quantity,
+            ticker,
+            price
+        ),
+        Some(transaction_date),
+        ticker.to_string(),
     ))
 }
 
@@ -994,4 +1131,98 @@ fn recalculate_investment(conn: &rusqlite::Connection, investment_id: &str) -> R
     )?;
 
     Ok(())
+}
+
+/// Get value history for a specific stock ticker
+#[tauri::command]
+pub async fn get_stock_value_history(
+    db: State<'_, Database>,
+    ticker: String,
+    start_date: Option<i64>,
+    end_date: Option<i64>,
+) -> Result<Vec<crate::models::TickerValueHistory>> {
+    let ticker_upper = ticker.to_uppercase();
+
+    db.with_conn(|conn| {
+        let mut query = String::from(
+            "SELECT ticker, recorded_at, value_czk, quantity, price, currency 
+             FROM stock_value_history 
+             WHERE ticker = ?1",
+        );
+
+        if start_date.is_some() {
+            query.push_str(" AND recorded_at >= ?2");
+        }
+        if end_date.is_some() {
+            query.push_str(" AND recorded_at <= ?3");
+        }
+
+        query.push_str(" ORDER BY recorded_at DESC");
+
+        let mut stmt = conn.prepare(&query)?;
+
+        let histories: Vec<crate::models::TickerValueHistory> =
+            if start_date.is_some() && end_date.is_some() {
+                stmt.query_map(
+                    rusqlite::params![&ticker_upper, start_date.unwrap(), end_date.unwrap()],
+                    |row| {
+                        Ok(crate::models::TickerValueHistory {
+                            ticker: row.get(0)?,
+                            recorded_at: row.get(1)?,
+                            value_czk: row.get(2)?,
+                            quantity: row.get(3)?,
+                            price: row.get(4)?,
+                            currency: row.get(5)?,
+                        })
+                    },
+                )?
+                .filter_map(|r| r.ok())
+                .collect()
+            } else if start_date.is_some() {
+                stmt.query_map(
+                    rusqlite::params![&ticker_upper, start_date.unwrap()],
+                    |row| {
+                        Ok(crate::models::TickerValueHistory {
+                            ticker: row.get(0)?,
+                            recorded_at: row.get(1)?,
+                            value_czk: row.get(2)?,
+                            quantity: row.get(3)?,
+                            price: row.get(4)?,
+                            currency: row.get(5)?,
+                        })
+                    },
+                )?
+                .filter_map(|r| r.ok())
+                .collect()
+            } else if end_date.is_some() {
+                // This branch won't be used as we check end_date.is_some() only after start_date
+                stmt.query_map(rusqlite::params![&ticker_upper], |row| {
+                    Ok(crate::models::TickerValueHistory {
+                        ticker: row.get(0)?,
+                        recorded_at: row.get(1)?,
+                        value_czk: row.get(2)?,
+                        quantity: row.get(3)?,
+                        price: row.get(4)?,
+                        currency: row.get(5)?,
+                    })
+                })?
+                .filter_map(|r| r.ok())
+                .collect()
+            } else {
+                stmt.query_map(rusqlite::params![&ticker_upper], |row| {
+                    Ok(crate::models::TickerValueHistory {
+                        ticker: row.get(0)?,
+                        recorded_at: row.get(1)?,
+                        value_czk: row.get(2)?,
+                        quantity: row.get(3)?,
+                        price: row.get(4)?,
+                        currency: row.get(5)?,
+                    })
+                })?
+                .filter_map(|r| r.ok())
+                .collect()
+            };
+
+        Ok(histories)
+    })
 }

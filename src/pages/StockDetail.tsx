@@ -45,12 +45,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { BuyInvestmentModal } from "@/components/stocks/BuyInvestmentModal";
 import { SellInvestmentModal } from "@/components/stocks/SellInvestmentModal";
 import { ManualPriceModal } from "@/components/stocks/ManualPriceModal";
 import { ManualDividendModal } from "@/components/stocks/ManualDividendModal";
 import { mapInvestmentToHolding } from "@/utils/stocks";
+import TickerValueTrendChart, { type TransactionMarker } from "@/components/common/TickerValueTrendChart";
 
 export default function StockDetail() {
     const [, params] = useRoute("/stocks/:id");
@@ -83,6 +84,39 @@ export default function StockDetail() {
         queryFn: () => investmentsApi.getTransactions(id!),
         enabled: !!id,
     });
+
+    // Compute transaction markers for this stock only
+    const transactionMarkers = useMemo((): TransactionMarker[] => {
+        if (!transactions || transactions.length === 0) return [];
+
+        const markersByDate = new Map<number, { buyAmount: number; sellAmount: number }>();
+
+        for (const tx of transactions) {
+            const txDate = new Date(tx.transactionDate * 1000);
+            const dayStart = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime() / 1000;
+
+            const existing = markersByDate.get(dayStart) || { buyAmount: 0, sellAmount: 0 };
+            
+            const quantity = parseFloat(tx.quantity) || 0;
+            const pricePerUnit = parseFloat(tx.pricePerUnit) || 0;
+            const txCurrency = (tx.currency || "CZK") as CurrencyCode;
+            const totalInCzk = convert(quantity * pricePerUnit, txCurrency, "CZK");
+
+            if (tx.type === "buy") {
+                existing.buyAmount += totalInCzk;
+            } else if (tx.type === "sell") {
+                existing.sellAmount += totalInCzk;
+            }
+
+            markersByDate.set(dayStart, existing);
+        }
+
+        return Array.from(markersByDate.entries()).map(([date, amounts]) => ({
+            date,
+            buyAmount: amounts.buyAmount,
+            sellAmount: amounts.sellAmount,
+        }));
+    }, [transactions, convert]);
 
     // Delete mutation
     const deleteMutation = useMutation({
@@ -299,6 +333,15 @@ export default function StockDetail() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Value Chart */}
+            <TickerValueTrendChart
+                type="stock"
+                ticker={investment.ticker}
+                currentValue={currentValue}
+                isRefreshing={isRefreshing}
+                transactionMarkers={transactionMarkers}
+            />
 
             {/* Position & Transactions Section (merged) */}
             <Card>
