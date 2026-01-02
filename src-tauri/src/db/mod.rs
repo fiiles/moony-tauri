@@ -30,7 +30,10 @@ impl Database {
 
     /// Check if the database is currently open/unlocked
     pub fn is_open(&self) -> bool {
-        self.conn.lock().unwrap().is_some()
+        self.conn
+            .lock()
+            .expect("Database connection mutex poisoned")
+            .is_some()
     }
 
     /// Open and unlock the database with a password (legacy method)
@@ -53,8 +56,11 @@ impl Database {
         migrations::run_migrations(&conn)?;
 
         // Store connection and path
-        *self.conn.lock().unwrap() = Some(conn);
-        *self.db_path.lock().unwrap() = Some(path);
+        *self
+            .conn
+            .lock()
+            .expect("Database connection mutex poisoned") = Some(conn);
+        *self.db_path.lock().expect("Database path mutex poisoned") = Some(path);
 
         Ok(())
     }
@@ -81,8 +87,11 @@ impl Database {
         migrations::run_migrations(&conn)?;
 
         // Store connection and path
-        *self.conn.lock().unwrap() = Some(conn);
-        *self.db_path.lock().unwrap() = Some(path);
+        *self
+            .conn
+            .lock()
+            .expect("Database connection mutex poisoned") = Some(conn);
+        *self.db_path.lock().expect("Database path mutex poisoned") = Some(path);
 
         Ok(())
     }
@@ -107,8 +116,11 @@ impl Database {
         migrations::run_migrations(&conn)?;
 
         // Store connection and path
-        *self.conn.lock().unwrap() = Some(conn);
-        *self.db_path.lock().unwrap() = Some(path);
+        *self
+            .conn
+            .lock()
+            .expect("Database connection mutex poisoned") = Some(conn);
+        *self.db_path.lock().expect("Database path mutex poisoned") = Some(path);
 
         Ok(())
     }
@@ -136,15 +148,21 @@ impl Database {
         migrations::run_migrations(&conn)?;
 
         // Store connection and path
-        *self.conn.lock().unwrap() = Some(conn);
-        *self.db_path.lock().unwrap() = Some(path);
+        *self
+            .conn
+            .lock()
+            .expect("Database connection mutex poisoned") = Some(conn);
+        *self.db_path.lock().expect("Database path mutex poisoned") = Some(path);
 
         Ok(())
     }
 
     /// Close the database connection (lock the app)
     pub fn close(&self) {
-        *self.conn.lock().unwrap() = None;
+        *self
+            .conn
+            .lock()
+            .expect("Database connection mutex poisoned") = None;
     }
 
     /// Execute a function with the database connection
@@ -153,7 +171,10 @@ impl Database {
     where
         F: FnOnce(&Connection) -> Result<T>,
     {
-        let guard = self.conn.lock().unwrap();
+        let guard = self
+            .conn
+            .lock()
+            .expect("Database connection mutex poisoned");
         let conn = guard
             .as_ref()
             .ok_or_else(|| AppError::Auth("Database is locked".into()))?;
@@ -165,7 +186,10 @@ impl Database {
     where
         F: FnOnce(&mut Connection) -> Result<T>,
     {
-        let mut guard = self.conn.lock().unwrap();
+        let mut guard = self
+            .conn
+            .lock()
+            .expect("Database connection mutex poisoned");
         let conn = guard
             .as_mut()
             .ok_or_else(|| AppError::Auth("Database is locked".into()))?;
@@ -186,7 +210,11 @@ impl Database {
         self.close();
 
         // Get and clear the path
-        let path = self.db_path.lock().unwrap().take();
+        let path = self
+            .db_path
+            .lock()
+            .expect("Database path mutex poisoned")
+            .take();
 
         if let Some(path) = path {
             std::fs::remove_file(&path)
@@ -198,7 +226,10 @@ impl Database {
 
     /// Get the database file path
     pub fn get_path(&self) -> Option<PathBuf> {
-        self.db_path.lock().unwrap().clone()
+        self.db_path
+            .lock()
+            .expect("Database path mutex poisoned")
+            .clone()
     }
 }
 

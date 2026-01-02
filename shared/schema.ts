@@ -60,6 +60,8 @@ export interface StockInvestment {
     companyName: string;
     quantity: string;
     averagePrice: string;
+    /** Currency of the average price (determined by first transaction) */
+    averagePriceCurrency: string;
 }
 
 export interface InvestmentTransaction {

@@ -1,9 +1,10 @@
 //! Stock investment models
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// Stock investment holding
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StockInvestment {
     pub id: String,
     pub ticker: String,
@@ -12,10 +13,13 @@ pub struct StockInvestment {
     pub quantity: String,
     #[serde(rename = "averagePrice")]
     pub average_price: String,
+    /// Currency of the average price (determined by first transaction)
+    #[serde(rename = "averagePriceCurrency")]
+    pub currency: String,
 }
 
 /// Enriched investment with current price data
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct EnrichedStockInvestment {
     pub id: String,
     pub ticker: String,
@@ -24,12 +28,15 @@ pub struct EnrichedStockInvestment {
     pub quantity: String,
     #[serde(rename = "averagePrice")]
     pub average_price: String,
+    /// Currency of the average price (determined by first transaction)
+    #[serde(rename = "averagePriceCurrency")]
+    pub average_price_currency: String,
     #[serde(rename = "currentPrice")]
     pub current_price: f64,
     /// Original price in its source currency (before conversion to CZK)
     #[serde(rename = "originalPrice")]
     pub original_price: String,
-    /// Currency of the original price (e.g., USD, EUR)
+    /// Currency of the current price (e.g., USD, EUR)
     pub currency: String,
     #[serde(rename = "fetchedAt")]
     pub fetched_at: Option<i64>,
@@ -47,7 +54,7 @@ pub struct EnrichedStockInvestment {
 }
 
 /// Data for creating stock investment
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertStockInvestment {
     pub ticker: String,
     #[serde(rename = "companyName")]
@@ -58,7 +65,7 @@ pub struct InsertStockInvestment {
 }
 
 /// Investment transaction (buy/sell)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct InvestmentTransaction {
     pub id: String,
     #[serde(rename = "investmentId")]
@@ -79,7 +86,7 @@ pub struct InvestmentTransaction {
 }
 
 /// Data for creating transaction
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertInvestmentTransaction {
     #[serde(rename = "investmentId")]
     pub investment_id: Option<String>,
@@ -141,7 +148,7 @@ pub struct StockData {
 }
 
 /// User price override
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StockPriceOverride {
     pub id: String,
     pub ticker: String,
@@ -166,7 +173,7 @@ pub struct DividendData {
 }
 
 /// User dividend override
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct DividendOverride {
     pub id: String,
     pub ticker: String,
@@ -178,7 +185,7 @@ pub struct DividendOverride {
 }
 
 /// Per-ticker value history record
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TickerValueHistory {
     pub ticker: String,
     #[serde(rename = "recordedAt")]
@@ -188,4 +195,114 @@ pub struct TickerValueHistory {
     pub quantity: String,
     pub price: String,
     pub currency: String,
+}
+
+// Input validation at trust boundary
+use crate::error::{AppError, Result};
+
+impl InsertStockInvestment {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        // Ticker validation
+        if self.ticker.is_empty() {
+            return Err(AppError::Validation("Ticker cannot be empty".into()));
+        }
+        if self.ticker.len() > 10 {
+            return Err(AppError::Validation(
+                "Ticker too long (max 10 characters)".into(),
+            ));
+        }
+        if !self
+            .ticker
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+        {
+            return Err(AppError::Validation(
+                "Ticker contains invalid characters".into(),
+            ));
+        }
+
+        // Company name validation
+        if self.company_name.is_empty() {
+            return Err(AppError::Validation("Company name cannot be empty".into()));
+        }
+
+        // Quantity validation (if provided)
+        if let Some(ref qty) = self.quantity {
+            if !qty.is_empty() {
+                let qty_val: f64 = qty
+                    .parse()
+                    .map_err(|_| AppError::Validation(format!("Invalid quantity '{}'", qty)))?;
+                if qty_val < 0.0 {
+                    return Err(AppError::Validation("Quantity cannot be negative".into()));
+                }
+            }
+        }
+
+        // Average price validation (if provided)
+        if let Some(ref price) = self.average_price {
+            if !price.is_empty() {
+                let price_val: f64 = price.parse().map_err(|_| {
+                    AppError::Validation(format!("Invalid average price '{}'", price))
+                })?;
+                if price_val < 0.0 {
+                    return Err(AppError::Validation(
+                        "Average price cannot be negative".into(),
+                    ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl InsertInvestmentTransaction {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        // Transaction type validation
+        let tx_type = self.tx_type.to_lowercase();
+        if tx_type != "buy" && tx_type != "sell" {
+            return Err(AppError::Validation(format!(
+                "Invalid transaction type '{}' (must be 'buy' or 'sell')",
+                self.tx_type
+            )));
+        }
+
+        // Ticker validation
+        if self.ticker.is_empty() {
+            return Err(AppError::Validation("Ticker cannot be empty".into()));
+        }
+
+        // Quantity validation
+        let qty: f64 = self
+            .quantity
+            .parse()
+            .map_err(|_| AppError::Validation(format!("Invalid quantity '{}'", self.quantity)))?;
+        if qty <= 0.0 {
+            return Err(AppError::Validation("Quantity must be positive".into()));
+        }
+
+        // Price validation
+        let price: f64 = self.price_per_unit.parse().map_err(|_| {
+            AppError::Validation(format!("Invalid price '{}'", self.price_per_unit))
+        })?;
+        if price <= 0.0 {
+            return Err(AppError::Validation("Price must be positive".into()));
+        }
+
+        // Currency validation
+        if self.currency.len() != 3 {
+            return Err(AppError::Validation(
+                "Currency must be 3 letters (e.g., USD, EUR)".into(),
+            ));
+        }
+        if !self.currency.chars().all(|c| c.is_ascii_alphabetic()) {
+            return Err(AppError::Validation(
+                "Currency must contain only letters".into(),
+            ));
+        }
+
+        Ok(())
+    }
 }

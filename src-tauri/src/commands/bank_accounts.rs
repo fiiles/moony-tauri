@@ -16,6 +16,7 @@ use uuid::Uuid;
 // ============================================================================
 
 use crate::commands::portfolio;
+use crate::services::bank_accounts as bank_service;
 
 /// Get all bank accounts with optional institution data
 #[tauri::command]
@@ -160,71 +161,16 @@ pub async fn create_bank_account(
     db: State<'_, Database>,
     data: InsertBankAccount,
 ) -> Result<BankAccount> {
-    let id = Uuid::new_v4().to_string();
-    let now = chrono::Utc::now().timestamp();
-    let account_type = data
-        .account_type
-        .clone()
-        .unwrap_or_else(|| "checking".to_string());
-    let currency = data.currency.clone().unwrap_or_else(|| "CZK".to_string());
-    let balance = data.balance.clone().unwrap_or_else(|| "0".to_string());
-    let has_zone = data.has_zone_designation.unwrap_or(false);
-    let exclude_from_balance = data.exclude_from_balance.unwrap_or(false);
+    // 1. Validate inputs at the trust boundary
+    data.validate()?;
 
-    let result = db.with_conn(|conn| {
-        conn.execute(
-            "INSERT INTO bank_accounts (
-                id, name, account_type, iban, bban, currency, balance,
-                institution_id, data_source, interest_rate, has_zone_designation,
-                termination_date, exclude_from_balance, created_at, updated_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
-            params![
-                id,
-                data.name,
-                account_type,
-                data.iban,
-                data.bban,
-                currency,
-                balance,
-                data.institution_id,
-                "manual",
-                data.interest_rate,
-                has_zone as i32,
-                data.termination_date,
-                exclude_from_balance as i32,
-                now,
-                now,
-            ],
-        )?;
+    // 2. Delegate to service layer
+    let result = db.with_conn(|conn| bank_service::create_account(conn, &data))?;
 
-        Ok(BankAccount {
-            id,
-            name: data.name,
-            account_type,
-            iban: data.iban,
-            bban: data.bban,
-            currency,
-            balance,
-            institution_id: data.institution_id,
-            external_account_id: None,
-            data_source: "manual".to_string(),
-            last_synced_at: None,
-            interest_rate: data.interest_rate,
-            has_zone_designation: has_zone,
-            termination_date: data.termination_date,
-            exclude_from_balance,
-            created_at: now,
-            updated_at: now,
-        })
-    });
+    // 3. Handle side effects (portfolio updates)
+    portfolio::update_todays_snapshot(&db).await.ok();
 
-    // Check if result is Ok before updating portfolio
-    if result.is_ok() {
-        // Update portfolio snapshots - ignore errors here to not block the main operation
-        let _ = portfolio::update_todays_snapshot(&db).await;
-    }
-
-    result
+    Ok(result)
 }
 
 /// Update an existing bank account
@@ -234,111 +180,26 @@ pub async fn update_bank_account(
     id: String,
     data: InsertBankAccount,
 ) -> Result<BankAccount> {
-    let now = chrono::Utc::now().timestamp();
+    // 1. Validate inputs at the trust boundary
+    data.validate()?;
 
-    let result = db.with_conn(|conn| {
-        // Get existing account first
-        let existing: BankAccount = conn.query_row(
-            "SELECT id, name, account_type, iban, bban, currency, balance, institution_id,
-             external_account_id, data_source, last_synced_at, interest_rate, has_zone_designation,
-             termination_date, exclude_from_balance, created_at, updated_at FROM bank_accounts WHERE id = ?1",
-            [&id],
-            |row| {
-                Ok(BankAccount {
-                    id: row.get(0)?,
-                    name: row.get(1)?,
-                    account_type: row.get(2)?,
-                    iban: row.get(3)?,
-                    bban: row.get(4)?,
-                    currency: row.get(5)?,
-                    balance: row.get(6)?,
-                    institution_id: row.get(7)?,
-                    external_account_id: row.get(8)?,
-                    data_source: row.get(9)?,
-                    last_synced_at: row.get(10)?,
-                    interest_rate: row.get(11)?,
-                    has_zone_designation: row.get::<_, i32>(12)? != 0,
-                    termination_date: row.get(13)?,
-                    exclude_from_balance: row.get::<_, i32>(14)? != 0,
-                    created_at: row.get(15)?,
-                    updated_at: row.get(16)?,
-                })
-            },
-        )?;
+    // 2. Delegate to service layer
+    let result = db.with_conn(|conn| bank_service::update_account(conn, &id, &data))?;
 
-        let account_type = data.account_type.unwrap_or(existing.account_type);
-        let currency = data.currency.unwrap_or(existing.currency);
-        let balance = data.balance.unwrap_or(existing.balance);
-        let has_zone = data
-            .has_zone_designation
-            .unwrap_or(existing.has_zone_designation);
-        let exclude_from_balance = data
-            .exclude_from_balance
-            .unwrap_or(existing.exclude_from_balance);
+    // 3. Handle side effects (portfolio updates)
+    portfolio::update_todays_snapshot(&db).await.ok();
 
-        conn.execute(
-            "UPDATE bank_accounts SET 
-                name = ?1, account_type = ?2, iban = ?3, bban = ?4, currency = ?5,
-                balance = ?6, institution_id = ?7, interest_rate = ?8, has_zone_designation = ?9,
-                termination_date = ?10, exclude_from_balance = ?11, updated_at = ?12
-            WHERE id = ?13",
-            params![
-                data.name,
-                account_type,
-                data.iban,
-                data.bban,
-                currency,
-                balance,
-                data.institution_id,
-                data.interest_rate,
-                has_zone as i32,
-                data.termination_date,
-                exclude_from_balance as i32,
-                now,
-                id,
-            ],
-        )?;
-
-        Ok(BankAccount {
-            id,
-            name: data.name,
-            account_type,
-            iban: data.iban,
-            bban: data.bban,
-            currency,
-            balance,
-            institution_id: data.institution_id,
-            external_account_id: existing.external_account_id,
-            data_source: existing.data_source,
-            last_synced_at: existing.last_synced_at,
-            interest_rate: data.interest_rate,
-            has_zone_designation: has_zone,
-            termination_date: data.termination_date,
-            exclude_from_balance,
-            created_at: existing.created_at,
-            updated_at: now,
-        })
-    });
-
-    // Check if result is Ok before updating portfolio
-    if result.is_ok() {
-        // Update portfolio snapshots - ignore errors here to not block the main operation
-        let _ = portfolio::update_todays_snapshot(&db).await;
-    }
-
-    result
+    Ok(result)
 }
 
 /// Delete a bank account and all its transactions
 #[tauri::command]
 pub async fn delete_bank_account(db: State<'_, Database>, id: String) -> Result<()> {
-    db.with_conn(|conn| {
-        conn.execute("DELETE FROM bank_accounts WHERE id = ?1", [&id])?;
-        Ok(())
-    })?;
+    // 1. Delegate to service layer
+    db.with_conn(|conn| bank_service::delete_account(conn, &id))?;
 
-    // Update portfolio snapshots
-    portfolio::update_todays_snapshot(&db).await?;
+    // 2. Handle side effects (portfolio updates)
+    portfolio::update_todays_snapshot(&db).await.ok();
 
     Ok(())
 }
@@ -1021,8 +882,10 @@ pub async fn import_csv_transactions(
         ));
     }
 
-    let date_idx = date_idx.unwrap();
-    let amount_idx = amount_idx.unwrap();
+    let date_idx =
+        date_idx.ok_or_else(|| AppError::Validation("Date column mapping is required".into()))?;
+    let amount_idx = amount_idx
+        .ok_or_else(|| AppError::Validation("Amount column mapping is required".into()))?;
 
     let mut imported_count = 0;
     let mut duplicate_count = 0;
@@ -1066,14 +929,23 @@ pub async fn import_csv_transactions(
                 let date_str = record.get(date_idx).unwrap_or("");
                 let booking_date =
                     match chrono::NaiveDate::parse_from_str(date_str, &config.date_format) {
-                        Ok(d) => d.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp(),
+                        Ok(d) => d
+                            .and_hms_opt(0, 0, 0)
+                            .expect("Valid date should have valid midnight time")
+                            .and_utc()
+                            .timestamp(),
                         Err(_) => {
                             // Try alternative formats
                             chrono::NaiveDate::parse_from_str(date_str, "%d.%m.%Y")
                                 .or_else(|_| {
                                     chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
                                 })
-                                .map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp())
+                                .map(|d| {
+                                    d.and_hms_opt(0, 0, 0)
+                                        .expect("Valid date should have valid midnight time")
+                                        .and_utc()
+                                        .timestamp()
+                                })
                                 .unwrap_or_else(|_| {
                                     errors.push(format!(
                                         "Row {}: Cannot parse date '{}'",

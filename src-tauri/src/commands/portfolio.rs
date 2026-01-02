@@ -5,11 +5,12 @@ use crate::error::Result;
 use crate::models::PortfolioMetricsHistory;
 use crate::services::currency::convert_to_czk;
 use serde::Serialize;
+use specta::Type;
 use tauri::State;
 use uuid::Uuid;
 
 /// Current portfolio metrics
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 pub struct PortfolioMetrics {
     #[serde(rename = "totalSavings")]
     pub total_savings: f64,
@@ -294,7 +295,7 @@ pub async fn update_todays_snapshot(db: &Database) -> Result<()> {
     let today_start = now
         .date_naive()
         .and_hms_opt(0, 0, 0)
-        .unwrap()
+        .expect("Valid date should have valid midnight time")
         .and_utc()
         .timestamp();
     let now_ts = now.timestamp();
@@ -831,7 +832,7 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
     }
 
     // Populate crypto_value_history
-    for (ticker, _coingecko_id) in &crypto_id_map {
+    for ticker in crypto_id_map.keys() {
         db.with_conn(|conn| {
             for day_timestamp in &missing_days {
                 let quantity = get_crypto_quantity_at_date(conn, ticker, *day_timestamp);

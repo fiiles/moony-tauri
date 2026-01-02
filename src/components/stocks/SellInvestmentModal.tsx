@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -58,6 +59,14 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
             date: new Date().toISOString().split("T")[0],
         },
     });
+
+    // Lock currency to the investment's base currency (set by first transaction)
+    useEffect(() => {
+        if (investment) {
+            const investmentCurrency = (investment.avgCostCurrency || investment.currency || "USD") as "USD" | "EUR" | "CZK";
+            form.setValue("currency", investmentCurrency);
+        }
+    }, [investment, form]);
 
     const sellInvestment = useMutation({
         mutationFn: async (values: z.infer<typeof formSchema>) => {
@@ -140,10 +149,11 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
                                                 <FormLabel>{tc('labels.currency')}</FormLabel>
                                                 <Select
                                                     onValueChange={field.onChange}
-                                                    defaultValue={field.value}
+                                                    value={field.value}
+                                                    disabled={true}
                                                 >
                                                     <FormControl>
-                                                        <SelectTrigger>
+                                                        <SelectTrigger className="bg-muted">
                                                             <SelectValue placeholder={tc('labels.selectCurrency')} />
                                                         </SelectTrigger>
                                                     </FormControl>

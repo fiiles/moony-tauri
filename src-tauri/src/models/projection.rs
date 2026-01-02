@@ -1,9 +1,10 @@
 //! Portfolio projection models
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// Projection settings for a specific asset type
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ProjectionSettings {
     pub id: String,
     #[serde(rename = "assetType")]

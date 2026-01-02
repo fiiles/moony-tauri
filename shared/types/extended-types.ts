@@ -10,6 +10,8 @@ import type {
     Loan,
     SavingsAccount,
     InsurancePolicy,
+    InvestmentTransaction,
+    StockTag,
 } from "../schema";
 
 // ============================================================
@@ -19,6 +21,9 @@ import type {
 /**
  * Stock investment enriched with current price data from API.
  * Used when the API returns investments with their latest prices.
+ * 
+ * Note: averagePriceCurrency is inherited from StockInvestment base type
+ * and represents the currency of the stored average purchase price.
  */
 export interface StockInvestmentWithPrice extends StockInvestment {
     currentPrice: number;
@@ -31,7 +36,7 @@ export interface StockInvestmentWithPrice extends StockInvestment {
     originalDividendYield?: number;
     dividendCurrency?: string;
     isManualDividend?: boolean;
-    /** Currency of the original price (e.g., USD, EUR) */
+    /** Currency of the current market price (e.g., USD, EUR) */
     currency?: string;
     // Yahoo Finance metadata (cached in stock_data table)
     sector?: string;
@@ -48,6 +53,7 @@ export interface StockInvestmentWithPrice extends StockInvestment {
     metadataFetchedAt?: number;
 }
 
+
 /**
  * Crypto investment enriched with current price data.
  */
@@ -55,10 +61,19 @@ export interface CryptoInvestmentWithPrice extends CryptoInvestment {
     currentPrice: number;
     /** Original price in its source currency (before conversion) */
     originalPrice?: number;
-    /** Currency of the original price (e.g., USD, EUR) */
+    /** Currency of the current market price (e.g., USD, EUR) */
     currency?: string;
     fetchedAt?: Date | string;
     isManualPrice?: boolean;
+}
+
+/**
+ * Compound response for investment details (reduces IPC calls)
+ */
+export interface InvestmentWithDetails {
+    investment: StockInvestmentWithPrice;
+    transactions: InvestmentTransaction[];
+    tags: StockTag[];
 }
 
 // ============================================================

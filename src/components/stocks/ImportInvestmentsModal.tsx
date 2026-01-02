@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
     Dialog,
     DialogContent,
@@ -17,14 +18,20 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { investmentsApi, priceApi } from "@/lib/tauri-api";
 
+type Step = "select" | "preview" | "importing" | "done";
+
 export function ImportInvestmentsModal() {
+    const { t } = useTranslation("stocks");
     const [open, setOpen] = useState(false);
+    const [step, setStep] = useState<Step>("select");
     const [file, setFile] = useState<File | null>(null);
     const [parsedData, setParsedData] = useState<Record<string, string>[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [successCount, setSuccessCount] = useState<number | null>(null);
     const [importErrors, setImportErrors] = useState<string[]>([]);
     const [importedItems, setImportedItems] = useState<string[]>([]);
+    const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+    const [importStatus, setImportStatus] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
 
@@ -55,7 +62,16 @@ export function ImportInvestmentsModal() {
 
     const importMutation = useMutation({
         mutationFn: async (transactions: Record<string, string>[]) => {
-            return investmentsApi.importTransactions(transactions, "USD");
+            setStep("importing");
+            setImportProgress({ current: 0, total: transactions.length });
+            setImportStatus(t("import.status.lookingUpNames"));
+            
+            // The backend will look up names, then process transactions
+            // We show a status message to indicate the phase
+            const result = await investmentsApi.importTransactions(transactions, "USD");
+            
+            setImportProgress({ current: transactions.length, total: transactions.length });
+            return result;
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ["investments"] });
@@ -67,19 +83,30 @@ export function ImportInvestmentsModal() {
             setParsedData([]);
             setFile(null);
             
+            // Show status for price/dividend refresh
+            setImportStatus(t("import.status.refreshingPrices"));
+            
             // Refresh prices and dividends for imported stocks (runs in background)
             priceApi.refreshStockPrices().then(() => {
                 queryClient.invalidateQueries({ queryKey: ["investments"] });
                 queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            }).catch(console.error);
-            priceApi.refreshDividends().then(() => {
+                setImportStatus(t("import.status.refreshingDividends"));
+                return priceApi.refreshDividends();
+            }).then(() => {
                 queryClient.invalidateQueries({ queryKey: ["investments"] });
                 queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
-            }).catch(console.error);
+                setImportStatus("");
+                setStep("done");
+            }).catch((err: Error) => {
+                console.error("Background refresh error:", err);
+                setImportStatus("");
+                setStep("done");
+            });
         },
         onError: (err) => {
             console.error("Import mutation error:", err);
             setError(err.message);
+            setStep("preview");
         }
     });
 
@@ -195,6 +222,7 @@ export function ImportInvestmentsModal() {
                 }
 
                 setParsedData(data);
+                setStep("preview");
             } catch (err: unknown) {
                 const message = err instanceof Error ? err.message : "Unknown error";
                 setError("Failed to parse CSV: " + message);
@@ -217,9 +245,17 @@ export function ImportInvestmentsModal() {
         setSuccessCount(null);
         setImportErrors([]);
         setImportedItems([]);
+        setStep("select");
+        setImportProgress({ current: 0, total: 0 });
+        setImportStatus("");
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
+    };
+
+    const handleClose = () => {
+        handleReset();
+        setOpen(false);
     };
 
     return (
@@ -228,39 +264,50 @@ export function ImportInvestmentsModal() {
             if (!val) handleReset();
         }}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="icon" title="Import CSV">
+                <Button variant="outline" size="icon" title={t("importCSV")}>
                     <Upload className="h-4 w-4" />
                 </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Import Investments</DialogTitle>
-                    <DialogDescription className="space-y-2">
-                        <span>Import investment transactions from a CSV file. Required columns:</span>
-                        <code className="block text-xs bg-muted px-2 py-1 rounded mt-1">
-                            Date, Type, Ticker, Quantity, Price, Currency
-                        </code>
-                        <span className="block text-xs text-muted-foreground mt-1">
-                            Optional: Name (company name). Date formats: YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY. Type: buy or sell.
-                        </span>
-                        <button
-                            type="button"
-                            onClick={downloadExampleCSV}
-                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
-                        >
-                            <Download className="h-3 w-3" />
-                            Download example CSV template
-                        </button>
+                    <DialogTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        {t("import.title")}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {step === "select" && t("import.description")}
+                        {step === "preview" && t("import.requiredColumns")}
+                        {step === "importing" && t("import.importingProgress", { current: importProgress.current, total: importProgress.total })}
+                        {step === "done" && t("import.complete")}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto flex flex-col gap-4 py-4">
-                    {!file && !successCount && (
-                        <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 text-center hover:bg-muted/50 cursor-pointer"
-                            onClick={() => fileInputRef.current?.click()}>
-                            <Upload className="h-10 w-10 text-muted-foreground mb-4" />
-                            <h3 className="text-lg font-medium">Click to upload CSV</h3>
-                            <p className="text-sm text-muted-foreground mt-2">or drag and drop here</p>
+                {/* Step 1: Select File */}
+                {step === "select" && (
+                    <div className="py-8">
+                        <div className="space-y-4 mb-6 text-center">
+                            <code className="block text-xs bg-muted px-3 py-2 rounded">
+                                Date, Type, Ticker, Quantity, Price, Currency
+                            </code>
+                            <p className="text-xs text-muted-foreground">
+                                {t("import.optionalHint")}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={downloadExampleCSV}
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                                <Download className="h-3 w-3" />
+                                {t("import.downloadTemplate")}
+                            </button>
+                        </div>
+                        <div
+                            className="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer hover:border-primary transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                            <p className="text-lg font-medium">{t("import.clickToUpload")}</p>
+                            <p className="text-sm text-muted-foreground mt-2">{t("import.dragAndDrop")}</p>
                             <Input
                                 ref={fileInputRef}
                                 type="file"
@@ -269,106 +316,146 @@ export function ImportInvestmentsModal() {
                                 onChange={handleFileChange}
                             />
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {file && !successCount && (
-                        <div className="flex flex-col gap-4 h-full">
-                            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
-                                <div className="flex items-center gap-3">
-                                    <FileText className="h-8 w-8 text-primary" />
-                                    <div>
-                                        <p className="font-medium">{file.name}</p>
-                                        <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
-                                    </div>
+                {/* Step 2: Preview */}
+                {step === "preview" && file && (
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                            <FileText className="h-5 w-5" />
+                            <span className="font-medium">{file.name}</span>
+                            <span className="text-muted-foreground">({(file.size / 1024).toFixed(1)} KB)</span>
+                            <Button variant="ghost" size="sm" onClick={handleReset} className="ml-auto">
+                                {t("import.change")}
+                            </Button>
+                        </div>
+
+                        {error && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>{t("import.error")}</AlertTitle>
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
+
+                        {parsedData.length > 0 && (
+                            <div className="border rounded-lg overflow-hidden">
+                                <div className="bg-muted p-3 text-sm font-medium border-b">
+                                    {t("import.previewLabel", { shown: Math.min(parsedData.length, 5), total: parsedData.length })}
                                 </div>
-                                <Button variant="ghost" size="sm" onClick={handleReset}>Change</Button>
-                            </div>
-
-                            {error && (
-                                <Alert variant="destructive">
-                                    <AlertCircle className="h-4 w-4" />
-                                    <AlertTitle>Error</AlertTitle>
-                                    <AlertDescription>{error}</AlertDescription>
-                                </Alert>
-                            )}
-
-                            {parsedData.length > 0 && (
-                                <div className="flex-1 border rounded-md overflow-hidden flex flex-col">
-                                    <div className="bg-muted p-2 text-xs font-mono border-b">
-                                        Previewing first {Math.min(parsedData.length, 5)} of {parsedData.length} records
-                                    </div>
-                                    <ScrollArea className="flex-1">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    {Object.keys(parsedData[0]).slice(0, 6).map((h) => (
-                                                        <TableHead key={h}>{h}</TableHead>
+                                <ScrollArea className="max-h-48">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                {Object.keys(parsedData[0]).slice(0, 6).map((h) => (
+                                                    <TableHead key={h} className="whitespace-nowrap">{h}</TableHead>
+                                                ))}
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {parsedData.slice(0, 5).map((row, i) => (
+                                                <TableRow key={i}>
+                                                    {Object.values(row).slice(0, 6).map((v, j) => (
+                                                        <TableCell key={j} className="whitespace-nowrap max-w-[200px] truncate">{v}</TableCell>
                                                     ))}
                                                 </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {parsedData.slice(0, 5).map((row, i) => (
-                                                    <TableRow key={i}>
-                                                        {Object.values(row).slice(0, 6).map((v, j) => (
-                                                            <TableCell key={j}>{v}</TableCell>
-                                                        ))}
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </ScrollArea>
+                            </div>
+                        )}
+                    </div>
+                )}
 
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
+                {/* Step 3: Importing */}
+                {step === "importing" && (
+                    <div className="py-12 text-center">
+                        <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary mb-4" />
+                        <p className="text-lg font-medium">{importStatus || t("import.status.processing")}</p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            {t("import.importingProgress", { current: importProgress.current, total: importProgress.total })}
+                        </p>
+                    </div>
+                )}
+
+                {/* Step 4: Done */}
+                {step === "done" && successCount !== null && (
+                    <div className="py-8 space-y-6">
+                        <div className="text-center">
+                            <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
+                            <p className="text-2xl font-bold">{t("import.complete")}</p>
+                            <p className="text-muted-foreground mt-2">
+                                {t("import.processed", { count: successCount + importErrors.length })}
+                            </p>
+                        </div>
+
+                        <div className={`grid gap-4 ${importedItems.length > 0 && importErrors.length > 0 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                            {importedItems.length > 0 && (
+                                <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <CheckCircle className="h-5 w-5 text-green-600" />
+                                        <span className="font-medium text-green-800 dark:text-green-200">
+                                            {t("import.successful", { count: successCount })}
+                                        </span>
+                                    </div>
+                                    <ScrollArea className="max-h-40">
+                                        <ul className="list-disc pl-4 text-xs space-y-1 text-green-700 dark:text-green-300">
+                                            {importedItems.map((item, i) => <li key={i}>{item}</li>)}
+                                        </ul>
+                                    </ScrollArea>
+                                </div>
+                            )}
+
+                            {importErrors.length > 0 && (
+                                <div className="p-4 bg-red-50 dark:bg-red-950 rounded-lg">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <AlertCircle className="h-5 w-5 text-red-600" />
+                                        <span className="font-medium text-red-800 dark:text-red-200">
+                                            {t("import.skipped", { count: importErrors.length })}
+                                        </span>
+                                    </div>
+                                    <ScrollArea className="max-h-40">
+                                        <ul className="list-disc pl-4 text-xs space-y-1 text-red-700 dark:text-red-300">
+                                            {importErrors.map((err, i) => <li key={i}>{err}</li>)}
+                                        </ul>
                                     </ScrollArea>
                                 </div>
                             )}
                         </div>
-                    )}
-
-                    {successCount !== null && (
-                        <div className="flex flex-col gap-4 items-center justify-center p-8 w-full">
-                            <CheckCircle className="h-16 w-16 text-green-500" />
-                            <h3 className="text-xl font-bold">Import Complete</h3>
-                        <p className="text-muted-foreground">Processed {successCount + importErrors.length} rows.</p>
-
-                            <div className={`grid gap-4 w-full ${importedItems.length > 0 && importErrors.length > 0 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                                {importedItems.length > 0 && (
-                                    <Alert className="w-full text-left border-green-200 bg-green-50">
-                                        <CheckCircle className="h-4 w-4 text-green-600" />
-                                        <AlertTitle className="text-green-800">{successCount} Successful</AlertTitle>
-                                        <AlertDescription className="max-h-60 overflow-y-auto mt-2">
-                                            <ul className="list-disc pl-4 text-xs space-y-1 text-green-700">
-                                                {importedItems.map((e, i) => <li key={i}>{e}</li>)}
-                                            </ul>
-                                        </AlertDescription>
-                                    </Alert>
-                                )}
-
-                                {importErrors.length > 0 && (
-                                    <Alert variant="destructive" className="w-full text-left">
-                                        <AlertCircle className="h-4 w-4" />
-                                        <AlertTitle>{importErrors.length} Skipped</AlertTitle>
-                                        <AlertDescription className="max-h-60 overflow-y-auto mt-2">
-                                            <ul className="list-disc pl-4 text-xs space-y-1">
-                                                {importErrors.map((e, i) => <li key={i}>{e}</li>)}
-                                            </ul>
-                                        </AlertDescription>
-                                    </Alert>
-                                )}
-                            </div>
-
-                            <Button onClick={() => setOpen(false)} className="mt-4">Close</Button>
-                        </div>
-                    )}
-                </div>
-
-                {file && !successCount && (
-                    <DialogFooter>
-                        <Button variant="outline" onClick={handleReset}>Cancel</Button>
-                        <Button onClick={handleImport} disabled={parsedData.length === 0 || importMutation.isPending}>
-                            {importMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Import {parsedData.length} Records
-                        </Button>
-                    </DialogFooter>
+                    </div>
                 )}
+
+                <DialogFooter>
+                    {step === "select" && (
+                        <Button variant="outline" onClick={handleClose}>
+                            {t("import.cancel")}
+                        </Button>
+                    )}
+                    {step === "preview" && (
+                        <>
+                            <Button variant="outline" onClick={handleReset}>
+                                {t("import.cancel")} 
+                            </Button>
+                            <Button onClick={handleImport} disabled={parsedData.length === 0 || importMutation.isPending}>
+                                {importMutation.isPending ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {t("import.importingProgress", { current: importProgress.current, total: importProgress.total })}
+                                    </>
+                                ) : (
+                                    t("import.importRecords", { count: parsedData.length })
+                                )}
+                            </Button>
+                        </>
+                    )}
+                    {step === "done" && (
+                        <Button onClick={handleClose}>
+                            {t("import.close")}
+                        </Button>
+                    )}
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

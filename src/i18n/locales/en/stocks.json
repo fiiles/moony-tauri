@@ -9,7 +9,7 @@
     "summary": {
         "totalValue": "Total Value",
         "totalGainLoss": "Overall Gain/Loss",
-        "estimatedDividend": "Estimated Dividend Yield",
+        "estimatedDividend": "Est. Dividend Yield",
         "topPerformer": "Top Performer",
         "basedOnLastYear": "Based on last year dividends",
         "lastUpdated": "Last updated: {{date}}"
@@ -190,7 +190,40 @@
             "title": "Delete Investment",
             "description": "Are you sure you want to delete {{name}} ({{ticker}})? This will remove all transactions. This action cannot be undone."
         },
+        "editName": {
+            "title": "Edit Company Name",
+            "description": "Update the company name for this investment.",
+            "label": "Company Name"
+        },
+        "nameUpdated": "Company name updated",
         "refreshMetadata": "Refresh Data",
         "metadataRefreshed": "Company data refreshed"
+    },
+    "import": {
+        "title": "Import Investments",
+        "description": "Import investment transactions from a CSV file.",
+        "requiredColumns": "Required columns: Date, Type, Ticker, Quantity, Price, Currency",
+        "optionalHint": "Optional: Name (company name). Date formats: YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY. Type: buy or sell.",
+        "downloadTemplate": "Download example CSV template",
+        "clickToUpload": "Click to upload CSV",
+        "dragAndDrop": "or drag and drop here",
+        "change": "Change",
+        "previewLabel": "Previewing first {{shown}} of {{total}} records",
+        "complete": "Import Complete",
+        "processed": "Processed {{count}} rows.",
+        "successful": "{{count}} Successful",
+        "skipped": "{{count}} Skipped",
+        "importRecords": "Import {{count}} Records",
+        "importingProgress": "Importing {{current}} of {{total}}...",
+        "close": "Close",
+        "cancel": "Cancel",
+        "error": "Error",
+        "status": {
+            "processing": "Processing transactions...",
+            "lookingUpNames": "Looking up company names...",
+            "savingTransactions": "Saving transactions...",
+            "refreshingPrices": "Refreshing stock prices...",
+            "refreshingDividends": "Refreshing dividend data..."
+        }
     }
 }

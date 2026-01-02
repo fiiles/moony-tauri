@@ -67,6 +67,7 @@ import type {
 import type {
   StockInvestmentWithPrice,
   CryptoInvestmentWithPrice,
+  InvestmentWithDetails,
 } from '../../shared/types/extended-types';
 
 // Import result from backend
@@ -196,10 +197,17 @@ export const investmentsApi = {
 
   get: (id: string) => tauriInvoke<StockInvestmentWithPrice>('get_investment', { id }),
 
+  /** Get investment with all details (transactions + tags) in a single IPC call */
+  getWithDetails: (id: string) =>
+    tauriInvoke<InvestmentWithDetails>('get_investment_with_details', { id }),
+
   create: (data: { ticker: string; companyName: string }, initialTransaction?: InsertInvestmentTransaction) =>
     tauriInvoke<StockInvestmentWithPrice>('create_investment', { data, initialTransaction }),
 
   delete: (id: string) => tauriInvoke<void>('delete_investment', { id }),
+
+  updateName: (id: string, companyName: string) =>
+    tauriInvoke<StockInvestmentWithPrice>('update_investment_name', { id, companyName }),
 
   getTransactions: (investmentId: string) =>
     tauriInvoke<InvestmentTransaction[]>('get_investment_transactions', { investmentId }),

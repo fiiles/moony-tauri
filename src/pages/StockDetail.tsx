@@ -25,6 +25,7 @@ import {
     RefreshCw,
     DollarSign,
     BarChart2,
+    Pencil,
 } from "lucide-react";
 import type { InvestmentTransaction } from "@shared/schema";
 import type { StockInvestmentWithPrice } from "@shared/types/extended-types";
@@ -43,6 +44,16 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
 import { useState, useMemo } from "react";
@@ -59,7 +70,7 @@ export default function StockDetail() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const id = params?.id;
-    const { formatCurrency, currencyCode, convert } = useCurrency();
+    const { formatCurrency, formatCurrencyRaw, currencyCode, convert } = useCurrency();
     const { t } = useTranslation('stocks');
     const { t: tc } = useTranslation('common');
     const { formatDate } = useLanguage();
@@ -69,6 +80,8 @@ export default function StockDetail() {
     const [showSellModal, setShowSellModal] = useState(false);
     const [showPriceModal, setShowPriceModal] = useState(false);
     const [showDividendModal, setShowDividendModal] = useState(false);
+    const [showEditNameModal, setShowEditNameModal] = useState(false);
+    const [editableName, setEditableName] = useState("");
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Fetch investment data
@@ -129,6 +142,27 @@ export default function StockDetail() {
                 description: t('detail.deleted'),
             });
             setLocation("/stocks");
+        },
+        onError: (error) => {
+            toast({
+                title: tc('status.error'),
+                description: String(error),
+                variant: "destructive",
+            });
+        },
+    });
+
+    // Update name mutation
+    const updateNameMutation = useMutation({
+        mutationFn: (newName: string) => investmentsApi.updateName(id!, newName),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["investment", id] });
+            queryClient.invalidateQueries({ queryKey: ["investments"] });
+            setShowEditNameModal(false);
+            toast({
+                title: tc('status.success'),
+                description: t('detail.nameUpdated'),
+            });
         },
         onError: (error) => {
             toast({
@@ -203,14 +237,31 @@ export default function StockDetail() {
     // Map investment to HoldingData for modals
     const holdingData = mapInvestmentToHolding(investment);
 
-    // Calculate values
+    // Get currency info
+    const preferredCurrency = currencyCode as CurrencyCode;
+    const _marketPriceCurrency = (investment.currency || "USD") as CurrencyCode;
+    const avgCostCurrency = (investment.averagePriceCurrency || "USD") as CurrencyCode;
+
+    // Calculate values with currency conversion
     const quantity = holdingData.quantity;
-    const avgPrice = holdingData.avgCost;
-    const currentPrice = holdingData.currentPrice;
-    const totalInvested = holdingData.totalCost;
-    const currentValue = holdingData.marketValue;
-    const unrealizedPnL = holdingData.gainLoss;
-    const unrealizedPnLPercent = holdingData.gainLossPercent;
+    
+    // Average price is stored in its original currency, convert to preferred
+    const avgPriceOriginal = holdingData.avgCost; // Original avg price in avgCostCurrency
+    const avgPrice = convert(avgPriceOriginal, avgCostCurrency, preferredCurrency);
+    
+    // currentPrice from backend is ALREADY in CZK (converted by Rust backend)
+    // We need to convert from CZK to preferred currency
+    const currentPriceInCzk = holdingData.currentPrice;
+    const currentPrice = convert(currentPriceInCzk, "CZK", preferredCurrency);
+    // Original price for display (in its source currency)
+    const _currentPriceOriginal = parseFloat(String(investment.originalPrice)) || 0;
+    
+    // Calculate metrics in preferred currency
+    const totalInvested = quantity * avgPrice;
+    const currentValue = quantity * currentPrice;
+    const unrealizedPnL = currentValue - totalInvested;
+    const unrealizedPnLPercent = totalInvested > 0 ? (unrealizedPnL / totalInvested) * 100 : 0;
+    
     const dividendYield = investment.dividendYield || 0;
     const yearlyDividend = quantity * dividendYield;
     const dividendYieldPercent = currentValue > 0 ? (yearlyDividend / currentValue) * 100 : 0;
@@ -224,8 +275,20 @@ export default function StockDetail() {
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         {t('detail.backToList')}
                     </Button>
-                    <h1 className="text-2xl font-bold">
+                    <h1 className="text-2xl font-bold flex items-center gap-2">
                         {investment.ticker} - {investment.companyName}
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7"
+                            onClick={() => {
+                                setEditableName(investment.companyName);
+                                setShowEditNameModal(true);
+                            }}
+                            title={tc('buttons.edit')}
+                        >
+                            <Pencil className="h-4 w-4" />
+                        </Button>
                     </h1>
                     {investment.isManualPrice && (
                         <span className="text-xs text-amber-600 dark:text-amber-400">
@@ -296,7 +359,20 @@ export default function StockDetail() {
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(totalInvested)}</div>
                         <div className="text-sm text-muted-foreground">
-                            @ {formatCurrency(avgPrice)} {t('detail.avgPrice')}
+                            <span className="flex items-center gap-1 flex-wrap">
+                                @ {(avgPriceOriginal).toLocaleString(undefined, {
+                                    style: 'currency',
+                                    currency: avgCostCurrency,
+                                    minimumFractionDigits: avgPriceOriginal >= 1000 ? 0 : 2,
+                                    maximumFractionDigits: avgPriceOriginal >= 1000 ? 0 : 2
+                                })}
+                                {avgCostCurrency !== currencyCode && (
+                                    <span className="text-xs">
+                                        (≈ {formatCurrencyRaw(avgPrice, { minimumFractionDigits: avgPrice >= 1000 ? 0 : 2, maximumFractionDigits: avgPrice >= 1000 ? 0 : 2 })})
+                                    </span>
+                                )}
+                                <span>{t('detail.avgPrice')}</span>
+                            </span>
                         </div>
                     </CardContent>
                 </Card>
@@ -490,6 +566,38 @@ export default function StockDetail() {
                 onOpenChange={setShowDividendModal}
                 investment={holdingData}
             />
+            
+            {/* Edit Name Modal */}
+            <Dialog open={showEditNameModal} onOpenChange={setShowEditNameModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('detail.editName.title')}</DialogTitle>
+                        <DialogDescription>{t('detail.editName.description')}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="companyName">{t('detail.editName.label')}</Label>
+                            <Input
+                                id="companyName"
+                                value={editableName}
+                                onChange={(e) => setEditableName(e.target.value)}
+                                placeholder={investment.companyName}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowEditNameModal(false)}>
+                            {tc('buttons.cancel')}
+                        </Button>
+                        <Button 
+                            onClick={() => updateNameMutation.mutate(editableName)}
+                            disabled={!editableName.trim() || updateNameMutation.isPending}
+                        >
+                            {updateNameMutation.isPending ? tc('buttons.saving') : tc('buttons.save')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

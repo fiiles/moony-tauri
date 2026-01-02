@@ -101,6 +101,9 @@ pub async fn create_real_estate(
     db: State<'_, Database>,
     data: InsertRealEstate,
 ) -> Result<RealEstate> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let rc_json = serde_json::to_string(&data.recurring_costs.unwrap_or_default())?;
@@ -144,6 +147,9 @@ pub async fn update_real_estate(
     id: String,
     data: InsertRealEstate,
 ) -> Result<RealEstate> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let now = chrono::Utc::now().timestamp();
 
     db.with_conn(|conn| {
@@ -242,6 +248,9 @@ pub async fn create_real_estate_cost(
     db: State<'_, Database>,
     data: InsertRealEstateOneTimeCost,
 ) -> Result<RealEstateOneTimeCost> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let currency = data.currency.unwrap_or_else(|| "CZK".to_string());

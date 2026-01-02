@@ -6,6 +6,7 @@ use crate::models::{
     CryptoInvestment, CryptoTransaction, EnrichedCryptoInvestment, InsertCryptoInvestment,
     InsertCryptoTransaction,
 };
+use crate::services::crypto_investments as crypto_service;
 use crate::services::currency::convert_to_czk;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
@@ -99,73 +100,35 @@ pub async fn create_crypto(
     data: InsertCryptoInvestment,
     initial_transaction: Option<InsertCryptoTransaction>,
 ) -> Result<CryptoInvestment> {
+    // 1. Validate inputs at the trust boundary
+    data.validate()?;
+    if let Some(ref tx) = initial_transaction {
+        tx.validate()?;
+    }
+
     let ticker = data.ticker.to_uppercase();
     let coingecko_id = data.coingecko_id.clone();
     let initial_tx_date = initial_transaction.as_ref().map(|t| t.transaction_date);
 
+    // 2. Delegate to service layer
     let inv = db.with_conn(|conn| {
-        // Check if exists
-        let existing: Option<String> = conn.query_row(
-            "SELECT id FROM crypto_investments WHERE ticker = ?1",
-            [&ticker],
-            |row| row.get(0),
-        ).ok();
-
-        let investment_id = if let Some(id) = existing {
-            id
-        } else {
-            let id = Uuid::new_v4().to_string();
-            let qty = data.quantity.unwrap_or_else(|| "0".to_string());
-            let avg = data.average_price.unwrap_or_else(|| "0".to_string());
-
-            conn.execute(
-                "INSERT INTO crypto_investments (id, ticker, coingecko_id, name, quantity, average_price)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                rusqlite::params![id, ticker, data.coingecko_id, data.name, qty, avg],
-            )?;
-            id
-        };
-
-        if let Some(tx) = initial_transaction {
-            let tx_id = Uuid::new_v4().to_string();
-            let now = chrono::Utc::now().timestamp();
-
-            conn.execute(
-                "INSERT INTO crypto_transactions
-                 (id, investment_id, type, ticker, name, quantity, price_per_unit, currency, transaction_date, created_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-                rusqlite::params![
-                    tx_id, investment_id, tx.tx_type, ticker, data.name,
-                    tx.quantity, tx.price_per_unit, tx.currency, tx.transaction_date, now,
-                ],
-            )?;
-
-            // Recalculate crypto investment metrics
-            recalculate_crypto_investment(conn, &investment_id)?;
-        }
-
-        let inv = conn.query_row(
-            "SELECT id, ticker, coingecko_id, name, quantity, average_price FROM crypto_investments WHERE id = ?1",
-            [&investment_id],
-            |row| Ok(CryptoInvestment {
-                id: row.get(0)?,
-                ticker: row.get(1)?,
-                coingecko_id: row.get(2)?,
-                name: row.get(3)?,
-                quantity: row.get(4)?,
-                average_price: row.get(5)?,
-            }),
-        )?;
-
-        Ok(inv)
+        crypto_service::create_crypto_with_transaction(
+            conn,
+            &ticker,
+            Some(&data.coingecko_id),
+            &data.name,
+            data.quantity.as_deref(),
+            data.average_price.as_deref(),
+            initial_transaction.as_ref(),
+        )
     })?;
 
-    // Update portfolio snapshot
+    // 3. Handle side effects (portfolio updates)
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
 
-    // Trigger per-ticker historical recalculation if there was an initial transaction
+    // 4. Trigger per-ticker historical recalculation if there was an initial transaction
     if let Some(date) = initial_tx_date {
         crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
             &db,
@@ -323,75 +286,6 @@ pub async fn get_all_crypto_transactions(
     })
 }
 
-/// Recalculate crypto investment metrics from transactions
-fn recalculate_crypto_investment(conn: &rusqlite::Connection, investment_id: &str) -> Result<()> {
-    // Get all transactions for this investment (including currency)
-    let mut stmt = conn.prepare(
-        "SELECT type, quantity, price_per_unit, currency FROM crypto_transactions WHERE investment_id = ?1"
-    )?;
-
-    let txs: Vec<(String, f64, f64, String)> = stmt
-        .query_map([investment_id], |row| {
-            let tx_type: String = row.get(0)?;
-            let qty: String = row.get(1)?;
-            let price: String = row.get(2)?;
-            let currency: String = row.get(3)?;
-            Ok((
-                tx_type,
-                qty.parse().unwrap_or(0.0),
-                price.parse().unwrap_or(0.0),
-                currency,
-            ))
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    let mut total_qty = 0.0f64;
-    let mut total_cost_czk = 0.0f64;
-
-    for (tx_type, qty, price, currency) in txs {
-        // Convert price to CZK
-        let price_czk = convert_to_czk(price, &currency);
-
-        if tx_type == "buy" {
-            total_cost_czk += qty * price_czk;
-            total_qty += qty;
-        } else if tx_type == "sell" {
-            // Reduce quantity, adjust cost proportionally
-            if total_qty > 0.0 {
-                let avg_cost = total_cost_czk / total_qty;
-                total_cost_czk -= qty * avg_cost;
-            }
-            total_qty -= qty;
-        }
-    }
-
-    // Prevent negative values
-    if total_qty < 0.0 {
-        total_qty = 0.0;
-    }
-    if total_cost_czk < 0.0 {
-        total_cost_czk = 0.0;
-    }
-
-    let avg_price_czk = if total_qty > 0.0 {
-        total_cost_czk / total_qty
-    } else {
-        0.0
-    };
-
-    conn.execute(
-        "UPDATE crypto_investments SET quantity = ?1, average_price = ?2 WHERE id = ?3",
-        rusqlite::params![
-            total_qty.to_string(),
-            avg_price_czk.to_string(),
-            investment_id
-        ],
-    )?;
-
-    Ok(())
-}
-
 /// Create crypto transaction
 #[tauri::command]
 pub async fn create_crypto_transaction(
@@ -400,8 +294,8 @@ pub async fn create_crypto_transaction(
     investment_id: String,
     data: InsertCryptoTransaction,
 ) -> Result<CryptoTransaction> {
-    let id = Uuid::new_v4().to_string();
-    let now = chrono::Utc::now().timestamp();
+    // 1. Validate inputs at the trust boundary
+    data.validate()?;
 
     // Get coingecko_id for per-ticker recalculation
     let coingecko_id: Option<String> = db.with_conn(|conn| {
@@ -415,40 +309,16 @@ pub async fn create_crypto_transaction(
             .flatten())
     })?;
 
-    let result = db.with_conn(|conn| {
-        conn.execute(
-            "INSERT INTO crypto_transactions
-             (id, investment_id, type, ticker, name, quantity, price_per_unit, currency, transaction_date, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-            rusqlite::params![
-                id, investment_id, data.tx_type, data.ticker, data.name,
-                data.quantity, data.price_per_unit, data.currency, data.transaction_date, now,
-            ],
-        )?;
+    // 2. Delegate to service layer
+    let result = db
+        .with_conn(|conn| crypto_service::add_transaction_to_crypto(conn, &investment_id, &data))?;
 
-        // Recalculate crypto investment metrics
-        recalculate_crypto_investment(conn, &investment_id)?;
-
-        Ok(CryptoTransaction {
-            id,
-            investment_id,
-            tx_type: data.tx_type,
-            ticker: data.ticker,
-            name: data.name,
-            quantity: data.quantity,
-            price_per_unit: data.price_per_unit,
-            currency: data.currency,
-            transaction_date: data.transaction_date,
-            created_at: now,
-        })
-    })?;
-
-    // Update portfolio snapshot
+    // 3. Handle side effects (portfolio updates)
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
 
-    // Trigger per-ticker historical recalculation if transaction is retrospective
+    // 4. Trigger per-ticker historical recalculation if transaction is retrospective
     if let Some(cg_id) = coingecko_id {
         crate::commands::portfolio::trigger_historical_recalculation_for_crypto_ticker(
             &db,
@@ -530,7 +400,7 @@ pub async fn delete_crypto_transaction(
             )?;
         } else {
             // Recalculate crypto investment metrics
-            recalculate_crypto_investment(conn, &investment_id)?;
+            crypto_service::recalculate_crypto_metrics(conn, &investment_id)?;
         }
 
         Ok(())
@@ -632,36 +502,30 @@ pub async fn get_crypto_value_history(
         let mut stmt = conn.prepare(&query)?;
 
         let histories: Vec<crate::models::TickerValueHistory> =
-            if start_date.is_some() && end_date.is_some() {
-                stmt.query_map(
-                    rusqlite::params![&ticker_upper, start_date.unwrap(), end_date.unwrap()],
-                    |row| {
-                        Ok(crate::models::TickerValueHistory {
-                            ticker: row.get(0)?,
-                            recorded_at: row.get(1)?,
-                            value_czk: row.get(2)?,
-                            quantity: row.get(3)?,
-                            price: row.get(4)?,
-                            currency: row.get(5)?,
-                        })
-                    },
-                )?
+            if let (Some(start), Some(end)) = (start_date, end_date) {
+                stmt.query_map(rusqlite::params![&ticker_upper, start, end], |row| {
+                    Ok(crate::models::TickerValueHistory {
+                        ticker: row.get(0)?,
+                        recorded_at: row.get(1)?,
+                        value_czk: row.get(2)?,
+                        quantity: row.get(3)?,
+                        price: row.get(4)?,
+                        currency: row.get(5)?,
+                    })
+                })?
                 .filter_map(|r| r.ok())
                 .collect()
-            } else if start_date.is_some() {
-                stmt.query_map(
-                    rusqlite::params![&ticker_upper, start_date.unwrap()],
-                    |row| {
-                        Ok(crate::models::TickerValueHistory {
-                            ticker: row.get(0)?,
-                            recorded_at: row.get(1)?,
-                            value_czk: row.get(2)?,
-                            quantity: row.get(3)?,
-                            price: row.get(4)?,
-                            currency: row.get(5)?,
-                        })
-                    },
-                )?
+            } else if let Some(start) = start_date {
+                stmt.query_map(rusqlite::params![&ticker_upper, start], |row| {
+                    Ok(crate::models::TickerValueHistory {
+                        ticker: row.get(0)?,
+                        recorded_at: row.get(1)?,
+                        value_czk: row.get(2)?,
+                        quantity: row.get(3)?,
+                        price: row.get(4)?,
+                        currency: row.get(5)?,
+                    })
+                })?
                 .filter_map(|r| r.ok())
                 .collect()
             } else if end_date.is_some() {

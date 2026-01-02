@@ -28,7 +28,7 @@ serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled-sqlcipher"] }
 
 # Async runtime
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 
 # HTTP client for API calls (ECB rates, Marketstack)
 reqwest = { version = "0.12", features = ["json"] }
@@ -74,3 +74,7 @@ image = "0.25"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 time = "0.3.44"
+
+# Type generation for TypeScript
+specta = { version = "2.0.0-rc.22", features = ["derive", "serde"] }
+specta-typescript = "0.0.9"

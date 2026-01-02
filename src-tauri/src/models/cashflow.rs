@@ -1,9 +1,10 @@
 //! Cashflow item models for user-defined income/expense entries
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// User-defined cashflow item (income or expense)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CashflowItem {
     pub id: String,
     pub name: String,
@@ -20,7 +21,7 @@ pub struct CashflowItem {
 }
 
 /// Data for creating/updating cashflow item
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertCashflowItem {
     pub name: String,
     pub amount: String,

@@ -47,6 +47,12 @@ pub async fn create_other_asset(
     data: InsertOtherAsset,
     initial_transaction: Option<InsertOtherAssetTransaction>,
 ) -> Result<OtherAsset> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+    if let Some(ref tx) = initial_transaction {
+        tx.validate()?;
+    }
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
 
@@ -108,6 +114,9 @@ pub async fn update_other_asset(
     id: String,
     data: InsertOtherAsset,
 ) -> Result<OtherAsset> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let now = chrono::Utc::now().timestamp();
 
     db.with_conn(|conn| {
@@ -228,6 +237,9 @@ pub async fn create_other_asset_transaction(
     asset_id: String,
     data: InsertOtherAssetTransaction,
 ) -> Result<OtherAssetTransaction> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let transaction_date = data.transaction_date;

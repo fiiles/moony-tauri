@@ -23,7 +23,7 @@ export default function Stocks() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { convert } = useCurrency();
+  const { convert, currencyCode } = useCurrency();
 
   const { data: investments, isLoading } = useQuery<StockInvestmentWithPrice[]>({
     queryKey: ["investments"],
@@ -128,9 +128,55 @@ export default function Stocks() {
 
   // Map investments to holdings and sort by company name (case-insensitive)
   // No grouping needed since stock_investments is unique per user+ticker
-  const holdings = (investments?.map(mapInvestmentToHolding) || []).sort((a, b) =>
-    (a.companyName || "").localeCompare(b.companyName || "", undefined, { sensitivity: 'base' })
-  );
+  // Override marketValue, gainLoss, gainLossPercent with converted values for consistent display in preferred currency
+  const holdings = useMemo(() => {
+    return (investments || []).map(inv => {
+      const holding = mapInvestmentToHolding(inv);
+      
+      const preferredCurrency = currencyCode as CurrencyCode;
+      const marketPriceCurrency = (inv.currency || "USD") as CurrencyCode;
+      const avgCostCurrency = (inv.averagePriceCurrency || "USD") as CurrencyCode;
+
+      // holding.currentPrice is ALREADY in CZK (converted by Rust backend)
+      // Convert from CZK to preferred currency
+      const currentPriceConverted = convert(holding.currentPrice, "CZK", preferredCurrency);
+      const marketValue = holding.quantity * currentPriceConverted;
+
+      // holding.avgCost is in avgCostCurrency, convert to preferred
+      const avgCostConverted = convert(holding.avgCost, avgCostCurrency, preferredCurrency);
+      const totalCostConverted = holding.quantity * avgCostConverted;
+
+      const gainLoss = marketValue - totalCostConverted;
+      const gainLossPercent = totalCostConverted !== 0 ? (gainLoss / totalCostConverted) * 100 : 0;
+
+      // Original price from backend for display (in source currency)
+      const originalCurrentPrice = parseFloat(String(inv.originalPrice)) || 0;
+
+      return {
+        ...holding,
+        // Main values in Preferred Currency
+        avgCost: avgCostConverted,
+        avgCostCurrency: preferredCurrency,
+        currentPrice: currentPriceConverted,
+        currency: preferredCurrency,
+        totalCost: totalCostConverted, // Override for correct portfolio totals calculation
+        
+        // Original values for subtitle display
+        originalAvgCost: holding.avgCost,
+        originalAvgCostCurrency: avgCostCurrency,
+        originalCurrentPrice: originalCurrentPrice,
+        originalCurrency: marketPriceCurrency,
+
+        // Calculated metrics in Preferred Currency
+        marketValue, 
+        gainLoss,   
+        gainLossPercent,
+      };
+    }).sort((a, b) =>
+      (a.companyName || "").localeCompare(b.companyName || "", undefined, { sensitivity: 'base' })
+    );
+  }, [investments, convert, currencyCode]);
+
 
   // Calculate total dividend yield from holdings
   const totalDividendYield = holdings.reduce((sum, holding) => {

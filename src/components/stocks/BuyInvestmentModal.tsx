@@ -62,9 +62,12 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
     });
 
     // Update default currency and price when investment changes
+    // Currency is locked to the investment's base currency (set by first transaction)
     useEffect(() => {
         if (investment) {
-            form.setValue("currency", investment.currency as "USD" | "EUR" | "CZK");
+            // Use avgCostCurrency (investment's locked currency) for transactions
+            const investmentCurrency = (investment.avgCostCurrency || investment.currency || "USD") as "USD" | "EUR" | "CZK";
+            form.setValue("currency", investmentCurrency);
             // Use originalPrice (in stock's currency) for prefill, not currentPrice (which is converted to CZK)
             const priceToShow = Number(investment.originalPrice ?? investment.currentPrice);
             form.setValue("pricePerUnit", priceToShow ? Number(priceToShow.toFixed(2)) : 0);
@@ -161,9 +164,10 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
                                         <Select
                                             onValueChange={field.onChange}
                                             value={field.value}
+                                            disabled={true}
                                         >
                                             <FormControl>
-                                                <SelectTrigger>
+                                                <SelectTrigger className="bg-muted">
                                                     <SelectValue placeholder={tc('labels.selectCurrency')} />
                                                 </SelectTrigger>
                                             </FormControl>

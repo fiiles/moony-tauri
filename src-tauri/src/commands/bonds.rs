@@ -38,6 +38,9 @@ pub async fn get_all_bonds(db: State<'_, Database>) -> Result<Vec<Bond>> {
 /// Create bond
 #[tauri::command]
 pub async fn create_bond(db: State<'_, Database>, data: InsertBond) -> Result<Bond> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let interest_rate = data.interest_rate.unwrap_or_else(|| "0".to_string());
@@ -69,6 +72,9 @@ pub async fn create_bond(db: State<'_, Database>, data: InsertBond) -> Result<Bo
 /// Update bond
 #[tauri::command]
 pub async fn update_bond(db: State<'_, Database>, id: String, data: InsertBond) -> Result<Bond> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let now = chrono::Utc::now().timestamp();
 
     db.with_conn(|conn| {

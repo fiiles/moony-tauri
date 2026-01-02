@@ -32,7 +32,7 @@ pub fn convert_to_czk(amount: f64, currency: &str) -> f64 {
         return amount;
     }
 
-    let rates = EXCHANGE_RATES.read().unwrap();
+    let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
     let rate = rates.get(currency).copied().unwrap_or(1.0);
     amount * rate
 }
@@ -44,7 +44,7 @@ pub fn convert_from_czk(amount: f64, currency: &str) -> f64 {
         return amount;
     }
 
-    let rates = EXCHANGE_RATES.read().unwrap();
+    let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
     let rate = rates.get(currency).copied().unwrap_or(1.0);
     if rate == 0.0 {
         return amount;
@@ -54,7 +54,9 @@ pub fn convert_from_czk(amount: f64, currency: &str) -> f64 {
 
 /// Update exchange rates (called after fetching from ECB)
 pub fn update_exchange_rates(new_rates: HashMap<String, f64>) {
-    let mut rates = EXCHANGE_RATES.write().unwrap();
+    let mut rates = EXCHANGE_RATES
+        .write()
+        .expect("Exchange rates lock poisoned");
     for (currency, rate) in new_rates {
         rates.insert(currency, rate);
     }
@@ -63,13 +65,13 @@ pub fn update_exchange_rates(new_rates: HashMap<String, f64>) {
 /// Get current exchange rate for a currency (to CZK)
 #[allow(dead_code)]
 pub fn get_exchange_rate(currency: &str) -> f64 {
-    let rates = EXCHANGE_RATES.read().unwrap();
+    let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
     rates.get(currency).copied().unwrap_or(1.0)
 }
 
 /// Get all current exchange rates
 pub fn get_all_rates() -> HashMap<String, f64> {
-    let rates = EXCHANGE_RATES.read().unwrap();
+    let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
     rates.clone()
 }
 
