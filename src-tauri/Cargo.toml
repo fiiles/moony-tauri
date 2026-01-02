@@ -48,7 +48,7 @@ scrypt = "0.11"      # For scrypt key derivation (matches Node.js)
 aes-gcm = "0.10"     # For AES-256-GCM encryption (matches Node.js)
 
 # Error handling
-thiserror = "1"
+thiserror = "2"
 anyhow = "1"
 
 # Logging
