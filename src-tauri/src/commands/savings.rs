@@ -157,6 +157,9 @@ pub async fn create_savings_account(
     db: State<'_, Database>,
     data: InsertSavingsAccount,
 ) -> Result<SavingsAccount> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let id = Uuid::new_v4().to_string();
     let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
     let interest_rate = data.interest_rate.unwrap_or_else(|| "0".to_string());
@@ -183,6 +186,9 @@ pub async fn update_savings_account(
     id: String,
     data: InsertSavingsAccount,
 ) -> Result<SavingsAccount> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let now = chrono::Utc::now().timestamp();
 
     db.with_conn(|conn| {
@@ -261,6 +267,9 @@ pub async fn create_account_zone(
     db: State<'_, Database>,
     data: InsertSavingsAccountZone,
 ) -> Result<SavingsAccountZone> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
 

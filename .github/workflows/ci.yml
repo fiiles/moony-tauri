@@ -25,7 +25,7 @@ jobs:
         run: npm ci
 
       - name: Run ESLint
-        run: npm run lint -- --max-warnings 250
+        run: npm run lint -- --max-warnings 120
 
       - name: TypeScript type check
         run: npm run typecheck
@@ -41,6 +41,9 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -54,6 +57,17 @@ jobs:
         working-directory: src-tauri
         run: cargo clippy -- -D warnings
 
+      - name: Security audit
+        working-directory: src-tauri
+        run: cargo audit
+        continue-on-error: true # Don't block on advisories, just report
+
       - name: Rust tests
         working-directory: src-tauri
         run: cargo test
+
+      - name: Verify generated types
+        working-directory: src-tauri
+        run: |
+          cargo test generate_bindings -- --ignored
+          git diff --exit-code ../shared/generated-types.ts || (echo "Generated types are out of sync! Run 'cargo test generate_bindings -- --ignored' in src-tauri" && exit 1)

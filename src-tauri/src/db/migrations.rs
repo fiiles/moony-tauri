@@ -45,6 +45,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("017_add_stock_tags", MIGRATION_017),
         ("018_add_stock_tag_groups", MIGRATION_018),
         ("019_add_ticker_history", MIGRATION_019),
+        ("020_add_investment_currency", MIGRATION_020),
     ];
 
     for (name, sql) in migrations {
@@ -765,4 +766,40 @@ CREATE INDEX IF NOT EXISTS idx_stock_value_history_ticker_date ON stock_value_hi
 CREATE INDEX IF NOT EXISTS idx_crypto_value_history_ticker ON crypto_value_history(ticker);
 CREATE INDEX IF NOT EXISTS idx_crypto_value_history_date ON crypto_value_history(recorded_at);
 CREATE INDEX IF NOT EXISTS idx_crypto_value_history_ticker_date ON crypto_value_history(ticker, recorded_at);
+"#;
+
+/// Migration 020: Add currency column to stock_investments and crypto_investments
+/// This allows storing the average price in the investment's native currency
+const MIGRATION_020: &str = r#"
+-- Add currency column to stock_investments (defaults to CZK for existing)
+ALTER TABLE stock_investments ADD COLUMN currency TEXT NOT NULL DEFAULT 'CZK';
+
+-- Add currency column to crypto_investments (defaults to CZK for existing)
+ALTER TABLE crypto_investments ADD COLUMN currency TEXT NOT NULL DEFAULT 'CZK';
+
+-- Update stock investments currency based on first transaction
+UPDATE stock_investments
+SET currency = (
+    SELECT it.currency 
+    FROM investment_transactions it 
+    WHERE it.investment_id = stock_investments.id 
+    ORDER BY it.transaction_date ASC 
+    LIMIT 1
+)
+WHERE EXISTS (
+    SELECT 1 FROM investment_transactions WHERE investment_id = stock_investments.id
+);
+
+-- Update crypto investments currency based on first transaction
+UPDATE crypto_investments
+SET currency = (
+    SELECT ct.currency 
+    FROM crypto_transactions ct 
+    WHERE ct.investment_id = crypto_investments.id 
+    ORDER BY ct.transaction_date ASC 
+    LIMIT 1
+)
+WHERE EXISTS (
+    SELECT 1 FROM crypto_transactions WHERE investment_id = crypto_investments.id
+);
 "#;

@@ -1,13 +1,14 @@
 //! User profile and app configuration models
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 fn default_true() -> bool {
     true
 }
 
 /// Menu preferences for sidebar visibility
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Type)]
 pub struct MenuPreferences {
     pub savings: bool,
     pub loans: bool,
@@ -38,7 +39,7 @@ impl MenuPreferences {
 }
 
 /// User profile stored in database
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct UserProfile {
     pub id: i64,
     pub name: String,
@@ -55,7 +56,7 @@ pub struct UserProfile {
 }
 
 /// Data for creating/updating user profile
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertUserProfile {
     pub name: String,
     pub surname: String,
@@ -69,7 +70,7 @@ pub struct InsertUserProfile {
 }
 
 /// Data for updating user profile (partial updates)
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct UpdateUserProfile {
     pub name: Option<String>,
     pub surname: Option<String>,
@@ -107,7 +108,7 @@ pub struct RecoverData {
 }
 
 /// Portfolio metrics history entry
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct PortfolioMetricsHistory {
     pub id: String,
     #[serde(rename = "totalSavings")]

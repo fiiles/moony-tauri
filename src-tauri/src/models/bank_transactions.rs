@@ -1,9 +1,10 @@
 //! Bank transaction models for tracking account transactions
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// Transaction type
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "lowercase")]
 pub enum TransactionType {
     Credit,
@@ -31,7 +32,7 @@ impl std::str::FromStr for TransactionType {
 }
 
 /// Transaction status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, Type)]
 #[serde(rename_all = "lowercase")]
 pub enum TransactionStatus {
     #[default]
@@ -49,7 +50,7 @@ impl std::fmt::Display for TransactionStatus {
 }
 
 /// Bank transaction entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct BankTransaction {
     pub id: String,
     #[serde(rename = "bankAccountId")]
@@ -85,7 +86,7 @@ pub struct BankTransaction {
 }
 
 /// Data for creating/updating a transaction
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertBankTransaction {
     #[serde(rename = "bankAccountId")]
     pub bank_account_id: String,
@@ -112,7 +113,7 @@ pub struct InsertBankTransaction {
 }
 
 /// Transaction category
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TransactionCategory {
     pub id: String,
     pub name: String,
@@ -141,7 +142,7 @@ pub struct InsertTransactionCategory {
 }
 
 /// Transaction categorization rule
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TransactionRule {
     pub id: String,
     pub name: String,
@@ -209,7 +210,7 @@ pub struct BankTransactionWithCategory {
 }
 
 /// Filters for querying transactions
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, Type)]
 pub struct TransactionFilters {
     #[serde(rename = "dateFrom")]
     pub date_from: Option<i64>,
@@ -225,7 +226,7 @@ pub struct TransactionFilters {
 }
 
 /// Result of transaction query with pagination
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 pub struct TransactionQueryResult {
     pub transactions: Vec<BankTransaction>,
     pub total: i64,

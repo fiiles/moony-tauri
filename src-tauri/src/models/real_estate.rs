@@ -1,9 +1,10 @@
 //! Real estate models
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// Recurring cost for real estate
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct RecurringCost {
     pub name: String,
     pub amount: f64,
@@ -12,7 +13,7 @@ pub struct RecurringCost {
 }
 
 /// Real estate property
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct RealEstate {
     pub id: String,
     pub name: String,
@@ -42,7 +43,7 @@ pub struct RealEstate {
 }
 
 /// Data for creating/updating real estate
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertRealEstate {
     pub name: String,
     pub address: String,
@@ -67,7 +68,7 @@ pub struct InsertRealEstate {
 }
 
 /// One-time cost for real estate
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct RealEstateOneTimeCost {
     pub id: String,
     #[serde(rename = "realEstateId")]
@@ -94,7 +95,7 @@ pub struct InsertRealEstateOneTimeCost {
 }
 
 /// Photo batch (groups photos by date and description)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct RealEstatePhotoBatch {
     pub id: String,
     #[serde(rename = "realEstateId")]
@@ -108,7 +109,7 @@ pub struct RealEstatePhotoBatch {
 }
 
 /// Individual photo within a batch
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct RealEstatePhoto {
     pub id: String,
     #[serde(rename = "batchId")]
@@ -138,7 +139,7 @@ pub struct UpdatePhotoBatch {
 }
 
 /// Real estate document (attached contracts, deeds, etc.)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct RealEstateDocument {
     pub id: String,
     #[serde(rename = "realEstateId")]
@@ -162,4 +163,149 @@ pub struct InsertRealEstateDocument {
     pub description: Option<String>,
     #[serde(rename = "fileType")]
     pub file_type: Option<String>,
+}
+
+// Input validation at trust boundary
+use crate::error::{AppError, Result};
+
+impl InsertRealEstate {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        // Name validation
+        if self.name.is_empty() {
+            return Err(AppError::Validation("Property name cannot be empty".into()));
+        }
+        if self.name.len() > 100 {
+            return Err(AppError::Validation(
+                "Property name too long (max 100 characters)".into(),
+            ));
+        }
+
+        // Address validation
+        if self.address.is_empty() {
+            return Err(AppError::Validation("Address cannot be empty".into()));
+        }
+
+        // Property type validation
+        if self.property_type.is_empty() {
+            return Err(AppError::Validation("Property type cannot be empty".into()));
+        }
+
+        // Purchase price validation (if provided)
+        if let Some(ref price) = self.purchase_price {
+            if !price.is_empty() {
+                let price_val: f64 = price.parse().map_err(|_| {
+                    AppError::Validation(format!("Invalid purchase price '{}'", price))
+                })?;
+                if price_val < 0.0 {
+                    return Err(AppError::Validation(
+                        "Purchase price cannot be negative".into(),
+                    ));
+                }
+            }
+        }
+
+        // Market price validation (if provided)
+        if let Some(ref price) = self.market_price {
+            if !price.is_empty() {
+                let price_val: f64 = price.parse().map_err(|_| {
+                    AppError::Validation(format!("Invalid market price '{}'", price))
+                })?;
+                if price_val < 0.0 {
+                    return Err(AppError::Validation(
+                        "Market price cannot be negative".into(),
+                    ));
+                }
+            }
+        }
+
+        // Monthly rent validation (if provided)
+        if let Some(ref rent) = self.monthly_rent {
+            if !rent.is_empty() {
+                let rent_val: f64 = rent.parse().map_err(|_| {
+                    AppError::Validation(format!("Invalid monthly rent '{}'", rent))
+                })?;
+                if rent_val < 0.0 {
+                    return Err(AppError::Validation(
+                        "Monthly rent cannot be negative".into(),
+                    ));
+                }
+            }
+        }
+
+        // Currency validations (if provided)
+        if let Some(ref currency) = self.purchase_price_currency {
+            if currency.len() != 3 {
+                return Err(AppError::Validation(
+                    "Purchase price currency must be 3 letters".into(),
+                ));
+            }
+        }
+        if let Some(ref currency) = self.market_price_currency {
+            if currency.len() != 3 {
+                return Err(AppError::Validation(
+                    "Market price currency must be 3 letters".into(),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl InsertRealEstateOneTimeCost {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        // Real estate ID validation
+        if self.real_estate_id.is_empty() {
+            return Err(AppError::Validation(
+                "Real estate ID cannot be empty".into(),
+            ));
+        }
+
+        // Name validation
+        if self.name.is_empty() {
+            return Err(AppError::Validation("Cost name cannot be empty".into()));
+        }
+
+        // Amount validation
+        if self.amount.is_empty() {
+            return Err(AppError::Validation("Amount cannot be empty".into()));
+        }
+        let amount: f64 = self
+            .amount
+            .parse()
+            .map_err(|_| AppError::Validation(format!("Invalid amount '{}'", self.amount)))?;
+        if amount < 0.0 {
+            return Err(AppError::Validation("Amount cannot be negative".into()));
+        }
+
+        // Currency validation (if provided)
+        if let Some(ref currency) = self.currency {
+            if currency.len() != 3 {
+                return Err(AppError::Validation(
+                    "Currency must be 3 letters (e.g., USD, EUR)".into(),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl InsertRealEstateDocument {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        // Name validation
+        if self.name.is_empty() {
+            return Err(AppError::Validation("Document name cannot be empty".into()));
+        }
+        if self.name.len() > 200 {
+            return Err(AppError::Validation(
+                "Document name too long (max 200 characters)".into(),
+            ));
+        }
+
+        Ok(())
+    }
 }

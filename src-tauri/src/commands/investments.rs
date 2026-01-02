@@ -5,18 +5,28 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
     DividendOverride, EnrichedStockInvestment, InsertInvestmentTransaction, InsertStockInvestment,
-    InvestmentTransaction, StockInvestment, StockPriceOverride,
+    InvestmentTransaction, StockInvestment, StockPriceOverride, StockTag,
 };
 use crate::services::currency::convert_to_czk;
+use crate::services::investments as investment_service;
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
+
+/// Investment with all related data (compound response to reduce IPC calls)
+#[derive(Debug, Clone, Serialize)]
+pub struct InvestmentWithDetails {
+    pub investment: EnrichedStockInvestment,
+    pub transactions: Vec<InvestmentTransaction>,
+    pub tags: Vec<StockTag>,
+}
 
 /// Get all investments with enriched price data
 #[tauri::command]
 pub async fn get_all_investments(db: State<'_, Database>) -> Result<Vec<EnrichedStockInvestment>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, ticker, company_name, quantity, average_price FROM stock_investments",
+            "SELECT id, ticker, company_name, quantity, average_price, currency FROM stock_investments",
         )?;
 
         let investments: Vec<StockInvestment> = stmt
@@ -27,6 +37,7 @@ pub async fn get_all_investments(db: State<'_, Database>) -> Result<Vec<Enriched
                     company_name: row.get(2)?,
                     quantity: row.get(3)?,
                     average_price: row.get(4)?,
+                    currency: row.get(5)?,
                 })
             })?
             .filter_map(|r| r.ok())
@@ -50,7 +61,7 @@ pub async fn get_investment(
 ) -> Result<EnrichedStockInvestment> {
     db.with_conn(|conn| {
         let inv = conn.query_row(
-            "SELECT id, ticker, company_name, quantity, average_price FROM stock_investments WHERE id = ?1",
+            "SELECT id, ticker, company_name, quantity, average_price, currency FROM stock_investments WHERE id = ?1",
             [&id],
             |row| {
                 Ok(StockInvestment {
@@ -59,12 +70,93 @@ pub async fn get_investment(
                     company_name: row.get(2)?,
                     quantity: row.get(3)?,
                     average_price: row.get(4)?,
+                    currency: row.get(5)?,
                 })
             },
         )?;
 
 
         enrich_investment(conn, inv)
+    })
+}
+
+/// Get investment with all details in a single call (compound command to reduce IPC overhead)
+#[tauri::command]
+pub async fn get_investment_with_details(
+    db: State<'_, Database>,
+    id: String,
+) -> Result<InvestmentWithDetails> {
+    db.with_conn(|conn| {
+        // Get investment
+        let inv = conn.query_row(
+            "SELECT id, ticker, company_name, quantity, average_price, currency FROM stock_investments WHERE id = ?1",
+            [&id],
+            |row| {
+                Ok(StockInvestment {
+                    id: row.get(0)?,
+                    ticker: row.get(1)?,
+                    company_name: row.get(2)?,
+                    quantity: row.get(3)?,
+                    average_price: row.get(4)?,
+                    currency: row.get(5)?,
+                })
+            },
+        )?;
+
+        let enriched = enrich_investment(conn, inv)?;
+
+        // Get transactions
+        let mut stmt = conn.prepare(
+            "SELECT id, investment_id, type, ticker, company_name, quantity, price_per_unit,
+                    currency, transaction_date, created_at
+             FROM investment_transactions WHERE investment_id = ?1
+             ORDER BY transaction_date DESC",
+        )?;
+
+        let transactions: Vec<InvestmentTransaction> = stmt
+            .query_map([&id], |row| {
+                Ok(InvestmentTransaction {
+                    id: row.get(0)?,
+                    investment_id: row.get(1)?,
+                    tx_type: row.get(2)?,
+                    ticker: row.get(3)?,
+                    company_name: row.get(4)?,
+                    quantity: row.get(5)?,
+                    price_per_unit: row.get(6)?,
+                    currency: row.get(7)?,
+                    transaction_date: row.get(8)?,
+                    created_at: row.get(9)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        // Get tags
+        let mut tag_stmt = conn.prepare(
+            "SELECT t.id, t.name, t.color, t.group_id, t.created_at
+             FROM stock_tags t
+             JOIN investment_tags it ON t.id = it.tag_id
+             WHERE it.investment_id = ?1",
+        )?;
+
+        let tags: Vec<StockTag> = tag_stmt
+            .query_map([&id], |row| {
+                Ok(StockTag {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    color: row.get(2)?,
+                    group_id: row.get(3)?,
+                    created_at: row.get(4)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        Ok(InvestmentWithDetails {
+            investment: enriched,
+            transactions,
+            tags,
+        })
     })
 }
 
@@ -155,6 +247,7 @@ fn enrich_investment(
         company_name: inv.company_name,
         quantity: inv.quantity,
         average_price: inv.average_price,
+        average_price_currency: inv.currency,
         current_price,
         original_price,
         currency,
@@ -175,90 +268,36 @@ pub async fn create_investment(
     data: InsertStockInvestment,
     initial_transaction: Option<InsertInvestmentTransaction>,
 ) -> Result<StockInvestment> {
+    // 1. Validate inputs at the trust boundary
+    data.validate()?;
+    if let Some(ref tx) = initial_transaction {
+        tx.validate()?;
+    }
+
     let ticker = data.ticker.to_uppercase();
     let ticker_for_recalc = ticker.clone();
-    let initial_transaction_clone = initial_transaction.clone();
+    let initial_tx_date = initial_transaction.as_ref().map(|t| t.transaction_date);
 
-    let inv_result = db.with_conn(move |conn| {
-        // Check if investment already exists
-        let existing: Option<String> = conn.query_row(
-            "SELECT id FROM stock_investments WHERE ticker = ?1",
-            [&ticker],
-            |row| row.get(0),
-        ).ok();
+    // 2. Delegate to service layer
+    let inv = db.with_conn(|conn| {
+        investment_service::create_investment_with_transaction(
+            conn,
+            &ticker,
+            &data.company_name,
+            data.quantity.as_deref(),
+            data.average_price.as_deref(),
+            initial_transaction.as_ref(),
+        )
+    })?;
 
-        let investment_id = if let Some(id) = existing {
-            id
-        } else {
-            let id = Uuid::new_v4().to_string();
-            let avg_price = data.average_price.clone().unwrap_or_else(|| "0".to_string());
-            let qty = data.quantity.clone().unwrap_or_else(|| "0".to_string());
-
-            conn.execute(
-                "INSERT INTO stock_investments (id, ticker, company_name, quantity, average_price)
-                 VALUES (?1, ?2, ?3, ?4, ?5)",
-                rusqlite::params![id, ticker, data.company_name, qty, avg_price],
-            )?;
-            id
-        };
-
-        // Create initial transaction if provided
-        if let Some(tx) = initial_transaction_clone {
-            let tx_id = Uuid::new_v4().to_string();
-            let now = chrono::Utc::now().timestamp();
-
-            conn.execute(
-                "INSERT INTO investment_transactions
-                 (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-                rusqlite::params![
-                    tx_id,
-                    investment_id,
-                    tx.tx_type,
-                    ticker,
-                    data.company_name,
-                    tx.quantity,
-                    tx.price_per_unit,
-                    tx.currency,
-                    tx.transaction_date,
-                    now,
-                ],
-            )?;
-
-            // Recalculate quantity and average price from the transaction
-            recalculate_investment(conn, &investment_id)?;
-        }
-
-        // Return the investment
-        let inv = conn.query_row(
-            "SELECT id, ticker, company_name, quantity, average_price FROM stock_investments WHERE id = ?1",
-            [&investment_id],
-            |row| Ok(StockInvestment {
-                id: row.get(0)?,
-                ticker: row.get(1)?,
-                company_name: row.get(2)?,
-                quantity: row.get(3)?,
-                average_price: row.get(4)?,
-            }),
-        )?;
-
-        Ok(inv)
-    });
-
-    // We need to resolve the Result from db.with_conn
-    let inv = match inv_result {
-        Ok(i) => i,
-        Err(e) => return Err(e),
-    };
-
-    // Update portfolio snapshot
+    // 3. Handle side effects (portfolio updates)
     portfolio::update_todays_snapshot(&db).await.ok();
 
-    // Trigger ticker-specific historical recalculation if there was an initial transaction
-    if let Some(tx) = initial_transaction {
+    // 4. Trigger ticker-specific historical recalculation if there was an initial transaction
+    if let Some(tx_date) = initial_tx_date {
         portfolio::trigger_historical_recalculation_for_stock_ticker(
             &db,
-            tx.transaction_date,
+            tx_date,
             &ticker_for_recalc,
         )
         .await
@@ -268,6 +307,54 @@ pub async fn create_investment(
     }
 
     Ok(inv)
+}
+
+/// Update investment name
+#[tauri::command]
+pub async fn update_investment_name(
+    db: State<'_, Database>,
+    id: String,
+    company_name: String,
+) -> Result<EnrichedStockInvestment> {
+    // Validate name
+    if company_name.trim().is_empty() {
+        return Err(AppError::Validation("Company name cannot be empty".into()));
+    }
+
+    db.with_conn(|conn| {
+        let changes = conn.execute(
+            "UPDATE stock_investments SET company_name = ?1 WHERE id = ?2",
+            rusqlite::params![company_name.trim(), id],
+        )?;
+
+        if changes == 0 {
+            return Err(AppError::NotFound("Investment not found".into()));
+        }
+
+        // Also update company_name in all related transactions
+        conn.execute(
+            "UPDATE investment_transactions SET company_name = ?1 WHERE investment_id = ?2",
+            rusqlite::params![company_name.trim(), id],
+        )?;
+
+        // Return updated investment
+        let inv = conn.query_row(
+            "SELECT id, ticker, company_name, quantity, average_price, currency FROM stock_investments WHERE id = ?1",
+            [&id],
+            |row| {
+                Ok(StockInvestment {
+                    id: row.get(0)?,
+                    ticker: row.get(1)?,
+                    company_name: row.get(2)?,
+                    quantity: row.get(3)?,
+                    average_price: row.get(4)?,
+                    currency: row.get(5)?,
+                })
+            },
+        )?;
+
+        enrich_investment(conn, inv)
+    })
 }
 
 /// Delete investment
@@ -409,48 +496,18 @@ pub async fn create_investment_transaction(
     investment_id: String,
     data: InsertInvestmentTransaction,
 ) -> Result<InvestmentTransaction> {
-    let id = Uuid::new_v4().to_string();
-    let now = chrono::Utc::now().timestamp();
+    // 1. Validate inputs at the trust boundary
+    data.validate()?;
 
+    // 2. Delegate to service layer
     let result = db.with_conn(|conn| {
-        conn.execute(
-            "INSERT INTO investment_transactions
-             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-            rusqlite::params![
-                id,
-                investment_id,
-                data.tx_type,
-                data.ticker,
-                data.company_name,
-                data.quantity,
-                data.price_per_unit,
-                data.currency,
-                data.transaction_date,
-                now,
-            ],
-        )?;
-
-        recalculate_investment(conn, &investment_id)?;
-
-        Ok(InvestmentTransaction {
-            id,
-            investment_id,
-            tx_type: data.tx_type,
-            ticker: data.ticker,
-            company_name: data.company_name,
-            quantity: data.quantity,
-            price_per_unit: data.price_per_unit,
-            currency: data.currency,
-            transaction_date: data.transaction_date,
-            created_at: now,
-        })
+        investment_service::add_transaction_to_investment(conn, &investment_id, &data)
     })?;
 
-    // Update portfolio snapshot
+    // 3. Handle side effects (portfolio updates)
     portfolio::update_todays_snapshot(&db).await.ok();
 
-    // Trigger ticker-specific historical recalculation
+    // 4. Trigger ticker-specific historical recalculation
     portfolio::trigger_historical_recalculation_for_stock_ticker(
         &db,
         result.transaction_date,
@@ -510,7 +567,7 @@ pub async fn delete_investment_transaction(
             )?;
         } else {
             // Recalculate investment metrics
-            recalculate_investment(conn, &investment_id)?;
+            investment_service::recalculate_investment_metrics(conn, &investment_id)?;
         }
 
         Ok(())
@@ -539,6 +596,9 @@ pub async fn update_investment_transaction(
     tx_id: String,
     data: InsertInvestmentTransaction,
 ) -> Result<InvestmentTransaction> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let result = db.with_conn(|conn| {
         // Get investment_id
         let investment_id: String = conn.query_row(
@@ -561,7 +621,7 @@ pub async fn update_investment_transaction(
             ],
         )?;
 
-        recalculate_investment(conn, &investment_id)?;
+        investment_service::recalculate_investment_metrics(conn, &investment_id)?;
 
         // Fetch updated transaction
         let tx = conn.query_row(
@@ -870,7 +930,12 @@ fn process_import_transaction(
         chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
             .or_else(|_| chrono::NaiveDate::parse_from_str(date_str, "%d.%m.%Y"))
             .or_else(|_| chrono::NaiveDate::parse_from_str(date_str, "%d/%m/%Y"))
-            .map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp())
+            .map(|d| {
+                d.and_hms_opt(0, 0, 0)
+                    .expect("Valid date should have valid midnight time")
+                    .and_utc()
+                    .timestamp()
+            })
             .map_err(|_| {
                 format!(
                     "{}: Invalid date format '{}' (use YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY)",
@@ -919,9 +984,9 @@ fn process_import_transaction(
             // Only create new investment for buy transactions
             let id = Uuid::new_v4().to_string();
             conn.execute(
-                "INSERT INTO stock_investments (id, ticker, company_name, quantity, average_price)
-                 VALUES (?1, ?2, ?3, ?4, ?5)",
-                rusqlite::params![id, ticker, name, "0", "0"],
+                "INSERT INTO stock_investments (id, ticker, company_name, quantity, average_price, currency)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                rusqlite::params![id, ticker, name, "0", "0", currency.to_uppercase()],
             )
             .map_err(|e| format!("{}: Failed to create investment - {}", ticker, e))?;
             id
@@ -950,7 +1015,7 @@ fn process_import_transaction(
         ],
     ).map_err(|e| format!("{}: Failed to create transaction - {}", ticker, e))?;
 
-    recalculate_investment(conn, &investment_id)
+    investment_service::recalculate_investment_metrics(conn, &investment_id)
         .map_err(|e| format!("{}: Failed to recalculate investment - {}", ticker, e))?;
 
     Ok((
@@ -1066,73 +1131,6 @@ pub async fn delete_manual_dividend(db: State<'_, Database>, ticker: String) -> 
     })
 }
 
-/// Recalculate investment quantity and average price from transactions
-fn recalculate_investment(conn: &rusqlite::Connection, investment_id: &str) -> Result<()> {
-    // 1. Get all transactions
-    let mut stmt = conn.prepare(
-        "SELECT type, quantity, price_per_unit, currency FROM investment_transactions WHERE investment_id = ?1"
-    )?;
-
-    let txs: Vec<(String, f64, f64, String)> = stmt
-        .query_map([investment_id], |row| {
-            let type_: String = row.get(0)?;
-            let qty_str: String = row.get(1)?;
-            let price_str: String = row.get(2)?;
-            let currency: String = row.get(3)?;
-
-            let qty = qty_str
-                .split_whitespace()
-                .next()
-                .unwrap_or("0")
-                .parse::<f64>()
-                .unwrap_or(0.0);
-            let price = price_str
-                .split_whitespace()
-                .next()
-                .unwrap_or("0")
-                .parse::<f64>()
-                .unwrap_or(0.0);
-
-            Ok((type_, qty, price, currency))
-        })?
-        .filter_map(|r| r.ok())
-        .collect();
-
-    let mut total_quantity = 0.0;
-    let mut weighted_buy_sum = 0.0;
-    let mut weighted_buy_qty = 0.0;
-
-    for (tx_type, qty, price, currency) in txs {
-        // Convert price to CZK for uniform calculation
-        let price_czk = convert_to_czk(price, &currency);
-
-        if tx_type == "buy" {
-            total_quantity += qty;
-            weighted_buy_sum += qty * price_czk;
-            weighted_buy_qty += qty;
-        } else {
-            total_quantity -= qty;
-        }
-    }
-
-    let average_price = if weighted_buy_qty > 0.0 {
-        weighted_buy_sum / weighted_buy_qty
-    } else {
-        0.0
-    };
-
-    conn.execute(
-        "UPDATE stock_investments SET quantity = ?1, average_price = ?2 WHERE id = ?3",
-        rusqlite::params![
-            total_quantity.to_string(),
-            average_price.to_string(),
-            investment_id
-        ],
-    )?;
-
-    Ok(())
-}
-
 /// Get value history for a specific stock ticker
 #[tauri::command]
 pub async fn get_stock_value_history(
@@ -1162,36 +1160,30 @@ pub async fn get_stock_value_history(
         let mut stmt = conn.prepare(&query)?;
 
         let histories: Vec<crate::models::TickerValueHistory> =
-            if start_date.is_some() && end_date.is_some() {
-                stmt.query_map(
-                    rusqlite::params![&ticker_upper, start_date.unwrap(), end_date.unwrap()],
-                    |row| {
-                        Ok(crate::models::TickerValueHistory {
-                            ticker: row.get(0)?,
-                            recorded_at: row.get(1)?,
-                            value_czk: row.get(2)?,
-                            quantity: row.get(3)?,
-                            price: row.get(4)?,
-                            currency: row.get(5)?,
-                        })
-                    },
-                )?
+            if let (Some(start), Some(end)) = (start_date, end_date) {
+                stmt.query_map(rusqlite::params![&ticker_upper, start, end], |row| {
+                    Ok(crate::models::TickerValueHistory {
+                        ticker: row.get(0)?,
+                        recorded_at: row.get(1)?,
+                        value_czk: row.get(2)?,
+                        quantity: row.get(3)?,
+                        price: row.get(4)?,
+                        currency: row.get(5)?,
+                    })
+                })?
                 .filter_map(|r| r.ok())
                 .collect()
-            } else if start_date.is_some() {
-                stmt.query_map(
-                    rusqlite::params![&ticker_upper, start_date.unwrap()],
-                    |row| {
-                        Ok(crate::models::TickerValueHistory {
-                            ticker: row.get(0)?,
-                            recorded_at: row.get(1)?,
-                            value_czk: row.get(2)?,
-                            quantity: row.get(3)?,
-                            price: row.get(4)?,
-                            currency: row.get(5)?,
-                        })
-                    },
-                )?
+            } else if let Some(start) = start_date {
+                stmt.query_map(rusqlite::params![&ticker_upper, start], |row| {
+                    Ok(crate::models::TickerValueHistory {
+                        ticker: row.get(0)?,
+                        recorded_at: row.get(1)?,
+                        value_czk: row.get(2)?,
+                        quantity: row.get(3)?,
+                        price: row.get(4)?,
+                        currency: row.get(5)?,
+                    })
+                })?
                 .filter_map(|r| r.ok())
                 .collect()
             } else if end_date.is_some() {

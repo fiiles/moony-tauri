@@ -1,9 +1,10 @@
 //! Stock tag models for investment categorization
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// Stock tag group for organizing related tags
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StockTagGroup {
     pub id: String,
     pub name: String,
@@ -13,14 +14,14 @@ pub struct StockTagGroup {
 }
 
 /// Data for creating a stock tag group
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertStockTagGroup {
     pub name: String,
     pub description: Option<String>,
 }
 
 /// Stock tag for categorizing investments (e.g., Growth, Value, Dividend)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StockTag {
     pub id: String,
     pub name: String,
@@ -32,7 +33,7 @@ pub struct StockTag {
 }
 
 /// Data for creating a stock tag
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertStockTag {
     pub name: String,
     pub color: Option<String>,

@@ -2,6 +2,7 @@
 //!
 //! Tauri v2 application with Rust backend
 
+pub mod bindings;
 pub mod commands;
 pub mod db;
 pub mod error;
@@ -48,8 +49,10 @@ pub fn run() {
             // Investment commands
             commands::investments::get_all_investments,
             commands::investments::get_investment,
+            commands::investments::get_investment_with_details,
             commands::investments::create_investment,
             commands::investments::delete_investment,
+            commands::investments::update_investment_name,
             commands::investments::get_investment_transactions,
             commands::investments::get_all_stock_transactions,
             commands::investments::create_investment_transaction,

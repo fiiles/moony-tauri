@@ -35,7 +35,7 @@ export function InvestmentsTable({
   onViewDetail,
   isLoading,
 }: InvestmentsTableProps) {
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, currencyCode } = useCurrency();
   const { t } = useTranslation('stocks');
   const [search, setSearch] = useState("");
 
@@ -129,26 +129,54 @@ export function InvestmentsTable({
                     <TableCell className="text-right font-medium data-value">
                       {holding.quantity.toFixed(0)}
                     </TableCell>
-                    <TableCell className="text-right data-value">
-                      {formatCurrency(holding.avgCost, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    <TableCell className="text-right">
+                      <div className="flex flex-col items-end">
+                        <span className="data-value">
+                          {formatCurrency(holding.avgCost, { 
+                            minimumFractionDigits: holding.avgCost >= 1000 ? 0 : 2, 
+                            maximumFractionDigits: holding.avgCost >= 1000 ? 0 : 2 
+                          })}
+                        </span>
+                        {holding.originalAvgCostCurrency && holding.originalAvgCostCurrency !== currencyCode && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {(holding.originalAvgCost || 0).toLocaleString(undefined, {
+                              minimumFractionDigits: (holding.originalAvgCost || 0) >= 1000 ? 0 : 2,
+                              maximumFractionDigits: (holding.originalAvgCost || 0) >= 1000 ? 0 : 2
+                            })} {holding.originalAvgCostCurrency}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {holding.isManualPrice && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 cursor-help h-5 px-1.5 text-[10px]">
-                                  {t('badges.manual')}
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>{t('tooltips.manualPrice')}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+                      <div className="flex flex-col items-end">
+                        <div className="flex items-center justify-end gap-2">
+                          {holding.isManualPrice && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 cursor-help h-5 px-1.5 text-[10px]">
+                                    {t('badges.manual')}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{t('tooltips.manualPrice')}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          <span className="data-value">{formatCurrency(holding.currentPrice, { 
+                            minimumFractionDigits: holding.currentPrice >= 1000 ? 0 : 2, 
+                            maximumFractionDigits: holding.currentPrice >= 1000 ? 0 : 2 
+                          })}</span>
+                        </div>
+                         {holding.originalCurrency && holding.originalCurrency !== currencyCode && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {(holding.originalCurrentPrice || 0).toLocaleString(undefined, {
+                              minimumFractionDigits: (holding.originalCurrentPrice || 0) >= 1000 ? 0 : 2,
+                              maximumFractionDigits: (holding.originalCurrentPrice || 0) >= 1000 ? 0 : 2
+                            })} {holding.originalCurrency}
+                          </span>
                         )}
-                        <span className="data-value">{formatCurrency(holding.currentPrice, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-semibold data-value">

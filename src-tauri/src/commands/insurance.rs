@@ -57,6 +57,9 @@ pub async fn create_insurance(
     db: State<'_, Database>,
     data: InsertInsurancePolicy,
 ) -> Result<InsurancePolicy> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let limits_json = serde_json::to_string(&data.limits.unwrap_or_default())?;
@@ -118,6 +121,9 @@ pub async fn update_insurance(
     id: String,
     data: InsertInsurancePolicy,
 ) -> Result<InsurancePolicy> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let now = chrono::Utc::now().timestamp();
     let limits_json = data.limits.and_then(|l| serde_json::to_string(&l).ok());
 
@@ -284,6 +290,9 @@ pub async fn add_insurance_document(
 ) -> Result<InsuranceDocument> {
     use std::fs;
     use std::path::Path;
+
+    // Validate inputs at the trust boundary (before any field access)
+    data.validate()?;
 
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();

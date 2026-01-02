@@ -1,9 +1,10 @@
 //! Bank account models for managing bank accounts and their transactions
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// Bank account types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum AccountType {
     #[default]
@@ -26,7 +27,7 @@ impl std::fmt::Display for AccountType {
 
 impl std::str::FromStr for AccountType {
     type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "checking" => Ok(AccountType::Checking),
             "savings" => Ok(AccountType::Savings),
@@ -38,7 +39,7 @@ impl std::str::FromStr for AccountType {
 }
 
 /// Data source for accounts and transactions
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, Type)]
 #[serde(rename_all = "snake_case")]
 pub enum DataSource {
     #[default]
@@ -59,7 +60,7 @@ impl std::fmt::Display for DataSource {
 
 impl std::str::FromStr for DataSource {
     type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "manual" => Ok(DataSource::Manual),
             "csv_import" => Ok(DataSource::CsvImport),
@@ -70,7 +71,7 @@ impl std::str::FromStr for DataSource {
 }
 
 /// Bank account entity
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct BankAccount {
     pub id: String,
     pub name: String,
@@ -105,7 +106,7 @@ pub struct BankAccount {
 }
 
 /// Data for creating/updating a bank account
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertBankAccount {
     pub name: String,
     #[serde(rename = "accountType")]
@@ -128,7 +129,7 @@ pub struct InsertBankAccount {
 }
 
 /// Financial institution (bank)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct Institution {
     pub id: String,
     pub name: String,
@@ -151,7 +152,7 @@ pub struct InsertInstitution {
 }
 
 /// Bank account with institution data (enriched)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct BankAccountWithInstitution {
     #[serde(flatten)]
     pub account: BankAccount,
@@ -161,4 +162,106 @@ pub struct BankAccountWithInstitution {
     pub effective_interest_rate: Option<f64>,
     #[serde(rename = "projectedEarnings")]
     pub projected_earnings: Option<f64>,
+}
+
+// Input validation at trust boundary
+use crate::error::{AppError, Result};
+
+impl InsertBankAccount {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        // Name validation
+        if self.name.is_empty() {
+            return Err(AppError::Validation("Account name cannot be empty".into()));
+        }
+        if self.name.len() > 100 {
+            return Err(AppError::Validation(
+                "Account name too long (max 100 characters)".into(),
+            ));
+        }
+
+        // Account type validation (if provided)
+        if let Some(ref account_type) = self.account_type {
+            let valid_types = ["checking", "savings", "credit_card", "investment"];
+            if !valid_types.contains(&account_type.to_lowercase().as_str()) {
+                return Err(AppError::Validation(
+                    format!("Invalid account type '{}' (must be checking, savings, credit_card, or investment)", account_type)
+                ));
+            }
+        }
+
+        // Currency validation (if provided)
+        if let Some(ref currency) = self.currency {
+            if currency.len() != 3 {
+                return Err(AppError::Validation(
+                    "Currency must be 3 letters (e.g., USD, EUR)".into(),
+                ));
+            }
+            if !currency.chars().all(|c| c.is_ascii_alphabetic()) {
+                return Err(AppError::Validation(
+                    "Currency must contain only letters".into(),
+                ));
+            }
+        }
+
+        // Balance validation (if provided)
+        if let Some(ref balance) = self.balance {
+            if !balance.is_empty() {
+                balance
+                    .parse::<f64>()
+                    .map_err(|_| AppError::Validation(format!("Invalid balance '{}'", balance)))?;
+            }
+        }
+
+        // Interest rate validation (if provided)
+        if let Some(ref rate) = self.interest_rate {
+            if !rate.is_empty() {
+                let rate_val: f64 = rate.parse().map_err(|_| {
+                    AppError::Validation(format!("Invalid interest rate '{}'", rate))
+                })?;
+                if !(0.0..=100.0).contains(&rate_val) {
+                    return Err(AppError::Validation(
+                        "Interest rate must be between 0 and 100".into(),
+                    ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl InsertInstitution {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        // Name validation
+        if self.name.is_empty() {
+            return Err(AppError::Validation(
+                "Institution name cannot be empty".into(),
+            ));
+        }
+        if self.name.len() > 100 {
+            return Err(AppError::Validation(
+                "Institution name too long (max 100 characters)".into(),
+            ));
+        }
+
+        // BIC validation (if provided) - should be 8 or 11 characters
+        if let Some(ref bic) = self.bic {
+            if !bic.is_empty() && bic.len() != 8 && bic.len() != 11 {
+                return Err(AppError::Validation(
+                    "BIC must be 8 or 11 characters".into(),
+                ));
+            }
+        }
+
+        // Country validation (if provided)
+        if let Some(ref country) = self.country {
+            if country.len() > 2 && country.len() != 2 {
+                // Allow full country names or 2-letter codes
+            }
+        }
+
+        Ok(())
+    }
 }

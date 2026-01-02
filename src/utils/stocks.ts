@@ -13,14 +13,18 @@ export interface HoldingData {
   companyName: string;
   quantity: number;
   avgCost: number;
+  /** Currency of the average purchase price (determined by first transaction) */
+  avgCostCurrency?: string;
+  originalAvgCost?: number;
+  originalAvgCostCurrency?: string;
   totalCost: number;
   currentPrice: number;
   /** Original price in its source currency (before conversion) */
   originalPrice?: number;
-  marketValue: number;
-  gainLoss: number;
-  gainLossPercent: number;
+  originalCurrentPrice?: number;
+  /** Currency of the current market price */
   currency?: string;
+  originalCurrency?: string;
   fetchedAt?: string | Date;
   isManualPrice?: boolean;
   dividendYield?: number;
@@ -28,6 +32,12 @@ export interface HoldingData {
   originalDividendYield?: number;
   dividendCurrency?: string;
   isManualDividend?: boolean;
+  /** Market value = quantity * currentPrice */
+  marketValue: number;
+  /** Gain/Loss = marketValue - totalCost */
+  gainLoss: number;
+  /** Gain/Loss as a percentage */
+  gainLossPercent: number;
 }
 
 export interface InvestmentMetrics {
@@ -57,6 +67,7 @@ export function mapInvestmentToHolding(investment: StockInvestmentWithPrice): Ho
     companyName: investment.companyName,
     quantity,
     avgCost,
+    avgCostCurrency: investment.averagePriceCurrency,
     totalCost: metrics.totalCost,
     currentPrice,
     originalPrice: investment.originalPrice,
@@ -72,6 +83,7 @@ export function mapInvestmentToHolding(investment: StockInvestmentWithPrice): Ho
     isManualDividend: investment.isManualDividend,
   };
 }
+
 
 export function calculateMetrics(
   holdings: HoldingData[],

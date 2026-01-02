@@ -9,7 +9,7 @@
     "summary": {
         "totalValue": "Celková hodnota",
         "totalGainLoss": "Celkový zisk/ztráta",
-        "estimatedDividend": "Odhadovaný výnos z dividend",
+        "estimatedDividend": "Odhad dividend",
         "topPerformer": "Nejvýkonnější",
         "basedOnLastYear": "Dle dividend z minulého roku",
         "lastUpdated": "Aktualizováno: {{date}}"
@@ -191,7 +191,40 @@
             "title": "Smazat investici",
             "description": "Opravdu chcete smazat {{name}} ({{ticker}})? Všechny transakce budou odstraněny. Tuto akci nelze vrátit zpět."
         },
+        "editName": {
+            "title": "Upravit název společnosti",
+            "description": "Aktualizujte název společnosti pro tuto investici.",
+            "label": "Název společnosti"
+        },
+        "nameUpdated": "Název společnosti aktualizován",
         "refreshMetadata": "Obnovit data",
         "metadataRefreshed": "Data společnosti obnovena"
+    },
+    "import": {
+        "title": "Import investic",
+        "description": "Importujte transakce z CSV souboru.",
+        "requiredColumns": "Požadované sloupce: Datum, Typ, Ticker, Množství, Cena, Měna",
+        "optionalHint": "Volitelné: Název (název společnosti). Formáty data: RRRR-MM-DD, DD.MM.RRRR nebo DD/MM/RRRR. Typ: buy nebo sell.",
+        "downloadTemplate": "Stáhnout ukázkovou CSV šablonu",
+        "clickToUpload": "Klikněte pro nahrání CSV",
+        "dragAndDrop": "nebo přetáhněte sem",
+        "change": "Změnit",
+        "previewLabel": "Náhled prvních {{shown}} z {{total}} záznamů",
+        "complete": "Import dokončen",
+        "processed": "Zpracováno {{count}} řádků.",
+        "successful": "{{count}} úspěšných",
+        "skipped": "{{count}} přeskočeno",
+        "importRecords": "Importovat {{count}} záznamů",
+        "importingProgress": "Importuji {{current}} z {{total}}...",
+        "close": "Zavřít",
+        "cancel": "Zrušit",
+        "error": "Chyba",
+        "status": {
+            "processing": "Zpracovávám transakce...",
+            "lookingUpNames": "Vyhledávám názvy společností...",
+            "savingTransactions": "Ukládám transakce...",
+            "refreshingPrices": "Aktualizuji ceny akcií...",
+            "refreshingDividends": "Aktualizuji data o dividendách..."
+        }
     }
 }

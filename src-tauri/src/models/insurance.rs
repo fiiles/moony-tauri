@@ -1,9 +1,10 @@
 //! Insurance policy models
 
 use serde::{Deserialize, Serialize};
+use specta::Type;
 
 /// Insurance limit
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct InsuranceLimit {
     pub title: String,
     pub amount: f64,
@@ -11,7 +12,7 @@ pub struct InsuranceLimit {
 }
 
 /// Insurance policy
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct InsurancePolicy {
     pub id: String,
     #[serde(rename = "type")]
@@ -45,7 +46,7 @@ pub struct InsurancePolicy {
 }
 
 /// Data for creating/updating insurance policy
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertInsurancePolicy {
     #[serde(rename = "type")]
     pub policy_type: String,
@@ -74,7 +75,7 @@ pub struct InsertInsurancePolicy {
 }
 
 /// Insurance document (attached contracts, certificates, etc.)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct InsuranceDocument {
     pub id: String,
     #[serde(rename = "insuranceId")]
@@ -98,4 +99,120 @@ pub struct InsertInsuranceDocument {
     pub description: Option<String>,
     #[serde(rename = "fileType")]
     pub file_type: Option<String>,
+}
+
+// Input validation at trust boundary
+use crate::error::{AppError, Result};
+
+impl InsertInsurancePolicy {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        // Policy type validation
+        if self.policy_type.is_empty() {
+            return Err(AppError::Validation(
+                "Insurance type cannot be empty".into(),
+            ));
+        }
+
+        // Provider validation
+        if self.provider.is_empty() {
+            return Err(AppError::Validation("Provider cannot be empty".into()));
+        }
+        if self.provider.len() > 100 {
+            return Err(AppError::Validation(
+                "Provider name too long (max 100 characters)".into(),
+            ));
+        }
+
+        // Policy name validation
+        if self.policy_name.is_empty() {
+            return Err(AppError::Validation("Policy name cannot be empty".into()));
+        }
+
+        // Payment frequency validation
+        let valid_frequencies = [
+            "monthly",
+            "quarterly",
+            "semi_annually",
+            "annually",
+            "one_time",
+        ];
+        if !valid_frequencies.contains(&self.payment_frequency.to_lowercase().as_str()) {
+            return Err(AppError::Validation(
+                format!("Invalid payment frequency '{}' (must be monthly, quarterly, semi_annually, annually, or one_time)", self.payment_frequency)
+            ));
+        }
+
+        // Regular payment validation (if provided)
+        if let Some(ref payment) = self.regular_payment {
+            if !payment.is_empty() {
+                let payment_val: f64 = payment.parse().map_err(|_| {
+                    AppError::Validation(format!("Invalid regular payment '{}'", payment))
+                })?;
+                if payment_val < 0.0 {
+                    return Err(AppError::Validation(
+                        "Regular payment cannot be negative".into(),
+                    ));
+                }
+            }
+        }
+
+        // One-time payment validation (if provided)
+        if let Some(ref payment) = self.one_time_payment {
+            if !payment.is_empty() {
+                let payment_val: f64 = payment.parse().map_err(|_| {
+                    AppError::Validation(format!("Invalid one-time payment '{}'", payment))
+                })?;
+                if payment_val < 0.0 {
+                    return Err(AppError::Validation(
+                        "One-time payment cannot be negative".into(),
+                    ));
+                }
+            }
+        }
+
+        // Currency validations
+        if let Some(ref currency) = self.regular_payment_currency {
+            if currency.len() != 3 {
+                return Err(AppError::Validation(
+                    "Regular payment currency must be 3 letters".into(),
+                ));
+            }
+        }
+        if let Some(ref currency) = self.one_time_payment_currency {
+            if currency.len() != 3 {
+                return Err(AppError::Validation(
+                    "One-time payment currency must be 3 letters".into(),
+                ));
+            }
+        }
+
+        // Date validation
+        if let Some(end) = self.end_date {
+            if end <= self.start_date {
+                return Err(AppError::Validation(
+                    "End date must be after start date".into(),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl InsertInsuranceDocument {
+    /// Validate input data at the trust boundary
+    pub fn validate(&self) -> Result<()> {
+        // Name validation
+        if self.name.is_empty() {
+            return Err(AppError::Validation("Document name cannot be empty".into()));
+        }
+        if self.name.len() > 200 {
+            return Err(AppError::Validation(
+                "Document name too long (max 200 characters)".into(),
+            ));
+        }
+
+        Ok(())
+    }
 }

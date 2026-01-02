@@ -42,6 +42,9 @@ pub async fn get_all_loans(db: State<'_, Database>) -> Result<Vec<Loan>> {
 /// Create loan
 #[tauri::command]
 pub async fn create_loan(db: State<'_, Database>, data: InsertLoan) -> Result<Loan> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
@@ -79,6 +82,9 @@ pub async fn create_loan(db: State<'_, Database>, data: InsertLoan) -> Result<Lo
 /// Update loan
 #[tauri::command]
 pub async fn update_loan(db: State<'_, Database>, id: String, data: InsertLoan) -> Result<Loan> {
+    // Validate inputs at the trust boundary
+    data.validate()?;
+
     let now = chrono::Utc::now().timestamp();
 
     db.with_conn(|conn| {
