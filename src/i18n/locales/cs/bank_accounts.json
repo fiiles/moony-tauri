@@ -50,9 +50,7 @@
     "iban": "IBAN",
     "bban": "Číslo účtu",
     "interestRate": "Úroková sazba",
-    "interestType": "Typ úročení",
-    "excludeFromBalance": "Vyloučit z portfolia",
-    "excludeFromBalanceHint": "Zapněte pro provozní účty, kde zůstatek není relevantní pro sledování"
+    "interestType": "Typ úročení"
   },
   
   "interestType": {
@@ -102,7 +100,9 @@
   
   "empty": {
     "title": "Zatím nemáte žádné bankovní účty",
-    "description": "Přidejte svůj první bankovní účet a začněte sledovat své finance."
+    "description": "Přidejte svůj první bankovní účet a začněte sledovat své finance.",
+    "noTransactions": "Zatím žádné transakce",
+    "noMatchingTransactions": "Žádné transakce neodpovídají aktuálním filtrům"
   },
 
   "csvImport": {
@@ -141,5 +141,60 @@
     "effectiveRate": "Efektivní sazba",
     "active": "Aktivní",
     "noZones": "Nejsou nakonfigurována žádná úroková pásma"
+  },
+
+  "categorization": {
+    "category": "Kategorie",
+    "autoCategorize": "Automatická kategorizace",
+    "selectCategory": "Vyberte...",
+    "searchCategory": "Hledat...",
+    "noCategory": "Kategorie nenalezena",
+    "learned": "Kategorie naučena",
+    "learnedDescription": "\"{{payee}}\" → {{category}}",
+    "categorizeComplete": "Kategorizace dokončena",
+    "categorizeResult": "{{matches}} přiřazeno, {{suggestions}} návrhů",
+    "noMatches": "Nenalezeny žádné shody",
+    "noMatchesDesc": "Zkuste přidat více pravidel nebo natrénovat ML model."
+  },
+
+  "filters": {
+    "thisMonth": "Tento měsíc",
+    "lastMonth": "Minulý měsíc",
+    "thisQuarter": "Toto čtvrtletí",
+    "lastQuarter": "Minulé čtvrtletí",
+    "thisYear": "Tento rok",
+    "lastYear": "Minulý rok",
+    "allTransactions": "Všechny",
+    "incomeOnly": "Pouze příjmy",
+    "outcomeOnly": "Pouze výdaje",
+    "uncategorizedOnly": "Nezařazené",
+    "custom": "Vlastní"
+  },
+
+  "stats": {
+    "totalTransactions": "Transakcí",
+    "income": "Příjmy",
+    "outcome": "Výdaje",
+    "netFlow": "Čistý tok"
+  },
+
+  "categoryNames": {
+    "cat_groceries": "Potraviny",
+    "cat_dining": "Restaurace",
+    "cat_transport": "Doprava",
+    "cat_utilities": "Služby",
+    "cat_entertainment": "Zábava",
+    "cat_shopping": "Nakupování",
+    "cat_health": "Zdraví",
+    "cat_travel": "Cestování",
+    "cat_income": "Příjem",
+    "cat_investments": "Investice",
+    "cat_savings": "Spoření",
+    "cat_internal_transfers": "Interní převody",
+    "cat_housing": "Bydlení",
+    "cat_taxes": "Daně",
+    "cat_insurance": "Pojištění",
+    "cat_loan_payments": "Splátky úvěrů",
+    "cat_other": "Ostatní"
   }
 }

@@ -51,9 +51,7 @@
     "iban": "IBAN",
     "bban": "BBAN",
     "interestRate": "Interest Rate",
-    "interestType": "Interest Type",
-    "excludeFromBalance": "Excluded from balance",
-    "excludeFromBalanceHint": "When enabled, this account won't be included in your portfolio totals"
+    "interestType": "Interest Type"
   },
   
   "interestType": {
@@ -103,7 +101,9 @@
   
   "empty": {
     "title": "No bank accounts yet",
-    "description": "Add your first bank account to start tracking your finances."
+    "description": "Add your first bank account to start tracking your finances.",
+    "noTransactions": "No transactions yet",
+    "noMatchingTransactions": "No transactions match the current filters"
   },
 
   "csvImport": {
@@ -142,5 +142,60 @@
     "effectiveRate": "Effective Rate",
     "active": "Active",
     "noZones": "No interest rate zones configured"
+  },
+
+  "categorization": {
+    "category": "Category",
+    "autoCategorize": "Auto-categorize",
+    "selectCategory": "Select...",
+    "searchCategory": "Search...",
+    "noCategory": "No category found",
+    "learned": "Category learned",
+    "learnedDescription": "\"{{payee}}\" → {{category}}",
+    "categorizeComplete": "Categorization complete",
+    "categorizeResult": "{{matches}} matched, {{suggestions}} suggestions",
+    "noMatches": "No matches found",
+    "noMatchesDesc": "Try adding more rules or training the ML model."
+  },
+
+  "filters": {
+    "thisMonth": "This month",
+    "lastMonth": "Last month",
+    "thisQuarter": "This quarter",
+    "lastQuarter": "Last quarter",
+    "thisYear": "This year",
+    "lastYear": "Last year",
+    "allTransactions": "All",
+    "incomeOnly": "Income only",
+    "outcomeOnly": "Outcome only",
+    "uncategorizedOnly": "Uncategorized",
+    "custom": "Custom"
+  },
+
+  "stats": {
+    "totalTransactions": "Transactions",
+    "income": "Income",
+    "outcome": "Outcome",
+    "netFlow": "Net Flow"
+  },
+
+  "categoryNames": {
+    "cat_groceries": "Groceries",
+    "cat_dining": "Dining & Restaurants",
+    "cat_transport": "Transportation",
+    "cat_utilities": "Utilities",
+    "cat_entertainment": "Entertainment",
+    "cat_shopping": "Shopping",
+    "cat_health": "Health & Medical",
+    "cat_travel": "Travel",
+    "cat_income": "Income",
+    "cat_investments": "Investments",
+    "cat_savings": "Savings",
+    "cat_internal_transfers": "Internal Transfers",
+    "cat_housing": "Housing",
+    "cat_taxes": "Taxes",
+    "cat_insurance": "Insurance",
+    "cat_loan_payments": "Loan Payments",
+    "cat_other": "Other"
   }
 }

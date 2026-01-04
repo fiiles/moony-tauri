@@ -9,10 +9,16 @@ pub mod error;
 pub mod models;
 pub mod services;
 
-use db::Database;
+use std::sync::Arc;
 
+use commands::categorization::CategorizationState;
+use db::Database;
+use services::categorization::CategorizationEngine;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize categorization engine with default rules
+    let categorization_engine = Arc::new(CategorizationEngine::with_defaults());
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -20,6 +26,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(Database::new())
+        .manage(CategorizationState(categorization_engine))
         .invoke_handler(tauri::generate_handler![
             // Auth commands
             commands::auth::check_setup,
@@ -186,6 +193,7 @@ pub fn run() {
             commands::bank_accounts::get_bank_transactions,
             commands::bank_accounts::create_bank_transaction,
             commands::bank_accounts::delete_bank_transaction,
+            commands::bank_accounts::update_transaction_category,
             // Transaction category commands
             commands::bank_accounts::get_transaction_categories,
             commands::bank_accounts::create_transaction_category,
@@ -215,6 +223,18 @@ pub fn run() {
             commands::stock_tags::create_stock_tag_group,
             commands::stock_tags::update_stock_tag_group,
             commands::stock_tags::delete_stock_tag_group,
+            // Categorization commands
+            commands::categorization::categorize_transaction,
+            commands::categorization::categorize_batch,
+            commands::categorization::learn_categorization,
+            commands::categorization::forget_payee,
+            commands::categorization::update_categorization_rules,
+            commands::categorization::get_categorization_stats,
+            commands::categorization::retrain_ml_model,
+            commands::categorization::export_learned_payees,
+            commands::categorization::import_learned_payees,
+            commands::categorization::load_learned_payees_from_db,
+            commands::categorization::initialize_ml_from_transactions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

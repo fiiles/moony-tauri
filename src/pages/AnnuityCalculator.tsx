@@ -271,8 +271,8 @@ export default function AnnuityCalculator() {
                                 />
                                 <YAxis hide />
                                 <Tooltip 
-                                    formatter={(value: number, name: string) => [
-                                        formatCurrencyRaw(value), 
+                                    formatter={(value, name) => [
+                                        formatCurrencyRaw(value as number ?? 0), 
                                         name === 'principal' ? t('annuity.chart.principal') : t('annuity.chart.interest')
                                     ]}
                                     contentStyle={{
@@ -280,15 +280,11 @@ export default function AnnuityCalculator() {
                                         border: '1px solid hsl(var(--border))',
                                         borderRadius: '6px',
                                     }}
-                                    labelFormatter={(label: number) => `${t('annuity.table.year')} ${label}`}
+                                    labelFormatter={(label) => `${t('annuity.table.year')} ${label}`}
                                     itemSorter={(item) => String(item.dataKey) === 'principal' ? 0 : 1}
                                 />
                                 <Legend 
                                     formatter={(value) => value === 'principal' ? t('annuity.chart.principal') : t('annuity.chart.interest')}
-                                    payload={[
-                                        { value: 'principal', type: 'square', color: 'hsl(var(--chart-1))' },
-                                        { value: 'interest', type: 'square', color: 'hsl(var(--destructive))' }
-                                    ]}
                                 />
                                 <Area
                                     type="monotone"

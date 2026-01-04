@@ -77,7 +77,7 @@ export default function NetWorthTrendChart({
             />
             <YAxis hide domain={yAxisDomain} />
             <Tooltip
-              formatter={(value: number) => [formatCurrency(value), t('stats.netWorth')]}
+              formatter={(value) => [formatCurrency(value as number ?? 0), t('stats.netWorth')]}
               contentStyle={{
                 backgroundColor: 'hsl(var(--popover))',
                 border: '1px solid hsl(var(--border))',

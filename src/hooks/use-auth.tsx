@@ -8,7 +8,7 @@
  */
 import { createContext, ReactNode, useContext, useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { authApi, priceApi } from "../lib/tauri-api";
+import { authApi, priceApi, categorizationApi } from "../lib/tauri-api";
 import { queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { UserProfile } from "@shared/schema";
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [pendingRecover, setPendingRecover] = useState<PendingRecover | null>(null);
     const [appStatus, setAppStatus] = useState<AppStatus>("locked");
     const [isCheckingStatus, setIsCheckingStatus] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
+    const [error, _setError] = useState<Error | null>(null);
 
     // Fetch user profile automatically when unlocked
     const { data: user = null, isLoading: isProfileLoading } = useQuery({
@@ -155,6 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             queryClient.setQueryData(["user-profile"], profile);
             setAppStatus("unlocked");
             setPendingSetup(null);
+            // Load learned payees from database
+            categorizationApi.loadFromDb().catch(console.error);
             // Recovery key will be cleared by auth-page when user dismisses modal
             toast({
                 title: "Setup complete!",
@@ -195,6 +197,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 queryClient.invalidateQueries({ queryKey: ["crypto"] });
                 queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             }).catch(console.error);
+            
+            // Load learned payees from database for categorization
+            categorizationApi.loadFromDb().catch(console.error);
         },
         onError: (error: Error) => {
             // Check if this is a password-related error and show a friendly message
@@ -274,6 +279,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             queryClient.setQueryData(["user-profile"], profile);
             setAppStatus("unlocked");
             setPendingRecover(null);
+            // Load learned payees from database
+            categorizationApi.loadFromDb().catch(console.error);
             // Recovery key will be cleared by auth-page
             toast({
                 title: "Password reset successful!",

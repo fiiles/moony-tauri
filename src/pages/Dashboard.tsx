@@ -156,6 +156,12 @@ export default function Dashboard() {
         data={(() => {
           // Reverse history to get chronological order (Oldest -> Newest)
           // portfolioHistory is DESC (Newest -> Oldest)
+          // Include year in date format for multi-year periods
+          const includeYear = selectedPeriod === '1Y' || selectedPeriod === '5Y' || selectedPeriod === 'All';
+          const dateOptions = includeYear
+            ? { month: 'short' as const, day: 'numeric' as const, year: '2-digit' as const }
+            : { month: 'short' as const, day: 'numeric' as const };
+          
           const historyData = [...(portfolioHistory || [])].reverse().map(h => {
             const assets = Number(h.totalSavings) + Number(h.totalInvestments) + Number(h.totalBonds) +
               (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
@@ -164,14 +170,14 @@ export default function Dashboard() {
               Number(h.totalOtherAssets || 0);
             const liabilities = Number(h.totalLoansPrincipal);
             return {
-              date: formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric' }),
+              date: formatDate(new Date(h.recordedAt * 1000), dateOptions),
               value: assets - liabilities
             };
           });
 
           // Append or update with current live net worth
           // This ensures the chart ends with the exact value shown in the summary
-          const todayStr = formatDate(new Date(), { month: 'short', day: 'numeric' });
+          const todayStr = formatDate(new Date(), dateOptions);
           const lastPoint = historyData[historyData.length - 1];
 
           if (lastPoint && lastPoint.date === todayStr) {
@@ -204,6 +210,12 @@ export default function Dashboard() {
             data={(() => {
               // Reverse history to get chronological order (Oldest -> Newest)
               // portfolioHistory is DESC (Newest -> Oldest)
+              // Include year in date format for multi-year periods
+              const includeYear = selectedPeriod === '1Y' || selectedPeriod === '5Y' || selectedPeriod === 'All';
+              const dateOptions = includeYear
+                ? { month: 'short' as const, day: 'numeric' as const, year: '2-digit' as const }
+                : { month: 'short' as const, day: 'numeric' as const };
+              
               const chartData = [...(portfolioHistory || [])].reverse().map(h => {
                 const assets = Number(h.totalSavings) + Number(h.totalInvestments) + Number(h.totalBonds) +
                   (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
@@ -212,14 +224,14 @@ export default function Dashboard() {
                   Number(h.totalOtherAssets || 0);
                 const liabilities = Number(h.totalLoansPrincipal);
                 return {
-                  date: formatDate(new Date(h.recordedAt * 1000), { month: 'short', day: 'numeric' }),
+                  date: formatDate(new Date(h.recordedAt * 1000), dateOptions),
                   assets,
                   liabilities
                 };
               });
 
               // Append or update with current live values
-              const todayStr = formatDate(new Date(), { month: 'short', day: 'numeric' });
+              const todayStr = formatDate(new Date(), dateOptions);
               const lastPoint = chartData[chartData.length - 1];
 
               if (lastPoint && lastPoint.date === todayStr) {

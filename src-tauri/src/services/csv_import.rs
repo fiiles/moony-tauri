@@ -463,3 +463,100 @@ pub fn suggest_column_mappings(headers: &[String]) -> HashMap<String, (String, f
 
     mappings
 }
+
+/// Clean and parse amount string
+/// Handles:
+/// - Wholesale removal of all whitespace (including NBSP \u{a0} and other unicode spaces)
+/// - Multiple number formats (1,234.56 vs 1.234,56 vs 1 234,56)
+/// - Currency symbols (basic removal)
+pub fn clean_and_parse_amount(value: &str) -> f64 {
+    // 1. Remove all whitespace (including non-breaking spaces) and currency symbols
+    // \p{White_Space} matches all unicode whitespace
+    // Also remove common currency symbols if attached
+    let mut cleaned = String::with_capacity(value.len());
+    let mut has_comma = false;
+    let mut has_dot = false;
+    let mut last_comma_idx = 0;
+    let mut last_dot_idx = 0;
+    let mut char_count = 0;
+
+    for c in value.chars() {
+        if c.is_whitespace() || c == '\u{00a0}' || c == '\u{202f}' {
+            continue;
+        }
+        // Skip currency symbols (basic set)
+        if "$€£¥Kč".contains(c) {
+            continue;
+        }
+
+        if c == ',' {
+            has_comma = true;
+            last_comma_idx = char_count;
+        } else if c == '.' {
+            has_dot = true;
+            last_dot_idx = char_count;
+        }
+
+        cleaned.push(c);
+        char_count += 1;
+    }
+
+    if cleaned.is_empty() {
+        return 0.0;
+    }
+
+    // 2. Determine format based on separators
+    let normalized = if has_comma && has_dot {
+        // Mixed separators: implicit logic based on position
+        if last_comma_idx > last_dot_idx {
+            // 1.234,56 -> 1234.56 (European)
+            cleaned.replace('.', "").replace(',', ".")
+        } else {
+            // 1,234.56 -> 1234.56 (US/UK)
+            cleaned.replace(',', "")
+        }
+    } else if has_comma {
+        // Only comma: treat as decimal separator (European/CZ default)
+        // 1234,56 -> 1234.56
+        cleaned.replace(',', ".")
+    } else {
+        // Only dot or no separator: standard float parsing
+        cleaned
+    };
+
+    // 3. Parse
+    normalized.parse::<f64>().unwrap_or(0.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_clean_and_parse_amount() {
+        // CZ format with NBSP (User Case)
+        // "-300 000,00" where space is likely NBSP
+        assert_eq!(clean_and_parse_amount("-300\u{00a0}000,00"), -300000.0);
+        assert_eq!(clean_and_parse_amount("-300 000,00"), -300000.0);
+
+        // Standard CZ/EU format
+        assert_eq!(clean_and_parse_amount("1 234,56"), 1234.56);
+        assert_eq!(clean_and_parse_amount("1234,56"), 1234.56);
+
+        // DE/EU Format with dots as thousands separators
+        assert_eq!(clean_and_parse_amount("1.234,56"), 1234.56);
+
+        // US/UK Format
+        assert_eq!(clean_and_parse_amount("1,234.56"), 1234.56);
+        assert_eq!(clean_and_parse_amount("1234.56"), 1234.56);
+
+        // Simple integers
+        assert_eq!(clean_and_parse_amount("1234"), 1234.0);
+        assert_eq!(clean_and_parse_amount("-1234"), -1234.0);
+
+        // Garbage / Empty
+        assert_eq!(clean_and_parse_amount(""), 0.0);
+        assert_eq!(clean_and_parse_amount("abc"), 0.0); // Fail gracefully
+        assert_eq!(clean_and_parse_amount("Kč 1 234,50"), 1234.5);
+    }
+}

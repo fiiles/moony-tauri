@@ -25,10 +25,8 @@ export function useBankAccounts() {
     refetchOnWindowFocus: true,
   });
 
-  // Calculate metrics in CZK (excluding accounts marked as excluded)
-  const includedAccounts = accounts.filter(
-    (item: BankAccountWithInstitution) => !item.excludeFromBalance
-  );
+  // Calculate metrics in CZK (all accounts included)
+  const includedAccounts = accounts;
 
   const totalBalance = includedAccounts.reduce((sum, item: BankAccountWithInstitution) => {
     const balance = parseFloat(item.balance || '0');

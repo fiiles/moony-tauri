@@ -13,20 +13,12 @@ export type AccountType = "checking" | "savings" | "credit_card" | "investment"
 /**
  * Bank account entity
  */
-export type BankAccount = { id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
-/**
- * Exclude from portfolio balance (for operational/checking accounts)
- */
-excludeFromBalance: boolean; createdAt: number; updatedAt: number }
+export type BankAccount = { id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; createdAt: number; updatedAt: number }
 
 /**
  * Bank account with institution data (enriched)
  */
-export type BankAccountWithInstitution = ({ id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; 
-/**
- * Exclude from portfolio balance (for operational/checking accounts)
- */
-excludeFromBalance: boolean; createdAt: number; updatedAt: number }) & { institution: Institution | null; effectiveInterestRate: number | null; projectedEarnings: number | null }
+export type BankAccountWithInstitution = ({ id: string; name: string; accountType: string; iban: string | null; bban: string | null; currency: string; balance: string; institutionId: string | null; externalAccountId: string | null; dataSource: string; lastSyncedAt: number | null; interestRate: string | null; hasZoneDesignation: boolean; terminationDate: number | null; createdAt: number; updatedAt: number }) & { institution: Institution | null; effectiveInterestRate: number | null; projectedEarnings: number | null }
 
 /**
  * Bank transaction entity
@@ -72,7 +64,7 @@ export type EnrichedCryptoInvestment = { id: string; ticker: string; coingeckoId
  */
 originalPrice: string; 
 /**
- * Currency of the original price (e.g., USD, EUR)
+ * Currency of the current market price (e.g., USD, EUR)
  */
 currency: string; fetchedAt: number | null; 
 /**
@@ -83,13 +75,17 @@ isManualPrice: boolean }
 /**
  * Enriched investment with current price data
  */
-export type EnrichedStockInvestment = { id: string; ticker: string; companyName: string; quantity: string; averagePrice: string; currentPrice: number; 
+export type EnrichedStockInvestment = { id: string; ticker: string; companyName: string; quantity: string; averagePrice: string; 
+/**
+ * Currency of the average price (determined by first transaction)
+ */
+averagePriceCurrency: string; currentPrice: number; 
 /**
  * Original price in its source currency (before conversion to CZK)
  */
 originalPrice: string; 
 /**
- * Currency of the original price (e.g., USD, EUR)
+ * Currency of the current price (e.g., USD, EUR)
  */
 currency: string; fetchedAt: number | null; isManualPrice: boolean; dividendYield: number; 
 /**
@@ -100,11 +96,7 @@ originalDividendYield: number; dividendCurrency: string; isManualDividend: boole
 /**
  * Data for creating/updating a bank account
  */
-export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null; 
-/**
- * Exclude from portfolio balance (for operational/checking accounts)
- */
-excludeFromBalance: boolean | null }
+export type InsertBankAccount = { name: string; accountType: string | null; iban: string | null; bban: string | null; currency: string | null; balance: string | null; institutionId: string | null; interestRate: string | null; hasZoneDesignation: boolean | null; terminationDate: number | null }
 
 /**
  * Data for creating/updating a transaction
@@ -289,7 +281,11 @@ export type SavingsAccountZone = { id: string; savingsAccountId: string; fromAmo
 /**
  * Stock investment holding
  */
-export type StockInvestment = { id: string; ticker: string; companyName: string; quantity: string; averagePrice: string }
+export type StockInvestment = { id: string; ticker: string; companyName: string; quantity: string; averagePrice: string; 
+/**
+ * Currency of the average price (determined by first transaction)
+ */
+averagePriceCurrency: string }
 
 /**
  * User price override

@@ -50,10 +50,8 @@ fn calculate_portfolio_metrics(
     exclude_personal_real_estate: bool,
 ) -> Result<PortfolioMetrics> {
     db.with_conn(|conn| {
-        // Calculate total savings from bank_accounts (only those included in portfolio)
-        let mut bank_stmt = conn.prepare(
-            "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
-        )?;
+        // Calculate total savings from bank_accounts
+        let mut bank_stmt = conn.prepare("SELECT balance, currency FROM bank_accounts")?;
         let total_savings: f64 = bank_stmt
             .query_map([], |row| {
                 let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
@@ -468,10 +466,8 @@ fn calculate_metrics_for_day(
     use crate::services::currency::convert_to_czk;
 
     db.with_conn(|conn| {
-        // Calculate total savings from bank_accounts (only those included in portfolio)
-        let mut bank_stmt = conn.prepare(
-            "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
-        )?;
+        // Calculate total savings from bank_accounts
+        let mut bank_stmt = conn.prepare("SELECT balance, currency FROM bank_accounts")?;
         let total_savings: f64 = bank_stmt
             .query_map([], |row| {
                 let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
