@@ -21,7 +21,7 @@ import { InsuranceFormDialog } from "@/components/insurance/InsuranceFormDialog"
 import { InsuranceDocuments } from "@/components/insurance/InsuranceDocuments";
 import type { InsurancePolicy, RealEstate } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { insuranceApi, realEstateApi } from "@/lib/tauri-api";
+import { insuranceApi } from "@/lib/tauri-api";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { useCurrency } from "@/lib/currency";
 import {

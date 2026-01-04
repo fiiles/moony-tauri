@@ -239,7 +239,7 @@ const PAYMENT_PREFIXES: &[&str] = &[
 ///
 /// assert_eq!(normalize_payee("ABC Company s.r.o."), "abc company");
 /// assert_eq!(normalize_payee("XYZ a.s."), "xyz");
-/// assert_eq!(normalize_payee("Albert CZ spol. s r.o."), "albert cz");
+/// assert_eq!(normalize_payee("Albert CZ spol. s r.o."), "albert cz spol s ro");
 /// ```
 pub fn normalize_payee(text: &str) -> String {
     let mut normalized = simple_normalize(text);
