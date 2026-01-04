@@ -25,13 +25,13 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # Database with SQLCipher encryption
-rusqlite = { version = "0.32", features = ["bundled-sqlcipher"] }
+rusqlite = { version = "0.38", features = ["bundled-sqlcipher"] }
 
 # Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 
 # HTTP client for API calls (ECB rates, Marketstack)
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.13", features = ["json"] }
 
 # UUID generation
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -48,7 +48,7 @@ scrypt = "0.11"      # For scrypt key derivation (matches Node.js)
 aes-gcm = "0.10"     # For AES-256-GCM encryption (matches Node.js)
 
 # Error handling
-thiserror = "1"
+thiserror = "2"
 anyhow = "1"
 
 # Logging
@@ -78,3 +78,12 @@ time = "0.3.44"
 # Type generation for TypeScript
 specta = { version = "2.0.0-rc.22", features = ["derive", "serde"] }
 specta-typescript = "0.0.9"
+
+# Machine Learning for categorization
+smartcore = { version = "0.4", features = ["serde"] }
+
+# Text processing for Czech language
+unicode-normalization = "0.1"
+
+# Model persistence
+bincode = "1.3"

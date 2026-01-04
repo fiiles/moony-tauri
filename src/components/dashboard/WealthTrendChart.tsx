@@ -31,7 +31,7 @@ export default function WealthTrendChart({ data }: WealthTrendChartProps) {
             tickFormatter={(value) => formatCurrencyShort(value)}
           />
           <Tooltip 
-            formatter={(value: number) => [formatCurrency(value), 'Net Worth']}
+            formatter={(value) => [formatCurrency(value as number ?? 0), 'Net Worth']}
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
               border: '1px solid hsl(var(--border))',

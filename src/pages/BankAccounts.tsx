@@ -148,14 +148,7 @@ export default function BankAccounts() {
                         onClick={() => handleViewDetail(item.id)}
                       >
                         <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {item.name}
-                            {item.excludeFromBalance && (
-                              <Badge variant="outline" className="text-xs">
-                                {t("fields.excludeFromBalance")}
-                              </Badge>
-                            )}
-                          </div>
+                          {item.name}
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">

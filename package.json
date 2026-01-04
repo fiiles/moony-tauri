@@ -55,7 +55,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "date-fns": "^3.6.0",
+    "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^11.13.1",
     "heic2any": "^0.0.4",
@@ -68,15 +68,15 @@
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.55.0",
-    "react-i18next": "^16.5.0",
+    "react-i18next": "^16.5.1",
     "react-icons": "^5.4.0",
     "react-resizable-panels": "^3.0.6",
-    "recharts": "^2.15.2",
-    "tailwind-merge": "^2.6.0",
+    "recharts": "^3.6.0",
+    "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
-    "zod": "^3.24.2"
+    "zod": "^4.3.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

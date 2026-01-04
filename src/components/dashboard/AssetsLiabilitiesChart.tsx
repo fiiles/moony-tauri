@@ -89,8 +89,8 @@ export default function AssetsLiabilitiesChart({
                             />
                             <YAxis hide domain={yAxisDomain} />
                             <Tooltip
-                                formatter={(value: number, name: string) => [
-                                    formatCurrency(value, { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
+                                formatter={(value, name) => [
+                                    formatCurrency(value as number ?? 0, { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
                                     name === 'assets' ? t('stats.totalAssets') : t('stats.totalLiabilities')
                                 ]}
                                 contentStyle={{

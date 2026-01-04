@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useMemo } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,16 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -31,12 +23,13 @@ import {
 } from "@/components/ui/select";
 import {
   ArrowLeft,
-  Plus,
   ArrowUpRight,
   ArrowDownLeft,
   Edit,
   FileUp,
   Trash2,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -56,10 +49,15 @@ import { useBankAccount, useInstitutions } from "@/hooks/use-bank-accounts";
 import { useBankTransactionMutations, useBankAccountMutations } from "@/hooks/use-bank-account-mutations";
 import { bankAccountsApi, savingsApi } from "@/lib/tauri-api";
 import { BankAccountFormDialog } from "@/components/bank-accounts/BankAccountFormDialog";
+import { AddTransactionModal } from "@/components/bank-accounts/AddTransactionModal";
 import { CsvImportDialog } from "@/components/bank-accounts/CsvImportDialog";
-import type { InsertBankTransaction, TransactionType } from "@shared/schema";
+import type { CategorizationResult } from "@/hooks/useCategorization";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/lib/currency";
+import { CategorySelector } from "@/components/bank-accounts/CategorySelector";
+import { useCategorization } from "@/hooks/useCategorization";
+import { useToast } from "@/hooks/use-toast";
+import { isCzechIBAN, ibanToBBAN, formatAccountNumber } from "@/utils/iban-utils";
 
 export default function BankAccountDetail() {
   const { t } = useTranslation("bank_accounts");
@@ -69,21 +67,16 @@ export default function BankAccountDetail() {
   const accountId = params?.id;
   const { account, isLoading } = useBankAccount(accountId);
   const { institutions } = useInstitutions();
-  const { createTransaction, deleteTransaction } = useBankTransactionMutations(accountId);
+  const { deleteTransaction } = useBankTransactionMutations(accountId);
   const { updateAccount, deleteAccount } = useBankAccountMutations();
   const { formatCurrency } = useCurrency();
   const queryClient = useQueryClient();
+  const { categorizeBatch, clearCache, isLoading: isCategorizingBatch } = useCategorization();
+  const [categorizationResults, setCategorizationResults] = useState<Map<string, CategorizationResult>>(new Map());
+  const { toast } = useToast();
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [addTxDialogOpen, setAddTxDialogOpen] = useState(false);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
-  const [formData, setFormData] = useState<InsertBankTransaction>({
-    bankAccountId: accountId || "",
-    type: "debit",
-    amount: "",
-    bookingDate: Math.floor(Date.now() / 1000),
-    description: "",
-  });
 
   // Date filters - default to current month
   const today = new Date();
@@ -93,6 +86,63 @@ export default function BankAccountDetail() {
   const [dateTo, setDateTo] = useState<string>(
     new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0]
   );
+  const [datePreset, setDatePreset] = useState<string>("thisMonth");
+  const [transactionType, setTransactionType] = useState<"all" | "income" | "outcome">("all");
+  const [showUncategorizedOnly, setShowUncategorizedOnly] = useState(false);
+
+  // Date preset calculator
+  const applyDatePreset = (preset: string) => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const quarter = Math.floor(month / 3);
+    
+    let from: Date;
+    let to: Date;
+    
+    switch (preset) {
+      case "thisMonth":
+        from = new Date(year, month, 1);
+        to = new Date(year, month + 1, 0);
+        break;
+      case "lastMonth":
+        from = new Date(year, month - 1, 1);
+        to = new Date(year, month, 0);
+        break;
+      case "thisQuarter":
+        from = new Date(year, quarter * 3, 1);
+        to = new Date(year, quarter * 3 + 3, 0);
+        break;
+      case "lastQuarter":
+        from = new Date(year, (quarter - 1) * 3, 1);
+        to = new Date(year, quarter * 3, 0);
+        break;
+      case "thisYear":
+        from = new Date(year, 0, 1);
+        to = new Date(year, 11, 31);
+        break;
+      case "lastYear":
+        from = new Date(year - 1, 0, 1);
+        to = new Date(year - 1, 11, 31);
+        break;
+      default:
+        return;
+    }
+    
+    setDateFrom(from.toISOString().split('T')[0]);
+    setDateTo(to.toISOString().split('T')[0]);
+    setDatePreset(preset);
+  };
+
+  const handleDateChange = (type: 'from' | 'to', value: string) => {
+    if (type === 'from') {
+      setDateFrom(value);
+    } else {
+      setDateTo(value);
+    }
+    setDatePreset("custom");
+  };
+
 
   // Fetch transactions
   const { data: transactionsResult, isLoading: txLoading } = useQuery({
@@ -122,6 +172,12 @@ export default function BankAccountDetail() {
     enabled: !!accountId,
   });
 
+  // Fetch transaction categories
+  const { data: categories = [] } = useQuery({
+    queryKey: ["transaction-categories"],
+    queryFn: () => bankAccountsApi.getCategories(),
+  });
+
   const deleteBatchMutation = useMutation({
     mutationFn: (batchId: string) => bankAccountsApi.deleteImportBatch(batchId),
     onSuccess: () => {
@@ -132,31 +188,192 @@ export default function BankAccountDetail() {
     },
   });
 
-  const transactions = transactionsResult?.transactions || [];
+  const transactions = useMemo(() => transactionsResult?.transactions || [], [transactionsResult]);
 
-  const handleAddTxClick = () => {
-    setFormData({
-      bankAccountId: accountId || "",
-      type: "debit",
-      amount: "",
-      bookingDate: Math.floor(Date.now() / 1000),
-      description: "",
+  // Filter transactions based on user selection
+  const filteredTransactions = useMemo(() => {
+    let filtered = transactions;
+    
+    if (transactionType === "income") {
+      filtered = filtered.filter(tx => tx.type === "credit");
+    } else if (transactionType === "outcome") {
+      filtered = filtered.filter(tx => tx.type === "debit");
+    }
+    
+    if (showUncategorizedOnly) {
+      filtered = filtered.filter(tx => {
+        if (tx.categoryId) return false;
+        const localResult = categorizationResults.get(tx.id);
+        if (localResult && localResult.type === 'Match') return false;
+        return true;
+      });
+    }
+    
+    return filtered;
+  }, [transactions, transactionType, showUncategorizedOnly, categorizationResults]);
+
+  // Calculate statistics for the date range (from all loaded transactions, not filtered)
+  const stats = useMemo(() => {
+    const totalIncome = transactions
+      .filter(tx => tx.type === "credit")
+      .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+    const totalOutcome = transactions
+      .filter(tx => tx.type === "debit")
+      .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+    
+    return {
+      count: transactions.length,
+      income: totalIncome,
+      outcome: totalOutcome,
+      netFlow: totalIncome - totalOutcome
+    };
+  }, [transactions]);
+
+
+  // Auto-categorize all uncategorized transactions
+  const handleAutoCategorize = async () => {
+    // Clear the cache first so we get fresh results after any learning
+    clearCache();
+    
+    const uncategorized = transactions.filter(tx => {
+      // Check if already has category from DB
+      if (tx.categoryId) return false;
+      // Check local state - only skip if it's a confirmed Match (not Suggestion or None)
+      const localResult = categorizationResults.get(tx.id);
+      if (localResult && localResult.type === 'Match') return false;
+      // Re-try Suggestions and None results (may find better match after learning)
+      return true;
     });
-    setAddTxDialogOpen(true);
+    if (uncategorized.length === 0) return;
+
+    const results = await categorizeBatch(uncategorized);
+    console.log('Categorization results:', results.slice(0, 5)); // Debug: first 5 results
+    const newResults = new Map(categorizationResults);
+    let matchCount = 0;
+    let suggestionCount = 0;
+    
+    // Collect Match results to persist to database
+    const matchesToPersist: Array<{ txId: string; categoryId: string; counterpartyName?: string }> = [];
+    
+    uncategorized.forEach((tx, i) => {
+      if (results[i] && results[i].type !== 'None') {
+        newResults.set(tx.id, results[i]);
+        if (results[i].type === 'Match') {
+          matchCount++;
+          // Add to list for database persistence (include counterparty for learning)
+          matchesToPersist.push({ 
+            txId: tx.id, 
+            categoryId: results[i].data.categoryId,
+            counterpartyName: tx.counterpartyName || undefined,
+          });
+        } else if (results[i].type === 'Suggestion') {
+          suggestionCount++;
+        }
+      }
+    });
+    console.log('Match count:', matchCount, 'Suggestion count:', suggestionCount); // Debug
+    setCategorizationResults(newResults);
+
+    // Persist all Match results to database in parallel
+    if (matchesToPersist.length > 0) {
+      try {
+        await Promise.all(
+          matchesToPersist.map(({ txId, categoryId }) =>
+            bankAccountsApi.updateTransactionCategory(txId, categoryId)
+          )
+        );
+        
+        // Note: We don't call learn() here because:
+        // - Auto-matched payees already exist in the engine (that's why they matched)
+        // - Manual categorization via CategorySelector calls learn() on user selection
+        // - This avoids redundant database writes and keeps the flow clean
+        
+        // Invalidate query to reflect saved changes
+        queryClient.invalidateQueries({ queryKey: ["bank-transactions", accountId] });
+        console.log(`Persisted ${matchesToPersist.length} categories to database`);
+      } catch (error) {
+        console.error('Failed to persist some categories:', error);
+      }
+    }
+
+    // Show toast notification
+    const totalCategorized = matchCount + suggestionCount;
+    if (totalCategorized > 0) {
+      toast({
+        title: t('categorization.categorizeComplete', 'Categorization complete'),
+        description: t('categorization.categorizeResult', {
+          matches: matchCount,
+          suggestions: suggestionCount,
+          defaultValue: `${matchCount} matched, ${suggestionCount} suggestions`,
+        }),
+        duration: 5000,
+      });
+    } else {
+      toast({
+        title: t('categorization.noMatches', 'No matches found'),
+        description: t('categorization.noMatchesDesc', 'Try adding more rules or training the ML model.'),
+        variant: 'destructive',
+        duration: 5000,
+      });
+    }
   };
 
-  const handleAddTxSubmit = () => {
-    createTransaction.mutate(formData, {
-      onSuccess: () => {
-        setAddTxDialogOpen(false);
-      },
-    });
+  // Get effective category for a transaction (from local state or DB)
+  const getEffectiveCategory = (tx: typeof transactions[0]) => {
+    const localResult = categorizationResults.get(tx.id);
+    if (localResult) {
+      if (localResult.type === 'Match') {
+        return localResult.data.categoryId;
+      }
+      // For suggestions, don't override - let user accept
+    }
+    return tx.categoryId;
+  };
+
+  // Count uncategorized transactions
+  const uncategorizedCount = transactions.filter(tx => {
+    if (tx.categoryId) return false;
+    const localResult = categorizationResults.get(tx.id);
+    if (localResult && localResult.type === 'Match') return false;
+    return true;
+  }).length;
+
+  // Handle category change for a transaction
+  const handleCategoryChange = async (txId: string, categoryId: string | null) => {
+    if (!categoryId) return;
+    
+    try {
+      // Persist to database
+      await bankAccountsApi.updateTransactionCategory(txId, categoryId);
+      
+      // Update local state for immediate UI feedback
+      setCategorizationResults(prev => {
+        const updated = new Map(prev);
+        updated.set(txId, {
+          type: 'Match',
+          data: { categoryId, source: { type: 'Manual' } }
+        });
+        return updated;
+      });
+      
+      // Invalidate transactions query to reflect the change
+      queryClient.invalidateQueries({ queryKey: ["bank-transactions", accountId] });
+    } catch (error) {
+      console.error('Failed to update category:', error);
+      toast({
+        title: t('messages.error', 'Error'),
+        description: String(error),
+        variant: 'destructive',
+        duration: 5000,
+      });
+    }
   };
 
   const handleDeleteTx = (id: string) => {
     deleteTransaction.mutate(id);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleEditSubmit = async (data: any, zones?: any[]) => {
     // Extract id from data and pass correctly to mutation
     const { id, ...updateData } = data;
@@ -265,9 +482,6 @@ export default function BankAccountDetail() {
             <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 hover:bg-purple-100">
               {t(`accountTypes.${account.accountType}`)}
             </Badge>
-            {account.excludeFromBalance && (
-              <Badge variant="outline">{t("fields.excludeFromBalance")}</Badge>
-            )}
           </div>
           <p className="text-muted-foreground">
             {account.institution?.name || ""}
@@ -282,10 +496,7 @@ export default function BankAccountDetail() {
             <Edit className="mr-2 h-4 w-4" />
             {tCommon("buttons.edit")}
           </Button>
-          <Button onClick={handleAddTxClick}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("transaction.add")}
-          </Button>
+          <AddTransactionModal accountId={accountId || ""} accountCurrency={account.currency || "CZK"} />
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" size="icon" title={tCommon("buttons.delete")}>
@@ -328,9 +539,7 @@ export default function BankAccountDetail() {
               {formatCurrency(convertToCzK(balance, currency as CurrencyCode))}
             </div>
             <div className="text-sm text-muted-foreground">
-              {account.excludeFromBalance 
-                ? t("detail.excludedFromPortfolio", "Excluded from portfolio")
-                : t("detail.includedInPortfolio", "Included in portfolio")
+              {t("detail.includedInPortfolio", "Included in portfolio")
               }
             </div>
           </CardContent>
@@ -478,67 +687,170 @@ export default function BankAccountDetail() {
 
       {/* Transactions */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div className="space-y-1">
-            <CardTitle>{t("transactions")}</CardTitle>
-            {(account.bban || account.iban) && (
-              <p className="text-sm text-muted-foreground">
-                {[
-                  account.bban && `BBAN: ${account.bban}`,
-                  account.iban && `IBAN: ${account.iban}`
-                ].filter(Boolean).join(", ")}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">{tCommon("labels.from", "From")}:</span>
-              <Input 
-                type="date" 
-                value={dateFrom} 
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-auto h-8"
-              />
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+          <CardTitle>{t("transactions")}</CardTitle>
+          {(account.bban || account.iban) && (
+            <div className="text-sm text-muted-foreground text-right">
+              {account.bban && <div>BBAN: {account.bban}</div>}
+              {account.iban && <div>IBAN: {account.iban}</div>}
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground whitespace-nowrap">{tCommon("labels.to", "To")}:</span>
-              <Input 
-                type="date" 
-                value={dateTo} 
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-auto h-8"
-              />
-            </div>
-          </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Filters Row */}
+          <div className="flex flex-wrap items-center gap-3 pb-4 border-b">
+            {/* Date Range Section */}
+            <div className="flex items-center gap-2">
+              {/* Date Preset Dropdown */}
+              <Select value={datePreset} onValueChange={(v) => applyDatePreset(v)}>
+                <SelectTrigger className="w-[150px] h-8">
+                  <SelectValue placeholder={t("filters.selectPeriod", "Select period")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="thisMonth">{t("filters.thisMonth")}</SelectItem>
+                  <SelectItem value="lastMonth">{t("filters.lastMonth")}</SelectItem>
+                  <SelectItem value="thisQuarter">{t("filters.thisQuarter")}</SelectItem>
+                  <SelectItem value="lastQuarter">{t("filters.lastQuarter")}</SelectItem>
+                  <SelectItem value="thisYear">{t("filters.thisYear")}</SelectItem>
+                  <SelectItem value="lastYear">{t("filters.lastYear")}</SelectItem>
+                  <SelectItem value="custom">{t("filters.custom")}</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Date Range Pickers */}
+              <div className="flex items-center gap-1 text-sm">
+                <Input 
+                  type="date" 
+                  value={dateFrom} 
+                  onChange={(e) => handleDateChange('from', e.target.value)}
+                  className="w-[130px] h-8"
+                />
+                <span className="text-muted-foreground px-1">→</span>
+                <Input 
+                  type="date" 
+                  value={dateTo} 
+                  onChange={(e) => handleDateChange('to', e.target.value)}
+                  className="w-[130px] h-8"
+                />
+              </div>
+            </div>
+            
+            {/* Separator */}
+            <div className="h-6 w-px bg-border" />
+            
+            {/* Transaction Type Filter */}
+            <div className="flex items-center gap-2">
+              <Select value={transactionType} onValueChange={(v: "all" | "income" | "outcome") => setTransactionType(v)}>
+                <SelectTrigger className="w-[135px] h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("filters.allTransactions")}</SelectItem>
+                  <SelectItem value="income">
+                    <span className="flex items-center gap-2">
+                      <ArrowDownLeft className="h-3 w-3 text-green-500" />
+                      {t("filters.incomeOnly")}
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="outcome">
+                    <span className="flex items-center gap-2">
+                      <ArrowUpRight className="h-3 w-3 text-red-500" />
+                      {t("filters.outcomeOnly")}
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Uncategorized Toggle */}
+              <Button 
+                variant={showUncategorizedOnly ? "default" : "outline"} 
+                size="sm"
+                onClick={() => setShowUncategorizedOnly(!showUncategorizedOnly)}
+                className="h-8"
+              >
+                {t("filters.uncategorizedOnly")}
+                {showUncategorizedOnly && uncategorizedCount > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-xs">
+                    {uncategorizedCount}
+                  </Badge>
+                )}
+              </Button>
+            </div>
+            
+            {/* Auto-categorize button - pushed to right */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAutoCategorize}
+              disabled={isCategorizingBatch || uncategorizedCount === 0}
+              className="ml-auto h-8"
+            >
+              {isCategorizingBatch ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              {t("categorization.autoCategorize", "Auto-categorize")}
+              {uncategorizedCount > 0 && (
+                <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                  {uncategorizedCount}
+                </Badge>
+              )}
+            </Button>
+          </div>
 
+          {/* Statistics Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <div className="text-sm text-muted-foreground">{t("stats.totalTransactions")}</div>
+              <div className="text-lg font-medium">{stats.count}</div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">{t("stats.income")}</div>
+              <div className="text-lg font-medium text-green-600 dark:text-green-400">
+                +{formatCurrency(stats.income)}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">{t("stats.outcome")}</div>
+              <div className="text-lg font-medium text-red-600 dark:text-red-400">
+                -{formatCurrency(stats.outcome)}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">{t("stats.netFlow")}</div>
+              <div className={`text-lg font-medium ${stats.netFlow >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {stats.netFlow >= 0 ? '+' : ''}{formatCurrency(stats.netFlow)}
+              </div>
+            </div>
+          </div>
 
           {/* Transaction List */}
           <div>
           {txLoading ? (
             <div className="p-4">{tCommon("status.loading")}</div>
-          ) : transactions.length === 0 ? (
+          ) : filteredTransactions.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
-              No transactions yet
+              {transactions.length === 0 ? t("empty.noTransactions", "No transactions yet") : t("empty.noMatchingTransactions", "No transactions match the current filters")}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("transaction.date")}</TableHead>
+                  <TableHead className="w-[100px]">{t("transaction.date")}</TableHead>
                   <TableHead>{t("transaction.description")}</TableHead>
                   <TableHead>{t("transaction.counterparty")}</TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="w-[180px]">{t("categorization.category", "Category")}</TableHead>
+                  <TableHead className="w-[140px] text-right">
                     {t("transaction.amount")}
                   </TableHead>
-                  <TableHead className="text-right">
+                  <TableHead className="w-[80px] text-right">
                     {tCommon("labels.actions")}
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.map((tx) => (
+                {filteredTransactions.map((tx) => (
                   <TableRow key={tx.id}>
                     <TableCell>{formatDate(tx.bookingDate)}</TableCell>
                     <TableCell>
@@ -551,7 +863,29 @@ export default function BankAccountDetail() {
                         {tx.description || "-"}
                       </div>
                     </TableCell>
-                    <TableCell>{tx.counterpartyName || "-"}</TableCell>
+                    <TableCell>
+                      <div>
+                        <div>{tx.counterpartyName || "-"}</div>
+                        {tx.counterpartyIban && (
+                          <div className="text-xs text-muted-foreground">
+                            {isCzechIBAN(tx.counterpartyIban) 
+                              ? ibanToBBAN(tx.counterpartyIban) 
+                              : formatAccountNumber(tx.counterpartyIban)}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <CategorySelector
+                        currentCategoryId={getEffectiveCategory(tx)}
+                        categorizationResult={categorizationResults.get(tx.id)}
+                        counterpartyName={tx.counterpartyName}
+                        counterpartyIban={tx.counterpartyIban}
+                        categories={categories}
+                        onCategoryChange={(catId) => handleCategoryChange(tx.id, catId)}
+                        compact
+                      />
+                    </TableCell>
                     <TableCell
                       className={`text-right font-mono ${
                         tx.type === "credit" ? "text-green-600" : "text-red-600"
@@ -563,10 +897,12 @@ export default function BankAccountDetail() {
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
                         onClick={() => handleDeleteTx(tx.id)}
+                        title={tCommon("buttons.delete")}
                       >
-                        {tCommon("buttons.delete")}
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -578,92 +914,6 @@ export default function BankAccountDetail() {
         </CardContent>
       </Card>
 
-      {/* Add Transaction Dialog */}
-      <Dialog open={addTxDialogOpen} onOpenChange={setAddTxDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{t("transaction.add")}</DialogTitle>
-            <DialogDescription>Add a new transaction to this account</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="type">{t("transaction.type")}</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value: TransactionType) =>
-                  setFormData({ ...formData, type: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="credit">{t("transaction.credit")}</SelectItem>
-                  <SelectItem value="debit">{t("transaction.debit")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="amount">{t("transaction.amount")}</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) =>
-                  setFormData({ ...formData, amount: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">{t("transaction.description")}</Label>
-              <Input
-                id="description"
-                value={formData.description || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="counterparty">{t("transaction.counterparty")}</Label>
-              <Input
-                id="counterparty"
-                value={formData.counterpartyName || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, counterpartyName: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="date">{t("transaction.date")}</Label>
-              <Input
-                id="date"
-                type="date"
-                value={new Date(formData.bookingDate * 1000).toISOString().split("T")[0]}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    bookingDate: Math.floor(new Date(e.target.value).getTime() / 1000),
-                  })
-                }
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddTxDialogOpen(false)}>
-              {tCommon("buttons.cancel")}
-            </Button>
-            <Button
-              onClick={handleAddTxSubmit}
-              disabled={!formData.amount || createTransaction.isPending}
-            >
-              {createTransaction.isPending ? tCommon("status.adding") : tCommon("buttons.add")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Edit Account Dialog */}
       <BankAccountFormDialog
         open={editDialogOpen}
@@ -672,6 +922,12 @@ export default function BankAccountDetail() {
         account={account}
         institutions={institutions}
         isLoading={updateAccount.isPending}
+        initialZones={zones?.map(z => ({
+          id: z.id,
+          fromAmount: z.fromAmount,
+          toAmount: z.toAmount || "",
+          interestRate: z.interestRate,
+        }))}
       />
 
       {/* CSV Import Dialog */}

@@ -386,7 +386,7 @@ export default function Projection() {
                                 />
                                 <YAxis hide />
                                 <Tooltip
-                                    formatter={(value: number) => [formatCurrency(value, { minimumFractionDigits: 0 }), t('projection.netWorth')]}
+                                    formatter={(value) => [formatCurrency(value as number ?? 0, { minimumFractionDigits: 0 }), t('projection.netWorth')]}
                                     contentStyle={{
                                         backgroundColor: 'hsl(var(--popover))',
                                         border: '1px solid hsl(var(--border))',
@@ -432,8 +432,8 @@ export default function Projection() {
                                 />
                                 <YAxis hide />
                                 <Tooltip
-                                    formatter={(value: number, name: string) => [
-                                        formatCurrency(value, { minimumFractionDigits: 0 }),
+                                    formatter={(value, name) => [
+                                        formatCurrency(value as number ?? 0, { minimumFractionDigits: 0 }),
                                         name === 'totalAssets' ? t('projection.assets') : t('projection.liabilities')
                                     ]}
                                     contentStyle={{
@@ -466,7 +466,7 @@ export default function Projection() {
                                 />
                                 <YAxis hide />
                                 <Tooltip
-                                    formatter={(value: number) => formatCurrency(value, { minimumFractionDigits: 0 })}
+                                    formatter={(value) => formatCurrency(value as number ?? 0, { minimumFractionDigits: 0 })}
                                     contentStyle={{
                                         backgroundColor: 'hsl(var(--popover))',
                                         border: '1px solid hsl(var(--border))',

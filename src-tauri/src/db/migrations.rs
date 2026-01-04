@@ -46,6 +46,10 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("018_add_stock_tag_groups", MIGRATION_018),
         ("019_add_ticker_history", MIGRATION_019),
         ("020_add_investment_currency", MIGRATION_020),
+        ("021_add_categorization", MIGRATION_021),
+        ("022_add_new_categories", MIGRATION_022),
+        ("023_add_insurance_loan_categories", MIGRATION_023),
+        ("024_fix_missing_taxes", MIGRATION_024),
     ];
 
     for (name, sql) in migrations {
@@ -767,7 +771,6 @@ CREATE INDEX IF NOT EXISTS idx_crypto_value_history_ticker ON crypto_value_histo
 CREATE INDEX IF NOT EXISTS idx_crypto_value_history_date ON crypto_value_history(recorded_at);
 CREATE INDEX IF NOT EXISTS idx_crypto_value_history_ticker_date ON crypto_value_history(ticker, recorded_at);
 "#;
-
 /// Migration 020: Add currency column to stock_investments and crypto_investments
 /// This allows storing the average price in the investment's native currency
 const MIGRATION_020: &str = r#"
@@ -802,4 +805,80 @@ SET currency = (
 WHERE EXISTS (
     SELECT 1 FROM crypto_transactions WHERE investment_id = crypto_investments.id
 );
+"#;
+
+/// Migration 021: Add categorization tables and columns
+/// - learned_payees: Stores user-learned payee → category mappings
+/// - categorization_source: Tracks how a transaction was categorized
+/// - stop_processing: Flag for rules to stop waterfall on match
+const MIGRATION_021: &str = r#"
+-- Learned payees for exact match categorization
+CREATE TABLE IF NOT EXISTS learned_payees (
+    id TEXT PRIMARY KEY,
+    normalized_payee TEXT NOT NULL UNIQUE,
+    original_payee TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
+);
+
+-- Index for fast lookup
+CREATE INDEX IF NOT EXISTS idx_learned_payees_normalized ON learned_payees(normalized_payee);
+
+-- Add categorization_source to bank_transactions
+-- Values: 'manual', 'rule', 'exact_match', 'ml'
+ALTER TABLE bank_transactions ADD COLUMN categorization_source TEXT;
+
+-- Add stop_processing to transaction_rules
+ALTER TABLE transaction_rules ADD COLUMN stop_processing INTEGER NOT NULL DEFAULT 0;
+
+-- Create categorization rules table (enhanced from transaction_rules)
+CREATE TABLE IF NOT EXISTS categorization_rules (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    rule_type TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    priority INTEGER NOT NULL DEFAULT 50,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    stop_processing INTEGER NOT NULL DEFAULT 0,
+    is_system INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
+);
+
+-- Index for priority-based lookup
+CREATE INDEX IF NOT EXISTS idx_categorization_rules_priority ON categorization_rules(priority DESC, is_active);
+"#;
+
+/// Migration 022: Add new transaction categories - Investments, Savings, Internal Transfers, Housing
+const MIGRATION_022: &str = r#"
+-- Add new categories for better transaction organization
+INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, sort_order, is_system) VALUES
+    ('cat_investments', 'Investments', 'trending-up', '#6366F1', 11, 1),
+    ('cat_savings', 'Savings', 'piggy-bank', '#22C55E', 12, 1),
+    ('cat_internal_transfers', 'Internal Transfers', 'arrows-right-left', '#94A3B8', 13, 1),
+    ('cat_housing', 'Housing', 'home', '#F59E0B', 14, 1),
+    ('cat_taxes', 'Taxes', 'landmark', '#DC2626', 15, 1);
+"#;
+
+/// Migration 023: Add Insurance and Loan Payments categories, fix missing Taxes, remove Transfers
+const MIGRATION_023: &str = r#"
+-- Add new categories for Taxes, Insurance and Loan Payments
+-- Using INSERT OR IGNORE to handle both new DBs (already have taxes) and existing DBs (may be missing)
+INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, sort_order, is_system) VALUES
+    ('cat_taxes', 'Taxes', 'landmark', '#DC2626', 15, 1),
+    ('cat_insurance', 'Insurance', 'shield', '#8B5CF6', 16, 1),
+    ('cat_loan_payments', 'Loan Payments', 'credit-card', '#EF4444', 17, 1);
+
+-- Remove Transfers category (keep Internal Transfers)
+DELETE FROM transaction_categories WHERE id = 'cat_transfer';
+"#;
+
+/// Migration 024: Fix missing Taxes category (for databases that ran 023 before taxes was added)
+const MIGRATION_024: &str = r#"
+-- Add Taxes category if missing (INSERT OR IGNORE for safety)
+INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, sort_order, is_system) VALUES
+    ('cat_taxes', 'Taxes', 'landmark', '#DC2626', 15, 1);
 "#;

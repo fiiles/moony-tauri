@@ -28,7 +28,7 @@ pub async fn get_all_bank_accounts(
             "SELECT 
                 ba.id, ba.name, ba.account_type, ba.iban, ba.bban, ba.currency, ba.balance,
                 ba.institution_id, ba.external_account_id, ba.data_source, ba.last_synced_at,
-                ba.interest_rate, ba.has_zone_designation, ba.termination_date, ba.exclude_from_balance,
+                ba.interest_rate, ba.has_zone_designation, ba.termination_date,
                 ba.created_at, ba.updated_at,
                 i.id, i.name, i.bic, i.country, i.logo_url, i.created_at
             FROM bank_accounts ba
@@ -53,20 +53,19 @@ pub async fn get_all_bank_accounts(
                     interest_rate: row.get(11)?,
                     has_zone_designation: row.get::<_, i32>(12)? != 0,
                     termination_date: row.get(13)?,
-                    exclude_from_balance: row.get::<_, i32>(14)? != 0,
-                    created_at: row.get(15)?,
-                    updated_at: row.get(16)?,
+                    created_at: row.get(14)?,
+                    updated_at: row.get(15)?,
                 };
 
                 let institution: Option<Institution> =
-                    if row.get::<_, Option<String>>(17)?.is_some() {
+                    if row.get::<_, Option<String>>(16)?.is_some() {
                         Some(Institution {
-                            id: row.get(17)?,
-                            name: row.get(18)?,
-                            bic: row.get(19)?,
-                            country: row.get(20)?,
-                            logo_url: row.get(21)?,
-                            created_at: row.get(22)?,
+                            id: row.get(16)?,
+                            name: row.get(17)?,
+                            bic: row.get(18)?,
+                            country: row.get(19)?,
+                            logo_url: row.get(20)?,
+                            created_at: row.get(21)?,
                         })
                     } else {
                         None
@@ -97,7 +96,7 @@ pub async fn get_bank_account(
             "SELECT 
                 ba.id, ba.name, ba.account_type, ba.iban, ba.bban, ba.currency, ba.balance,
                 ba.institution_id, ba.external_account_id, ba.data_source, ba.last_synced_at,
-                ba.interest_rate, ba.has_zone_designation, ba.termination_date, ba.exclude_from_balance,
+                ba.interest_rate, ba.has_zone_designation, ba.termination_date,
                 ba.created_at, ba.updated_at,
                 i.id, i.name, i.bic, i.country, i.logo_url, i.created_at
             FROM bank_accounts ba
@@ -121,19 +120,18 @@ pub async fn get_bank_account(
                 interest_rate: row.get(11)?,
                 has_zone_designation: row.get::<_, i32>(12)? != 0,
                 termination_date: row.get(13)?,
-                exclude_from_balance: row.get::<_, i32>(14)? != 0,
-                created_at: row.get(15)?,
-                updated_at: row.get(16)?,
+                created_at: row.get(14)?,
+                updated_at: row.get(15)?,
             };
 
-            let institution: Option<Institution> = if row.get::<_, Option<String>>(17)?.is_some() {
+            let institution: Option<Institution> = if row.get::<_, Option<String>>(16)?.is_some() {
                 Some(Institution {
-                    id: row.get(17)?,
-                    name: row.get(18)?,
-                    bic: row.get(19)?,
-                    country: row.get(20)?,
-                    logo_url: row.get(21)?,
-                    created_at: row.get(22)?,
+                    id: row.get(16)?,
+                    name: row.get(17)?,
+                    bic: row.get(18)?,
+                    country: row.get(19)?,
+                    logo_url: row.get(20)?,
+                    created_at: row.get(21)?,
                 })
             } else {
                 None
@@ -443,6 +441,22 @@ pub async fn delete_bank_transaction(db: State<'_, Database>, id: String) -> Res
     })
 }
 
+/// Update a transaction's category
+#[tauri::command]
+pub async fn update_transaction_category(
+    db: State<'_, Database>,
+    transaction_id: String,
+    category_id: Option<String>,
+) -> Result<()> {
+    db.with_conn(|conn| {
+        conn.execute(
+            "UPDATE bank_transactions SET category_id = ?1 WHERE id = ?2",
+            rusqlite::params![category_id, transaction_id],
+        )?;
+        Ok(())
+    })
+}
+
 // ============================================================================
 // Category Commands
 // ============================================================================
@@ -461,8 +475,10 @@ pub async fn get_transaction_categories(
 
         let categories: Vec<TransactionCategory> = stmt
             .query_map([], |row| {
+                let id: String = row.get(0)?;
+                println!("[DEBUG] Category found: id={:?}", id); // Debug logging
                 Ok(TransactionCategory {
-                    id: row.get(0)?,
+                    id,
                     name: row.get(1)?,
                     icon: row.get(2)?,
                     color: row.get(3)?,
@@ -962,13 +978,9 @@ pub async fn import_csv_transactions(
                     continue;
                 }
 
-                // Parse amount (handle Czech number format: 1 234,56)
-                let amount_str = record
-                    .get(amount_idx)
-                    .unwrap_or("0")
-                    .replace(' ', "")
-                    .replace(',', ".");
-                let amount: f64 = amount_str.parse().unwrap_or(0.0);
+                // Parse amount (handle multiple formats + NBSP)
+                let amount_str = record.get(amount_idx).unwrap_or("0");
+                let amount = crate::services::csv_import::clean_and_parse_amount(amount_str);
 
                 // Determine transaction type
                 let tx_type = if amount >= 0.0 { "credit" } else { "debit" };
@@ -1072,9 +1084,9 @@ pub async fn import_csv_transactions(
     }
 
     // Update batch record with final counts
-    let final_imported = imported_count;
-    let final_duplicate = duplicate_count;
-    let final_error = error_count;
+    let final_imported = imported_count as i64;
+    let final_duplicate = duplicate_count as i64;
+    let final_error = error_count as i64;
     db.with_conn(|conn| {
         conn.execute(
             "UPDATE csv_import_batches SET imported_count = ?1, duplicate_count = ?2, error_count = ?3 WHERE id = ?4",

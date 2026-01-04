@@ -6,6 +6,7 @@ interface AssetData {
   name: string;
   value: number;
   color: string;
+  [key: string]: unknown;
 }
 
 interface AssetAllocationChartProps {
@@ -28,14 +29,14 @@ export default function AssetAllocationChart({ data }: AssetAllocationChartProps
             outerRadius={100}
             fill="#8884d8"
             dataKey="value"
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+            label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
           >
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
           <Tooltip 
-            formatter={(value: number) => formatCurrency(value)}
+            formatter={(value) => formatCurrency(value as number ?? 0)}
           />
         </PieChart>
       </ResponsiveContainer>

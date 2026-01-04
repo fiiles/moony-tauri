@@ -15,7 +15,7 @@ pub fn get_account_by_id(conn: &rusqlite::Connection, id: &str) -> Result<BankAc
     let account = conn.query_row(
         "SELECT id, name, account_type, iban, bban, currency, balance, institution_id,
          external_account_id, data_source, last_synced_at, interest_rate, has_zone_designation,
-         termination_date, exclude_from_balance, created_at, updated_at FROM bank_accounts WHERE id = ?1",
+         termination_date, created_at, updated_at FROM bank_accounts WHERE id = ?1",
         [id],
         |row| {
             Ok(BankAccount {
@@ -33,9 +33,8 @@ pub fn get_account_by_id(conn: &rusqlite::Connection, id: &str) -> Result<BankAc
                 interest_rate: row.get(11)?,
                 has_zone_designation: row.get::<_, i32>(12)? != 0,
                 termination_date: row.get(13)?,
-                exclude_from_balance: row.get::<_, i32>(14)? != 0,
-                created_at: row.get(15)?,
-                updated_at: row.get(16)?,
+                created_at: row.get(14)?,
+                updated_at: row.get(15)?,
             })
         },
     )?;
@@ -57,14 +56,13 @@ pub fn create_account(
     let currency = data.currency.clone().unwrap_or_else(|| "CZK".to_string());
     let balance = data.balance.clone().unwrap_or_else(|| "0".to_string());
     let has_zone = data.has_zone_designation.unwrap_or(false);
-    let exclude_from_balance = data.exclude_from_balance.unwrap_or(false);
 
     conn.execute(
         "INSERT INTO bank_accounts (
             id, name, account_type, iban, bban, currency, balance,
             institution_id, data_source, interest_rate, has_zone_designation,
-            termination_date, exclude_from_balance, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+            termination_date, created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
         params![
             id,
             data.name,
@@ -78,7 +76,6 @@ pub fn create_account(
             data.interest_rate,
             has_zone as i32,
             data.termination_date,
-            exclude_from_balance as i32,
             now,
             now,
         ],
@@ -99,7 +96,6 @@ pub fn create_account(
         interest_rate: data.interest_rate.clone(),
         has_zone_designation: has_zone,
         termination_date: data.termination_date,
-        exclude_from_balance,
         created_at: now,
         updated_at: now,
     })
@@ -123,16 +119,13 @@ pub fn update_account(
     let has_zone = data
         .has_zone_designation
         .unwrap_or(existing.has_zone_designation);
-    let exclude_from_balance = data
-        .exclude_from_balance
-        .unwrap_or(existing.exclude_from_balance);
 
     conn.execute(
         "UPDATE bank_accounts SET 
             name = ?1, account_type = ?2, iban = ?3, bban = ?4, currency = ?5,
             balance = ?6, institution_id = ?7, interest_rate = ?8, has_zone_designation = ?9,
-            termination_date = ?10, exclude_from_balance = ?11, updated_at = ?12
-        WHERE id = ?13",
+            termination_date = ?10, updated_at = ?11
+        WHERE id = ?12",
         params![
             data.name,
             account_type,
@@ -144,7 +137,6 @@ pub fn update_account(
             data.interest_rate,
             has_zone as i32,
             data.termination_date,
-            exclude_from_balance as i32,
             now,
             id,
         ],
@@ -165,7 +157,6 @@ pub fn update_account(
         interest_rate: data.interest_rate.clone(),
         has_zone_designation: has_zone,
         termination_date: data.termination_date,
-        exclude_from_balance,
         created_at: existing.created_at,
         updated_at: now,
     })

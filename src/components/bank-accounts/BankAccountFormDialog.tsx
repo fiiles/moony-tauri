@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+
 import type { BankAccountWithInstitution, InsertBankAccount, AccountType, Institution } from "@shared/schema";
 import { useCurrency, currencies } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
@@ -38,7 +38,7 @@ type UpdateBankAccountData = {
   bban?: string;
   interestRate?: string;
   hasZoneDesignation?: boolean;
-  excludeFromBalance?: boolean;
+
 };
 
 interface ZoneData {
@@ -55,6 +55,7 @@ interface BankAccountFormDialogProps {
   account?: BankAccountWithInstitution | null;
   institutions: Institution[];
   isLoading?: boolean;
+  initialZones?: ZoneData[];
 }
 
 export function BankAccountFormDialog({
@@ -64,6 +65,7 @@ export function BankAccountFormDialog({
   account,
   institutions,
   isLoading = false,
+  initialZones,
 }: BankAccountFormDialogProps) {
   const { t } = useTranslation("bank_accounts");
   const { t: tc } = useTranslation("common");
@@ -81,7 +83,7 @@ export function BankAccountFormDialog({
   const [interestRate, setInterestRate] = useState("0");
   const [hasZoneDesignation, setHasZoneDesignation] = useState(false);
   const [zones, setZones] = useState<ZoneData[]>([]);
-  const [excludeFromBalance, setExcludeFromBalance] = useState(false);
+
 
   // BBAN ↔ IBAN conversion functions for Czech accounts
   // BBAN format: [prefix-]accountNumber/bankCode (e.g., "123456-1234567890/0800" or "1234567890/0800")
@@ -169,11 +171,13 @@ export function BankAccountFormDialog({
         setBban(account.bban || "");
         setInterestRate(account.interestRate?.toString() || "0");
         setHasZoneDesignation(account.hasZoneDesignation || false);
-        setExcludeFromBalance(account.excludeFromBalance || false);
         
-        // TODO: Fetch zones if hasZoneDesignation is true
-        // For now, reset zones (zones fetching would need a new API endpoint)
-        setZones([]);
+        // Use initial zones if provided (for edit mode)
+        if (initialZones && initialZones.length > 0) {
+          setZones(initialZones);
+        } else {
+          setZones([]);
+        }
       } else {
         // Add mode
         setName("");
@@ -186,10 +190,9 @@ export function BankAccountFormDialog({
         setInterestRate("0");
         setHasZoneDesignation(false);
         setZones([]);
-        setExcludeFromBalance(false);
       }
     }
-  }, [account, open, userCurrency]);
+  }, [account, open, userCurrency, initialZones]);
 
   const handleSubmit = () => {
     if (isEditMode && account) {
@@ -204,7 +207,6 @@ export function BankAccountFormDialog({
         bban: bban || undefined,
         interestRate: hasZoneDesignation ? "0" : interestRate,
         hasZoneDesignation,
-        excludeFromBalance,
       }, hasZoneDesignation ? zones : undefined);
     } else {
       onSubmit({
@@ -217,7 +219,6 @@ export function BankAccountFormDialog({
         bban: bban || undefined,
         interestRate: hasZoneDesignation ? "0" : interestRate,
         hasZoneDesignation,
-        excludeFromBalance,
       } as InsertBankAccount, hasZoneDesignation ? zones : undefined);
     }
   };
@@ -345,22 +346,6 @@ export function BankAccountFormDialog({
                     placeholder="CZ65 0800 0000 1920 0014 5399"
                   />
                 </div>
-              </div>
-
-              <div className="form-toggle-section">
-                <div className="space-y-0.5">
-                  <Label htmlFor="excludeFromBalance">
-                    {t("fields.excludeFromBalance")}
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    {t("fields.excludeFromBalanceHint")}
-                  </p>
-                </div>
-                <Switch
-                  id="excludeFromBalance"
-                  checked={excludeFromBalance}
-                  onCheckedChange={setExcludeFromBalance}
-                />
               </div>
             </div>
           </div>

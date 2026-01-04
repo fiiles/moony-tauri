@@ -236,7 +236,7 @@ export const investmentsApi = {
   deleteManualDividend: (ticker: string) =>
     tauriInvoke<void>('delete_manual_dividend', { ticker }),
 
-  importTransactions: (transactions: Record<string, any>[], defaultCurrency: string) =>
+  importTransactions: (transactions: Record<string, string | number | boolean | null | undefined>[], defaultCurrency: string) =>
     tauriInvoke<ImportResult>('import_investment_transactions', { transactions, defaultCurrency }),
 
 
@@ -651,6 +651,8 @@ export const bankAccountsApi = {
   createTransaction: (data: InsertBankTransaction) =>
     tauriInvoke<BankTransaction>('create_bank_transaction', { data }),
   deleteTransaction: (id: string) => tauriInvoke<void>('delete_bank_transaction', { id }),
+  updateTransactionCategory: (transactionId: string, categoryId: string | null) =>
+    tauriInvoke<void>('update_transaction_category', { transactionId, categoryId }),
 
   // Categories
   getCategories: () => tauriInvoke<TransactionCategory[]>('get_transaction_categories'),
@@ -720,6 +722,109 @@ export const stockTagsApi = {
 };
 
 // ============================================================================
+// Categorization API
+// ============================================================================
+
+// Categorization result from waterfall engine
+export type CategorizationSource =
+  | { type: 'Rule'; data: { ruleId: string; ruleName: string } }
+  | { type: 'ExactMatch'; data: { payee: string } }
+  | { type: 'MachineLearning'; data: { confidence: number } }
+  | { type: 'Manual' };
+
+export type CategorizationResult =
+  | { type: 'Match'; data: { categoryId: string; source: CategorizationSource } }
+  | { type: 'Suggestion'; data: { categoryId: string; confidence: number } }
+  | { type: 'None' };
+
+// Transaction input for categorization
+export interface TransactionInput {
+  id: string;
+  description?: string;
+  counterparty?: string;
+  counterpartyIban?: string;
+  variableSymbol?: string;
+  constantSymbol?: string;
+  specificSymbol?: string;
+  amount: number;
+  isCredit: boolean;
+}
+
+// Categorization rule types
+export type RuleType = 'Regex' | 'Contains' | 'StartsWith' | 'EndsWith' | 'VariableSymbol' | 'ConstantSymbol' | 'SpecificSymbol';
+
+export interface CategorizationRule {
+  id: string;
+  name: string;
+  ruleType: RuleType;
+  pattern: string;
+  categoryId: string;
+  priority: number;
+  isActive: boolean;
+  stopProcessing: boolean;
+}
+
+// Engine statistics
+export interface CategorizationStats {
+  activeRules: number;
+  learnedPayees: number;
+  mlClasses: number;
+  mlVocabularySize: number;
+}
+
+// Training sample for ML model
+export interface TrainingSample {
+  text: string;
+  categoryId: string;
+}
+
+export const categorizationApi = {
+  // Categorize a single transaction
+  categorize: (transaction: TransactionInput) =>
+    tauriInvoke<CategorizationResult>('categorize_transaction', { transaction }),
+
+  // Categorize multiple transactions in batch
+  categorizeBatch: (transactions: TransactionInput[]) =>
+    tauriInvoke<CategorizationResult[]>('categorize_batch', { transactions }),
+
+  // Learn from user's manual categorization
+  learn: (payee: string, categoryId: string) =>
+    tauriInvoke<void>('learn_categorization', { payee, categoryId }),
+
+  // Forget a learned payee
+  forget: (payee: string) =>
+    tauriInvoke<boolean>('forget_payee', { payee }),
+
+  // Update categorization rules
+  updateRules: (rules: CategorizationRule[]) =>
+    tauriInvoke<void>('update_categorization_rules', { rules }),
+
+  // Get engine statistics
+  getStats: () =>
+    tauriInvoke<CategorizationStats>('get_categorization_stats'),
+
+  // Retrain ML model with samples
+  retrainModel: (samples: TrainingSample[]) =>
+    tauriInvoke<void>('retrain_ml_model', { samples }),
+
+  // Export learned payees for backup/persistence
+  exportLearnedPayees: () =>
+    tauriInvoke<Record<string, string>>('export_learned_payees'),
+
+  // Import learned payees
+  importLearnedPayees: (payees: Record<string, string>) =>
+    tauriInvoke<number>('import_learned_payees', { payees }),
+
+  // Load learned payees from database (call after app unlock)
+  loadFromDb: () =>
+    tauriInvoke<number>('load_learned_payees_from_db'),
+
+  // Initialize ML model from existing categorized transactions
+  initializeFromTransactions: (samples: TrainingSample[]) =>
+    tauriInvoke<void>('initialize_ml_from_transactions', { samples }),
+};
+
+// ============================================================================
 // Combined API export
 // ============================================================================
 
@@ -740,6 +845,7 @@ export const api = {
   export: exportApi,
   bankAccounts: bankAccountsApi,
   stockTags: stockTagsApi,
+  categorization: categorizationApi,
 };
 
 export default api;

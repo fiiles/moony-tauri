@@ -8,6 +8,7 @@ interface AllocationData {
   value: number;
   percentage: number;
   color: string;
+  [key: string]: unknown;
 }
 
 interface AssetAllocationDonutProps {
@@ -37,7 +38,7 @@ export default function AssetAllocationDonut({ data, valueKey = 'value' }: Asset
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
-          <Tooltip formatter={(value: number) => formatCurrency(value)} />
+          <Tooltip formatter={(value) => formatCurrency(value as number ?? 0)} />
         </PieChart>
       </ResponsiveContainer>
 

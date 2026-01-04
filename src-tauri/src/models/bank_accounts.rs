@@ -96,9 +96,6 @@ pub struct BankAccount {
     pub has_zone_designation: bool,
     #[serde(rename = "terminationDate")]
     pub termination_date: Option<i64>,
-    /// Exclude from portfolio balance (for operational/checking accounts)
-    #[serde(rename = "excludeFromBalance")]
-    pub exclude_from_balance: bool,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
     #[serde(rename = "updatedAt")]
@@ -123,9 +120,6 @@ pub struct InsertBankAccount {
     pub has_zone_designation: Option<bool>,
     #[serde(rename = "terminationDate")]
     pub termination_date: Option<i64>,
-    /// Exclude from portfolio balance (for operational/checking accounts)
-    #[serde(rename = "excludeFromBalance")]
-    pub exclude_from_balance: Option<bool>,
 }
 
 /// Financial institution (bank)
