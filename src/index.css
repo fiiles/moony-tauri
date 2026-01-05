@@ -322,7 +322,6 @@
    * buttons/badges can remove the automatic brightness adjustment on interactions
    * and program their own. */
 
-
   /**
    * Toggleable backgrounds go behind the content. Hoverable/active goes on top.
    * This way they can stack/compound. Both will overlap the parent's borders!
@@ -402,13 +401,53 @@
     font-feature-settings: 'tnum';
   }
 
-  /* Smooth card hover effect */
+  /* Smooth card hover effect with lift */
   .card-hover {
-    @apply transition-all duration-200;
+    @apply transition-all duration-200 ease-out;
   }
 
   .card-hover:hover {
-    @apply shadow-md;
+    @apply shadow-lg;
+    transform: translateY(-2px);
+  }
+
+  /* Premium card lift effect */
+  .card-lift {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .card-lift:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 10px 25px -5px rgba(0, 0, 0, 0.1),
+      0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .card-lift:hover {
+    box-shadow:
+      0 10px 25px -5px rgba(0, 0, 0, 0.3),
+      0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Skeleton shimmer animation */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
   }
 
   /* Interactive row hover */

@@ -20,7 +20,7 @@ export default function StatCard({ title, value, change, format = 'currency', ic
     : value.toLocaleString('en-US');
 
   return (
-    <Card className="p-6 border shadow-sm card-hover">
+    <Card className="p-6 border shadow-sm card-lift">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>

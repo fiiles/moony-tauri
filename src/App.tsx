@@ -27,6 +27,7 @@ import Projection from "@/pages/Projection";
 import AnnuityCalculator from "@/pages/AnnuityCalculator";
 import EstateCalculator from "@/pages/EstateCalculator";
 import StocksAnalysis from "@/pages/StocksAnalysis";
+import Budgeting from "@/pages/Budgeting";
 import BankAccounts from "@/pages/BankAccounts";
 import BankAccountDetail from "@/pages/BankAccountDetail";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -58,6 +59,7 @@ function Router() {
       <ProtectedRoute path="/crypto/:id" component={CryptoDetail} />
       <ProtectedRoute path="/other-assets" component={OtherAssets} />
       <ProtectedRoute path="/reports/cashflow" component={Cashflow} />
+      <ProtectedRoute path="/reports/budgeting" component={Budgeting} />
       <ProtectedRoute path="/reports/projection" component={Projection} />
       <ProtectedRoute path="/reports/stocks-analysis" component={StocksAnalysis} />
       <ProtectedRoute path="/calculators/annuity" component={AnnuityCalculator} />

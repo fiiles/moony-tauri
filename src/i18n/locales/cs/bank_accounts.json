@@ -154,7 +154,8 @@
     "categorizeComplete": "Kategorizace dokončena",
     "categorizeResult": "{{matches}} přiřazeno, {{suggestions}} návrhů",
     "noMatches": "Nenalezeny žádné shody",
-    "noMatchesDesc": "Zkuste přidat více pravidel nebo natrénovat ML model."
+    "noMatchesDesc": "Zkuste přidat více pravidel nebo natrénovat ML model.",
+    "declineSuggestion": "Odmítnout návrh"
   },
 
   "filters": {

@@ -44,7 +44,6 @@ import { bankAccountsApi } from "@/lib/tauri-api";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { BankCsvPreset, CsvPreviewResult, CsvImportConfigInput } from "@shared/schema";
 
 interface CsvImportDialogProps {
@@ -353,18 +352,22 @@ export function CsvImportDialog({
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-between font-normal h-10 text-left">
-                        <span className="truncate">
-                          {descriptionColumns.length > 0 
-                            ? descriptionColumns.join(", ")
-                            : t("csvImport.selectColumns", "Select columns...")}
+                      <Button variant="outline" className="w-full justify-between font-normal h-10 text-left overflow-hidden">
+                        <span className="truncate flex-1 min-w-0">
+                          {descriptionColumns.length === 0 
+                            ? t("csvImport.selectColumns", "Select columns...")
+                            : descriptionColumns.length === 1
+                              ? descriptionColumns[0]
+                              : `${descriptionColumns[0]} +${descriptionColumns.length - 1}`}
                         </span>
                         <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
-                      <ScrollArea className="h-[200px]">
-                        <div className="p-2">
+                  <PopoverContent className="w-[300px] p-0" align="start">
+                      <div 
+                        className="max-h-[200px] overflow-y-auto p-2"
+                        onWheel={(e) => e.stopPropagation()}
+                      >
                           {preview.headers.filter(h => h.trim().length > 0).map((h) => (
                             <label key={h} className="flex items-center gap-3 text-sm cursor-pointer hover:bg-muted p-2 rounded">
                               <Checkbox
@@ -381,7 +384,6 @@ export function CsvImportDialog({
                             </label>
                           ))}
                         </div>
-                      </ScrollArea>
                     </PopoverContent>
                   </Popover>
                 </div>

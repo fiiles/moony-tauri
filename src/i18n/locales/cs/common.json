@@ -7,6 +7,7 @@
         "bankAccounts": "Bankovní účty",
         "reports": "Reporty",
         "cashflow": "Cashflow",
+        "budgeting": "Rozpočet",
         "projection": "Projekce",
         "savings": "Spoření a vklady",
         "loans": "Úvěry",
@@ -127,6 +128,12 @@
         "showing": "Zobrazeno {{from}} až {{to}} z {{total}} výsledků",
         "allHoldings": "Všechny pozice",
         "searchPlaceholder": "Hledat..."
+    },
+    "emptyState": {
+        "noTransactions": "Zatím žádné transakce",
+        "noTransactionsDesc": "Transakce se zde zobrazí po importu nebo přidání.",
+        "noData": "Žádná data k zobrazení",
+        "noDataDesc": "Zatím zde nic není."
     },
     "confirm": {
         "title": "Jste si jisti?",

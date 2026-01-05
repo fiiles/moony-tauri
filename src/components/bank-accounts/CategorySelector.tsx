@@ -49,6 +49,7 @@ import {
   MoreHorizontal,
   Landmark,
   Shield,
+  X,
   type LucideProps,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -118,8 +119,11 @@ interface CategorySelectorProps {
   categorizationResult?: CategorizationResult;
   counterpartyName?: string | null;
   counterpartyIban?: string | null;
+  /** Variable symbol for hierarchical matching */
+  variableSymbol?: string | null;
   categories: TransactionCategory[];
   onCategoryChange: (categoryId: string | null) => void;
+  onDeclineSuggestion?: () => void;
   disabled?: boolean;
   compact?: boolean;
 }
@@ -156,8 +160,10 @@ export function CategorySelector({
   categorizationResult,
   counterpartyName,
   counterpartyIban,
+  variableSymbol,
   categories,
   onCategoryChange,
+  onDeclineSuggestion,
   disabled = false,
   compact = false,
 }: CategorySelectorProps) {
@@ -189,17 +195,26 @@ export function CategorySelector({
       return;
     }
 
-    // Learn from counterparty name OR IBAN (for transactions without names)
-    const learnKey = (counterpartyName && counterpartyName.trim().length > 2)
+    // Learn from counterparty details with hierarchical matching:
+    // - payee + iban + vs = exact match
+    // - payee + iban (null vs) = iban default
+    // - payee only (null iban + vs) = payee default
+    const payee = (counterpartyName && counterpartyName.trim().length > 2)
       ? counterpartyName.trim()
-      : (counterpartyIban && counterpartyIban.trim().length > 5)
-        ? counterpartyIban.trim()
-        : null;
+      : null;
+    const iban = (counterpartyIban && counterpartyIban.trim().length > 5)
+      ? counterpartyIban.trim()
+      : null;
+    const vs = (variableSymbol && variableSymbol.trim().length > 0)
+      ? variableSymbol.trim()
+      : null;
 
-    if (learnKey) {
+    // Only learn if we have at least payee or iban
+    if (payee || iban) {
       try {
-        await categorizationApi.learn(learnKey, categoryId);
+        await categorizationApi.learn(payee, iban, vs, categoryId);
         const category = getCategoryDisplay(categoryId, categories);
+        const learnKey = payee || iban || 'unknown';
         toast({
           title: t('categorization.learned', 'Category learned'),
           description: `"${learnKey}" → ${category?.name || categoryId}`,
@@ -215,6 +230,11 @@ export function CategorySelector({
     if (suggestion) {
       handleSelect(suggestion.id, false);
     }
+  };
+
+  const handleDeclineSuggestion = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDeclineSuggestion?.();
   };
 
   // Compact mode for table cells
@@ -250,23 +270,37 @@ export function CategorySelector({
     // Show suggestion if available
     if (suggestion) {
       return (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 px-2 text-xs font-medium gap-1.5 border-dashed border-amber-400/50 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:border-amber-500/30"
-          onClick={handleAcceptSuggestion}
-          disabled={disabled}
-        >
-          <Sparkles className="h-3 w-3 text-amber-500" />
-          <CategoryIcon iconName={suggestion.iconName} className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-          <span className="truncate text-amber-700 dark:text-amber-300">{t(`categoryNames.${suggestion.id}`, suggestion.name)}</span>
-          <Badge 
-            variant="secondary" 
-            className="h-4 px-1 text-[10px] bg-amber-200/50 text-amber-700 dark:bg-amber-800/50 dark:text-amber-300"
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs font-medium gap-1.5 border-dashed border-amber-400/50 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:border-amber-500/30"
+            onClick={handleAcceptSuggestion}
+            disabled={disabled}
           >
-            {Math.round(suggestion.confidence * 100)}%
-          </Badge>
-        </Button>
+            <Sparkles className="h-3 w-3 text-amber-500" />
+            <CategoryIcon iconName={suggestion.iconName} className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="truncate text-amber-700 dark:text-amber-300">{t(`categoryNames.${suggestion.id}`, suggestion.name)}</span>
+            <Badge 
+              variant="secondary" 
+              className="h-4 px-1 text-[10px] bg-amber-200/50 text-amber-700 dark:bg-amber-800/50 dark:text-amber-300"
+            >
+              {Math.round(suggestion.confidence * 100)}%
+            </Badge>
+          </Button>
+          {onDeclineSuggestion && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={handleDeclineSuggestion}
+              disabled={disabled}
+              title={t('categorization.declineSuggestion', 'Decline suggestion')}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
       );
     }
 

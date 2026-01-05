@@ -5,6 +5,7 @@
 pub mod auth;
 pub mod bank_accounts;
 pub mod bonds;
+pub mod budgeting;
 pub mod cashflow;
 pub mod categorization;
 pub mod crypto;

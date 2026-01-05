@@ -242,6 +242,39 @@ fn dining_rules() -> Vec<CategorizationRule> {
             cat,
             priority,
         ),
+        // Canteens and generic eateries
+        rule(
+            "kantyna",
+            "Kantýna",
+            RuleType::Contains,
+            "kantyna",
+            cat,
+            priority,
+        ),
+        rule(
+            "jidelna",
+            "Jídelna",
+            RuleType::Contains,
+            "jidelna",
+            cat,
+            priority - 5,
+        ),
+        rule(
+            "bistro",
+            "Bistro",
+            RuleType::Contains,
+            "bistro",
+            cat,
+            priority - 5,
+        ),
+        rule(
+            "bufet",
+            "Bufet",
+            RuleType::Contains,
+            "bufet",
+            cat,
+            priority - 10,
+        ),
     ]
 }
 
@@ -332,6 +365,33 @@ fn transport_rules() -> Vec<CategorizationRule> {
         rule("shell", "Shell", RuleType::Contains, "shell", cat, priority),
         rule("omv", "OMV", RuleType::Contains, "omv", cat, priority),
         rule("mol", "MOL", RuleType::Contains, "mol", cat, priority - 5),
+        // Orlen (formerly Benzina, PKN Orlen)
+        rule("orlen", "Orlen", RuleType::Contains, "orlen", cat, priority),
+        // Additional fuel stations
+        rule(
+            "eurooil",
+            "EuroOil",
+            RuleType::Contains,
+            "eurooil",
+            cat,
+            priority,
+        ),
+        rule(
+            "euro_oil",
+            "Euro Oil",
+            RuleType::Contains,
+            "euro oil",
+            cat,
+            priority,
+        ),
+        rule(
+            "tank_ono",
+            "Tank ONO",
+            RuleType::Contains,
+            "tank ono",
+            cat,
+            priority,
+        ),
         // Highway
         rule(
             "dalnice",
@@ -357,6 +417,31 @@ fn transport_rules() -> Vec<CategorizationRule> {
             "parkov",
             cat,
             priority - 10,
+        ),
+        // Micro-mobility (scooters, bike sharing)
+        rule(
+            "nextbike",
+            "Nextbike",
+            RuleType::Contains,
+            "nextbike",
+            cat,
+            priority,
+        ),
+        rule(
+            "lime",
+            "Lime",
+            RuleType::Regex,
+            r"(?i)lime\s*(bike|scooter|\\.app)",
+            cat,
+            priority,
+        ),
+        rule(
+            "rekola",
+            "Rekola",
+            RuleType::Contains,
+            "rekola",
+            cat,
+            priority,
         ),
     ]
 }
@@ -441,6 +526,64 @@ fn utilities_rules() -> Vec<CategorizationRule> {
             priority + 10,
         ),
         rule("svj", "SVJ", RuleType::Contains, "svj", cat, priority),
+        // Postal services
+        rule(
+            "ceska_posta",
+            "Česká pošta",
+            RuleType::Regex,
+            r"(?i)ceska\s*posta|ceskaposta",
+            cat,
+            priority,
+        ),
+        rule(
+            "balikovna",
+            "Balíkovna",
+            RuleType::Contains,
+            "balikovna",
+            cat,
+            priority,
+        ),
+        // Delivery services
+        rule(
+            "ppl",
+            "PPL",
+            RuleType::Regex,
+            r"(?i)\bppl\b",
+            cat,
+            priority - 5,
+        ),
+        rule(
+            "dpd",
+            "DPD",
+            RuleType::Regex,
+            r"(?i)\bdpd\b",
+            cat,
+            priority - 5,
+        ),
+        rule(
+            "gls",
+            "GLS",
+            RuleType::Regex,
+            r"(?i)\bgls\b",
+            cat,
+            priority - 5,
+        ),
+        rule(
+            "zasilkovna",
+            "Zásilkovna",
+            RuleType::Contains,
+            "zasilkovna",
+            cat,
+            priority,
+        ),
+        rule(
+            "packeta",
+            "Packeta",
+            RuleType::Contains,
+            "packeta",
+            cat,
+            priority,
+        ),
     ]
 }
 
@@ -920,6 +1063,16 @@ fn income_rules() -> Vec<CategorizationRule> {
             "dobropis",
             cat,
             priority - 5,
+        ),
+        // Fallback rule: any credit transaction is likely income
+        // Uses low priority so specific rules can override
+        rule(
+            "credit_fallback",
+            "Credit (incoming)",
+            RuleType::IsCredit,
+            "", // Pattern not used for IsCredit
+            cat,
+            10, // Very low priority - only matches if nothing else does
         ),
     ]
 }

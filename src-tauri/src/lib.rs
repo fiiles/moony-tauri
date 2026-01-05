@@ -165,6 +165,12 @@ pub fn run() {
             commands::cashflow::create_cashflow_item,
             commands::cashflow::update_cashflow_item,
             commands::cashflow::delete_cashflow_item,
+            // Budgeting commands
+            commands::budgeting::get_budgeting_report,
+            commands::budgeting::get_category_transactions,
+            commands::budgeting::get_budget_goals,
+            commands::budgeting::upsert_budget_goal,
+            commands::budgeting::delete_budget_goal,
             // Projection commands
             commands::projection::get_projection_settings,
             commands::projection::save_projection_settings,

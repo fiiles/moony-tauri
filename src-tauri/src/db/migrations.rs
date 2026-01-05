@@ -50,6 +50,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("022_add_new_categories", MIGRATION_022),
         ("023_add_insurance_loan_categories", MIGRATION_023),
         ("024_fix_missing_taxes", MIGRATION_024),
+        ("025_add_budget_goals", MIGRATION_025),
+        ("026_hierarchical_payee_matching", MIGRATION_026),
     ];
 
     for (name, sql) in migrations {
@@ -881,4 +883,48 @@ const MIGRATION_024: &str = r#"
 -- Add Taxes category if missing (INSERT OR IGNORE for safety)
 INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, sort_order, is_system) VALUES
     ('cat_taxes', 'Taxes', 'landmark', '#DC2626', 15, 1);
+"#;
+
+/// Migration 025: Add budget goals table for tracking spending limits per category
+const MIGRATION_025: &str = r#"
+-- Budget goals for setting spending limits per category per timeframe
+CREATE TABLE IF NOT EXISTS budget_goals (
+    id TEXT PRIMARY KEY,
+    category_id TEXT NOT NULL REFERENCES transaction_categories(id) ON DELETE CASCADE,
+    timeframe TEXT NOT NULL, -- 'monthly', 'quarterly', 'yearly'
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    UNIQUE(category_id, timeframe)
+);
+
+CREATE INDEX IF NOT EXISTS idx_budget_goals_category ON budget_goals(category_id);
+CREATE INDEX IF NOT EXISTS idx_budget_goals_timeframe ON budget_goals(timeframe);
+"#;
+
+/// Migration 026: Add hierarchical payee matching with counterparty_iban and variable_symbol
+/// This enables cascading default rules: exact -> iban default -> payee default -> partial suggestion
+const MIGRATION_026: &str = r#"
+-- Add new columns for hierarchical matching
+ALTER TABLE learned_payees ADD COLUMN counterparty_iban TEXT;
+ALTER TABLE learned_payees ADD COLUMN variable_symbol TEXT;
+
+-- Drop old simple index
+DROP INDEX IF EXISTS idx_learned_payees_normalized;
+
+-- Create composite unique index for exact matching
+CREATE UNIQUE INDEX IF NOT EXISTS idx_learned_payees_composite 
+ON learned_payees(normalized_payee, counterparty_iban, variable_symbol);
+
+-- Index for IBAN default lookups (payee + iban where vs is null)
+CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_default 
+ON learned_payees(normalized_payee, counterparty_iban) WHERE variable_symbol IS NULL;
+
+-- Index for payee default lookups (payee only where iban + vs are null)
+CREATE INDEX IF NOT EXISTS idx_learned_payees_payee_default 
+ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL AND variable_symbol IS NULL;
+
+-- Index for partial IBAN matching (for suggestions)
+CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_partial ON learned_payees(counterparty_iban);
 "#;
