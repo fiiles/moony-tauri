@@ -25,7 +25,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { bankAccountsApi } from "@/lib/tauri-api";
 import { useQueryClient } from "@tanstack/react-query";
@@ -117,17 +116,17 @@ export function InstitutionCombobox({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-          <Command shouldFilter={false}>
-            <CommandInput
-              placeholder={t("form.searchBank", "Search bank...")}
-              value={search}
-              onValueChange={setSearch}
-            />
-            <CommandList>
-              <CommandEmpty>
-                {t("form.noBankFound", "No bank found.")}
-              </CommandEmpty>
-              <ScrollArea className="h-[200px]">
+          <div onWheel={(e) => e.stopPropagation()}>
+            <Command shouldFilter={false}>
+              <CommandInput
+                placeholder={t("form.searchBank", "Search bank...")}
+                value={search}
+                onValueChange={setSearch}
+              />
+              <CommandList className="max-h-[250px]">
+                <CommandEmpty>
+                  {t("form.noBankFound", "No bank found.")}
+                </CommandEmpty>
                 <CommandGroup>
                   {/* None option */}
                   <CommandItem
@@ -167,16 +166,16 @@ export function InstitutionCombobox({
                     </CommandItem>
                   ))}
                 </CommandGroup>
-              </ScrollArea>
-              <CommandSeparator />
-              <CommandGroup>
-                <CommandItem onSelect={handleOpenAddDialog} className="text-primary">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t("form.addNewBank", "Add new bank...")}
-                </CommandItem>
-              </CommandGroup>
-            </CommandList>
-          </Command>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem onSelect={handleOpenAddDialog} className="text-primary">
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t("form.addNewBank", "Add new bank...")}
+                  </CommandItem>
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </div>
         </PopoverContent>
       </Popover>
 

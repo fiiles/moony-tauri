@@ -7,6 +7,7 @@
 pub mod bank_accounts;
 pub mod bank_transactions;
 pub mod bonds;
+pub mod budgeting;
 pub mod cashflow;
 pub mod crypto;
 pub mod insurance;
@@ -23,6 +24,7 @@ pub mod user;
 pub use bank_accounts::*;
 pub use bank_transactions::*;
 pub use bonds::*;
+pub use budgeting::*;
 pub use cashflow::*;
 pub use crypto::*;
 pub use insurance::*;

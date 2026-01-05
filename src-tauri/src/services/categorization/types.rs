@@ -73,6 +73,9 @@ pub struct TransactionInput {
     pub amount: f64,
     #[serde(rename = "isCredit")]
     pub is_credit: bool,
+    /// Source bank account ID (for learning context)
+    #[serde(rename = "bankAccountId")]
+    pub bank_account_id: Option<String>,
 }
 
 impl TransactionInput {
@@ -93,6 +96,7 @@ impl TransactionInput {
             specific_symbol: None,
             is_credit: amount >= 0.0,
             amount,
+            bank_account_id: None,
         }
     }
 
@@ -129,6 +133,10 @@ pub enum RuleType {
     ConstantSymbol,
     /// Match against specific symbol (SS)
     SpecificSymbol,
+    /// Match if transaction is a credit (incoming money)
+    IsCredit,
+    /// Match if transaction is a debit (outgoing money)
+    IsDebit,
 }
 
 impl std::fmt::Display for RuleType {
@@ -141,6 +149,8 @@ impl std::fmt::Display for RuleType {
             RuleType::VariableSymbol => write!(f, "variable_symbol"),
             RuleType::ConstantSymbol => write!(f, "constant_symbol"),
             RuleType::SpecificSymbol => write!(f, "specific_symbol"),
+            RuleType::IsCredit => write!(f, "is_credit"),
+            RuleType::IsDebit => write!(f, "is_debit"),
         }
     }
 }
@@ -157,6 +167,8 @@ impl std::str::FromStr for RuleType {
             "variable_symbol" | "vs" => Ok(RuleType::VariableSymbol),
             "constant_symbol" | "ks" => Ok(RuleType::ConstantSymbol),
             "specific_symbol" | "ss" => Ok(RuleType::SpecificSymbol),
+            "is_credit" | "credit" => Ok(RuleType::IsCredit),
+            "is_debit" | "debit" => Ok(RuleType::IsDebit),
             _ => Err(format!("Unknown rule type: {}", s)),
         }
     }
@@ -230,6 +242,7 @@ mod tests {
             specific_symbol: None,
             amount: -500.0,
             is_credit: false,
+            bank_account_id: None,
         };
 
         assert_eq!(tx.combined_text(), "Payment for goods Albert CZ");

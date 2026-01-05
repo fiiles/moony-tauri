@@ -748,6 +748,8 @@ export interface TransactionInput {
   specificSymbol?: string;
   amount: number;
   isCredit: boolean;
+  /** Source bank account ID (for learning context) */
+  bankAccountId?: string;
 }
 
 // Categorization rule types
@@ -787,13 +789,32 @@ export const categorizationApi = {
   categorizeBatch: (transactions: TransactionInput[]) =>
     tauriInvoke<CategorizationResult[]>('categorize_batch', { transactions }),
 
-  // Learn from user's manual categorization
-  learn: (payee: string, categoryId: string) =>
-    tauriInvoke<void>('learn_categorization', { payee, categoryId }),
+  // Learn from user's manual categorization with hierarchical matching
+  // Supports: payee + iban + vs (exact), payee + iban (iban default), payee only (payee default)
+  learn: (
+    payee: string | null,
+    counterpartyIban: string | null,
+    variableSymbol: string | null,
+    categoryId: string
+  ) =>
+    tauriInvoke<void>('learn_categorization', {
+      payee,
+      counterpartyIban,
+      variableSymbol,
+      categoryId,
+    }),
 
-  // Forget a learned payee
-  forget: (payee: string) =>
-    tauriInvoke<boolean>('forget_payee', { payee }),
+  // Forget a learned payee combination
+  forget: (
+    payee: string | null,
+    counterpartyIban: string | null,
+    variableSymbol: string | null
+  ) =>
+    tauriInvoke<boolean>('forget_payee', {
+      payee,
+      counterpartyIban,
+      variableSymbol,
+    }),
 
   // Update categorization rules
   updateRules: (rules: CategorizationRule[]) =>
@@ -825,6 +846,92 @@ export const categorizationApi = {
 };
 
 // ============================================================================
+// Budgeting API
+// ============================================================================
+
+// Budget goal entity
+export interface BudgetGoal {
+  id: string;
+  categoryId: string;
+  timeframe: string; // "monthly" | "quarterly" | "yearly"
+  amount: string;
+  currency: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Data for creating/updating a budget goal
+export interface InsertBudgetGoal {
+  categoryId: string;
+  timeframe: string;
+  amount: string;
+  currency?: string;
+}
+
+// Category spending summary
+export interface CategorySpendingSummary {
+  categoryId: string;
+  categoryName: string;
+  categoryIcon?: string;
+  categoryColor?: string;
+  totalAmount: string;
+  transactionCount: number;
+  budgetGoal?: BudgetGoal;
+  budgetPercentage?: number;
+}
+
+// Transaction for budgeting view
+export interface BudgetingTransaction {
+  id: string;
+  bookingDate: number;
+  amount: string;
+  currency: string;
+  description?: string;
+  counterpartyName?: string;
+  categoryId?: string;
+  bankAccountId: string;
+  bankAccountName: string;
+  txType: string;
+}
+
+// Full budgeting report
+export interface BudgetingReport {
+  periodStart: number;
+  periodEnd: number;
+  timeframe: string;
+  totalIncome: string;
+  totalExpenses: string;
+  netBalance: string;
+  incomeCategories: CategorySpendingSummary[];
+  expenseCategories: CategorySpendingSummary[];
+  uncategorizedIncome: string;
+  uncategorizedExpenses: string;
+  uncategorizedTransactionCount: number;
+}
+
+export const budgetingApi = {
+  // Get the budgeting report for a time period
+  getReport: (startDate: number, endDate: number, timeframe: string) =>
+    tauriInvoke<BudgetingReport>('get_budgeting_report', { startDate, endDate, timeframe }),
+
+  // Get transactions for a specific category
+  getCategoryTransactions: (categoryId: string, startDate: number, endDate: number) =>
+    tauriInvoke<BudgetingTransaction[]>('get_category_transactions', { categoryId, startDate, endDate }),
+
+  // Get all budget goals
+  getBudgetGoals: () =>
+    tauriInvoke<BudgetGoal[]>('get_budget_goals'),
+
+  // Create or update a budget goal
+  upsertBudgetGoal: (data: InsertBudgetGoal) =>
+    tauriInvoke<BudgetGoal>('upsert_budget_goal', { data }),
+
+  // Delete a budget goal
+  deleteBudgetGoal: (id: string) =>
+    tauriInvoke<void>('delete_budget_goal', { id }),
+};
+
+// ============================================================================
 // Combined API export
 // ============================================================================
 
@@ -846,6 +953,7 @@ export const api = {
   bankAccounts: bankAccountsApi,
   stockTags: stockTagsApi,
   categorization: categorizationApi,
+  budgeting: budgetingApi,
 };
 
 export default api;

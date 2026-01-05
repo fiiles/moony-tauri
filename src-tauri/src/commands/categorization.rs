@@ -45,64 +45,100 @@ pub async fn categorize_batch(
         .map_err(|e| format!("Batch categorization panicked: {}", e))
 }
 
-/// Learn from user's manual categorization
+/// Learn from user's manual categorization with hierarchical matching
 ///
-/// This stores the payee → category mapping for instant future lookups
+/// This stores the payee/iban/vs → category mapping for instant future lookups
 /// AND persists it to the database for future app sessions.
+///
+/// Hierarchical priority:
+/// - payee + iban + vs = exact match for specific combination
+/// - payee + iban + null = IBAN default (catches any vs for this payee+iban)
+/// - payee + null + null = payee default (catches any iban/vs for this payee)
 #[tauri::command]
 pub async fn learn_categorization(
     state: State<'_, CategorizationState>,
     db: State<'_, Database>,
-    payee: String,
+    payee: Option<String>,
+    counterparty_iban: Option<String>,
+    variable_symbol: Option<String>,
     category_id: String,
 ) -> Result<(), String> {
     // Update in-memory engine
-    state.0.learn_from_user(&payee, &category_id);
+    state.0.learn_from_user(
+        payee.as_deref(),
+        counterparty_iban.as_deref(),
+        variable_symbol.as_deref(),
+        &category_id,
+    );
 
     // Persist to database
-    let normalized = simple_normalize(&payee);
-    let payee_clone = payee.clone();
+    let normalized = payee.as_ref().map(|p| simple_normalize(p));
+    let original_payee = payee.clone();
+    let iban_clone = counterparty_iban.clone();
+    let vs_clone = variable_symbol.clone();
     let category_clone = category_id.clone();
     let id = Uuid::new_v4().to_string();
 
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT OR REPLACE INTO learned_payees (id, normalized_payee, original_payee, category_id, updated_at)
-             VALUES (?1, ?2, ?3, ?4, unixepoch())",
-            rusqlite::params![id, normalized, payee_clone, category_clone],
+            "INSERT OR REPLACE INTO learned_payees (id, normalized_payee, original_payee, counterparty_iban, variable_symbol, category_id, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, unixepoch())",
+            rusqlite::params![id, normalized, original_payee, iban_clone, vs_clone, category_clone],
         )?;
         Ok(())
     }).map_err(|e| format!("Failed to persist learned payee: {}", e))?;
 
-    log::info!("Learned and persisted: '{}' → {}", payee, category_id);
+    log::info!(
+        "Learned and persisted: payee={:?}, iban={:?}, vs={:?} → {}",
+        payee,
+        counterparty_iban,
+        variable_symbol,
+        category_id
+    );
     Ok(())
 }
 
 /// Forget a learned payee mapping
 ///
 /// Removes from both in-memory engine AND database.
+/// Supports hierarchical forget: specify all attributes that were used during learn.
 #[tauri::command]
 pub async fn forget_payee(
     state: State<'_, CategorizationState>,
     db: State<'_, Database>,
-    payee: String,
+    payee: Option<String>,
+    counterparty_iban: Option<String>,
+    variable_symbol: Option<String>,
 ) -> Result<bool, String> {
     // Remove from in-memory engine
-    let forgotten = state.0.forget_payee(&payee);
+    let forgotten = state.0.forget_payee(
+        payee.as_deref(),
+        counterparty_iban.as_deref(),
+        variable_symbol.as_deref(),
+    );
 
     if forgotten {
         // Also remove from database
-        let normalized = simple_normalize(&payee);
+        let normalized = payee.as_ref().map(|p| simple_normalize(p));
         db.with_conn(|conn| {
+            // Delete matching the exact combination
             conn.execute(
-                "DELETE FROM learned_payees WHERE normalized_payee = ?1",
-                rusqlite::params![normalized],
+                "DELETE FROM learned_payees WHERE 
+                 (normalized_payee IS ?1 OR (?1 IS NULL AND normalized_payee IS NULL))
+                 AND (counterparty_iban IS ?2 OR (?2 IS NULL AND counterparty_iban IS NULL))
+                 AND (variable_symbol IS ?3 OR (?3 IS NULL AND variable_symbol IS NULL))",
+                rusqlite::params![normalized, counterparty_iban, variable_symbol],
             )?;
             Ok(())
         })
         .map_err(|e| format!("Failed to delete from database: {}", e))?;
 
-        log::info!("Forgot and removed from DB: '{}'", payee);
+        log::info!(
+            "Forgot and removed from DB: payee={:?}, iban={:?}, vs={:?}",
+            payee,
+            counterparty_iban,
+            variable_symbol
+        );
     }
     Ok(forgotten)
 }
@@ -177,28 +213,40 @@ pub async fn import_learned_payees(
 /// Load learned payees from the database
 ///
 /// This should be called after app unlock to populate the in-memory engine
-/// with previously learned payee → category mappings.
+/// with previously learned payee → category mappings (including hierarchical attributes).
 #[tauri::command]
 pub async fn load_learned_payees_from_db(
     state: State<'_, CategorizationState>,
     db: State<'_, Database>,
 ) -> Result<usize, String> {
-    let payees = db
+    // Load all learned payees with hierarchical attributes
+    let entries = db
         .with_conn(|conn| {
-            let mut stmt =
-                conn.prepare("SELECT normalized_payee, category_id FROM learned_payees")?;
+            let mut stmt = conn.prepare(
+                "SELECT normalized_payee, counterparty_iban, variable_symbol, category_id FROM learned_payees"
+            )?;
             let rows = stmt.query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                Ok((
+                    row.get::<_, Option<String>>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, String>(3)?,
+                ))
             })?;
-            let map: std::collections::HashMap<String, String> =
+            #[allow(clippy::type_complexity)]
+            let entries: Vec<(Option<String>, Option<String>, Option<String>, String)> =
                 rows.filter_map(|r| r.ok()).collect();
-            Ok(map)
+            Ok(entries)
         })
         .map_err(|e| format!("Failed to load learned payees: {}", e))?;
 
-    let count = payees.len();
+    let count = entries.len();
     if count > 0 {
-        state.0.import_learned_payees(payees);
+        for (payee, iban, vs, category) in entries {
+            state
+                .0
+                .learn_from_user(payee.as_deref(), iban.as_deref(), vs.as_deref(), &category);
+        }
         log::info!("Loaded {} learned payees from database", count);
     }
     Ok(count)

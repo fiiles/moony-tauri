@@ -103,6 +103,10 @@ impl RuleEngine {
                     .as_ref()
                     .map(|ss| ss == &compiled.rule.pattern)
                     .unwrap_or(false),
+
+                RuleType::IsCredit => tx.is_credit,
+
+                RuleType::IsDebit => !tx.is_credit,
             };
 
             if matched {
@@ -169,6 +173,7 @@ mod tests {
             specific_symbol: None,
             amount: -500.0,
             is_credit: false,
+            bank_account_id: None,
         }
     }
 

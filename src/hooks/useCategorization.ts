@@ -74,8 +74,13 @@ interface UseCategorization {
   categorize: (transaction: BankTransaction) => Promise<CategorizationResult>;
   // Categorize multiple transactions
   categorizeBatch: (transactions: BankTransaction[]) => Promise<CategorizationResult[]>;
-  // Learn from user's manual categorization
-  learn: (payee: string, categoryId: string) => Promise<void>;
+  // Learn from user's manual categorization (hierarchical: payee + iban + vs)
+  learn: (
+    payee: string | null,
+    counterpartyIban: string | null,
+    variableSymbol: string | null,
+    categoryId: string
+  ) => Promise<void>;
   // Get engine statistics
   getStats: () => Promise<CategorizationStats>;
   // Clear the categorization cache (call before re-running auto-categorize)
@@ -178,13 +183,20 @@ export function useCategorization(): UseCategorization {
     }
   }, []);
 
-  const learn = useCallback(async (payee: string, categoryId: string): Promise<void> => {
-    if (!payee || !categoryId) return;
+  const learn = useCallback(async (
+    payee: string | null,
+    counterpartyIban: string | null,
+    variableSymbol: string | null,
+    categoryId: string
+  ): Promise<void> => {
+    if (!categoryId) return;
+    // Need at least payee or iban to learn
+    if (!payee && !counterpartyIban) return;
 
     try {
-      await categorizationApi.learn(payee, categoryId);
+      await categorizationApi.learn(payee, counterpartyIban, variableSymbol, categoryId);
       
-      // Invalidate cache for transactions with this payee
+      // Invalidate cache for transactions with this payee/iban
       // This is a simple approach - could be optimized
       cacheRef.current.clear();
     } catch (err) {
@@ -192,6 +204,7 @@ export function useCategorization(): UseCategorization {
       setError(message);
     }
   }, []);
+
 
   const getStats = useCallback(async (): Promise<CategorizationStats> => {
     return await categorizationApi.getStats();

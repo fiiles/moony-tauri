@@ -90,6 +90,14 @@ export default function BankAccountDetail() {
   const [transactionType, setTransactionType] = useState<"all" | "income" | "outcome">("all");
   const [showUncategorizedOnly, setShowUncategorizedOnly] = useState(false);
 
+  // Helper to format date as YYYY-MM-DD in local timezone (avoids UTC shift issues)
+  const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Date preset calculator
   const applyDatePreset = (preset: string) => {
     const now = new Date();
@@ -129,8 +137,8 @@ export default function BankAccountDetail() {
         return;
     }
     
-    setDateFrom(from.toISOString().split('T')[0]);
-    setDateTo(to.toISOString().split('T')[0]);
+    setDateFrom(formatLocalDate(from));
+    setDateTo(formatLocalDate(to));
     setDatePreset(preset);
   };
 
@@ -837,14 +845,15 @@ export default function BankAccountDetail() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">{t("transaction.date")}</TableHead>
+                  <TableHead className="w-[90px]">{t("transaction.date")}</TableHead>
                   <TableHead>{t("transaction.description")}</TableHead>
                   <TableHead>{t("transaction.counterparty")}</TableHead>
-                  <TableHead className="w-[180px]">{t("categorization.category", "Category")}</TableHead>
-                  <TableHead className="w-[140px] text-right">
+                  <TableHead className="w-[80px]">{t("transaction.variableSymbol", "VS")}</TableHead>
+                  <TableHead className="w-[160px]">{t("categorization.category", "Category")}</TableHead>
+                  <TableHead className="w-[110px] text-right">
                     {t("transaction.amount")}
                   </TableHead>
-                  <TableHead className="w-[80px] text-right">
+                  <TableHead className="w-[60px] text-right">
                     {tCommon("labels.actions")}
                   </TableHead>
                 </TableRow>
@@ -875,14 +884,25 @@ export default function BankAccountDetail() {
                         )}
                       </div>
                     </TableCell>
+                    <TableCell className="text-muted-foreground font-mono text-sm">
+                      {tx.variableSymbol || "-"}
+                    </TableCell>
                     <TableCell>
                       <CategorySelector
                         currentCategoryId={getEffectiveCategory(tx)}
                         categorizationResult={categorizationResults.get(tx.id)}
                         counterpartyName={tx.counterpartyName}
                         counterpartyIban={tx.counterpartyIban}
+                        variableSymbol={tx.variableSymbol}
                         categories={categories}
                         onCategoryChange={(catId) => handleCategoryChange(tx.id, catId)}
+                        onDeclineSuggestion={() => {
+                          setCategorizationResults(prev => {
+                            const updated = new Map(prev);
+                            updated.delete(tx.id);
+                            return updated;
+                          });
+                        }}
                         compact
                       />
                     </TableCell>

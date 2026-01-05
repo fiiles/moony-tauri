@@ -1,0 +1,567 @@
+//! Budgeting service - aggregates transactions by category for spending analysis
+//!
+//! This service provides:
+//! - Income/expense aggregation by category across all bank accounts
+//! - Budget goal CRUD operations
+//! - Transaction retrieval for category drill-down
+
+use crate::db::Database;
+use crate::error::{AppError, Result};
+use crate::models::budgeting::{
+    BudgetGoal, BudgetingReport, BudgetingTransaction, CategorySpendingSummary, InsertBudgetGoal,
+};
+use rusqlite::{params, Connection};
+use std::collections::HashMap;
+use uuid::Uuid;
+
+// ========================== Budget Goals CRUD ==========================
+
+/// Get all budget goals
+pub fn get_all_goals(conn: &Connection) -> Result<Vec<BudgetGoal>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, category_id, timeframe, amount, currency, created_at, updated_at
+         FROM budget_goals
+         ORDER BY category_id, timeframe",
+    )?;
+
+    let goals = stmt
+        .query_map([], |row| {
+            Ok(BudgetGoal {
+                id: row.get(0)?,
+                category_id: row.get(1)?,
+                timeframe: row.get(2)?,
+                amount: row.get(3)?,
+                currency: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(goals)
+}
+
+/// Get budget goals for a specific timeframe
+pub fn get_goals_by_timeframe(conn: &Connection, timeframe: &str) -> Result<Vec<BudgetGoal>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, category_id, timeframe, amount, currency, created_at, updated_at
+         FROM budget_goals
+         WHERE timeframe = ?1
+         ORDER BY category_id",
+    )?;
+
+    let goals = stmt
+        .query_map([timeframe], |row| {
+            Ok(BudgetGoal {
+                id: row.get(0)?,
+                category_id: row.get(1)?,
+                timeframe: row.get(2)?,
+                amount: row.get(3)?,
+                currency: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    Ok(goals)
+}
+
+/// Upsert (create or update) a budget goal
+pub fn upsert_goal(conn: &Connection, data: InsertBudgetGoal) -> Result<BudgetGoal> {
+    data.validate()?;
+
+    let currency = data.currency.unwrap_or_else(|| "CZK".to_string());
+    let now = chrono::Utc::now().timestamp();
+
+    // Check if goal already exists for this category + timeframe
+    let existing: Option<String> = conn
+        .query_row(
+            "SELECT id FROM budget_goals WHERE category_id = ?1 AND timeframe = ?2",
+            params![data.category_id, data.timeframe],
+            |row| row.get(0),
+        )
+        .ok();
+
+    let id = if let Some(existing_id) = existing {
+        // Update existing goal
+        conn.execute(
+            "UPDATE budget_goals SET amount = ?1, currency = ?2, updated_at = ?3 WHERE id = ?4",
+            params![data.amount, currency, now, existing_id],
+        )?;
+        existing_id
+    } else {
+        // Create new goal
+        let new_id = Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO budget_goals (id, category_id, timeframe, amount, currency, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
+            params![new_id, data.category_id, data.timeframe, data.amount, currency, now],
+        )?;
+        new_id
+    };
+
+    // Retrieve and return the goal
+    conn.query_row(
+        "SELECT id, category_id, timeframe, amount, currency, created_at, updated_at
+         FROM budget_goals WHERE id = ?1",
+        [&id],
+        |row| {
+            Ok(BudgetGoal {
+                id: row.get(0)?,
+                category_id: row.get(1)?,
+                timeframe: row.get(2)?,
+                amount: row.get(3)?,
+                currency: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
+            })
+        },
+    )
+    .map_err(|e| AppError::Database(e.to_string()))
+}
+
+/// Delete a budget goal
+pub fn delete_goal(conn: &Connection, id: &str) -> Result<()> {
+    let rows = conn.execute("DELETE FROM budget_goals WHERE id = ?1", [id])?;
+    if rows == 0 {
+        return Err(AppError::NotFound(format!("Budget goal {} not found", id)));
+    }
+    Ok(())
+}
+
+// ========================== Budgeting Report ==========================
+
+/// Get the full budgeting report for a time period
+pub fn get_report(
+    conn: &Connection,
+    start_date: i64,
+    end_date: i64,
+    timeframe: &str,
+) -> Result<BudgetingReport> {
+    // Get all budget goals for this timeframe
+    let goals = get_goals_by_timeframe(conn, timeframe)?;
+    let goals_map: HashMap<String, BudgetGoal> = goals
+        .into_iter()
+        .map(|g| (g.category_id.clone(), g))
+        .collect();
+
+    // Aggregate transactions by category
+    let mut stmt = conn.prepare(
+        "SELECT
+            COALESCE(bt.category_id, 'uncategorized') as cat_id,
+            COALESCE(tc.name, 'Uncategorized') as cat_name,
+            tc.icon as cat_icon,
+            tc.color as cat_color,
+            bt.tx_type,
+            SUM(CAST(bt.amount AS REAL)) as total_amount,
+            COUNT(*) as tx_count
+         FROM bank_transactions bt
+         LEFT JOIN transaction_categories tc ON bt.category_id = tc.id
+         WHERE bt.booking_date >= ?1 AND bt.booking_date <= ?2
+         GROUP BY cat_id, bt.tx_type
+         ORDER BY cat_name",
+    )?;
+
+    #[allow(clippy::type_complexity)]
+    let rows: Vec<(
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        String,
+        f64,
+        i32,
+    )> = stmt
+        .query_map(params![start_date, end_date], |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+                row.get(6)?,
+            ))
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Separate income and expenses
+    let mut income_map: HashMap<String, CategorySpendingSummary> = HashMap::new();
+    let mut expense_map: HashMap<String, CategorySpendingSummary> = HashMap::new();
+    let mut total_income = 0.0_f64;
+    let mut total_expenses = 0.0_f64;
+    let mut uncategorized_income = 0.0_f64;
+    let mut uncategorized_expenses = 0.0_f64;
+    let mut uncategorized_count = 0_i32;
+
+    for (cat_id, cat_name, cat_icon, cat_color, tx_type, amount, count) in rows {
+        let is_credit = tx_type.to_lowercase() == "credit";
+        let abs_amount = amount.abs();
+
+        if cat_id == "uncategorized" {
+            if is_credit {
+                uncategorized_income += abs_amount;
+            } else {
+                uncategorized_expenses += abs_amount;
+            }
+            uncategorized_count += count;
+            continue;
+        }
+
+        let map = if is_credit {
+            total_income += abs_amount;
+            &mut income_map
+        } else {
+            total_expenses += abs_amount;
+            &mut expense_map
+        };
+
+        let entry = map.entry(cat_id.clone()).or_insert_with(|| {
+            let goal = goals_map.get(&cat_id).cloned();
+            CategorySpendingSummary {
+                category_id: cat_id.clone(),
+                category_name: cat_name.clone(),
+                category_icon: cat_icon.clone(),
+                category_color: cat_color.clone(),
+                total_amount: "0".to_string(),
+                transaction_count: 0,
+                budget_goal: goal,
+                budget_percentage: None,
+            }
+        });
+
+        let current: f64 = entry.total_amount.parse().unwrap_or(0.0);
+        entry.total_amount = format!("{:.2}", current + abs_amount);
+        entry.transaction_count += count;
+    }
+
+    // Calculate budget percentages
+    for summary in expense_map.values_mut() {
+        if let Some(ref goal) = summary.budget_goal {
+            let spent: f64 = summary.total_amount.parse().unwrap_or(0.0);
+            let budget: f64 = goal.amount.parse().unwrap_or(1.0);
+            if budget > 0.0 {
+                summary.budget_percentage = Some((spent / budget) * 100.0);
+            }
+        }
+    }
+
+    // Convert maps to sorted vectors
+    let mut income_categories: Vec<CategorySpendingSummary> = income_map.into_values().collect();
+    let mut expense_categories: Vec<CategorySpendingSummary> = expense_map.into_values().collect();
+
+    // Sort by total amount descending
+    income_categories.sort_by(|a, b| {
+        let a_val: f64 = a.total_amount.parse().unwrap_or(0.0);
+        let b_val: f64 = b.total_amount.parse().unwrap_or(0.0);
+        b_val
+            .partial_cmp(&a_val)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    expense_categories.sort_by(|a, b| {
+        let a_val: f64 = a.total_amount.parse().unwrap_or(0.0);
+        let b_val: f64 = b.total_amount.parse().unwrap_or(0.0);
+        b_val
+            .partial_cmp(&a_val)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    Ok(BudgetingReport {
+        period_start: start_date,
+        period_end: end_date,
+        timeframe: timeframe.to_string(),
+        total_income: format!("{:.2}", total_income),
+        total_expenses: format!("{:.2}", total_expenses),
+        net_balance: format!("{:.2}", total_income - total_expenses),
+        income_categories,
+        expense_categories,
+        uncategorized_income: format!("{:.2}", uncategorized_income),
+        uncategorized_expenses: format!("{:.2}", uncategorized_expenses),
+        uncategorized_transaction_count: uncategorized_count,
+    })
+}
+
+/// Get transactions for a specific category in a time period
+pub fn get_category_transactions(
+    conn: &Connection,
+    category_id: &str,
+    start_date: i64,
+    end_date: i64,
+) -> Result<Vec<BudgetingTransaction>> {
+    let category_filter = if category_id == "uncategorized" {
+        "bt.category_id IS NULL"
+    } else {
+        "bt.category_id = ?3"
+    };
+
+    let query = format!(
+        "SELECT
+            bt.id,
+            bt.booking_date,
+            bt.amount,
+            bt.currency,
+            bt.description,
+            bt.counterparty_name,
+            bt.category_id,
+            bt.bank_account_id,
+            ba.name as bank_account_name,
+            bt.tx_type
+         FROM bank_transactions bt
+         JOIN bank_accounts ba ON bt.bank_account_id = ba.id
+         WHERE bt.booking_date >= ?1 AND bt.booking_date <= ?2 AND {}
+         ORDER BY bt.booking_date DESC",
+        category_filter
+    );
+
+    let mut stmt = conn.prepare(&query)?;
+
+    let transactions = if category_id == "uncategorized" {
+        stmt.query_map(params![start_date, end_date], |row| {
+            Ok(BudgetingTransaction {
+                id: row.get(0)?,
+                booking_date: row.get(1)?,
+                amount: row.get(2)?,
+                currency: row.get(3)?,
+                description: row.get(4)?,
+                counterparty_name: row.get(5)?,
+                category_id: row.get(6)?,
+                bank_account_id: row.get(7)?,
+                bank_account_name: row.get(8)?,
+                tx_type: row.get(9)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect()
+    } else {
+        stmt.query_map(params![start_date, end_date, category_id], |row| {
+            Ok(BudgetingTransaction {
+                id: row.get(0)?,
+                booking_date: row.get(1)?,
+                amount: row.get(2)?,
+                currency: row.get(3)?,
+                description: row.get(4)?,
+                counterparty_name: row.get(5)?,
+                category_id: row.get(6)?,
+                bank_account_id: row.get(7)?,
+                bank_account_name: row.get(8)?,
+                tx_type: row.get(9)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect()
+    };
+
+    Ok(transactions)
+}
+
+// ========================== Async wrappers for Database ==========================
+
+/// Get budgeting report (async wrapper)
+pub async fn get_budgeting_report(
+    db: &Database,
+    start_date: i64,
+    end_date: i64,
+    timeframe: String,
+) -> Result<BudgetingReport> {
+    db.with_conn(|conn| get_report(conn, start_date, end_date, &timeframe))
+}
+
+/// Get category transactions (async wrapper)
+pub async fn get_transactions_for_category(
+    db: &Database,
+    category_id: String,
+    start_date: i64,
+    end_date: i64,
+) -> Result<Vec<BudgetingTransaction>> {
+    db.with_conn(|conn| get_category_transactions(conn, &category_id, start_date, end_date))
+}
+
+/// Get all budget goals (async wrapper)
+pub async fn get_budget_goals(db: &Database) -> Result<Vec<BudgetGoal>> {
+    db.with_conn(get_all_goals)
+}
+
+/// Upsert budget goal (async wrapper)
+pub async fn upsert_budget_goal(db: &Database, data: InsertBudgetGoal) -> Result<BudgetGoal> {
+    db.with_conn(|conn| upsert_goal(conn, data))
+}
+
+/// Delete budget goal (async wrapper)
+pub async fn delete_budget_goal(db: &Database, id: String) -> Result<()> {
+    db.with_conn(|conn| delete_goal(conn, &id))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("Failed to open in-memory db");
+
+        // Create minimal schema for testing
+        conn.execute_batch(
+            r#"
+            CREATE TABLE transaction_categories (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                icon TEXT,
+                color TEXT
+            );
+
+            CREATE TABLE bank_accounts (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+
+            CREATE TABLE bank_transactions (
+                id TEXT PRIMARY KEY,
+                bank_account_id TEXT NOT NULL,
+                booking_date INTEGER NOT NULL,
+                amount TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                description TEXT,
+                counterparty_name TEXT,
+                category_id TEXT,
+                tx_type TEXT NOT NULL
+            );
+
+            CREATE TABLE budget_goals (
+                id TEXT PRIMARY KEY,
+                category_id TEXT NOT NULL,
+                timeframe TEXT NOT NULL,
+                amount TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                UNIQUE(category_id, timeframe)
+            );
+
+            INSERT INTO transaction_categories (id, name, icon, color) VALUES
+                ('cat_groceries', 'Groceries', 'shopping-cart', '#4CAF50'),
+                ('cat_dining', 'Dining', 'utensils', '#FF9800'),
+                ('cat_income', 'Income', 'trending-up', '#8BC34A');
+
+            INSERT INTO bank_accounts (id, name) VALUES
+                ('acc1', 'Main Account');
+            "#,
+        )
+        .expect("Failed to create test schema");
+
+        conn
+    }
+
+    #[test]
+    fn test_budget_goal_crud() {
+        let conn = setup_test_db();
+
+        // Create a goal
+        let goal = upsert_goal(
+            &conn,
+            InsertBudgetGoal {
+                category_id: "cat_groceries".to_string(),
+                timeframe: "monthly".to_string(),
+                amount: "5000".to_string(),
+                currency: Some("CZK".to_string()),
+            },
+        )
+        .expect("Failed to create goal");
+
+        assert_eq!(goal.category_id, "cat_groceries");
+        assert_eq!(goal.amount, "5000");
+        assert_eq!(goal.timeframe, "monthly");
+
+        // Update the goal
+        let updated = upsert_goal(
+            &conn,
+            InsertBudgetGoal {
+                category_id: "cat_groceries".to_string(),
+                timeframe: "monthly".to_string(),
+                amount: "6000".to_string(),
+                currency: Some("CZK".to_string()),
+            },
+        )
+        .expect("Failed to update goal");
+
+        assert_eq!(updated.id, goal.id); // Same ID
+        assert_eq!(updated.amount, "6000");
+
+        // Delete the goal
+        delete_goal(&conn, &goal.id).expect("Failed to delete goal");
+
+        let goals = get_all_goals(&conn).expect("Failed to get goals");
+        assert!(goals.is_empty());
+    }
+
+    #[test]
+    fn test_get_report_empty() {
+        let conn = setup_test_db();
+
+        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("Failed to get report");
+
+        assert_eq!(report.total_income, "0.00");
+        assert_eq!(report.total_expenses, "0.00");
+        assert_eq!(report.net_balance, "0.00");
+        assert!(report.income_categories.is_empty());
+        assert!(report.expense_categories.is_empty());
+    }
+
+    #[test]
+    fn test_get_report_with_transactions() {
+        let conn = setup_test_db();
+
+        // Add some test transactions
+        conn.execute_batch(
+            r#"
+            INSERT INTO bank_transactions (id, bank_account_id, booking_date, amount, currency, category_id, tx_type) VALUES
+                ('tx1', 'acc1', 1704067200, '100.50', 'CZK', 'cat_groceries', 'debit'),
+                ('tx2', 'acc1', 1704067200, '50.00', 'CZK', 'cat_groceries', 'debit'),
+                ('tx3', 'acc1', 1704067200, '1000.00', 'CZK', 'cat_income', 'credit');
+            "#,
+        )
+        .expect("Failed to insert transactions");
+
+        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("Failed to get report");
+
+        assert_eq!(report.total_income, "1000.00");
+        assert_eq!(report.total_expenses, "150.50");
+        assert_eq!(report.net_balance, "849.50");
+        assert_eq!(report.income_categories.len(), 1);
+        assert_eq!(report.expense_categories.len(), 1);
+        assert_eq!(report.expense_categories[0].transaction_count, 2);
+    }
+
+    #[test]
+    fn test_validate_budget_goal() {
+        // Valid goal
+        let valid = InsertBudgetGoal {
+            category_id: "cat_groceries".to_string(),
+            timeframe: "monthly".to_string(),
+            amount: "5000".to_string(),
+            currency: None,
+        };
+        assert!(valid.validate().is_ok());
+
+        // Invalid timeframe
+        let invalid_timeframe = InsertBudgetGoal {
+            category_id: "cat_groceries".to_string(),
+            timeframe: "weekly".to_string(),
+            amount: "5000".to_string(),
+            currency: None,
+        };
+        assert!(invalid_timeframe.validate().is_err());
+
+        // Invalid amount
+        let invalid_amount = InsertBudgetGoal {
+            category_id: "cat_groceries".to_string(),
+            timeframe: "monthly".to_string(),
+            amount: "-100".to_string(),
+            currency: None,
+        };
+        assert!(invalid_amount.validate().is_err());
+    }
+}

@@ -155,7 +155,8 @@
     "categorizeComplete": "Categorization complete",
     "categorizeResult": "{{matches}} matched, {{suggestions}} suggestions",
     "noMatches": "No matches found",
-    "noMatchesDesc": "Try adding more rules or training the ML model."
+    "noMatchesDesc": "Try adding more rules or training the ML model.",
+    "declineSuggestion": "Decline suggestion"
   },
 
   "filters": {

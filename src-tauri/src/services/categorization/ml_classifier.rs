@@ -17,6 +17,10 @@ pub struct Vocabulary {
     word_to_idx: HashMap<String, usize>,
     idx_to_word: Vec<String>,
     document_freq: Vec<usize>,
+    /// IDF weights: log(N / df) for each term
+    idf_weights: Vec<f64>,
+    /// Total number of documents in training corpus
+    num_documents: usize,
 }
 
 impl Vocabulary {
@@ -26,6 +30,8 @@ impl Vocabulary {
             word_to_idx: HashMap::new(),
             idx_to_word: Vec::new(),
             document_freq: Vec::new(),
+            idf_weights: Vec::new(),
+            num_documents: 0,
         }
     }
 
@@ -59,16 +65,23 @@ impl Vocabulary {
         self.word_to_idx.clear();
         self.idx_to_word.clear();
         self.document_freq.clear();
+        self.idf_weights.clear();
+        self.num_documents = documents.len();
 
+        let n = documents.len() as f64;
         for (term, df) in terms {
             let idx = self.idx_to_word.len();
             self.word_to_idx.insert(term.clone(), idx);
             self.idx_to_word.push(term);
             self.document_freq.push(df);
+            // IDF = log(N / df) - smooth IDF to avoid issues with rare terms
+            // Using log(1 + N / df) for smoothing
+            let idf = (1.0 + n / df as f64).ln();
+            self.idf_weights.push(idf);
         }
     }
 
-    /// Transform document to term frequency vector
+    /// Transform document to term frequency vector (raw counts)
     pub fn transform(&self, text: &str) -> Vec<u32> {
         let ngrams = extract_ngrams(text);
         let mut features = vec![0u32; self.idx_to_word.len()];
@@ -80,6 +93,32 @@ impl Vocabulary {
         }
 
         features
+    }
+
+    /// Transform document to TF-IDF weighted feature vector
+    ///
+    /// TF-IDF = term_frequency * inverse_document_frequency
+    /// This downweights common terms that appear in many documents
+    pub fn transform_tfidf(&self, text: &str) -> Vec<f64> {
+        let ngrams = extract_ngrams(text);
+        let mut tf = vec![0u32; self.idx_to_word.len()];
+
+        for ngram in ngrams {
+            if let Some(&idx) = self.word_to_idx.get(&ngram) {
+                tf[idx] = tf[idx].saturating_add(1);
+            }
+        }
+
+        // Apply TF-IDF weighting
+        tf.iter()
+            .zip(self.idf_weights.iter())
+            .map(|(&term_freq, &idf)| term_freq as f64 * idf)
+            .collect()
+    }
+
+    /// Check if we have IDF weights (for backwards compatibility)
+    pub fn has_idf(&self) -> bool {
+        !self.idf_weights.is_empty()
     }
 
     /// Get vocabulary size
@@ -198,19 +237,20 @@ impl MLClassifier {
         let n_classes = idx_to_label.len();
         let n_features = vocabulary.len();
 
-        // Count occurrences for Naive Bayes
+        // Count occurrences for Naive Bayes using TF-IDF weighted features
         // class_counts[class_idx] = number of samples in class
-        // feature_counts[class_idx][feature_idx] = count of feature in class
+        // feature_sums[class_idx][feature_idx] = sum of TF-IDF weights for feature in class
         let mut class_counts = vec![0usize; n_classes];
-        let mut feature_counts = vec![vec![0u64; n_features]; n_classes];
+        let mut feature_sums = vec![vec![0.0f64; n_features]; n_classes];
 
         for ((_text, label), normalized_text) in samples.iter().zip(normalized.iter()) {
             let class_idx = *label_to_idx.get(label).expect("Label should exist");
             class_counts[class_idx] += 1;
 
-            let features = vocabulary.transform(normalized_text);
-            for (feat_idx, &count) in features.iter().enumerate() {
-                feature_counts[class_idx][feat_idx] += count as u64;
+            // Use TF-IDF weighted features instead of raw counts
+            let tfidf_features = vocabulary.transform_tfidf(normalized_text);
+            for (feat_idx, &weight) in tfidf_features.iter().enumerate() {
+                feature_sums[class_idx][feat_idx] += weight;
             }
         }
 
@@ -225,16 +265,17 @@ impl MLClassifier {
             .collect();
 
         // Feature log probabilities: P(feature|class)
-        // With Laplace smoothing: (count + alpha) / (total_class_features + alpha * n_features)
-        let feature_log_prob: Vec<Vec<f64>> = feature_counts
+        // With Laplace smoothing: (sum + alpha) / (total_class_sum + alpha * n_features)
+        // Using TF-IDF sums instead of raw counts
+        let feature_log_prob: Vec<Vec<f64>> = feature_sums
             .iter()
             .map(|class_features| {
-                let total: u64 = class_features.iter().sum();
-                let denom = total as f64 + alpha * n_features as f64;
+                let total: f64 = class_features.iter().sum();
+                let denom = total + alpha * n_features as f64;
 
                 class_features
                     .iter()
-                    .map(|&count| ((count as f64 + alpha) / denom).ln())
+                    .map(|&sum| ((sum + alpha) / denom).ln())
                     .collect()
             })
             .collect();
@@ -274,25 +315,26 @@ impl MLClassifier {
             return None;
         }
 
-        // Transform to features
-        let features = model.vocabulary.transform(&normalized);
+        // Transform to TF-IDF weighted features
+        let features = model.vocabulary.transform_tfidf(&normalized);
 
-        // Check if any features were found
-        let has_features = features.iter().any(|&f| f > 0);
+        // Check if any features were found (any weight > 0)
+        let has_features = features.iter().any(|&f| f > 0.0);
         if !has_features {
             return None;
         }
 
-        // Compute log-likelihood for each class
+        // Compute log-likelihood for each class using TF-IDF weights
         let n_classes = model.idx_to_label.len();
         let mut log_likelihoods: Vec<f64> = Vec::with_capacity(n_classes);
 
         for class_idx in 0..n_classes {
             let mut log_prob = model.class_log_prior[class_idx];
 
-            for (feat_idx, &count) in features.iter().enumerate() {
-                if count > 0 {
-                    log_prob += count as f64 * model.feature_log_prob[class_idx][feat_idx];
+            for (feat_idx, &weight) in features.iter().enumerate() {
+                if weight > 0.0 {
+                    // Use TF-IDF weight instead of raw count
+                    log_prob += weight * model.feature_log_prob[class_idx][feat_idx];
                 }
             }
 

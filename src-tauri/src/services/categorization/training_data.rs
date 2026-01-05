@@ -34,6 +34,9 @@ pub fn generate_training_data() -> Vec<(String, String)> {
     samples.extend(generate_travel_samples());
     samples.extend(generate_income_samples());
     samples.extend(generate_transfer_samples());
+    samples.extend(generate_investments_samples());
+    samples.extend(generate_housing_samples());
+    samples.extend(generate_taxes_samples());
 
     samples
 }
@@ -1116,6 +1119,271 @@ fn generate_transfer_samples() -> Vec<(String, String)> {
     samples
 }
 
+fn generate_investments_samples() -> Vec<(String, String)> {
+    let category = "cat_investments";
+    let mut samples = Vec::new();
+
+    // Czech/EU Brokers
+    let brokers = [
+        "DEGIRO",
+        "DEGIRO B.V.",
+        "Degiro platba",
+        "XTB",
+        "XTB S.A.",
+        "X-Trade Brokers",
+        "PORTU",
+        "Portu.cz",
+        "Portu investice",
+        "FONDEE",
+        "Fondee a.s.",
+        "Fondee investice",
+        "FIO E-BROKER",
+        "Fio Broker",
+        "e-Broker Fio",
+        "LYNX",
+        "Lynx broker",
+        // International brokers
+        "INTERACTIVE BROKERS",
+        "Interactive Brokers LLC",
+        "IBKR",
+        "ETORO",
+        "eToro Europe",
+        "eToro investice",
+        "TRADING 212",
+        "Trading212",
+        "REVOLUT TRADING",
+        "Revolut Invest",
+        "SAXO BANK",
+        "Saxo Trader",
+        "CHARLES SCHWAB",
+        "TD AMERITRADE",
+        "FIDELITY",
+    ];
+
+    for pattern in brokers.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
+
+    // Crypto exchanges
+    let crypto = [
+        "BINANCE",
+        "Binance.com",
+        "Binance Holdings",
+        "COINBASE",
+        "Coinbase Inc",
+        "Coinbase Pro",
+        "KRAKEN",
+        "Kraken Exchange",
+        "Payward Ltd",
+        "BITSTAMP",
+        "Bitstamp Ltd",
+        "GEMINI",
+        "Gemini Trust",
+        "CRYPTOCOM",
+        "Crypto.com",
+        "BITFINEX",
+        "FTX",
+        "KUCOIN",
+        "BYBIT",
+        "ANYCOIN",
+        "Anycoin Direct",
+        "SIMPLECOIN",
+    ];
+
+    for pattern in crypto.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
+
+    // Investment-related terms
+    let terms = [
+        "Nákup akcií",
+        "Prodej akcií",
+        "Nákup ETF",
+        "Investiční fond",
+        "Podílový fond",
+        "Dluhopisy nákup",
+        "Cenné papíry",
+        "BROKER",
+        "Brokerský poplatek",
+        "Investiční platforma",
+    ];
+
+    for pattern in terms.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
+
+    samples
+}
+
+fn generate_housing_samples() -> Vec<(String, String)> {
+    let category = "cat_housing";
+    let mut samples = Vec::new();
+
+    // DIY stores
+    let diy_stores = [
+        "HORNBACH",
+        "Hornbach s.r.o.",
+        "Hornbach Praha",
+        "OBI",
+        "OBI Centrum",
+        "OBI Czech",
+        "BAUMAX",
+        "Baumax s.r.o.",
+        "BAUHAUS",
+        "Bauhaus Česká republika",
+        "UNI HOBBY",
+        "Uni Hobby Praha",
+        "MOUNTFIELD",
+        "Mountfield a.s.",
+        "Mountfield zahrada",
+        "SIKO",
+        "SIKO koupelny",
+        "SIKO kuchyně",
+        "PTÁČEK",
+        "Ptáček velkoobchod",
+    ];
+
+    for pattern in diy_stores.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
+
+    // Building materials
+    let materials = [
+        "STAVEBNINY",
+        "Stavebniny Praha",
+        "DEK STAVEBNINY",
+        "DEK a.s.",
+        "PRO-DOMA",
+        "Stavební materiál",
+        "Staviva",
+        "MPL STAVIVA",
+        "CEMEX",
+        "Cement a beton",
+    ];
+
+    for pattern in materials.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
+
+    // Home contractors/services
+    let contractors = [
+        "RENOVACE",
+        "Renovace bytu",
+        "Rekonstrukce",
+        "ELEKTRIKÁŘ",
+        "Elektromontáže",
+        "Elektro instalace",
+        "INSTALATÉR",
+        "Instalatérské práce",
+        "Topenářství",
+        "MALÍŘ",
+        "Malířské práce",
+        "Natěračství",
+        "ZAHRADNÍK",
+        "Zahradnické služby",
+        "Údržba zahrady",
+        "TESAŘ",
+        "Tesařské práce",
+        "ZEDNÍK",
+        "Zednické práce",
+        "PODLAHÁŘ",
+        "Pokládka podlah",
+        "KLEMPÍŘ",
+        "Klempířské práce",
+        "TRUHLÁŘ",
+        "Truhlářství",
+        "Výroba nábytku",
+    ];
+
+    for pattern in contractors.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
+
+    // Housing-related terms
+    let terms = [
+        "Oprava domu",
+        "Údržba nemovitosti",
+        "Stavební práce",
+        "Domácí opravy",
+        "Zahradní technika",
+        "Nářadí",
+        "Barvy a laky",
+    ];
+
+    for pattern in terms.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
+
+    samples
+}
+
+fn generate_taxes_samples() -> Vec<(String, String)> {
+    let category = "cat_taxes";
+    let mut samples = Vec::new();
+
+    // Tax authorities
+    let tax_authority = [
+        "FINANČNÍ ÚŘAD",
+        "Financni urad",
+        "FU Praha",
+        "FU Brno",
+        "Finanční správa",
+        "GFŘ",
+        "Generální finanční ředitelství",
+        "Celní správa",
+        "CELNÍ ÚŘAD",
+    ];
+
+    for pattern in tax_authority.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
+
+    // Tax types
+    let tax_types = [
+        "DAŇ Z PŘÍJMU",
+        "Daň z příjmů fyzických osob",
+        "DPFO",
+        "Daň z příjmů právnických osob",
+        "DPPO",
+        "DPH",
+        "Daň z přidané hodnoty",
+        "Silniční daň",
+        "Daň z nemovitosti",
+        "Daň z nabytí nemovitosti",
+        "Dědická daň",
+        "Darovací daň",
+        "ODVOD DANE",
+        "Záloha na daň",
+        "Doplatek daně",
+        "Přeplatek daně",
+        "Daňové přiznání",
+    ];
+
+    for pattern in tax_types.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
+
+    // Social and health insurance (often grouped with taxes)
+    let insurance = [
+        "ČSSZ",
+        "Česká správa sociálního zabezpečení",
+        "Sociální pojištění",
+        "Zdravotní pojištění",
+        "VZP",
+        "Všeobecná zdravotní pojišťovna",
+        "ZPMV",
+        "OZP",
+        "Pojistné OSVČ",
+        "Záloha na pojistné",
+    ];
+
+    for pattern in insurance.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
+
+    samples
+}
+
 /// Print statistics about training data
 pub fn print_statistics(data: &[(String, String)]) {
     let mut category_counts: HashMap<&str, usize> = HashMap::new();
@@ -1165,5 +1433,8 @@ mod tests {
         assert!(categories.contains("cat_travel"));
         assert!(categories.contains("cat_income"));
         assert!(categories.contains("cat_transfer"));
+        assert!(categories.contains("cat_investments"));
+        assert!(categories.contains("cat_housing"));
+        assert!(categories.contains("cat_taxes"));
     }
 }

@@ -37,10 +37,36 @@ impl CategorizationEngine {
         }
     }
 
-    /// Create engine with default rules
+    /// Create engine with default rules and bundled ML model
     pub fn with_defaults() -> Self {
         let default_rules = super::default_rules::get_default_rules();
-        Self::new(default_rules)
+        let engine = Self::new(default_rules);
+
+        // Try to load bundled ML model from various possible locations
+        let model_paths = [
+            // Development: relative to src-tauri directory
+            std::path::PathBuf::from("resources/categorization_model.bin"),
+            // macOS app bundle
+            std::path::PathBuf::from("../Resources/resources/categorization_model.bin"),
+            // Linux/Windows installed
+            std::path::PathBuf::from("./resources/categorization_model.bin"),
+        ];
+
+        for path in &model_paths {
+            if path.exists() {
+                match engine.load_ml_model(path) {
+                    Ok(()) => {
+                        log::info!("ML model loaded from {:?}", path);
+                        break;
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to load ML model from {:?}: {}", path, e);
+                    }
+                }
+            }
+        }
+
+        engine
     }
 
     /// Load engine with persisted state
@@ -123,22 +149,47 @@ impl CategorizationEngine {
         transactions.iter().map(|tx| self.categorize(tx)).collect()
     }
 
-    /// Learn from user's manual categorization
+    /// Learn from user's manual categorization with hierarchical matching
     ///
-    /// This adds the payee to the exact match HashMap for instant future lookups.
-    pub fn learn_from_user(&self, payee: &str, category_id: &str) {
+    /// This adds the payee/iban/vs combination to the exact match engine.
+    /// The engine uses cascading defaults:
+    /// - payee + iban + vs = exact match
+    /// - payee + iban + null = IBAN default (catches any vs)
+    /// - payee + null + null = payee default (catches any iban/vs)
+    pub fn learn_from_user(
+        &self,
+        payee: Option<&str>,
+        iban: Option<&str>,
+        variable_symbol: Option<&str>,
+        category_id: &str,
+    ) {
         if let Ok(mut exact) = self.exact_match.write() {
-            exact.learn(payee, category_id);
+            exact.learn_hierarchical(payee, iban, variable_symbol, category_id);
         }
     }
 
-    /// Forget a learned payee
-    pub fn forget_payee(&self, payee: &str) -> bool {
+    /// Legacy learn - creates payee default
+    pub fn learn_from_user_simple(&self, payee: &str, category_id: &str) {
+        self.learn_from_user(Some(payee), None, None, category_id);
+    }
+
+    /// Forget a learned payee combination
+    pub fn forget_payee(
+        &self,
+        payee: Option<&str>,
+        iban: Option<&str>,
+        variable_symbol: Option<&str>,
+    ) -> bool {
         if let Ok(mut exact) = self.exact_match.write() {
-            exact.forget(payee)
+            exact.forget_hierarchical(payee, iban, variable_symbol)
         } else {
             false
         }
+    }
+
+    /// Legacy forget - removes payee default
+    pub fn forget_payee_simple(&self, payee: &str) -> bool {
+        self.forget_payee(Some(payee), None, None)
     }
 
     /// Update rules (e.g., after user edits)
@@ -186,12 +237,13 @@ impl CategorizationEngine {
             .unwrap_or_default()
     }
 
-    /// Import learned payees
+    /// Import learned payees (raw format with prefixed keys)
+    ///
+    /// This imports the exact format returned by export_learned_payees(),
+    /// which includes the internal key prefixes for hierarchical matching.
     pub fn import_learned_payees(&self, payees: HashMap<String, String>) {
         if let Ok(mut exact) = self.exact_match.write() {
-            for (payee, category) in payees {
-                exact.learn(&payee, &category);
-            }
+            exact.merge(&super::exact_match::ExactMatchEngine::from_raw_map(payees));
         }
     }
 
@@ -251,6 +303,7 @@ mod tests {
             specific_symbol: None,
             amount: -500.0,
             is_credit: false,
+            bank_account_id: None,
         }
     }
 
@@ -286,7 +339,7 @@ mod tests {
     #[test]
     fn test_exact_match_after_learning() {
         let engine = CategorizationEngine::new(vec![]);
-        engine.learn_from_user("Uber Eats", "cat_dining");
+        engine.learn_from_user_simple("Uber Eats", "cat_dining");
 
         let tx = make_tx("", Some("Uber Eats"));
         let result = engine.categorize(&tx);
@@ -319,7 +372,7 @@ mod tests {
 
         let engine = CategorizationEngine::new(rules);
         // Learn as dining (should be overridden by rule)
-        engine.learn_from_user("Albert", "cat_dining");
+        engine.learn_from_user_simple("Albert", "cat_dining");
 
         let tx = make_tx("Albert Praha", None);
         let result = engine.categorize(&tx);
@@ -355,7 +408,7 @@ mod tests {
     #[test]
     fn test_export_import_payees() {
         let engine1 = CategorizationEngine::new(vec![]);
-        engine1.learn_from_user("Test Payee", "cat_other");
+        engine1.learn_from_user_simple("Test Payee", "cat_other");
 
         let exported = engine1.export_learned_payees();
         assert!(!exported.is_empty());
@@ -370,12 +423,12 @@ mod tests {
     #[test]
     fn test_forget_payee() {
         let engine = CategorizationEngine::new(vec![]);
-        engine.learn_from_user("Test Payee", "cat_other");
+        engine.learn_from_user_simple("Test Payee", "cat_other");
 
         let tx = make_tx("", Some("Test Payee"));
         assert!(engine.categorize(&tx).has_category());
 
-        engine.forget_payee("Test Payee");
+        engine.forget_payee_simple("Test Payee");
         assert!(!engine.categorize(&tx).has_category());
     }
 }
