@@ -1,4 +1,5 @@
 
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -17,9 +18,8 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, Eye } from "lucide-react";
+import { Search, Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
-import { useMemo, useState } from "react";
 import { type CryptoHoldingData } from "@shared/calculations";
 import { AssetLogo } from "@/components/common/AssetLogo";
 import { useTranslation } from "react-i18next";
@@ -44,6 +44,29 @@ export function CryptoTable({
     const [search, setSearch] = useState("");
     const [, setLocation] = useLocation();
 
+    // Sorting state
+    type SortColumn = 'name' | 'quantity' | 'avgCost' | 'currentPrice' | 'marketValue' | 'gainLoss';
+    const [sortColumn, setSortColumn] = useState<SortColumn>('name');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+    const handleSort = (column: SortColumn) => {
+        if (sortColumn === column) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
+    };
+
+    const SortIcon = ({ column }: { column: SortColumn }) => {
+        if (sortColumn !== column) {
+            return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+        }
+        return sortDirection === 'asc'
+            ? <ArrowUp className="h-3 w-3 ml-1" />
+            : <ArrowDown className="h-3 w-3 ml-1" />;
+    };
+
     const filteredHoldings = useMemo(() => {
         const term = search.trim().toLowerCase();
         let filtered = holdings;
@@ -56,11 +79,31 @@ export function CryptoTable({
             });
         }
 
-        // Sort by name
-        return [...filtered].sort((a, b) =>
-            (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: 'base' })
-        );
-    }, [holdings, search]);
+        return [...filtered].sort((a, b) => {
+            let comparison = 0;
+            switch (sortColumn) {
+                case 'name':
+                    comparison = (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+                    break;
+                case 'quantity':
+                    comparison = a.quantity - b.quantity;
+                    break;
+                case 'avgCost':
+                    comparison = a.avgCost - b.avgCost;
+                    break;
+                case 'currentPrice':
+                    comparison = a.currentPrice - b.currentPrice;
+                    break;
+                case 'marketValue':
+                    comparison = a.marketValue - b.marketValue;
+                    break;
+                case 'gainLoss':
+                    comparison = a.gainLoss - b.gainLoss;
+                    break;
+            }
+            return sortDirection === 'asc' ? comparison : -comparison;
+        });
+    }, [holdings, search, sortColumn, sortDirection]);
 
     return (
         <Card className={cn(
@@ -87,12 +130,24 @@ export function CryptoTable({
                     <Table>
                         <TableHeader className="[&_th]:bg-muted/50">
                             <TableRow>
-                                <TableHead className="w-[250px] text-xs font-medium uppercase text-muted-foreground">{tc('labels.asset')}</TableHead>
-                                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground">{tc('labels.quantity')}</TableHead>
-                                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground">{t('table.avgCost')}</TableHead>
-                                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground">{tc('labels.price')}</TableHead>
-                                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground">{tc('labels.value')}</TableHead>
-                                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground">{tc('labels.gainLoss')}</TableHead>
+                                <TableHead className="w-[250px] text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('name')}>
+                                    <span className="flex items-center">{tc('labels.asset')}<SortIcon column="name" /></span>
+                                </TableHead>
+                                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('quantity')}>
+                                    <span className="flex items-center justify-end">{tc('labels.quantity')}<SortIcon column="quantity" /></span>
+                                </TableHead>
+                                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('avgCost')}>
+                                    <span className="flex items-center justify-end">{t('table.avgCost')}<SortIcon column="avgCost" /></span>
+                                </TableHead>
+                                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('currentPrice')}>
+                                    <span className="flex items-center justify-end">{tc('labels.price')}<SortIcon column="currentPrice" /></span>
+                                </TableHead>
+                                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('marketValue')}>
+                                    <span className="flex items-center justify-end">{tc('labels.value')}<SortIcon column="marketValue" /></span>
+                                </TableHead>
+                                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('gainLoss')}>
+                                    <span className="flex items-center justify-end">{tc('labels.gainLoss')}<SortIcon column="gainLoss" /></span>
+                                </TableHead>
                                 <TableHead className="text-right w-[80px] text-xs font-medium uppercase text-muted-foreground">{tc('labels.actions')}</TableHead>
                             </TableRow>
                         </TableHeader>

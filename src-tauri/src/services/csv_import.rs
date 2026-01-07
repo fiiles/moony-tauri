@@ -161,6 +161,20 @@ impl ColumnPatterns {
     pub fn currency_patterns() -> Vec<&'static str> {
         vec![r"(?i)^měna$", r"(?i)^mena$", r"(?i)^currency$"]
     }
+
+    pub fn counterparty_iban_patterns() -> Vec<&'static str> {
+        vec![
+            r"(?i)^iban$",
+            r"(?i)^account$",
+            r"(?i)^číslo\s*(proti)?účtu$",
+            r"(?i)^cislo\s*(proti)?uctu$",
+            r"(?i)^protiúčet\s*iban$",
+            r"(?i)^counterparty\s*account$",
+            r"(?i)^counterparty\s*iban$",
+            r"(?i)^account\s*number$",
+            r"(?i)^číslo\s*účtu\s*protistrany$",
+        ]
+    }
 }
 
 /// Get predefined bank CSV presets for Czech banks
@@ -454,6 +468,21 @@ pub fn suggest_column_mappings(headers: &[String]) -> HashMap<String, (String, f
                     let confidence = 0.90;
                     if !mappings.contains_key("currency") || mappings["currency"].1 < confidence {
                         mappings.insert("currency".into(), (header.clone(), confidence));
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Check counterparty IBAN/account patterns
+        for pattern in ColumnPatterns::counterparty_iban_patterns() {
+            if let Ok(re) = regex::Regex::new(pattern) {
+                if re.is_match(&header_lower) {
+                    let confidence = if header_lower == "iban" { 0.95 } else { 0.85 };
+                    if !mappings.contains_key("counterparty_iban")
+                        || mappings["counterparty_iban"].1 < confidence
+                    {
+                        mappings.insert("counterparty_iban".into(), (header.clone(), confidence));
                     }
                     break;
                 }

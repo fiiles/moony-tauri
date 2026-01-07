@@ -6,8 +6,8 @@
         "financialServices": "Finanční služby",
         "bankAccounts": "Bankovní účty",
         "reports": "Reporty",
-        "cashflow": "Cashflow",
-        "budgeting": "Rozpočet",
+        "cashflowPlanning": "Plánování cashflow",
+        "budgeting": "Sledování výdajů",
         "projection": "Projekce",
         "savings": "Spoření a vklady",
         "loans": "Úvěry",
@@ -21,7 +21,7 @@
         "lockApp": "Zamknout aplikaci",
         "calculators": "Kalkulačky",
         "annuityCalculator": "Anuitní kalkulačka",
-        "estateCalculator": "Nemovitostní kalkulačka",
+        "estateCalculator": "Výnos z nemovitosti",
         "stocksAnalysis": "Analýza akcií"
     },
     "app": {

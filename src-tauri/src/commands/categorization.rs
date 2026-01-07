@@ -71,7 +71,8 @@ pub async fn learn_categorization(
         &category_id,
     );
 
-    // Persist to database
+    // Persist to database using DELETE + INSERT pattern
+    // (SQLite treats NULLs as distinct in unique indexes, so INSERT OR REPLACE doesn't work)
     let normalized = payee.as_ref().map(|p| simple_normalize(p));
     let original_payee = payee.clone();
     let iban_clone = counterparty_iban.clone();
@@ -80,10 +81,19 @@ pub async fn learn_categorization(
     let id = Uuid::new_v4().to_string();
 
     db.with_conn(|conn| {
+        // First delete any existing entry with matching composite key
         conn.execute(
-            "INSERT OR REPLACE INTO learned_payees (id, normalized_payee, original_payee, counterparty_iban, variable_symbol, category_id, updated_at)
+            "DELETE FROM learned_payees WHERE 
+             (normalized_payee IS ?1 OR (?1 IS NULL AND normalized_payee IS NULL))
+             AND (counterparty_iban IS ?2 OR (?2 IS NULL AND counterparty_iban IS NULL))
+             AND (variable_symbol IS ?3 OR (?3 IS NULL AND variable_symbol IS NULL))",
+            rusqlite::params![&normalized, &iban_clone, &vs_clone],
+        )?;
+        // Then insert the new entry
+        conn.execute(
+            "INSERT INTO learned_payees (id, normalized_payee, original_payee, counterparty_iban, variable_symbol, category_id, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, unixepoch())",
-            rusqlite::params![id, normalized, original_payee, iban_clone, vs_clone, category_clone],
+            rusqlite::params![id, &normalized, &original_payee, &iban_clone, &vs_clone, &category_clone],
         )?;
         Ok(())
     }).map_err(|e| format!("Failed to persist learned payee: {}", e))?;
@@ -249,6 +259,31 @@ pub async fn load_learned_payees_from_db(
         }
         log::info!("Loaded {} learned payees from database", count);
     }
+    Ok(count)
+}
+
+/// Load user's own IBANs from bank accounts for internal transfer detection
+///
+/// This should be called after app unlock to enable automatic detection of
+/// transactions between user's own accounts as "Internal Transfers".
+#[tauri::command]
+pub async fn load_own_ibans_from_db(
+    state: State<'_, CategorizationState>,
+    db: State<'_, Database>,
+) -> Result<usize, String> {
+    let ibans = db
+        .with_conn(|conn| {
+            let mut stmt = conn
+                .prepare("SELECT iban FROM bank_accounts WHERE iban IS NOT NULL AND iban != ''")?;
+            let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+            let ibans: Vec<String> = rows.filter_map(|r| r.ok()).collect();
+            Ok(ibans)
+        })
+        .map_err(|e| format!("Failed to load IBANs: {}", e))?;
+
+    let count = ibans.len();
+    state.0.set_own_ibans(ibans);
+    log::info!("Loaded {} own IBANs for internal transfer detection", count);
     Ok(count)
 }
 

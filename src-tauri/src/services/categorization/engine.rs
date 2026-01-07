@@ -8,7 +8,7 @@
 //! Flow: Rules → Exact Match → ML Prediction
 
 use anyhow::Result;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::RwLock;
 
@@ -24,6 +24,8 @@ pub struct CategorizationEngine {
     ml_classifier: RwLock<MLClassifier>,
     /// Minimum confidence threshold for ML predictions
     ml_min_confidence: f64,
+    /// User's own IBANs for internal transfer detection
+    own_ibans: RwLock<HashSet<String>>,
 }
 
 impl CategorizationEngine {
@@ -34,6 +36,7 @@ impl CategorizationEngine {
             exact_match: RwLock::new(ExactMatchEngine::new()),
             ml_classifier: RwLock::new(MLClassifier::new()),
             ml_min_confidence: 0.60, // Default threshold
+            own_ibans: RwLock::new(HashSet::new()),
         }
     }
 
@@ -103,6 +106,7 @@ impl CategorizationEngine {
             exact_match: RwLock::new(ExactMatchEngine::from_map(payee_map)),
             ml_classifier: RwLock::new(ml_classifier),
             ml_min_confidence: 0.60,
+            own_ibans: RwLock::new(HashSet::new()),
         })
     }
 
@@ -111,30 +115,69 @@ impl CategorizationEngine {
         self.ml_min_confidence = threshold.clamp(0.0, 1.0);
     }
 
-    /// Categorize a single transaction using waterfall approach
+    /// Set the user's own IBANs for internal transfer detection
     ///
-    /// Flow:
-    /// 1. Try rules first (regex, patterns, symbols)
-    /// 2. If no match, try exact payee lookup
-    /// 3. If no match, try ML classifier
-    /// 4. Return None if nothing matches
-    pub fn categorize(&self, tx: &TransactionInput) -> CategorizationResult {
-        // Step 1: Try rules first
-        if let Ok(rules) = self.rule_engine.read() {
-            if let Some((result, _stop_processing)) = rules.apply(tx) {
-                // Rules always return definitive Match, not Suggestion
-                return result;
+    /// When a transaction's counterparty IBAN matches any of these,
+    /// it will be categorized as "Internal Transfer" (unless overridden by learned payees).
+    pub fn set_own_ibans(&self, ibans: Vec<String>) {
+        let normalized: HashSet<String> = ibans
+            .into_iter()
+            .map(|s| s.replace(' ', "").to_uppercase())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if let Ok(mut own) = self.own_ibans.write() {
+            *own = normalized;
+        }
+    }
+
+    /// Check if counterparty IBAN matches user's own accounts
+    fn is_internal_transfer(&self, counterparty_iban: Option<&str>) -> bool {
+        if let Some(iban) = counterparty_iban {
+            let normalized = iban.replace(' ', "").to_uppercase();
+            if !normalized.is_empty() {
+                if let Ok(own) = self.own_ibans.read() {
+                    return own.contains(&normalized);
+                }
             }
         }
+        false
+    }
 
-        // Step 2: Try exact payee match
+    /// Categorize a single transaction using waterfall approach
+    ///
+    /// Flow (priority order):
+    /// 1. Try exact payee match FIRST (user's learned categorizations take priority)
+    /// 2. Check if counterparty IBAN matches user's own accounts (internal transfer)
+    /// 3. Try rules (regex, patterns, symbols)
+    /// 4. Try ML classifier
+    /// 5. Return None if nothing matches
+    pub fn categorize(&self, tx: &TransactionInput) -> CategorizationResult {
+        // Step 1: Try exact payee match FIRST (learned payees override everything)
         if let Ok(exact) = self.exact_match.read() {
             if let Some(result) = exact.apply(tx) {
                 return result;
             }
         }
 
-        // Step 3: Try ML classifier
+        // Step 2: Check own IBANs for internal transfer detection
+        if self.is_internal_transfer(tx.counterparty_iban.as_deref()) {
+            return CategorizationResult::Match {
+                category_id: "cat_internal_transfers".to_string(),
+                source: super::types::CategorizationSource::Rule {
+                    rule_id: "own_account_iban".to_string(),
+                    rule_name: "Internal Transfer (own account)".to_string(),
+                },
+            };
+        }
+
+        // Step 3: Try rules (patterns, regex)
+        if let Ok(rules) = self.rule_engine.read() {
+            if let Some((result, _stop_processing)) = rules.apply(tx) {
+                return result;
+            }
+        }
+
+        // Step 4: Try ML classifier
         if let Ok(ml) = self.ml_classifier.read() {
             if let Some(result) = ml.predict(tx, self.ml_min_confidence) {
                 return result;
@@ -358,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_waterfall_order() {
-        // Rule should take precedence over exact match
+        // Learned payees (exact match) now take precedence over rules
         let rules = vec![CategorizationRule {
             id: "r1".into(),
             name: "Albert Rule".into(),
@@ -371,10 +414,11 @@ mod tests {
         }];
 
         let engine = CategorizationEngine::new(rules);
-        // Learn as dining (should be overridden by rule)
+        // Learn "Albert" as dining (should WIN over rule since learned payees have highest priority)
         engine.learn_from_user_simple("Albert", "cat_dining");
 
-        let tx = make_tx("Albert Praha", None);
+        // Transaction has BOTH description (for rule match) AND counterparty (for exact match)
+        let tx = make_tx("Albert Praha", Some("Albert"));
         let result = engine.categorize(&tx);
 
         match result {
@@ -382,10 +426,10 @@ mod tests {
                 category_id,
                 source,
             } => {
-                assert_eq!(category_id, "cat_groceries"); // Rule wins
-                assert!(matches!(source, CategorizationSource::Rule { .. }));
+                assert_eq!(category_id, "cat_dining"); // Learned payee wins over rule
+                assert!(matches!(source, CategorizationSource::ExactMatch { .. }));
             }
-            _ => panic!("Expected rule Match"),
+            _ => panic!("Expected exact Match"),
         }
     }
 

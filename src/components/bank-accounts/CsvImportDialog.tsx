@@ -27,8 +27,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, CheckCircle, Loader2, Eye, EyeOff,  ChevronDown,
-  AlertCircle, Columns, Settings2,
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Upload, FileText, CheckCircle, Loader2, Eye, EyeOff, ChevronDown,
+  AlertCircle, Columns, Settings2, HelpCircle,
 } from "lucide-react";
 import {
   Collapsible,
@@ -73,7 +79,6 @@ export function CsvImportDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [importResult, setImportResult] = useState<{
     imported: number;
-    duplicates: number;
     errors: number;
     errorList?: string[];
   } | null>(null);
@@ -157,6 +162,9 @@ export function CsvImportDialog({
             if (result.suggestedMappings.currency) {
               setCurrencyColumn(result.suggestedMappings.currency[0]);
             }
+            if (result.suggestedMappings.counterparty_iban) {
+              setCounterpartyIbanColumn(result.suggestedMappings.counterparty_iban[0]);
+            }
           }
           
           setStep("preview");
@@ -203,7 +211,6 @@ export function CsvImportDialog({
 
       setImportResult({
         imported: result.importedCount,
-        duplicates: result.duplicateCount,
         errors: result.errorCount,
         errorList: result.errors,
       });
@@ -346,9 +353,19 @@ export function CsvImportDialog({
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>
+                  <Label className="flex items-center gap-1">
                     {t("csvImport.descriptionColumns", "Description Columns")}
                     {getConfidenceBadge("description")}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[250px]">
+                          <p>{t("csvImport.descriptionColumnsHelp", "Select all available descriptive fields (e.g., message, note, purpose) for better automatic categorization.")}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -445,6 +462,7 @@ export function CsvImportDialog({
                 <div className="grid gap-2">
                   <Label>
                     {t("csvImport.counterpartyIbanColumn", "Counterparty Account (IBAN)")}
+                    {getConfidenceBadge("counterparty_iban")}
                   </Label>
                   <Select value={counterpartyIbanColumn || "__none__"} onValueChange={(v) => setCounterpartyIbanColumn(v === "__none__" ? "" : v)}>
                     <SelectTrigger>
@@ -520,20 +538,17 @@ export function CsvImportDialog({
               <p className="text-2xl font-bold">{t("csvImport.success", "Import Complete!")}</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-2 gap-4 text-center">
               <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
                 <p className="text-3xl font-bold text-green-600">{importResult.imported}</p>
                 <p className="text-sm text-muted-foreground">{t("csvImport.imported", "Imported")}</p>
-              </div>
-              <div className="p-4 bg-yellow-50 dark:bg-yellow-950 rounded-lg">
-                <p className="text-3xl font-bold text-yellow-600">{importResult.duplicates}</p>
-                <p className="text-sm text-muted-foreground">{t("csvImport.duplicates", "Duplicates Skipped")}</p>
               </div>
               <div className="p-4 bg-red-50 dark:bg-red-950 rounded-lg">
                 <p className="text-3xl font-bold text-red-600">{importResult.errors}</p>
                 <p className="text-sm text-muted-foreground">{t("csvImport.errors", "Errors")}</p>
               </div>
             </div>
+
 
             {/* Error Details */}
             {importResult.errors > 0 && importResult.errorList && importResult.errorList.length > 0 && (

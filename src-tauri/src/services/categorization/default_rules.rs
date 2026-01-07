@@ -1064,16 +1064,6 @@ fn income_rules() -> Vec<CategorizationRule> {
             cat,
             priority - 5,
         ),
-        // Fallback rule: any credit transaction is likely income
-        // Uses low priority so specific rules can override
-        rule(
-            "credit_fallback",
-            "Credit (incoming)",
-            RuleType::IsCredit,
-            "", // Pattern not used for IsCredit
-            cat,
-            10, // Very low priority - only matches if nothing else does
-        ),
     ]
 }
 
@@ -1300,10 +1290,15 @@ fn taxes_rules() -> Vec<CategorizationRule> {
 }
 
 fn transfer_rules() -> Vec<CategorizationRule> {
-    let cat = "cat_transfer";
+    let cat = "cat_internal_transfers";
     let priority = 40;
 
     vec![
+        // NOTE: Fintech intermediaries (Revolut, Wise, N26) intentionally NOT included here.
+        // They are just payment processors - the actual merchant/destination is what matters.
+        // Users should categorize based on where the money actually went, not the intermediary.
+        // ML classifier can still suggest categories based on transaction description.
+        //
         // Own accounts
         rule(
             "vlastni_ucet",
@@ -1405,7 +1400,7 @@ mod tests {
         assert!(categories.contains("cat_health"));
         assert!(categories.contains("cat_travel"));
         assert!(categories.contains("cat_income"));
-        assert!(categories.contains("cat_transfer"));
+        assert!(categories.contains("cat_internal_transfers"));
     }
 
     #[test]

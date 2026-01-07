@@ -1,6 +1,6 @@
 {
-  "title": "Rozpočet",
-  "subtitle": "Sledujte své výdaje oproti rozpočtovým cílům",
+  "title": "Sledování výdajů",
+  "subtitle": "Přehled vašich výdajů podle kategorií",
   "monthly": "Měsíčně",
   "quarterly": "Čtvrtletně",
   "yearly": "Ročně",
@@ -22,6 +22,7 @@
   "noDescription": "Bez popisu",
   "date": "Datum",
   "description": "Popis",
+  "payee": "Příjemce",
   "account": "Účet",
   "amount": "Částka",
   "uncategorized": "Nezařazené",
@@ -48,6 +49,19 @@
   "budgetLimit": "Limit rozpočtu",
   "clickToExpand": "Klikněte pro zobrazení transakcí",
   "close": "Zavřít",
+  "filterCategories": "Filtr",
+  "showAll": "Zobrazit vše",
+  "filteredTotal": "Celkem za filtr",
+  "total": "Celkem",
+  "manageBudgets": "Spravovat rozpočty",
+  "editBudget": "Upravit rozpočet",
+  "budgetManagement": "Správa rozpočtů",
+  "budgetManagementDescriptionMonthly": "Nastavte měsíční limity utrácení pro jednotlivé kategorie",
+  "monthlyBudgetsNote": "Rozpočty jsou nastaveny měsíčně a automaticky škálují pro čtvrtletní/roční pohledy",
+  "monthlyBudgetAmount": "Měsíční rozpočet",
+  "budgetScalingNote": "Tento limit se škáluje na ×3 pro čtvrtletí a ×12 pro rok",
+  "noBudget": "Bez limitu",
+  "active": "Aktivní",
   "categories": {
     "cat_groceries": "Potraviny",
     "cat_dining": "Stravování",
@@ -55,7 +69,7 @@
     "cat_utilities": "Energie",
     "cat_entertainment": "Zábava",
     "cat_shopping": "Nákupy",
-    "cat_healthcare": "Zdraví",
+    "cat_health": "Zdraví",
     "cat_housing": "Bydlení",
     "cat_income": "Příjem",
     "cat_education": "Vzdělávání",
@@ -66,9 +80,11 @@
     "cat_investments": "Investice",
     "cat_internal_transfers": "Interní převody",
     "cat_insurance": "Pojištění",
-    "cat_loans": "Úvěry",
+    "cat_loan_payments": "Splátky úvěrů",
+    "cat_savings": "Spoření",
     "cat_taxes": "Daně",
     "cat_other": "Ostatní",
     "uncategorized": "Nezařazené"
   }
 }
+

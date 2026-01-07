@@ -6,8 +6,8 @@
         "financialServices": "Financial Services",
         "bankAccounts": "Bank Accounts",
         "reports": "Reports",
-        "cashflow": "Cashflow",
-        "budgeting": "Budgeting",
+        "cashflowPlanning": "Cashflow Planning",
+        "budgeting": "Expense Tracking",
         "projection": "Projection",
         "savings": "Savings and Deposits",
         "loans": "Loans",
@@ -21,7 +21,7 @@
         "lockApp": "Lock Application",
         "calculators": "Calculators",
         "annuityCalculator": "Annuity Calculator",
-        "estateCalculator": "Estate Calculator",
+        "estateCalculator": "Estate Profitability",
         "stocksAnalysis": "Stocks Analysis"
     },
     "app": {

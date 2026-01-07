@@ -121,8 +121,12 @@
     "amountColumn": "Sloupec částka",
     "descriptionColumn": "Sloupec popis",
     "counterpartyColumn": "Sloupec protistrana",
+    "counterpartyIbanColumn": "Číslo protiúčtu (IBAN)",
+    "descriptionColumns": "Sloupce popisu",
+    "descriptionColumnsHelp": "Vyberte všechny dostupné popisné sloupce (např. zpráva, poznámka, účel) pro lepší automatickou kategorizaci.",
     "variableSymbol": "Variabilní symbol (VS)",
     "selectColumn": "Vyberte sloupec",
+    "selectColumns": "Vyberte sloupce...",
     "optional": "Volitelné",
     "processing": "Zpracovávám transakce...",
     "success": "Import dokončen!",
@@ -130,6 +134,15 @@
     "duplicates": "Přeskočeno duplicit",
     "errors": "Chyby",
     "importButton": "Importovat transakce"
+  },
+
+  "importHistory": {
+    "title": "Historie importů",
+    "button": "Importy transakcí",
+    "fileName": "Název souboru",
+    "imported": "Importováno",
+    "errors": "Chyby",
+    "empty": "Zatím žádné importy. Importujte svůj první CSV soubor."
   },
 
   "zones": {
@@ -155,7 +168,8 @@
     "categorizeResult": "{{matches}} přiřazeno, {{suggestions}} návrhů",
     "noMatches": "Nenalezeny žádné shody",
     "noMatchesDesc": "Zkuste přidat více pravidel nebo natrénovat ML model.",
-    "declineSuggestion": "Odmítnout návrh"
+    "declineSuggestion": "Odmítnout návrh",
+    "rememberForFuture": "Zapamatovat pro příště"
   },
 
   "filters": {
@@ -169,7 +183,10 @@
     "incomeOnly": "Pouze příjmy",
     "outcomeOnly": "Pouze výdaje",
     "uncategorizedOnly": "Nezařazené",
-    "custom": "Vlastní"
+    "custom": "Vlastní",
+    "allCategories": "Všechny kategorie",
+    "uncategorized": "Nezařazené",
+    "searchPlaceholder": "Hledat..."
   },
 
   "stats": {

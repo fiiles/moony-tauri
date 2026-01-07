@@ -818,7 +818,6 @@ pub struct CsvImportConfig {
 #[serde(rename_all = "camelCase")]
 pub struct CsvImportResult {
     pub imported_count: usize,
-    pub duplicate_count: usize,
     pub error_count: usize,
     pub errors: Vec<String>,
 }
@@ -904,7 +903,6 @@ pub async fn import_csv_transactions(
         .ok_or_else(|| AppError::Validation("Amount column mapping is required".into()))?;
 
     let mut imported_count = 0;
-    let mut duplicate_count = 0;
     let mut error_count = 0;
     let mut errors: Vec<String> = Vec::new();
 
@@ -927,52 +925,22 @@ pub async fn import_csv_transactions(
         Ok(())
     })?;
 
-    // Get existing transaction IDs for duplicate detection
-    let mut existing_tx_ids: Vec<String> = db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT transaction_id FROM bank_transactions WHERE bank_account_id = ?1 AND transaction_id IS NOT NULL"
-        )?;
-        let ids: Vec<String> = stmt.query_map([&account_id], |row| row.get(0))?
-            .filter_map(|r| r.ok())
-            .collect();
-        Ok(ids)
-    })?;
-
     for (row_num, result) in csv_reader.records().enumerate() {
         match result {
             Ok(record) => {
-                // Parse date
+                // Parse date using the date parser service
                 let date_str = record.get(date_idx).unwrap_or("");
-                let booking_date =
-                    match chrono::NaiveDate::parse_from_str(date_str, &config.date_format) {
-                        Ok(d) => d
-                            .and_hms_opt(0, 0, 0)
-                            .expect("Valid date should have valid midnight time")
-                            .and_utc()
-                            .timestamp(),
-                        Err(_) => {
-                            // Try alternative formats
-                            chrono::NaiveDate::parse_from_str(date_str, "%d.%m.%Y")
-                                .or_else(|_| {
-                                    chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-                                })
-                                .map(|d| {
-                                    d.and_hms_opt(0, 0, 0)
-                                        .expect("Valid date should have valid midnight time")
-                                        .and_utc()
-                                        .timestamp()
-                                })
-                                .unwrap_or_else(|_| {
-                                    errors.push(format!(
-                                        "Row {}: Cannot parse date '{}'",
-                                        row_num + 2,
-                                        date_str
-                                    ));
-                                    error_count += 1;
-                                    0
-                                })
-                        }
-                    };
+                let booking_date = match crate::services::date_parser::parse_date_to_timestamp(
+                    date_str,
+                    Some(&config.date_format),
+                ) {
+                    Ok(ts) => ts,
+                    Err(e) => {
+                        errors.push(format!("Row {}: {}", row_num + 2, e));
+                        error_count += 1;
+                        continue;
+                    }
+                };
 
                 if booking_date == 0 {
                     continue;
@@ -1016,21 +984,8 @@ pub async fn import_csv_transactions(
                     .unwrap_or_else(|| "CZK".to_string());
                 let variable_symbol = vs_idx.and_then(|i| record.get(i)).map(|s| s.to_string());
 
-                // Create transaction ID for duplicate detection (date + amount + vs + counterparty + iban)
-                let tx_id = format!(
-                    "{}_{}_{}_{}_{}",
-                    booking_date,
-                    abs_amount,
-                    variable_symbol.as_deref().unwrap_or(""),
-                    counterparty.as_deref().unwrap_or(""),
-                    counterparty_iban.as_deref().unwrap_or("")
-                );
-
-                // Check for duplicate
-                if existing_tx_ids.contains(&tx_id) {
-                    duplicate_count += 1;
-                    continue;
-                }
+                // Generate unique transaction ID
+                let tx_id = Uuid::new_v4().to_string();
 
                 // Insert transaction
                 let id = Uuid::new_v4().to_string();
@@ -1067,8 +1022,6 @@ pub async fn import_csv_transactions(
                 match insert_result {
                     Ok(_) => {
                         imported_count += 1;
-                        // Track this tx_id to detect duplicates within the same batch
-                        existing_tx_ids.push(tx_id);
                     }
                     Err(e) => {
                         errors.push(format!("Row {}: {}", row_num + 2, e));
@@ -1085,19 +1038,17 @@ pub async fn import_csv_transactions(
 
     // Update batch record with final counts
     let final_imported = imported_count as i64;
-    let final_duplicate = duplicate_count as i64;
     let final_error = error_count as i64;
     db.with_conn(|conn| {
         conn.execute(
-            "UPDATE csv_import_batches SET imported_count = ?1, duplicate_count = ?2, error_count = ?3 WHERE id = ?4",
-            params![final_imported, final_duplicate, final_error, batch_id],
+            "UPDATE csv_import_batches SET imported_count = ?1, error_count = ?2 WHERE id = ?3",
+            params![final_imported, final_error, batch_id],
         )?;
         Ok(())
     })?;
 
     Ok(CsvImportResult {
         imported_count,
-        duplicate_count,
         error_count,
         errors,
     })

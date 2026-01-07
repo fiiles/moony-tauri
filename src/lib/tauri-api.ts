@@ -840,6 +840,10 @@ export const categorizationApi = {
   loadFromDb: () =>
     tauriInvoke<number>('load_learned_payees_from_db'),
 
+  // Load user's own IBANs for internal transfer detection (call after app unlock)
+  loadOwnIbans: () =>
+    tauriInvoke<number>('load_own_ibans_from_db'),
+
   // Initialize ML model from existing categorized transactions
   initializeFromTransactions: (samples: TrainingSample[]) =>
     tauriInvoke<void>('initialize_ml_from_transactions', { samples }),
@@ -888,6 +892,7 @@ export interface BudgetingTransaction {
   currency: string;
   description?: string;
   counterpartyName?: string;
+  counterpartyIban?: string;
   categoryId?: string;
   bankAccountId: string;
   bankAccountName: string;

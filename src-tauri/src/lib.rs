@@ -240,6 +240,7 @@ pub fn run() {
             commands::categorization::export_learned_payees,
             commands::categorization::import_learned_payees,
             commands::categorization::load_learned_payees_from_db,
+            commands::categorization::load_own_ibans_from_db,
             commands::categorization::initialize_ml_from_transactions,
         ])
         .run(tauri::generate_context!())

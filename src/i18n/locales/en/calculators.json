@@ -47,7 +47,7 @@
         }
     },
     "estate": {
-        "title": "Estate Calculator",
+        "title": "Estate Profitability",
         "subtitle": "Evaluate the profitability of a real estate investment",
         "form": {
             "purchaseParameters": "Purchase Parameters",
