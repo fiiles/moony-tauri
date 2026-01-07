@@ -141,14 +141,6 @@ export function AppSidebar() {
                     <SidebarGroupContent>
                         <SidebarMenu>
                             <SidebarMenuItem>
-                                <SidebarMenuButton asChild tooltip={t('nav.cashflow')} isActive={location === "/reports/cashflow"}>
-                                    <Link href="/reports/cashflow">
-                                        <BarChart3 />
-                                        <span className="group-data-[collapsible=icon]:hidden">{t('nav.cashflow')}</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                            <SidebarMenuItem>
                                 <SidebarMenuButton asChild tooltip={t('nav.budgeting')} isActive={location === "/reports/budgeting"}>
                                     <Link href="/reports/budgeting">
                                         <PiggyBank />
@@ -181,6 +173,14 @@ export function AppSidebar() {
                     <SidebarGroupLabel>{t('nav.calculators')}</SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton asChild tooltip={t('nav.cashflowPlanning')} isActive={location === "/reports/cashflow"}>
+                                    <Link href="/reports/cashflow">
+                                        <BarChart3 />
+                                        <span className="group-data-[collapsible=icon]:hidden">{t('nav.cashflowPlanning')}</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild tooltip={t('nav.annuityCalculator')} isActive={location === "/calculators/annuity"}>
                                     <Link href="/calculators/annuity">

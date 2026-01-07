@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -25,11 +25,16 @@ import {
   ArrowLeft,
   ArrowUpRight,
   ArrowDownLeft,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Edit,
   FileUp,
   Trash2,
   Sparkles,
   Loader2,
+  X,
+  History,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -77,18 +82,50 @@ export default function BankAccountDetail() {
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [importHistoryOpen, setImportHistoryOpen] = useState(false);
 
   // Date filters - default to current month
+  // Note: We must format dates manually to avoid UTC shift from toISOString()
   const today = new Date();
+  const formatInitialDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
   const [dateFrom, setDateFrom] = useState<string>(
-    new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
+    formatInitialDate(new Date(today.getFullYear(), today.getMonth(), 1))
   );
   const [dateTo, setDateTo] = useState<string>(
-    new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0]
+    formatInitialDate(new Date(today.getFullYear(), today.getMonth() + 1, 0))
   );
   const [datePreset, setDatePreset] = useState<string>("thisMonth");
   const [transactionType, setTransactionType] = useState<"all" | "income" | "outcome">("all");
-  const [showUncategorizedOnly, setShowUncategorizedOnly] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Sorting state
+  type SortColumn = 'date' | 'description' | 'counterparty' | 'vs' | 'category' | 'amount';
+  const [sortColumn, setSortColumn] = useState<SortColumn>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
 
   // Helper to format date as YYYY-MM-DD in local timezone (avoids UTC shift issues)
   const formatLocalDate = (date: Date) => {
@@ -198,7 +235,16 @@ export default function BankAccountDetail() {
 
   const transactions = useMemo(() => transactionsResult?.transactions || [], [transactionsResult]);
 
-  // Filter transactions based on user selection
+  // Get effective category for sorting
+  const getEffectiveCategoryForSort = useCallback((tx: typeof transactions[0]) => {
+    const localResult = categorizationResults.get(tx.id);
+    if (localResult && localResult.type === 'Match') {
+      return localResult.data.categoryId;
+    }
+    return tx.categoryId || '';
+  }, [categorizationResults]);
+
+  // Filter and sort transactions based on user selection
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
     
@@ -208,34 +254,82 @@ export default function BankAccountDetail() {
       filtered = filtered.filter(tx => tx.type === "debit");
     }
     
-    if (showUncategorizedOnly) {
+    // Filter by category
+    if (categoryFilter === "uncategorized") {
+      // Show only transactions without a category
       filtered = filtered.filter(tx => {
         if (tx.categoryId) return false;
         const localResult = categorizationResults.get(tx.id);
         if (localResult && localResult.type === 'Match') return false;
         return true;
       });
+    } else if (categoryFilter !== "all") {
+      filtered = filtered.filter(tx => {
+        const effectiveCat = getEffectiveCategoryForSort(tx);
+        return effectiveCat === categoryFilter;
+      });
     }
-    
-    return filtered;
-  }, [transactions, transactionType, showUncategorizedOnly, categorizationResults]);
 
-  // Calculate statistics for the date range (from all loaded transactions, not filtered)
+    // Filter by search query (counterparty name and description)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(tx => {
+        const counterparty = (tx.counterpartyName || '').toLowerCase();
+        const description = (tx.description || '').toLowerCase();
+        return counterparty.includes(query) || description.includes(query);
+      });
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortColumn) {
+        case 'date':
+          comparison = a.bookingDate - b.bookingDate;
+          break;
+        case 'description':
+          comparison = (a.description || '').localeCompare(b.description || '');
+          break;
+        case 'counterparty':
+          comparison = (a.counterpartyName || '').localeCompare(b.counterpartyName || '');
+          break;
+        case 'vs':
+          comparison = (a.variableSymbol || '').localeCompare(b.variableSymbol || '');
+          break;
+        case 'category':
+          comparison = getEffectiveCategoryForSort(a).localeCompare(getEffectiveCategoryForSort(b));
+          break;
+        case 'amount': {
+          const amountA = parseFloat(a.amount) * (a.type === 'credit' ? 1 : -1);
+          const amountB = parseFloat(b.amount) * (b.type === 'credit' ? 1 : -1);
+          comparison = amountA - amountB;
+          break;
+        }
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    
+    return sorted;
+  }, [transactions, transactionType, categoryFilter, searchQuery, categorizationResults, sortColumn, sortDirection, getEffectiveCategoryForSort]);
+
+  // Calculate statistics based on currently filtered transactions
   const stats = useMemo(() => {
-    const totalIncome = transactions
+    const totalIncome = filteredTransactions
       .filter(tx => tx.type === "credit")
       .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
-    const totalOutcome = transactions
+    const totalOutcome = filteredTransactions
       .filter(tx => tx.type === "debit")
       .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
     
     return {
-      count: transactions.length,
+      count: filteredTransactions.length,
       income: totalIncome,
       outcome: totalOutcome,
       netFlow: totalIncome - totalOutcome
     };
-  }, [transactions]);
+  }, [filteredTransactions]);
 
 
   // Auto-categorize all uncategorized transactions
@@ -494,11 +588,18 @@ export default function BankAccountDetail() {
           <p className="text-muted-foreground">
             {account.institution?.name || ""}
           </p>
+          {(account.bban || account.iban) && (
+            <div className="text-sm text-muted-foreground mt-1">
+              {account.bban && <span>BBAN: {account.bban}</span>}
+              {account.bban && account.iban && <span className="mx-2">|</span>}
+              {account.iban && <span>IBAN: {account.iban}</span>}
+            </div>
+          )}
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => setCsvImportOpen(true)}>
-            <FileUp className="mr-2 h-4 w-4" />
-            {t("csvImport.button", "Import CSV")}
+          <Button variant="outline" onClick={() => setImportHistoryOpen(prev => !prev)}>
+            <History className="mr-2 h-4 w-4" />
+            {t("importHistory.button", "Transaction Imports")}
           </Button>
           <Button variant="outline" onClick={() => setEditDialogOpen(true)}>
             <Edit className="mr-2 h-4 w-4" />
@@ -596,19 +697,28 @@ export default function BankAccountDetail() {
       </div>
 
       {/* Import History */}
-      {importBatches && importBatches.length > 0 && (
+      {importHistoryOpen && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>{t("importHistory.title", "Import History")}</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setCsvImportOpen(true)}>
+                <FileUp className="mr-2 h-4 w-4" />
+                {t("csvImport.button", "Import CSV")}
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setImportHistoryOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
+            {importBatches && importBatches.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{tCommon("labels.date", "Date")}</TableHead>
                   <TableHead>{t("importHistory.fileName", "File Name")}</TableHead>
                   <TableHead>{t("importHistory.imported", "Imported")}</TableHead>
-                  <TableHead>{t("importHistory.duplicates", "Duplicates")}</TableHead>
                   <TableHead>{t("importHistory.errors", "Errors")}</TableHead>
                   <TableHead className="text-right">{tCommon("labels.actions", "Actions")}</TableHead>
                 </TableRow>
@@ -619,7 +729,6 @@ export default function BankAccountDetail() {
                     <TableCell>{formatDate(batch.importedAt)}</TableCell>
                     <TableCell className="font-medium">{batch.fileName}</TableCell>
                     <TableCell>{batch.importedCount}</TableCell>
-                    <TableCell>{batch.duplicateCount}</TableCell>
                     <TableCell>{batch.errorCount}</TableCell>
                     <TableCell className="text-right">
                       <AlertDialog>
@@ -652,6 +761,11 @@ export default function BankAccountDetail() {
                 ))}
               </TableBody>
             </Table>
+            ) : (
+              <div className="text-center text-muted-foreground py-8">
+                {t("importHistory.empty", "No imports yet. Import your first CSV file.")}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -697,12 +811,23 @@ export default function BankAccountDetail() {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
           <CardTitle>{t("transactions")}</CardTitle>
-          {(account.bban || account.iban) && (
-            <div className="text-sm text-muted-foreground text-right">
-              {account.bban && <div>BBAN: {account.bban}</div>}
-              {account.iban && <div>IBAN: {account.iban}</div>}
-            </div>
-          )}
+          <Button
+            onClick={handleAutoCategorize}
+            disabled={isCategorizingBatch || uncategorizedCount === 0}
+            size="sm"
+          >
+            {isCategorizingBatch ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4 mr-2" />
+            )}
+            {t("categorization.autoCategorize")}
+            {uncategorizedCount > 0 && (
+              <Badge variant="secondary" className="ml-2 h-5 px-1.5">
+                {uncategorizedCount}
+              </Badge>
+            )}
+          </Button>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Filters Row */}
@@ -769,42 +894,44 @@ export default function BankAccountDetail() {
                 </SelectContent>
               </Select>
               
-              {/* Uncategorized Toggle */}
-              <Button 
-                variant={showUncategorizedOnly ? "default" : "outline"} 
-                size="sm"
-                onClick={() => setShowUncategorizedOnly(!showUncategorizedOnly)}
-                className="h-8"
-              >
-                {t("filters.uncategorizedOnly")}
-                {showUncategorizedOnly && uncategorizedCount > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-xs">
-                    {uncategorizedCount}
-                  </Badge>
-                )}
-              </Button>
+              {/* Category Filter */}
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[200px] h-8">
+                  <SelectValue placeholder={t("filters.allCategories")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("filters.allCategories")}</SelectItem>
+                  <SelectItem value="uncategorized">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gray-400" />
+                      {t("filters.uncategorized")}
+                    </span>
+                  </SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <span className="flex items-center gap-2">
+                        <span 
+                          className="w-2 h-2 rounded-full" 
+                          style={{ backgroundColor: cat.color || '#888' }}
+                        />
+                        {t(`categoryNames.${cat.id}`, { defaultValue: cat.name })}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
-            {/* Auto-categorize button - pushed to right */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleAutoCategorize}
-              disabled={isCategorizingBatch || uncategorizedCount === 0}
-              className="ml-auto h-8"
-            >
-              {isCategorizingBatch ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-2" />
-              )}
-              {t("categorization.autoCategorize", "Auto-categorize")}
-              {uncategorizedCount > 0 && (
-                <Badge variant="secondary" className="ml-2 h-5 px-1.5">
-                  {uncategorizedCount}
-                </Badge>
-              )}
-            </Button>
+            {/* Search Filter - fills remaining space */}
+            <div className="flex-1">
+              <Input
+                type="text"
+                placeholder={t("filters.searchPlaceholder", "Search...")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 w-full"
+              />
+            </div>
           </div>
 
           {/* Statistics Grid */}
@@ -842,16 +969,63 @@ export default function BankAccountDetail() {
               {transactions.length === 0 ? t("empty.noTransactions", "No transactions yet") : t("empty.noMatchingTransactions", "No transactions match the current filters")}
             </div>
           ) : (
-            <Table>
-              <TableHeader>
+            <div className="rounded-lg border">
+          <Table>
+              <TableHeader className="[&_th]:bg-muted/50">
                 <TableRow>
-                  <TableHead className="w-[90px]">{t("transaction.date")}</TableHead>
-                  <TableHead>{t("transaction.description")}</TableHead>
-                  <TableHead>{t("transaction.counterparty")}</TableHead>
-                  <TableHead className="w-[80px]">{t("transaction.variableSymbol", "VS")}</TableHead>
-                  <TableHead className="w-[160px]">{t("categorization.category", "Category")}</TableHead>
-                  <TableHead className="w-[110px] text-right">
-                    {t("transaction.amount")}
+                  <TableHead 
+                    className="w-[90px] cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('date')}
+                  >
+                    <span className="flex items-center">
+                      {t("transaction.date")}
+                      <SortIcon column="date" />
+                    </span>
+                  </TableHead>
+                  <TableHead 
+                    className="max-w-[200px] cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('description')}
+                  >
+                    <span className="flex items-center">
+                      {t("transaction.description")}
+                      <SortIcon column="description" />
+                    </span>
+                  </TableHead>
+                  <TableHead 
+                    className="max-w-[180px] cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('counterparty')}
+                  >
+                    <span className="flex items-center">
+                      {t("transaction.counterparty")}
+                      <SortIcon column="counterparty" />
+                    </span>
+                  </TableHead>
+                  <TableHead 
+                    className="w-[70px] cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('vs')}
+                  >
+                    <span className="flex items-center">
+                      {t("transaction.variableSymbol", "VS")}
+                      <SortIcon column="vs" />
+                    </span>
+                  </TableHead>
+                  <TableHead 
+                    className="w-[160px] cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('category')}
+                  >
+                    <span className="flex items-center">
+                      {t("categorization.category", "Category")}
+                      <SortIcon column="category" />
+                    </span>
+                  </TableHead>
+                  <TableHead 
+                    className="w-[110px] text-right cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('amount')}
+                  >
+                    <span className="flex items-center justify-end">
+                      {t("transaction.amount")}
+                      <SortIcon column="amount" />
+                    </span>
                   </TableHead>
                   <TableHead className="w-[60px] text-right">
                     {tCommon("labels.actions")}
@@ -862,21 +1036,21 @@ export default function BankAccountDetail() {
                 {filteredTransactions.map((tx) => (
                   <TableRow key={tx.id}>
                     <TableCell>{formatDate(tx.bookingDate)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
+                    <TableCell className="max-w-[200px]">
+                      <div className="flex items-start gap-2">
                         {tx.type === "credit" ? (
-                          <ArrowDownLeft className="h-4 w-4 text-green-500" />
+                          <ArrowDownLeft className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
                         ) : (
-                          <ArrowUpRight className="h-4 w-4 text-red-500" />
+                          <ArrowUpRight className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
                         )}
-                        {tx.description || "-"}
+                        <span className="break-words whitespace-normal">{tx.description || "-"}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div>
-                        <div>{tx.counterpartyName || "-"}</div>
+                    <TableCell className="max-w-[180px]">
+                      <div className="truncate">
+                        <div className="truncate">{tx.counterpartyName || "-"}</div>
                         {tx.counterpartyIban && (
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground truncate">
                             {isCzechIBAN(tx.counterpartyIban) 
                               ? ibanToBBAN(tx.counterpartyIban) 
                               : formatAccountNumber(tx.counterpartyIban)}
@@ -929,6 +1103,7 @@ export default function BankAccountDetail() {
                 ))}
               </TableBody>
             </Table>
+          </div>
           )}
           </div>
         </CardContent>

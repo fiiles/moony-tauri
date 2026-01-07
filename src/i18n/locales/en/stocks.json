@@ -132,6 +132,7 @@
     },
     "chart": {
         "title": "Stocks Value Trend",
+        "positionTitle": "Position Value Development",
         "bought": "Bought",
         "sold": "Sold"
     },

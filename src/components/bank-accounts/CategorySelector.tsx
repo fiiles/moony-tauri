@@ -50,6 +50,7 @@ import {
   Landmark,
   Shield,
   X,
+  Brain,
   type LucideProps,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -68,6 +69,8 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { categorizationApi, type CategorizationResult } from '@/lib/tauri-api';
 import type { TransactionCategory } from '@shared/schema';
@@ -380,6 +383,7 @@ function CategoryCommandList({
   onSelect: (id: string, skipLearning: boolean) => void;
 }) {
   const { t } = useTranslation('bank_accounts');
+  const [rememberForFuture, setRememberForFuture] = useState(true);
 
   // Sort categories by sortOrder
   const sortedCategories = useMemo(() => {
@@ -398,7 +402,7 @@ function CategoryCommandList({
             <CommandItem
               key={category.id}
               value={category.name}
-              onSelect={() => onSelect(category.id, false)}
+              onSelect={() => onSelect(category.id, !rememberForFuture)}
               className="flex items-center gap-2 py-2"
             >
               <Check
@@ -415,25 +419,27 @@ function CategoryCommandList({
             </CommandItem>
           ))}
         </CommandGroup>
-        <CommandGroup heading={t('categorization.oneTimeHeading', 'One-time only')}>
-          {sortedCategories.map((category) => (
-            <CommandItem
-              key={`${category.id}-onetime`}
-              value={`${category.name} (one-time)`}
-              onSelect={() => onSelect(category.id, true)}
-              className="flex items-center gap-2 py-2 text-muted-foreground"
-            >
-              <div className="h-4 w-4 shrink-0" />
-              <CategoryIcon 
-                iconName={category.icon || 'tag'} 
-                className="h-4 w-4 shrink-0 opacity-60"
-              />
-              <span className="truncate text-sm">{t(`categoryNames.${category.id}`, category.name)}</span>
-              <span className="ml-auto text-xs opacity-60">({t('categorization.noLearn', 'no learn')})</span>
-            </CommandItem>
-          ))}
-        </CommandGroup>
       </CommandList>
+      {/* Toggle for learning preference */}
+      <div className="border-t px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Brain className="h-3.5 w-3.5 text-muted-foreground" />
+            <Label 
+              htmlFor="remember-toggle" 
+              className="text-xs text-muted-foreground cursor-pointer"
+            >
+              {t('categorization.rememberForFuture', 'Remember for future')}
+            </Label>
+          </div>
+          <Switch
+            id="remember-toggle"
+            checked={rememberForFuture}
+            onCheckedChange={setRememberForFuture}
+            className="scale-75 data-[state=unchecked]:bg-muted-foreground/30 data-[state=unchecked]:border data-[state=unchecked]:border-muted-foreground/40"
+          />
+        </div>
+      </div>
     </Command>
   );
 }

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Landmark, TrendingUp, Percent, Eye, Check } from "lucide-react";
+import { Plus, Landmark, TrendingUp, Percent, Eye, Check, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useBankAccounts, useInstitutions } from "@/hooks/use-bank-accounts";
 import { useBankAccountMutations } from "@/hooks/use-bank-account-mutations";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +34,53 @@ export default function BankAccounts() {
   const queryClient = useQueryClient();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  // Sorting state
+  type SortColumn = 'name' | 'accountType' | 'institution' | 'balance' | 'interestRate';
+  const [sortColumn, setSortColumn] = useState<SortColumn>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const sortedAccounts = useMemo(() => {
+    return [...(accounts || [])].sort((a, b) => {
+      let comparison = 0;
+      switch (sortColumn) {
+        case 'name':
+          comparison = (a.name || '').localeCompare(b.name || '');
+          break;
+        case 'accountType':
+          comparison = (a.accountType || '').localeCompare(b.accountType || '');
+          break;
+        case 'institution':
+          comparison = (a.institution?.name || '').localeCompare(b.institution?.name || '');
+          break;
+        case 'balance':
+          comparison = parseFloat(a.balance) - parseFloat(b.balance);
+          break;
+        case 'interestRate':
+          comparison = parseFloat(a.interestRate || '0') - parseFloat(b.interestRate || '0');
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [accounts, sortColumn, sortDirection]);
 
   const handleViewDetail = (id: string) => {
     setLocation(`/bank-accounts/${id}`);
@@ -127,17 +174,27 @@ export default function BankAccounts() {
               <Table>
                 <TableHeader className="[&_th]:bg-muted/50">
                   <TableRow>
-                    <TableHead>{t("fields.name")}</TableHead>
-                    <TableHead>{t("fields.accountType")}</TableHead>
-                    <TableHead>{t("fields.institution")}</TableHead>
-                    <TableHead className="text-right">{t("fields.balance")}</TableHead>
-                    <TableHead className="text-right">{t("fields.interestRate")}</TableHead>
+                    <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('name')}>
+                      <span className="flex items-center">{t("fields.name")}<SortIcon column="name" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('accountType')}>
+                      <span className="flex items-center">{t("fields.accountType")}<SortIcon column="accountType" /></span>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('institution')}>
+                      <span className="flex items-center">{t("fields.institution")}<SortIcon column="institution" /></span>
+                    </TableHead>
+                    <TableHead className="text-right cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('balance')}>
+                      <span className="flex items-center justify-end">{t("fields.balance")}<SortIcon column="balance" /></span>
+                    </TableHead>
+                    <TableHead className="text-right cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('interestRate')}>
+                      <span className="flex items-center justify-end">{t("fields.interestRate")}<SortIcon column="interestRate" /></span>
+                    </TableHead>
                     <TableHead className="text-center">{t("fields.interestType")}</TableHead>
                     <TableHead className="text-right w-[80px]">{tCommon("labels.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {accounts.map((item) => {
+                  {sortedAccounts.map((item) => {
                     const interestRate = item.interestRate ? parseFloat(item.interestRate) : 0;
                     const hasZoneDesignation = item.hasZoneDesignation || false;
                     

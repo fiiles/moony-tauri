@@ -52,6 +52,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("024_fix_missing_taxes", MIGRATION_024),
         ("025_add_budget_goals", MIGRATION_025),
         ("026_hierarchical_payee_matching", MIGRATION_026),
+        ("027_nullable_payee_columns", MIGRATION_027),
     ];
 
     for (name, sql) in migrations {
@@ -927,4 +928,55 @@ ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL AND variable
 
 -- Index for partial IBAN matching (for suggestions)
 CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_partial ON learned_payees(counterparty_iban);
+"#;
+
+/// Migration 027: Make normalized_payee and original_payee nullable
+/// This enables IBAN-only rules where no payee name is available
+const MIGRATION_027: &str = r#"
+-- SQLite doesn't support ALTER COLUMN, so we recreate the table
+-- First, create the new table with nullable payee columns
+CREATE TABLE learned_payees_new (
+    id TEXT PRIMARY KEY,
+    normalized_payee TEXT,
+    original_payee TEXT,
+    counterparty_iban TEXT,
+    variable_symbol TEXT,
+    category_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
+);
+
+-- Copy existing data
+INSERT INTO learned_payees_new (id, normalized_payee, original_payee, counterparty_iban, variable_symbol, category_id, created_at, updated_at)
+SELECT id, normalized_payee, original_payee, counterparty_iban, variable_symbol, category_id, created_at, updated_at FROM learned_payees;
+
+-- Drop old table and indexes
+DROP INDEX IF EXISTS idx_learned_payees_composite;
+DROP INDEX IF EXISTS idx_learned_payees_iban_default;
+DROP INDEX IF EXISTS idx_learned_payees_payee_default;
+DROP INDEX IF EXISTS idx_learned_payees_iban_partial;
+DROP TABLE learned_payees;
+
+-- Rename new table
+ALTER TABLE learned_payees_new RENAME TO learned_payees;
+
+-- Recreate indexes with updated logic for nullable payee
+CREATE UNIQUE INDEX IF NOT EXISTS idx_learned_payees_composite 
+ON learned_payees(normalized_payee, counterparty_iban, variable_symbol);
+
+-- Index for IBAN default lookups (payee + iban where vs is null)
+CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_default 
+ON learned_payees(normalized_payee, counterparty_iban) WHERE variable_symbol IS NULL;
+
+-- Index for payee default lookups (payee only where iban + vs are null)
+CREATE INDEX IF NOT EXISTS idx_learned_payees_payee_default 
+ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL AND variable_symbol IS NULL;
+
+-- Index for partial IBAN matching (for suggestions) - critical for IBAN-only rules
+CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_partial ON learned_payees(counterparty_iban);
+
+-- Index for IBAN-only rules (where payee is null)
+CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_only 
+ON learned_payees(counterparty_iban) WHERE normalized_payee IS NULL;
 "#;

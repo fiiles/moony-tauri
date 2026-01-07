@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AddRealEstateModal } from "@/components/real-estate/AddRealEstateModal";
 import {
@@ -10,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Eye, Building2, Home, TrendingUp } from "lucide-react";
+import { Eye, Building2, Home, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useLocation } from "wouter";
 import { realEstateApi, exportApi } from "@/lib/tauri-api";
 import type { RealEstate } from "@shared/schema";
@@ -30,6 +31,53 @@ export default function RealEstatePage() {
     queryKey: ["real-estate"],
     queryFn: () => realEstateApi.getAll(),
   });
+
+  // Sorting state
+  type SortColumn = 'name' | 'address' | 'type' | 'purchasePrice' | 'marketValue';
+  const [sortColumn, setSortColumn] = useState<SortColumn>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const sortedRealEstates = useMemo(() => {
+    return [...(realEstates || [])].sort((a, b) => {
+      let comparison = 0;
+      switch (sortColumn) {
+        case 'name':
+          comparison = (a.name || '').localeCompare(b.name || '');
+          break;
+        case 'address':
+          comparison = (a.address || '').localeCompare(b.address || '');
+          break;
+        case 'type':
+          comparison = (a.type || '').localeCompare(b.type || '');
+          break;
+        case 'purchasePrice':
+          comparison = Number(a.purchasePrice) - Number(b.purchasePrice);
+          break;
+        case 'marketValue':
+          comparison = Number(a.marketPrice) - Number(b.marketPrice);
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [realEstates, sortColumn, sortDirection]);
 
   if (isLoading) {
     return (
@@ -60,14 +108,13 @@ export default function RealEstatePage() {
 
   const totalProperties = realEstates?.length || 0;
 
-  // Calculate gross monthly rental income (sum of all monthly rents)
   const totalMonthlyRent = realEstates?.reduce((sum, re) => {
-      const monthlyRent = re.monthlyRent ? Number(re.monthlyRent) : 0;
-      const rentCurrency = re.monthlyRentCurrency || "CZK";
-      const rentInCzk = convertToCzK(monthlyRent, rentCurrency as CurrencyCode);
-      const converted = convertFromCzK(rentInCzk, userCurrency as CurrencyCode);
-      return sum + converted;
-    }, 0) || 0;
+    const monthlyRent = re.monthlyRent ? Number(re.monthlyRent) : 0;
+    const rentCurrency = re.monthlyRentCurrency || "CZK";
+    const rentInCzk = convertToCzK(monthlyRent, rentCurrency as CurrencyCode);
+    const converted = convertFromCzK(rentInCzk, userCurrency as CurrencyCode);
+    return sum + converted;
+  }, 0) || 0;
 
   return (
     <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto space-y-8">
@@ -112,16 +159,26 @@ export default function RealEstatePage() {
             <Table>
               <TableHeader className="[&_th]:bg-muted/50">
                 <TableRow>
-                  <TableHead className="text-xs font-medium uppercase text-muted-foreground">{t('table.name')}</TableHead>
-                  <TableHead className="text-xs font-medium uppercase text-muted-foreground">{t('table.address')}</TableHead>
-                  <TableHead className="text-xs font-medium uppercase text-muted-foreground">{t('table.type')}</TableHead>
-                  <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground">{t('table.purchasePrice')}</TableHead>
-                  <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground">{t('table.value')}</TableHead>
+                  <TableHead className="text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('name')}>
+                    <span className="flex items-center">{t('table.name')}<SortIcon column="name" /></span>
+                  </TableHead>
+                  <TableHead className="text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('address')}>
+                    <span className="flex items-center">{t('table.address')}<SortIcon column="address" /></span>
+                  </TableHead>
+                  <TableHead className="text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('type')}>
+                    <span className="flex items-center">{t('table.type')}<SortIcon column="type" /></span>
+                  </TableHead>
+                  <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('purchasePrice')}>
+                    <span className="flex items-center justify-end">{t('table.purchasePrice')}<SortIcon column="purchasePrice" /></span>
+                  </TableHead>
+                  <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('marketValue')}>
+                    <span className="flex items-center justify-end">{t('table.value')}<SortIcon column="marketValue" /></span>
+                  </TableHead>
                   <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground">{t('table.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {realEstates?.map((re) => (
+                {sortedRealEstates?.map((re) => (
                   <TableRow
                     key={re.id}
                     className="cursor-pointer row-interactive"
@@ -146,7 +203,7 @@ export default function RealEstatePage() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {(!realEstates || realEstates.length === 0) && (
+                {(!sortedRealEstates || sortedRealEstates.length === 0) && (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                       {t('table.noProperties')}

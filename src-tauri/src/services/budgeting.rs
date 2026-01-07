@@ -141,14 +141,23 @@ pub fn get_report(
     end_date: i64,
     timeframe: &str,
 ) -> Result<BudgetingReport> {
-    // Get all budget goals for this timeframe
-    let goals = get_goals_by_timeframe(conn, timeframe)?;
+    // Always get monthly budget goals (budgets are always stored as monthly)
+    let goals = get_goals_by_timeframe(conn, "monthly")?;
+
+    // Calculate multiplier for scaling monthly budgets to the requested timeframe
+    let budget_multiplier: f64 = match timeframe {
+        "quarterly" => 3.0,
+        "yearly" => 12.0,
+        _ => 1.0, // monthly
+    };
+
     let goals_map: HashMap<String, BudgetGoal> = goals
         .into_iter()
         .map(|g| (g.category_id.clone(), g))
         .collect();
 
-    // Aggregate transactions by category
+    // Aggregate transactions by category, tx_type, and currency
+    // Exclude internal transfers at the SQL level for efficiency
     let mut stmt = conn.prepare(
         "SELECT
             COALESCE(bt.category_id, 'uncategorized') as cat_id,
@@ -156,12 +165,14 @@ pub fn get_report(
             tc.icon as cat_icon,
             tc.color as cat_color,
             bt.tx_type,
+            bt.currency,
             SUM(CAST(bt.amount AS REAL)) as total_amount,
             COUNT(*) as tx_count
          FROM bank_transactions bt
          LEFT JOIN transaction_categories tc ON bt.category_id = tc.id
          WHERE bt.booking_date >= ?1 AND bt.booking_date <= ?2
-         GROUP BY cat_id, bt.tx_type
+           AND COALESCE(bt.category_id, '') != 'cat_internal_transfers'
+         GROUP BY cat_id, bt.tx_type, bt.currency
          ORDER BY cat_name",
     )?;
 
@@ -171,6 +182,7 @@ pub fn get_report(
         String,
         Option<String>,
         Option<String>,
+        String,
         String,
         f64,
         i32,
@@ -184,12 +196,13 @@ pub fn get_report(
                 row.get(4)?,
                 row.get(5)?,
                 row.get(6)?,
+                row.get(7)?,
             ))
         })?
         .filter_map(|r| r.ok())
         .collect();
 
-    // Separate income and expenses
+    // Separate income (cat_income credits only) and expenses (all other categories, net amount)
     let mut income_map: HashMap<String, CategorySpendingSummary> = HashMap::new();
     let mut expense_map: HashMap<String, CategorySpendingSummary> = HashMap::new();
     let mut total_income = 0.0_f64;
@@ -198,29 +211,50 @@ pub fn get_report(
     let mut uncategorized_expenses = 0.0_f64;
     let mut uncategorized_count = 0_i32;
 
-    for (cat_id, cat_name, cat_icon, cat_color, tx_type, amount, count) in rows {
+    for (cat_id, cat_name, cat_icon, cat_color, tx_type, currency, amount, count) in rows {
         let is_credit = tx_type.to_lowercase() == "credit";
-        let abs_amount = amount.abs();
+        // Convert amount to CZK for consistent totals
+        let abs_amount_czk = crate::services::currency::convert_to_czk(amount.abs(), &currency);
 
+        // Handle uncategorized transactions
         if cat_id == "uncategorized" {
             if is_credit {
-                uncategorized_income += abs_amount;
+                uncategorized_income += abs_amount_czk;
             } else {
-                uncategorized_expenses += abs_amount;
+                uncategorized_expenses += abs_amount_czk;
             }
             uncategorized_count += count;
             continue;
         }
 
-        let map = if is_credit {
-            total_income += abs_amount;
-            &mut income_map
-        } else {
-            total_expenses += abs_amount;
-            &mut expense_map
-        };
+        // Income category (cat_income) - credits go to income totals
+        if cat_id == "cat_income" {
+            if is_credit {
+                total_income += abs_amount_czk;
+                let entry = income_map.entry(cat_id.clone()).or_insert_with(|| {
+                    let goal = goals_map.get(&cat_id).cloned();
+                    CategorySpendingSummary {
+                        category_id: cat_id.clone(),
+                        category_name: cat_name.clone(),
+                        category_icon: cat_icon.clone(),
+                        category_color: cat_color.clone(),
+                        total_amount: "0".to_string(),
+                        transaction_count: 0,
+                        budget_goal: goal,
+                        budget_percentage: None,
+                    }
+                });
+                let current: f64 = entry.total_amount.parse().unwrap_or(0.0);
+                entry.total_amount = format!("{:.2}", current + abs_amount_czk);
+                entry.transaction_count += count;
+            }
+            // Ignore debits in income category (unusual case)
+            continue;
+        }
 
-        let entry = map.entry(cat_id.clone()).or_insert_with(|| {
+        // All other expense categories: calculate NET amount
+        // Debits add to expense, credits (refunds) reduce expense
+        let entry = expense_map.entry(cat_id.clone()).or_insert_with(|| {
             let goal = goals_map.get(&cat_id).cloned();
             CategorySpendingSummary {
                 category_id: cat_id.clone(),
@@ -235,24 +269,47 @@ pub fn get_report(
         });
 
         let current: f64 = entry.total_amount.parse().unwrap_or(0.0);
-        entry.total_amount = format!("{:.2}", current + abs_amount);
+        // Credits (refunds) reduce the net expense amount
+        let delta = if is_credit {
+            -abs_amount_czk // Refund reduces expense
+        } else {
+            abs_amount_czk // Debit adds to expense
+        };
+        entry.total_amount = format!("{:.2}", current + delta);
         entry.transaction_count += count;
     }
 
-    // Calculate budget percentages
+    // Calculate total expenses from expense_map (only positive net amounts)
+    for summary in expense_map.values() {
+        let amount: f64 = summary.total_amount.parse().unwrap_or(0.0);
+        if amount > 0.0 {
+            total_expenses += amount;
+        }
+    }
+    // Add uncategorized expenses to total
+    total_expenses += uncategorized_expenses;
+
+    // Calculate budget percentages (scale monthly budget by timeframe multiplier)
     for summary in expense_map.values_mut() {
         if let Some(ref goal) = summary.budget_goal {
-            let spent: f64 = summary.total_amount.parse().unwrap_or(0.0);
-            let budget: f64 = goal.amount.parse().unwrap_or(1.0);
-            if budget > 0.0 {
-                summary.budget_percentage = Some((spent / budget) * 100.0);
+            let spent: f64 = summary.total_amount.parse::<f64>().unwrap_or(0.0).max(0.0);
+            let monthly_budget: f64 = goal.amount.parse().unwrap_or(1.0);
+            let scaled_budget = monthly_budget * budget_multiplier;
+            if scaled_budget > 0.0 {
+                summary.budget_percentage = Some((spent / scaled_budget) * 100.0);
             }
         }
     }
 
-    // Convert maps to sorted vectors
+    // Convert maps to sorted vectors, filtering out categories with zero or negative net
     let mut income_categories: Vec<CategorySpendingSummary> = income_map.into_values().collect();
-    let mut expense_categories: Vec<CategorySpendingSummary> = expense_map.into_values().collect();
+    let mut expense_categories: Vec<CategorySpendingSummary> = expense_map
+        .into_values()
+        .filter(|c| {
+            let amount: f64 = c.total_amount.parse().unwrap_or(0.0);
+            amount > 0.0 // Only show categories with positive net expense
+        })
+        .collect();
 
     // Sort by total amount descending
     income_categories.sort_by(|a, b| {
@@ -306,6 +363,7 @@ pub fn get_category_transactions(
             bt.currency,
             bt.description,
             bt.counterparty_name,
+            bt.counterparty_iban,
             bt.category_id,
             bt.bank_account_id,
             ba.name as bank_account_name,
@@ -328,10 +386,11 @@ pub fn get_category_transactions(
                 currency: row.get(3)?,
                 description: row.get(4)?,
                 counterparty_name: row.get(5)?,
-                category_id: row.get(6)?,
-                bank_account_id: row.get(7)?,
-                bank_account_name: row.get(8)?,
-                tx_type: row.get(9)?,
+                counterparty_iban: row.get(6)?,
+                category_id: row.get(7)?,
+                bank_account_id: row.get(8)?,
+                bank_account_name: row.get(9)?,
+                tx_type: row.get(10)?,
             })
         })?
         .filter_map(|r| r.ok())
@@ -345,10 +404,11 @@ pub fn get_category_transactions(
                 currency: row.get(3)?,
                 description: row.get(4)?,
                 counterparty_name: row.get(5)?,
-                category_id: row.get(6)?,
-                bank_account_id: row.get(7)?,
-                bank_account_name: row.get(8)?,
-                tx_type: row.get(9)?,
+                counterparty_iban: row.get(6)?,
+                category_id: row.get(7)?,
+                bank_account_id: row.get(8)?,
+                bank_account_name: row.get(9)?,
+                tx_type: row.get(10)?,
             })
         })?
         .filter_map(|r| r.ok())

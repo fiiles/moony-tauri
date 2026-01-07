@@ -1,6 +1,6 @@
 import { SummaryCard } from "@/components/common/SummaryCard";
 import { useCurrency } from "@/lib/currency";
-import { TrendingUp, TrendingDown, Wallet, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
@@ -8,7 +8,6 @@ interface BudgetingSummaryProps {
   totalIncome: number;
   totalExpenses: number;
   netBalance: number;
-  categoriesOverBudget: number;
   isLoading?: boolean;
 }
 
@@ -19,7 +18,6 @@ export function BudgetingSummary({
   totalIncome,
   totalExpenses,
   netBalance,
-  categoriesOverBudget,
   isLoading = false,
 }: BudgetingSummaryProps) {
   const { formatCurrency } = useCurrency();
@@ -27,7 +25,7 @@ export function BudgetingSummary({
 
   return (
     <div className={cn(
-      "grid gap-4 md:grid-cols-2 lg:grid-cols-4 transition-opacity duration-300",
+      "grid gap-4 md:grid-cols-3 transition-opacity duration-300",
       isLoading && "opacity-50 animate-pulse"
     )}>
       <SummaryCard
@@ -50,15 +48,6 @@ export function BudgetingSummary({
         icon={<Wallet className="h-4 w-4" />}
         subtitle={netBalance >= 0 ? t('surplus') : t('deficit')}
         valueClassName={netBalance >= 0 ? "text-positive" : "text-negative"}
-      />
-
-      <SummaryCard
-        title={t('budgetStatus')}
-        value={categoriesOverBudget > 0 
-          ? t('overBudgetCount', { count: categoriesOverBudget })
-          : t('onTrack')}
-        icon={<AlertTriangle className="h-4 w-4" />}
-        valueClassName={categoriesOverBudget > 0 ? "text-amber-600 dark:text-amber-400" : "text-positive"}
       />
     </div>
   );

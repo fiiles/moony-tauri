@@ -791,6 +791,7 @@ export interface CsvImportResult {
     duplicateCount: number;
     errorCount: number;
     errors: string[];
+    duplicates: string[];
     errorList?: string[];
 }
 

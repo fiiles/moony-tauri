@@ -96,16 +96,18 @@ pub async fn fetch_ecb_rates() -> crate::error::Result<HashMap<String, f64>> {
     let czk_rate = extract_rate(&body, "CZK").unwrap_or(25.0);
     rates.insert("EUR".to_string(), czk_rate);
 
-    // Convert other currencies through EUR
-    let currencies = ["USD", "GBP", "CHF", "JPY", "CNY", "HKD"];
-    for currency in currencies {
-        if let Some(rate_vs_eur) = extract_rate(&body, currency) {
-            // rate_vs_eur is how many units of currency per 1 EUR
-            // We want how many CZK per 1 unit of currency
-            // 1 EUR = rate_vs_eur USD = czk_rate CZK
-            // So 1 USD = czk_rate / rate_vs_eur CZK
-            let rate_vs_czk = czk_rate / rate_vs_eur;
-            rates.insert(currency.to_string(), rate_vs_czk);
+    // Extract ALL currencies from the ECB XML response
+    let all_currencies = extract_all_currencies(&body);
+    for currency in all_currencies {
+        if currency != "CZK" {
+            if let Some(rate_vs_eur) = extract_rate(&body, &currency) {
+                // rate_vs_eur is how many units of currency per 1 EUR
+                // We want how many CZK per 1 unit of currency
+                // 1 EUR = rate_vs_eur USD = czk_rate CZK
+                // So 1 USD = czk_rate / rate_vs_eur CZK
+                let rate_vs_czk = czk_rate / rate_vs_eur;
+                rates.insert(currency, rate_vs_czk);
+            }
         }
     }
 
@@ -113,6 +115,38 @@ pub async fn fetch_ecb_rates() -> crate::error::Result<HashMap<String, f64>> {
     update_exchange_rates(rates.clone());
 
     Ok(rates)
+}
+
+/// Extract all currency codes from ECB XML response
+fn extract_all_currencies(xml: &str) -> Vec<String> {
+    let mut currencies = Vec::new();
+
+    // Find all occurrences of currency="XXX" or currency='XXX'
+    let mut search_start = 0;
+    while let Some(pos) = xml[search_start..].find("currency=") {
+        let abs_pos = search_start + pos;
+        let after = &xml[abs_pos + 9..]; // Skip "currency="
+
+        // Determine quote character
+        let quote_char = after.chars().next();
+        if let Some(q) = quote_char {
+            if q == '"' || q == '\'' {
+                let after_quote = &after[1..]; // Skip opening quote
+                if let Some(end_pos) = after_quote.find(q) {
+                    let currency = after_quote[..end_pos].to_string();
+                    if currency.len() == 3
+                        && currency.chars().all(|c| c.is_ascii_uppercase())
+                        && !currencies.contains(&currency)
+                    {
+                        currencies.push(currency);
+                    }
+                }
+            }
+        }
+        search_start = abs_pos + 10; // Move past this occurrence
+    }
+
+    currencies
 }
 
 /// Extract rate from ECB XML response

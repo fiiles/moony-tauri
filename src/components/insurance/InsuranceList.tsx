@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { insuranceApi } from "@/lib/tauri-api";
@@ -20,7 +20,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Eye } from "lucide-react";
+import { Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
@@ -31,18 +31,65 @@ export function InsuranceList() {
     const [filterType, setFilterType] = useState<string>("all");
     const [, setLocation] = useLocation();
 
+    // Sorting state
+    type SortColumn = 'name' | 'type' | 'provider' | 'premium' | 'frequency' | 'status';
+    const [sortColumn, setSortColumn] = useState<SortColumn>('name');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+    const handleSort = (column: SortColumn) => {
+        if (sortColumn === column) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
+    };
+
+    const SortIcon = ({ column }: { column: SortColumn }) => {
+        if (sortColumn !== column) {
+            return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+        }
+        return sortDirection === 'asc'
+            ? <ArrowUp className="h-3 w-3 ml-1" />
+            : <ArrowDown className="h-3 w-3 ml-1" />;
+    };
+
     const { data: policies, isLoading } = useQuery<InsurancePolicy[]>({
         queryKey: ["insurance"],
         queryFn: () => insuranceApi.getAll(),
     });
 
-    const filteredPolicies = policies?.filter(policy => {
-        if (filterType !== "all" && policy.type !== filterType) return false;
-        return true;
-    }).sort((a, b) => {
-        // Default sort by date descending
-        return new Date(b.createdAt * 1000).getTime() - new Date(a.createdAt * 1000).getTime();
-    });
+    const filteredAndSortedPolicies = useMemo(() => {
+        let filtered = policies?.filter(policy => {
+            if (filterType !== "all" && policy.type !== filterType) return false;
+            return true;
+        }) || [];
+
+        return [...filtered].sort((a, b) => {
+            let comparison = 0;
+            switch (sortColumn) {
+                case 'name':
+                    comparison = (a.policyName || '').localeCompare(b.policyName || '');
+                    break;
+                case 'type':
+                    comparison = (a.type || '').localeCompare(b.type || '');
+                    break;
+                case 'provider':
+                    comparison = (a.provider || '').localeCompare(b.provider || '');
+                    break;
+                case 'premium':
+                    comparison = Number(a.regularPayment) - Number(b.regularPayment);
+                    break;
+                case 'frequency':
+                    comparison = (a.paymentFrequency || '').localeCompare(b.paymentFrequency || '');
+                    break;
+                case 'status':
+                    comparison = (a.status || '').localeCompare(b.status || '');
+                    break;
+            }
+            return sortDirection === 'asc' ? comparison : -comparison;
+        });
+    }, [policies, filterType, sortColumn, sortDirection]);
 
     if (isLoading) return <div>{t('loading')}</div>;
 
@@ -73,24 +120,36 @@ export function InsuranceList() {
                     <Table>
                         <TableHeader className="[&_th]:bg-muted/50">
                             <TableRow>
-                                <TableHead>{t('table.name')}</TableHead>
-                                <TableHead>{t('table.type')}</TableHead>
-                                <TableHead>{t('table.provider')}</TableHead>
-                                <TableHead className="text-right">{t('table.premium')}</TableHead>
-                                <TableHead>{t('modal.paymentFrequency')}</TableHead>
-                                <TableHead>{t('table.status')}</TableHead>
+                                <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('name')}>
+                                    <span className="flex items-center">{t('table.name')}<SortIcon column="name" /></span>
+                                </TableHead>
+                                <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('type')}>
+                                    <span className="flex items-center">{t('table.type')}<SortIcon column="type" /></span>
+                                </TableHead>
+                                <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('provider')}>
+                                    <span className="flex items-center">{t('table.provider')}<SortIcon column="provider" /></span>
+                                </TableHead>
+                                <TableHead className="text-right cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('premium')}>
+                                    <span className="flex items-center justify-end">{t('table.premium')}<SortIcon column="premium" /></span>
+                                </TableHead>
+                                <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('frequency')}>
+                                    <span className="flex items-center">{t('modal.paymentFrequency')}<SortIcon column="frequency" /></span>
+                                </TableHead>
+                                <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('status')}>
+                                    <span className="flex items-center">{t('table.status')}<SortIcon column="status" /></span>
+                                </TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredPolicies?.length === 0 ? (
+                            {filteredAndSortedPolicies?.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="h-24 text-center">
                                         {t('table.noPolicies')}
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredPolicies?.map((policy) => (
+                                filteredAndSortedPolicies?.map((policy) => (
                                     <TableRow
                                         key={policy.id}
                                         className="cursor-pointer row-interactive"

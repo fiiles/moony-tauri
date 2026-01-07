@@ -1071,8 +1071,53 @@ fn generate_income_samples() -> Vec<(String, String)> {
 }
 
 fn generate_transfer_samples() -> Vec<(String, String)> {
-    let category = "cat_transfer";
+    let category = "cat_internal_transfers"; // Correct category ID
     let mut samples = Vec::new();
+
+    // Fintech payment intermediaries - these are often used for transfers
+    // The patterns match various formats banks use for these
+    let fintech_intermediaries = [
+        // Revolut - various patterns used by banks
+        "REVOLUT",
+        "Revolut",
+        "Revolut payment",
+        "Revolut**",
+        "Revolut**8220*",
+        "Revolut**1234*",
+        "REVOLUT PAYMENTS",
+        "From Revolut",
+        "To Revolut",
+        "Platba Revolut",
+        // Wise (TransferWise)
+        "WISE",
+        "Wise",
+        "TRANSFERWISE",
+        "TransferWise Ltd",
+        "Wise payment",
+        "Wise Europe",
+        "WISE PAYMENTS",
+        // N26
+        "N26",
+        "N26 BANK",
+        "N26 payment",
+        "N26 GmbH",
+        // Bunq
+        "BUNQ",
+        "bunq B.V.",
+        // Monese
+        "MONESE",
+        "Monese Ltd",
+        // Vivid
+        "VIVID",
+        "Vivid Money",
+        // Generic fintech patterns
+        "Fintech transfer",
+        "Digital bank transfer",
+    ];
+
+    for pattern in fintech_intermediaries.iter() {
+        samples.push((pattern.to_string(), category.to_string()));
+    }
 
     let transfer_patterns = [
         // Bank transfers
@@ -1104,12 +1149,6 @@ fn generate_transfer_samples() -> Vec<(String, String)> {
         "Pravidelné spoření",
         "Stavební spoření",
         "PENZIJNÍ SPOŘENÍ",
-        // Investment
-        "INVESTICE",
-        "Nákup cenných papírů",
-        "Nákup akcií",
-        "FOND",
-        "ETF nákup",
     ];
 
     for pattern in transfer_patterns.iter() {

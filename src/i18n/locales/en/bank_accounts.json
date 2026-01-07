@@ -122,8 +122,12 @@
     "amountColumn": "Amount Column",
     "descriptionColumn": "Description Column",
     "counterpartyColumn": "Counterparty Column",
+    "counterpartyIbanColumn": "Counterparty Account (IBAN)",
+    "descriptionColumns": "Description Columns",
+    "descriptionColumnsHelp": "Select all available descriptive fields (e.g., message, note, purpose) for better automatic categorization.",
     "variableSymbol": "Variable Symbol (VS)",
     "selectColumn": "Select column",
+    "selectColumns": "Select columns...",
     "optional": "Optional",
     "processing": "Processing transactions...",
     "success": "Import Complete!",
@@ -131,6 +135,15 @@
     "duplicates": "Duplicates Skipped",
     "errors": "Errors",
     "importButton": "Import Transactions"
+  },
+
+  "importHistory": {
+    "title": "Import History",
+    "button": "Transaction Imports",
+    "fileName": "File Name",
+    "imported": "Imported",
+    "errors": "Errors",
+    "empty": "No imports yet. Import your first CSV file."
   },
 
   "zones": {
@@ -156,7 +169,8 @@
     "categorizeResult": "{{matches}} matched, {{suggestions}} suggestions",
     "noMatches": "No matches found",
     "noMatchesDesc": "Try adding more rules or training the ML model.",
-    "declineSuggestion": "Decline suggestion"
+    "declineSuggestion": "Decline suggestion",
+    "rememberForFuture": "Remember for future"
   },
 
   "filters": {
@@ -170,7 +184,10 @@
     "incomeOnly": "Income only",
     "outcomeOnly": "Outcome only",
     "uncategorizedOnly": "Uncategorized",
-    "custom": "Custom"
+    "custom": "Custom",
+    "allCategories": "All Categories",
+    "uncategorized": "Uncategorized",
+    "searchPlaceholder": "Search..."
   },
 
   "stats": {

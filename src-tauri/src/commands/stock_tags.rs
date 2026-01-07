@@ -10,8 +10,9 @@ use crate::services::currency::convert_to_czk;
 use tauri::State;
 use uuid::Uuid;
 
-/// Type alias for investment row data (id, ticker, company_name, quantity, avg_price, current_price, price_currency, dividend, dividend_currency)
+/// Type alias for investment row data (id, ticker, company_name, quantity, avg_price, avg_price_currency, current_price, price_currency, dividend, dividend_currency)
 type InvestmentRow = (
+    String,
     String,
     String,
     String,
@@ -289,6 +290,7 @@ pub async fn get_stocks_analysis(db: State<'_, Database>) -> Result<Vec<StockInv
                 si.company_name,
                 si.quantity,
                 si.average_price,
+                si.currency as avg_price_currency,
                 COALESCE(spo.price, sd.original_price, '0') as current_price,
                 COALESCE(spo.currency, sd.currency, 'USD') as price_currency,
                 COALESCE(do.yearly_dividend_sum, dd.yearly_dividend_sum, '0') as dividend_amount,
@@ -313,6 +315,7 @@ pub async fn get_stocks_analysis(db: State<'_, Database>) -> Result<Vec<StockInv
                     row.get::<_, String>(6)?,
                     row.get::<_, String>(7)?,
                     row.get::<_, String>(8)?,
+                    row.get::<_, String>(9)?,
                 ))
             })?
             .filter_map(|r| r.ok())
@@ -326,6 +329,7 @@ pub async fn get_stocks_analysis(db: State<'_, Database>) -> Result<Vec<StockInv
             company_name,
             quantity_str,
             avg_price_str,
+            avg_price_currency,
             current_price_str,
             price_currency,
             dividend_str,
@@ -337,12 +341,13 @@ pub async fn get_stocks_analysis(db: State<'_, Database>) -> Result<Vec<StockInv
             let current_price: f64 = current_price_str.parse().unwrap_or(0.0);
             let yearly_dividend: f64 = dividend_str.parse().unwrap_or(0.0);
 
-            // Convert prices to base currency (CZK)
+            // Convert all prices to base currency (CZK)
             let current_price_czk = convert_to_czk(current_price, &price_currency);
+            let avg_price_czk = convert_to_czk(avg_price, &avg_price_currency);
             let yearly_dividend_czk = convert_to_czk(yearly_dividend, &dividend_currency);
 
             let current_value = quantity * current_price_czk;
-            let cost_basis = quantity * avg_price;
+            let cost_basis = quantity * avg_price_czk;
             let gain_loss = current_value - cost_basis;
             let gain_loss_percent = if cost_basis > 0.0 {
                 (gain_loss / cost_basis) * 100.0
@@ -457,15 +462,10 @@ pub async fn get_tag_metrics(
                 .collect();
 
             let total_value: f64 = tagged_stocks.iter().map(|s| s.current_value).sum();
-            let total_cost: f64 = tagged_stocks
-                .iter()
-                .map(|s| {
-                    let qty: f64 = s.quantity.parse().unwrap_or(0.0);
-                    let avg: f64 = s.average_price.parse().unwrap_or(0.0);
-                    qty * avg
-                })
-                .sum();
-            let gain_loss = total_value - total_cost;
+            // Use pre-calculated gain_loss from stocks (already converted to CZK)
+            let gain_loss: f64 = tagged_stocks.iter().map(|s| s.gain_loss).sum();
+            // Derive total_cost from value and gain/loss for consistency
+            let total_cost = total_value - gain_loss;
             let gain_loss_percent = if total_cost > 0.0 {
                 (gain_loss / total_cost) * 100.0
             } else {

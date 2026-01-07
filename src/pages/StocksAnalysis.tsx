@@ -304,256 +304,7 @@ export default function StocksAnalysis() {
                 </Button>
             </div>
 
-            {/* Tag Filter Section - Group dropdown on row 1, tags on row 2 */}
-            {tags.length > 0 && (
-                <div className="space-y-3">
-                    {/* Row 1: Group filter dropdown */}
-                    {groups.length > 0 && (
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm text-muted-foreground">{t('stocksAnalysis.filterByGroup')}:</span>
-                            <Select value={filterGroupId} onValueChange={setFilterGroupId}>
-                                <SelectTrigger className="w-48 bg-white dark:bg-zinc-900 border">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">{t('stocksAnalysis.allTags')}</SelectItem>
-                                    {groups.map(group => (
-                                        <SelectItem key={group.id} value={group.id}>
-                                            <div className="flex items-center gap-2">
-                                                <FolderOpen className="h-3 w-3" />
-                                                {group.name}
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                    <SelectItem value="ungrouped">{t('stocksAnalysis.ungroupedTags')}</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-                    
-                    {/* Row 2: Tag chips - filtered by group selection */}
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm text-muted-foreground">{t('stocksAnalysis.filterByTag')}:</span>
-                        {(filterGroupId === "all" 
-                            ? tags 
-                            : filterGroupId === "ungrouped" 
-                                ? tags.filter(t => !t.groupId) 
-                                : tags.filter(t => t.groupId === filterGroupId)
-                        ).map(tag => (
-                            <Badge
-                                key={tag.id}
-                                variant={selectedTagIds.includes(tag.id) ? "default" : "secondary"}
-                                className="cursor-pointer transition-all h-7 px-3"
-                                style={{
-                                    backgroundColor: selectedTagIds.includes(tag.id) ? tag.color || undefined : undefined,
-                                    borderColor: tag.color || undefined,
-                                }}
-                                onClick={() => handleToggleTagFilter(tag.id)}
-                            >
-                                <span
-                                    className="w-2 h-2 rounded-full mr-1.5"
-                                    style={{ backgroundColor: selectedTagIds.includes(tag.id) ? '#fff' : tag.color || '#3B82F6' }}
-                                />
-                                {tag.name}
-                            </Badge>
-                        ))}
-                        {selectedTagIds.length > 0 && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-xs h-7"
-                                onClick={() => setSelectedTagIds([])}
-                            >
-                                {tc('buttons.clearAll')}
-                            </Button>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Overview Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <SummaryCard
-                    title={t('stocksAnalysis.totalPortfolioValue')}
-                    value={formatCurrency(totalPortfolioValue)}
-                    icon={<PieChart className="h-4 w-4" />}
-                />
-                <SummaryCard
-                    title={t('stocksAnalysis.tagsCreated')}
-                    value={tags.length.toString()}
-                    subtitle={`${groups.length} ${t('stocksAnalysis.groups')}`}
-                    icon={<Tag className="h-4 w-4" />}
-                />
-                <SummaryCard
-                    title={t('stocksAnalysis.taggedHoldings')}
-                    value={stocks.filter(s => s.tags.length > 0).length.toString()}
-                    subtitle={`${t('stocksAnalysis.of')} ${stocks.length} ${t('stocksAnalysis.total')}`}
-                    icon={<TrendingUp className="h-4 w-4" />}
-                />
-                <SummaryCard
-                    title={t('stocksAnalysis.untaggedHoldings')}
-                    value={stocks.filter(s => s.tags.length === 0).length.toString()}
-                    icon={<TrendingDown className="h-4 w-4" />}
-                />
-            </div>
-
-            {/* Stacked Bar Chart for Tag Metrics */}
-            {filteredMetrics.length > 0 && (() => {
-                // Calculate totals for each metric to compute percentages
-                const totalValue = filteredMetrics.reduce((sum, m) => sum + m.totalValue, 0);
-                const totalGainLoss = filteredMetrics.reduce((sum, m) => sum + Math.abs(m.gainLoss), 0);
-                const totalDividend = filteredMetrics.reduce((sum, m) => sum + m.estimatedYearlyDividend, 0);
-
-                // Create data with percentages
-                const chartData = [
-                    {
-                        metric: t('stocksAnalysis.totalValue'),
-                        total: totalValue,
-                        ...Object.fromEntries(filteredMetrics.map(m => [
-                            m.tag.id, 
-                            totalValue > 0 ? (m.totalValue / totalValue) * 100 : 0
-                        ])),
-                        // Store raw values for tooltip
-                        rawValues: Object.fromEntries(filteredMetrics.map(m => [m.tag.id, m.totalValue]))
-                    },
-                    {
-                        metric: t('stocksAnalysis.gainLoss'),
-                        total: totalGainLoss,
-                        ...Object.fromEntries(filteredMetrics.map(m => [
-                            m.tag.id, 
-                            totalGainLoss > 0 ? (Math.abs(m.gainLoss) / totalGainLoss) * 100 : 0
-                        ])),
-                        rawValues: Object.fromEntries(filteredMetrics.map(m => [m.tag.id, Math.abs(m.gainLoss)]))
-                    },
-                    {
-                        metric: t('stocksAnalysis.yearlyDividend'),
-                        total: totalDividend,
-                        ...Object.fromEntries(filteredMetrics.map(m => [
-                            m.tag.id, 
-                            totalDividend > 0 ? (m.estimatedYearlyDividend / totalDividend) * 100 : 0
-                        ])),
-                        rawValues: Object.fromEntries(filteredMetrics.map(m => [m.tag.id, m.estimatedYearlyDividend]))
-                    },
-                ];
-
-                return (
-                    <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">{t('stocksAnalysis.metricsChart')}</h3>
-                        <ResponsiveContainer width="100%" height={350}>
-                            <BarChart
-                                data={chartData}
-                                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                                <XAxis 
-                                    dataKey="metric" 
-                                    stroke="hsl(var(--muted-foreground))"
-                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                                    tickLine={false}
-                                    axisLine={false}
-                                />
-                                <YAxis 
-                                    tickFormatter={(value) => `${Math.round(value)}%`}
-                                    domain={[0, 100]}
-                                    ticks={[0, 25, 50, 75, 100]}
-                                    allowDataOverflow={true}
-                                    stroke="hsl(var(--muted-foreground))"
-                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                                    tickLine={false}
-                                    axisLine={false}
-                                />
-                                <Tooltip
-                                    content={({ active, payload, label }) => {
-                                        if (!active || !payload || payload.length === 0) return null;
-                                        const dataItem = chartData.find(d => d.metric === label);
-                                        return (
-                                            <div className="bg-popover border border-border rounded-md p-3 shadow-lg">
-                                                <p className="font-medium mb-2">{label}</p>
-                                                {payload.map((entry) => {
-                                                    const tag = filteredMetrics.find(m => m.tag.id === entry.dataKey);
-                                                    const rawValue = dataItem?.rawValues?.[entry.dataKey as string] || 0;
-                                                    const percent = entry.value as number;
-                                                    return (
-                                                        <div key={entry.dataKey} className="flex items-center gap-2 text-sm">
-                                                            <span 
-                                                                className="w-3 h-3 rounded-sm" 
-                                                                style={{ backgroundColor: entry.color }}
-                                                            />
-                                                            <span className="text-muted-foreground">{tag?.tag.name}:</span>
-                                                            <span className="font-medium">{percent.toFixed(1)}%</span>
-                                                            <span className="text-muted-foreground">({formatCurrency(rawValue)})</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        );
-                                    }}
-                                />
-                                <Legend 
-                                    formatter={(value: string) => {
-                                        const tag = filteredMetrics.find(m => m.tag.id === value);
-                                        return <span className="text-sm">{tag?.tag.name || value}</span>;
-                                    }}
-                                    wrapperStyle={{ paddingTop: '20px' }}
-                                />
-                                {filteredMetrics.map(m => (
-                                    <Bar 
-                                        key={m.tag.id}
-                                        dataKey={m.tag.id} 
-                                        stackId="a" 
-                                        fill={m.tag.color || '#3B82F6'} 
-                                        name={m.tag.id}
-                                    />
-                                ))}
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </Card>
-                );
-            })()}
-
-            {/* Tag Metrics Cards */}
-            {filteredMetrics.length > 0 && (
-                <div className="space-y-4">
-                    <h2 className="text-lg font-semibold">{t('stocksAnalysis.tagBreakdown')}</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredMetrics.map(metric => (
-                            <Card key={metric.tag.id} className="overflow-hidden">
-                                <div
-                                    className="h-1"
-                                    style={{ backgroundColor: metric.tag.color || '#3B82F6' }}
-                                />
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-base flex items-center gap-2">
-                                        <Tag className="h-4 w-4" style={{ color: metric.tag.color || undefined }} />
-                                        {metric.tag.name}
-                                    </CardTitle>
-                                    <CardDescription>
-                                        {metric.holdingsCount} {t('stocksAnalysis.holdings')} • {formatPercent(metric.portfolioPercent)} {t('stocksAnalysis.ofPortfolio')}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-3">
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-muted-foreground">{t('stocksAnalysis.totalValue')}</span>
-                                        <span className="font-medium">{formatCurrency(metric.totalValue)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-muted-foreground">{t('stocksAnalysis.gainLoss')}</span>
-                                        <span className={`font-medium ${metric.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            {formatCurrency(metric.gainLoss)} ({formatPercent(metric.gainLossPercent)})
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-muted-foreground">{t('stocksAnalysis.yearlyDividend')}</span>
-                                        <span className="font-medium">{formatCurrency(metric.estimatedYearlyDividend)}</span>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Tag Management Section */}
+            {/* Tag Management Section - positioned right below header like Budgeting page */}
             {isManagementOpen && (
                 <Card>
                     <CardHeader>
@@ -836,6 +587,255 @@ export default function StocksAnalysis() {
                         </div>
                     </CardContent>
                 </Card>
+            )}
+
+            {/* Overview Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <SummaryCard
+                    title={t('stocksAnalysis.totalPortfolioValue')}
+                    value={formatCurrency(totalPortfolioValue)}
+                    icon={<PieChart className="h-4 w-4" />}
+                />
+                <SummaryCard
+                    title={t('stocksAnalysis.tagsCreated')}
+                    value={tags.length.toString()}
+                    subtitle={`${groups.length} ${t('stocksAnalysis.groups')}`}
+                    icon={<Tag className="h-4 w-4" />}
+                />
+                <SummaryCard
+                    title={t('stocksAnalysis.taggedHoldings')}
+                    value={stocks.filter(s => s.tags.length > 0).length.toString()}
+                    subtitle={`${t('stocksAnalysis.of')} ${stocks.length} ${t('stocksAnalysis.total')}`}
+                    icon={<TrendingUp className="h-4 w-4" />}
+                />
+                <SummaryCard
+                    title={t('stocksAnalysis.untaggedHoldings')}
+                    value={stocks.filter(s => s.tags.length === 0).length.toString()}
+                    icon={<TrendingDown className="h-4 w-4" />}
+                />
+            </div>
+
+            {/* Tag Filter Section - Group dropdown on row 1, tags on row 2 */}
+            {tags.length > 0 && (
+                <div className="space-y-3">
+                    {/* Row 1: Group filter dropdown */}
+                    {groups.length > 0 && (
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm text-muted-foreground">{t('stocksAnalysis.filterByGroup')}:</span>
+                            <Select value={filterGroupId} onValueChange={setFilterGroupId}>
+                                <SelectTrigger className="w-48 bg-white dark:bg-zinc-900 border">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">{t('stocksAnalysis.allTags')}</SelectItem>
+                                    {groups.map(group => (
+                                        <SelectItem key={group.id} value={group.id}>
+                                            <div className="flex items-center gap-2">
+                                                <FolderOpen className="h-3 w-3" />
+                                                {group.name}
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                    <SelectItem value="ungrouped">{t('stocksAnalysis.ungroupedTags')}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    
+                    {/* Row 2: Tag chips - filtered by group selection */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm text-muted-foreground">{t('stocksAnalysis.filterByTag')}:</span>
+                        {(filterGroupId === "all" 
+                            ? tags 
+                            : filterGroupId === "ungrouped" 
+                                ? tags.filter(t => !t.groupId) 
+                                : tags.filter(t => t.groupId === filterGroupId)
+                        ).map(tag => (
+                            <Badge
+                                key={tag.id}
+                                variant={selectedTagIds.includes(tag.id) ? "default" : "secondary"}
+                                className="cursor-pointer transition-all h-7 px-3"
+                                style={{
+                                    backgroundColor: selectedTagIds.includes(tag.id) ? tag.color || undefined : undefined,
+                                    borderColor: tag.color || undefined,
+                                }}
+                                onClick={() => handleToggleTagFilter(tag.id)}
+                            >
+                                <span
+                                    className="w-2 h-2 rounded-full mr-1.5"
+                                    style={{ backgroundColor: selectedTagIds.includes(tag.id) ? '#fff' : tag.color || '#3B82F6' }}
+                                />
+                                {tag.name}
+                            </Badge>
+                        ))}
+                        {selectedTagIds.length > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-7"
+                                onClick={() => setSelectedTagIds([])}
+                            >
+                                {tc('buttons.clearAll')}
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Stacked Bar Chart for Tag Metrics */}
+            {filteredMetrics.length > 0 && (() => {
+                // Calculate totals for each metric to compute percentages
+                const totalValue = filteredMetrics.reduce((sum, m) => sum + m.totalValue, 0);
+                const totalGainLoss = filteredMetrics.reduce((sum, m) => sum + Math.abs(m.gainLoss), 0);
+                const totalDividend = filteredMetrics.reduce((sum, m) => sum + m.estimatedYearlyDividend, 0);
+
+                // Create data with percentages
+                const chartData = [
+                    {
+                        metric: t('stocksAnalysis.totalValue'),
+                        total: totalValue,
+                        ...Object.fromEntries(filteredMetrics.map(m => [
+                            m.tag.id, 
+                            totalValue > 0 ? (m.totalValue / totalValue) * 100 : 0
+                        ])),
+                        // Store raw values for tooltip
+                        rawValues: Object.fromEntries(filteredMetrics.map(m => [m.tag.id, m.totalValue]))
+                    },
+                    {
+                        metric: t('stocksAnalysis.gainLoss'),
+                        total: totalGainLoss,
+                        ...Object.fromEntries(filteredMetrics.map(m => [
+                            m.tag.id, 
+                            totalGainLoss > 0 ? (Math.abs(m.gainLoss) / totalGainLoss) * 100 : 0
+                        ])),
+                        rawValues: Object.fromEntries(filteredMetrics.map(m => [m.tag.id, Math.abs(m.gainLoss)]))
+                    },
+                    {
+                        metric: t('stocksAnalysis.yearlyDividend'),
+                        total: totalDividend,
+                        ...Object.fromEntries(filteredMetrics.map(m => [
+                            m.tag.id, 
+                            totalDividend > 0 ? (m.estimatedYearlyDividend / totalDividend) * 100 : 0
+                        ])),
+                        rawValues: Object.fromEntries(filteredMetrics.map(m => [m.tag.id, m.estimatedYearlyDividend]))
+                    },
+                ];
+
+                return (
+                    <Card className="p-6">
+                        <h3 className="text-lg font-semibold mb-4">{t('stocksAnalysis.metricsChart')}</h3>
+                        <ResponsiveContainer width="100%" height={350}>
+                            <BarChart
+                                data={chartData}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                                <XAxis 
+                                    dataKey="metric" 
+                                    stroke="hsl(var(--muted-foreground))"
+                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <YAxis 
+                                    tickFormatter={(value) => `${Math.round(value)}%`}
+                                    domain={[0, 100]}
+                                    ticks={[0, 25, 50, 75, 100]}
+                                    allowDataOverflow={true}
+                                    stroke="hsl(var(--muted-foreground))"
+                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <Tooltip
+                                    content={({ active, payload, label }) => {
+                                        if (!active || !payload || payload.length === 0) return null;
+                                        const dataItem = chartData.find(d => d.metric === label);
+                                        return (
+                                            <div className="bg-popover border border-border rounded-md p-3 shadow-lg">
+                                                <p className="font-medium mb-2">{label}</p>
+                                                {payload.map((entry) => {
+                                                    const tag = filteredMetrics.find(m => m.tag.id === entry.dataKey);
+                                                    const rawValue = dataItem?.rawValues?.[entry.dataKey as string] || 0;
+                                                    const percent = entry.value as number;
+                                                    return (
+                                                        <div key={entry.dataKey} className="flex items-center gap-2 text-sm">
+                                                            <span 
+                                                                className="w-3 h-3 rounded-sm" 
+                                                                style={{ backgroundColor: entry.color }}
+                                                            />
+                                                            <span className="text-muted-foreground">{tag?.tag.name}:</span>
+                                                            <span className="font-medium">{percent.toFixed(1)}%</span>
+                                                            <span className="text-muted-foreground">({formatCurrency(rawValue)})</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    }}
+                                />
+                                <Legend 
+                                    formatter={(value: string) => {
+                                        const tag = filteredMetrics.find(m => m.tag.id === value);
+                                        return <span className="text-sm">{tag?.tag.name || value}</span>;
+                                    }}
+                                    wrapperStyle={{ paddingTop: '20px' }}
+                                />
+                                {filteredMetrics.map(m => (
+                                    <Bar 
+                                        key={m.tag.id}
+                                        dataKey={m.tag.id} 
+                                        stackId="a" 
+                                        fill={m.tag.color || '#3B82F6'} 
+                                        name={m.tag.id}
+                                    />
+                                ))}
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Card>
+                );
+            })()}
+
+            {/* Tag Metrics Cards */}
+            {filteredMetrics.length > 0 && (
+                <div className="space-y-4">
+                    <h2 className="text-lg font-semibold">{t('stocksAnalysis.tagBreakdown')}</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredMetrics.map(metric => (
+                            <Card key={metric.tag.id} className="overflow-hidden">
+                                <div
+                                    className="h-1"
+                                    style={{ backgroundColor: metric.tag.color || '#3B82F6' }}
+                                />
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-base flex items-center gap-2">
+                                        <Tag className="h-4 w-4" style={{ color: metric.tag.color || undefined }} />
+                                        {metric.tag.name}
+                                    </CardTitle>
+                                    <CardDescription>
+                                        {metric.holdingsCount} {t('stocksAnalysis.holdings')} • {formatPercent(metric.portfolioPercent)} {t('stocksAnalysis.ofPortfolio')}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">{t('stocksAnalysis.totalValue')}</span>
+                                        <span className="font-medium">{formatCurrency(metric.totalValue)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">{t('stocksAnalysis.gainLoss')}</span>
+                                        <span className={`font-medium ${metric.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            {formatCurrency(metric.gainLoss)} ({formatPercent(metric.gainLossPercent)})
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">{t('stocksAnalysis.yearlyDividend')}</span>
+                                        <span className="font-medium">{formatCurrency(metric.estimatedYearlyDividend)}</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
             )}
 
             {/* Create Tag Dialog */}

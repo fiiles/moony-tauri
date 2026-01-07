@@ -927,21 +927,12 @@ fn process_import_transaction(
 
     // Parse date or use current timestamp
     let transaction_date = if !date_str.is_empty() {
-        chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
-            .or_else(|_| chrono::NaiveDate::parse_from_str(date_str, "%d.%m.%Y"))
-            .or_else(|_| chrono::NaiveDate::parse_from_str(date_str, "%d/%m/%Y"))
-            .map(|d| {
-                d.and_hms_opt(0, 0, 0)
-                    .expect("Valid date should have valid midnight time")
-                    .and_utc()
-                    .timestamp()
-            })
-            .map_err(|_| {
-                format!(
-                    "{}: Invalid date format '{}' (use YYYY-MM-DD, DD.MM.YYYY, or DD/MM/YYYY)",
-                    ticker, date_str
-                )
-            })?
+        crate::services::date_parser::parse_date_to_timestamp(date_str, None).map_err(|_| {
+            format!(
+                "{}: Invalid date format '{}' (supported formats: YYYY-MM-DD, DD.MM.YYYY, DD/MM/YYYY, DD-MM-YYYY, etc.)",
+                ticker, date_str
+            )
+        })?
     } else {
         chrono::Utc::now().timestamp()
     };

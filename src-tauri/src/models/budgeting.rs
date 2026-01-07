@@ -83,6 +83,7 @@ pub struct BudgetingTransaction {
     pub currency: String,
     pub description: Option<String>,
     pub counterparty_name: Option<String>,
+    pub counterparty_iban: Option<String>,
     pub category_id: Option<String>,
     pub bank_account_id: String,
     pub bank_account_name: String,

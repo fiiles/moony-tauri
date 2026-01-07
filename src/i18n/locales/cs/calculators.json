@@ -47,7 +47,7 @@
         }
     },
     "estate": {
-        "title": "Nemovitostní kalkulačka",
+        "title": "Výnos z nemovitosti",
         "subtitle": "Vyhodnoťte výnosnost investice do nemovitosti",
         "form": {
             "purchaseParameters": "Parametry nákupu",
