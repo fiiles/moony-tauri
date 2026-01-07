@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { currencies, useCurrency } from "@/lib/currency";
 import { useAuth } from "@/hooks/use-auth";
@@ -230,19 +230,16 @@ function ChangePasswordForm() {
 function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
   const { t } = useTranslation('settings');
   const [showCoingecko, setShowCoingecko] = useState(false);
-  const [coingeckoKey, setCoingeckoKey] = useState("");
+  // Track user edits separately - undefined means user hasn't edited yet
+  const [editedCoingeckoKey, setEditedCoingeckoKey] = useState<string | undefined>(undefined);
 
   const { data: apiKeys } = useQuery({
     queryKey: ["api-keys"],
     queryFn: () => priceApi.getApiKeys(),
   });
 
-  // Update local state when API keys are loaded
-  useEffect(() => {
-    if (apiKeys) {
-      setCoingeckoKey(apiKeys.coingecko || "");
-    }
-  }, [apiKeys]);
+  // Use edited value if user has made changes, otherwise use fetched value
+  const coingeckoKey = editedCoingeckoKey ?? apiKeys?.coingecko ?? "";
 
   const saveApiKeysMutation = useMutation({
     mutationFn: async () => {
@@ -285,7 +282,7 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
             <Input
               type={showCoingecko ? "text" : "password"}
               value={coingeckoKey}
-              onChange={(e) => setCoingeckoKey(e.target.value)}
+              onChange={(e) => setEditedCoingeckoKey(e.target.value)}
               placeholder={t('apiKeys.coingecko.placeholder')}
             />
             <Button

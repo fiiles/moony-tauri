@@ -60,7 +60,7 @@ export function InsuranceList() {
     });
 
     const filteredAndSortedPolicies = useMemo(() => {
-        let filtered = policies?.filter(policy => {
+        const filtered = policies?.filter(policy => {
             if (filterType !== "all" && policy.type !== filterType) return false;
             return true;
         }) || [];
