@@ -1,0 +1,94 @@
+{
+    "title": "Categorization Rules",
+    "subtitle": "Manage how transactions are automatically categorized",
+    "tabs": {
+        "learnedRules": "Learned Rules",
+        "customRules": "Custom Rules"
+    },
+    "learnedRules": {
+        "title": "Learned Rules",
+        "description": "Rules learned from your manual categorizations",
+        "noRules": "No learned rules yet",
+        "noRulesDescription": "When you categorize transactions, the patterns will appear here.",
+        "columns": {
+            "ruleType": "Rule Type",
+            "pattern": "Pattern",
+            "payee": "Payee",
+            "iban": "IBAN",
+            "vs": "Variable Symbol",
+            "category": "Category",
+            "updatedAt": "Last Updated"
+        },
+        "ruleTypes": {
+            "payee_default": "Payee",
+            "iban_default": "Payee + IBAN",
+            "iban_only_default": "IBAN Only",
+            "unknown": "Unknown"
+        },
+        "ruleTypeTooltips": {
+            "payee_default": "Matches any transaction with this payee name",
+            "iban_default": "Matches transactions with this payee AND IBAN",
+            "iban_only_default": "Matches any transaction with this IBAN (no payee required)"
+        },
+        "hierarchyInfo": "More specific rules (with IBAN) take priority over general payee-only rules.",
+        "bulkDelete": "Delete Selected",
+        "deleteConfirmTitle": "Delete Learned Rule",
+        "deleteConfirmDescription": "Are you sure you want to delete this learned rule? This action cannot be undone.",
+        "bulkDeleteConfirmTitle": "Delete Selected Rules",
+        "bulkDeleteConfirmDescription": "Are you sure you want to delete {{count}} selected rules? This action cannot be undone.",
+        "deleteSuccess": "Rule deleted successfully",
+        "bulkDeleteSuccess": "{{count}} rules deleted successfully",
+        "updateCategorySuccess": "Category updated successfully",
+        "selectAll": "Select All",
+        "selected": "{{count}} selected"
+    },
+    "customRules": {
+        "title": "Custom Rules",
+        "description": "Pattern-based rules for automatic categorization",
+        "noRules": "No custom rules yet",
+        "noRulesDescription": "Create rules to automatically categorize transactions based on patterns.",
+        "addRule": "Add Rule",
+        "editRule": "Edit Rule",
+        "columns": {
+            "name": "Name",
+            "type": "Type",
+            "pattern": "Pattern",
+            "category": "Category",
+            "priority": "Priority",
+            "active": "Active",
+            "stopProcessing": "Stop Processing"
+        },
+        "ruleTypes": {
+            "Contains": "Contains",
+            "Regex": "Regex",
+            "StartsWith": "Starts With",
+            "EndsWith": "Ends With"
+        },
+        "form": {
+            "name": "Rule Name",
+            "namePlaceholder": "e.g., Supermarket purchases",
+            "type": "Match Type",
+            "pattern": "Pattern",
+            "patternPlaceholder": "e.g., LIDL or ^ALBERT.*",
+            "category": "Category",
+            "priority": "Priority",
+            "priorityHelp": "Higher priority rules are checked first (1-100)",
+            "active": "Rule is active",
+            "stopProcessing": "Stop processing on match",
+            "stopProcessingHelp": "If enabled, no other rules will be checked after this rule matches"
+        },
+        "systemRule": "System Rule",
+        "systemRuleTooltip": "System rules cannot be edited or deleted",
+        "deleteConfirmTitle": "Delete Custom Rule",
+        "deleteConfirmDescription": "Are you sure you want to delete this custom rule? This action cannot be undone.",
+        "createSuccess": "Rule created successfully",
+        "updateSuccess": "Rule updated successfully",
+        "deleteSuccess": "Rule deleted successfully"
+    },
+    "errors": {
+        "loadFailed": "Failed to load rules",
+        "deleteFailed": "Failed to delete rule",
+        "updateFailed": "Failed to update rule",
+        "createFailed": "Failed to create rule"
+    }
+}

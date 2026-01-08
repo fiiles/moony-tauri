@@ -53,6 +53,10 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("025_add_budget_goals", MIGRATION_025),
         ("026_hierarchical_payee_matching", MIGRATION_026),
         ("027_nullable_payee_columns", MIGRATION_027),
+        (
+            "028_remove_variable_symbol_from_learned_payees",
+            MIGRATION_028,
+        ),
     ];
 
     for (name, sql) in migrations {
@@ -979,4 +983,75 @@ CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_partial ON learned_payees(cou
 -- Index for IBAN-only rules (where payee is null)
 CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_only 
 ON learned_payees(counterparty_iban) WHERE normalized_payee IS NULL;
+"#;
+
+/// Migration 028: Remove variable_symbol from learned_payees
+///
+/// This simplifies the hierarchical matching system from 5 levels to 3 levels:
+/// - iban_only_default: IBAN only
+/// - payee_default: payee only  
+/// - iban_partial: IBAN (for suggestions)
+///
+/// VS-specific rules are merged into their generic counterparts (latest updated_at wins)
+const MIGRATION_028: &str = r#"
+-- Create new table without variable_symbol
+CREATE TABLE learned_payees_new (
+    id TEXT PRIMARY KEY,
+    normalized_payee TEXT,
+    original_payee TEXT,
+    counterparty_iban TEXT,
+    category_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
+);
+
+-- Migrate data, merging VS-specific rules into generic ones
+-- Use GROUP BY to collapse VS variants, keeping the most recently updated rule
+INSERT INTO learned_payees_new (id, normalized_payee, original_payee, counterparty_iban, category_id, created_at, updated_at)
+SELECT 
+    id,
+    normalized_payee,
+    original_payee,
+    counterparty_iban,
+    category_id,
+    created_at,
+    updated_at
+FROM (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY 
+                   COALESCE(normalized_payee, ''),
+                   COALESCE(counterparty_iban, '')
+               ORDER BY updated_at DESC
+           ) AS rn
+    FROM learned_payees
+) WHERE rn = 1;
+
+-- Drop old table and indexes
+DROP INDEX IF EXISTS idx_learned_payees_composite;
+DROP INDEX IF EXISTS idx_learned_payees_iban_default;
+DROP INDEX IF EXISTS idx_learned_payees_payee_default;
+DROP INDEX IF EXISTS idx_learned_payees_iban_partial;
+DROP INDEX IF EXISTS idx_learned_payees_iban_only;
+DROP TABLE learned_payees;
+
+-- Rename new table
+ALTER TABLE learned_payees_new RENAME TO learned_payees;
+
+-- Create simplified indexes for 3-level matching
+-- Composite unique index (payee + iban)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_learned_payees_composite 
+ON learned_payees(normalized_payee, counterparty_iban);
+
+-- Index for IBAN-only default lookups (no payee)
+CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_only 
+ON learned_payees(counterparty_iban) WHERE normalized_payee IS NULL;
+
+-- Index for payee default lookups (no iban)
+CREATE INDEX IF NOT EXISTS idx_learned_payees_payee_default 
+ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL;
+
+-- Index for partial IBAN matching (for suggestions)
+CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_partial ON learned_payees(counterparty_iban);
 "#;

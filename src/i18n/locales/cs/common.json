@@ -22,7 +22,8 @@
         "calculators": "Kalkulačky",
         "annuityCalculator": "Anuitní kalkulačka",
         "estateCalculator": "Výnos z nemovitosti",
-        "stocksAnalysis": "Analýza akcií"
+        "stocksAnalysis": "Analýza akcií",
+        "categorizationRules": "Pravidla kategorizace"
     },
     "app": {
         "name": "Moony",

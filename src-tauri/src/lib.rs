@@ -242,6 +242,15 @@ pub fn run() {
             commands::categorization::load_learned_payees_from_db,
             commands::categorization::load_own_ibans_from_db,
             commands::categorization::initialize_ml_from_transactions,
+            // Categorization rules management commands
+            commands::categorization::get_learned_payees_list,
+            commands::categorization::delete_learned_payee,
+            commands::categorization::delete_learned_payees_bulk,
+            commands::categorization::update_learned_payee_category,
+            commands::categorization::get_custom_rules,
+            commands::categorization::create_custom_rule,
+            commands::categorization::update_custom_rule,
+            commands::categorization::delete_custom_rule,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

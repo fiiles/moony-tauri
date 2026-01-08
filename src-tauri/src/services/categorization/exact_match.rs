@@ -1,11 +1,9 @@
 //! Hierarchical exact match engine for learned payee lookups
 //!
 //! This engine provides cascading lookups with prioritized matching:
-//! 1. iban_only_exact: iban + vs (most specific IBAN rule)
-//! 2. payee_exact: payee + vs (specific payee rule)
-//! 3. iban_only_default: iban only (general IBAN rule)
-//! 4. payee_default: payee only (general payee rule)
-//! 5. Partial IBAN: for suggestions
+//! 1. iban_only_default: iban only (general IBAN rule)
+//! 2. payee_default: payee only (general payee rule)
+//! 3. Partial IBAN: for suggestions
 
 use std::collections::HashMap;
 
@@ -14,22 +12,16 @@ use super::types::{CategorizationResult, CategorizationSource, TransactionInput}
 
 /// Key prefix for different lookup types
 const KEY_PAYEE_DEFAULT: &str = "payee_default:";
-/// Payee with VS (no iban but has VS)
-const KEY_PAYEE_EXACT: &str = "payee_exact:";
 /// IBAN-only default (no payee) - general rule for transactions with only IBAN
 const KEY_IBAN_ONLY_DEFAULT: &str = "iban_only_default:";
-/// IBAN-only with VS (no payee but has VS)
-const KEY_IBAN_ONLY_EXACT: &str = "iban_only_exact:";
 const KEY_IBAN_PARTIAL: &str = "iban_partial:";
 
 /// Hierarchical exact match engine with cascading defaults
 ///
 /// Matching priority (most specific first):
-/// 1. iban_only_exact: iban + vs
-/// 2. payee_exact: payee + vs
-/// 3. iban_only_default: iban only (IBAN takes priority over payee!)
-/// 4. payee_default: payee only
-/// 5. Partial IBAN: for suggestions when only iban matches
+/// 1. iban_only_default: iban only (IBAN takes priority over payee!)
+/// 2. payee_default: payee only
+/// 3. Partial IBAN: for suggestions when only iban matches
 pub struct ExactMatchEngine {
     /// Unified map with prefixed keys for different lookup types
     payee_map: HashMap<String, String>,
@@ -49,8 +41,8 @@ impl ExactMatchEngine {
         let mut engine = Self::new();
         for (payee, category) in payee_map {
             // Old format: normalized_payee -> category
-            // Treat as payee default (payee + null + null)
-            engine.learn_hierarchical(Some(&payee), None, None, &category);
+            // Treat as payee default (payee + null)
+            engine.learn_hierarchical(Some(&payee), None, &category);
         }
         engine
     }
@@ -71,33 +63,25 @@ impl ExactMatchEngine {
     ///    - If only payee (no IBAN) → create payee_default
     ///
     /// 2. RECATEGORIZATION (existing rule was matched):
-    ///    - If existing rule is generic (payee_default or iban_only_default):
-    ///      - If transaction has VS → create specific rule (iban_only_exact or payee_exact)
-    ///      - If transaction has no VS → overwrite existing rule
-    ///    - If existing rule is already specific → overwrite it
+    ///    - Overwrite the existing rule with new category
     ///
     /// # Arguments
     /// * `payee` - Normalized payee name (counterparty_name)
     /// * `iban` - Counterparty IBAN/account number
-    /// * `variable_symbol` - VS from the payment
     /// * `category_id` - Category to assign
     pub fn learn_hierarchical(
         &mut self,
         payee: Option<&str>,
         iban: Option<&str>,
-        variable_symbol: Option<&str>,
         category_id: &str,
     ) {
         let norm_payee = payee.map(simple_normalize).filter(|p| p.len() > 2);
         let norm_iban = iban
             .map(|i| i.trim().to_uppercase())
             .filter(|i| !i.is_empty());
-        let norm_vs = variable_symbol
-            .map(|v| v.trim().to_string())
-            .filter(|v| !v.is_empty());
 
         // Find which existing rule would match this transaction
-        let existing_rule = self.find_matching_rule_key(&norm_payee, &norm_iban, &norm_vs);
+        let existing_rule = self.find_matching_rule_key(&norm_payee, &norm_iban);
 
         match existing_rule {
             // NO EXISTING RULE → New categorization
@@ -125,29 +109,8 @@ impl ExactMatchEngine {
             Some(existing_key) => {
                 // Check what type of rule matched
                 let is_generic_payee = existing_key.starts_with(KEY_PAYEE_DEFAULT);
-                let is_generic_iban = existing_key.starts_with(KEY_IBAN_ONLY_DEFAULT);
 
-                if let Some(ref vs) = norm_vs {
-                    if is_generic_payee || is_generic_iban {
-                        // Generic rule exists AND transaction has VS → create more specific rule
-                        if let Some(ref i) = norm_iban {
-                            // If existing was payee_default, delete it since IBAN takes priority
-                            if is_generic_payee {
-                                self.payee_map.remove(&existing_key);
-                            }
-                            // Create iban_only_exact (iban + vs)
-                            let key = format!("{KEY_IBAN_ONLY_EXACT}{}|{}", i, vs);
-                            self.payee_map.insert(key, category_id.to_string());
-                        } else if let Some(ref p) = norm_payee {
-                            // No IBAN, create payee_exact (payee + vs)
-                            let key = format!("{KEY_PAYEE_EXACT}{}|{}", p, vs);
-                            self.payee_map.insert(key, category_id.to_string());
-                        }
-                    } else {
-                        // Specific rule → overwrite
-                        self.payee_map.insert(existing_key, category_id.to_string());
-                    }
-                } else if let Some(ref i) = norm_iban {
+                if let Some(ref i) = norm_iban {
                     if is_generic_payee {
                         // Special case: payee_default matched, but transaction now has IBAN
                         // → delete payee_default and create iban_only_default (IBAN takes priority)
@@ -155,11 +118,11 @@ impl ExactMatchEngine {
                         let key = format!("{KEY_IBAN_ONLY_DEFAULT}{}", i);
                         self.payee_map.insert(key, category_id.to_string());
                     } else {
-                        // Generic iban rule but no VS → overwrite existing rule
+                        // Generic iban rule → overwrite existing rule
                         self.payee_map.insert(existing_key, category_id.to_string());
                     }
                 } else {
-                    // Generic rule but no VS → overwrite existing rule
+                    // Generic rule → overwrite existing rule
                     self.payee_map.insert(existing_key, category_id.to_string());
                 }
 
@@ -180,25 +143,8 @@ impl ExactMatchEngine {
         &self,
         norm_payee: &Option<String>,
         norm_iban: &Option<String>,
-        norm_vs: &Option<String>,
     ) -> Option<String> {
-        // Priority 1: iban_only_exact (iban + vs)
-        if let (Some(ref i), Some(ref v)) = (norm_iban, norm_vs) {
-            let key = format!("{KEY_IBAN_ONLY_EXACT}{}|{}", i, v);
-            if self.payee_map.contains_key(&key) {
-                return Some(key);
-            }
-        }
-
-        // Priority 2: payee_exact (payee + vs)
-        if let (Some(ref p), Some(ref v)) = (norm_payee, norm_vs) {
-            let key = format!("{KEY_PAYEE_EXACT}{}|{}", p, v);
-            if self.payee_map.contains_key(&key) {
-                return Some(key);
-            }
-        }
-
-        // Priority 3: iban_only_default (iban only)
+        // Priority 1: iban_only_default (iban only)
         if let Some(ref i) = norm_iban {
             let key = format!("{KEY_IBAN_ONLY_DEFAULT}{}", i);
             if self.payee_map.contains_key(&key) {
@@ -206,7 +152,7 @@ impl ExactMatchEngine {
             }
         }
 
-        // Priority 4: payee_default (payee only)
+        // Priority 2: payee_default (payee only)
         if let Some(ref p) = norm_payee {
             let key = format!("{KEY_PAYEE_DEFAULT}{}", p);
             if self.payee_map.contains_key(&key) {
@@ -219,37 +165,19 @@ impl ExactMatchEngine {
 
     /// Legacy learn function - creates payee default
     pub fn learn(&mut self, payee: &str, category_id: &str) {
-        self.learn_hierarchical(Some(payee), None, None, category_id);
+        self.learn_hierarchical(Some(payee), None, category_id);
     }
 
     /// Forget a learned payee - removes exact key based on provided attributes
-    pub fn forget_hierarchical(
-        &mut self,
-        payee: Option<&str>,
-        iban: Option<&str>,
-        variable_symbol: Option<&str>,
-    ) -> bool {
+    pub fn forget_hierarchical(&mut self, payee: Option<&str>, iban: Option<&str>) -> bool {
         let norm_payee = payee.map(simple_normalize).filter(|p| p.len() > 2);
         let norm_iban = iban
             .map(|i| i.trim().to_uppercase())
             .filter(|i| !i.is_empty());
-        let norm_vs = variable_symbol
-            .map(|v| v.trim().to_string())
-            .filter(|v| !v.is_empty());
 
         // Try to find and remove the most specific matching rule
-        // Priority order: iban_only_exact, payee_exact, iban_only_default, payee_default
+        // Priority order: iban_only_default, payee_default
         let keys_to_try = [
-            // iban + vs
-            norm_iban
-                .as_ref()
-                .zip(norm_vs.as_ref())
-                .map(|(i, v)| format!("{KEY_IBAN_ONLY_EXACT}{}|{}", i, v)),
-            // payee + vs
-            norm_payee
-                .as_ref()
-                .zip(norm_vs.as_ref())
-                .map(|(p, v)| format!("{KEY_PAYEE_EXACT}{}|{}", p, v)),
             // iban only
             norm_iban
                 .as_ref()
@@ -270,17 +198,15 @@ impl ExactMatchEngine {
 
     /// Legacy forget function - removes payee default
     pub fn forget(&mut self, payee: &str) -> bool {
-        self.forget_hierarchical(Some(payee), None, None)
+        self.forget_hierarchical(Some(payee), None)
     }
 
     /// Try hierarchical match lookup for a transaction
     ///
     /// Cascading priority (most specific first):
-    /// 1. iban_only_exact: iban + vs (specific IBAN rule)
-    /// 2. payee_exact: payee + vs (specific payee rule)
-    /// 3. iban_only_default: iban only (general IBAN rule)
-    /// 4. payee_default: payee only (general payee rule)
-    /// 5. Partial IBAN: for suggestions when only iban matches
+    /// 1. iban_only_default: iban only (general IBAN rule)
+    /// 2. payee_default: payee only (general payee rule)
+    /// 3. Partial IBAN: for suggestions when only iban matches
     pub fn apply(&self, tx: &TransactionInput) -> Option<CategorizationResult> {
         let payee = tx
             .counterparty
@@ -292,43 +218,8 @@ impl ExactMatchEngine {
             .as_ref()
             .map(|i| i.trim().to_uppercase())
             .filter(|i| !i.is_empty());
-        let vs = tx
-            .variable_symbol
-            .as_ref()
-            .map(|v| v.trim().to_string())
-            .filter(|v| !v.is_empty());
 
-        // Priority 1: iban_only_exact (iban + vs) - most specific IBAN rule
-        if let (Some(ref i), Some(ref v)) = (&iban, &vs) {
-            let key = format!("{KEY_IBAN_ONLY_EXACT}{}|{}", i, v);
-            if let Some(cat) = self.payee_map.get(&key) {
-                return Some(CategorizationResult::Match {
-                    category_id: cat.clone(),
-                    source: CategorizationSource::ExactMatch {
-                        payee: tx
-                            .counterparty
-                            .clone()
-                            .or_else(|| tx.counterparty_iban.clone())
-                            .unwrap_or_default(),
-                    },
-                });
-            }
-        }
-
-        // Priority 2: payee_exact (payee + vs) - specific payee rule
-        if let (Some(ref p), Some(ref v)) = (&payee, &vs) {
-            let key = format!("{KEY_PAYEE_EXACT}{}|{}", p, v);
-            if let Some(cat) = self.payee_map.get(&key) {
-                return Some(CategorizationResult::Match {
-                    category_id: cat.clone(),
-                    source: CategorizationSource::ExactMatch {
-                        payee: tx.counterparty.clone().unwrap_or_default(),
-                    },
-                });
-            }
-        }
-
-        // Priority 3: iban_only_default (iban only) - general IBAN rule
+        // Priority 1: iban_only_default (iban only) - general IBAN rule
         if let Some(ref i) = iban {
             let key = format!("{KEY_IBAN_ONLY_DEFAULT}{}", i);
             if let Some(cat) = self.payee_map.get(&key) {
@@ -345,7 +236,7 @@ impl ExactMatchEngine {
             }
         }
 
-        // Priority 4: payee_default (payee only) - general payee rule
+        // Priority 2: payee_default (payee only) - general payee rule
         if let Some(ref p) = payee {
             let key = format!("{KEY_PAYEE_DEFAULT}{}", p);
             if let Some(cat) = self.payee_map.get(&key) {
@@ -358,7 +249,7 @@ impl ExactMatchEngine {
             }
         }
 
-        // Priority 5: Partial IBAN match -> Suggestion
+        // Priority 3: Partial IBAN match -> Suggestion
         if let Some(ref i) = iban {
             let key = format!("{KEY_IBAN_PARTIAL}{}", i);
             if let Some(cat) = self.payee_map.get(&key) {
@@ -456,17 +347,13 @@ mod tests {
         }
     }
 
-    fn make_tx_full(
-        counterparty: Option<&str>,
-        iban: Option<&str>,
-        vs: Option<&str>,
-    ) -> TransactionInput {
+    fn make_tx_full(counterparty: Option<&str>, iban: Option<&str>) -> TransactionInput {
         TransactionInput {
             id: "tx1".into(),
             description: None,
             counterparty: counterparty.map(|s| s.into()),
             counterparty_iban: iban.map(|s| s.into()),
-            variable_symbol: vs.map(|s| s.into()),
+            variable_symbol: None,
             constant_symbol: None,
             specific_symbol: None,
             amount: -500.0,
@@ -498,10 +385,10 @@ mod tests {
     fn test_new_categorization_payee_only() {
         // Rule a) - platba má jen payee → vytvořit pravidlo s payee
         let mut engine = ExactMatchEngine::new();
-        engine.learn_hierarchical(Some("Albert"), None, None, "cat_groceries");
+        engine.learn_hierarchical(Some("Albert"), None, "cat_groceries");
 
         // Should create payee_default
-        let tx = make_tx_full(Some("Albert"), None, None);
+        let tx = make_tx_full(Some("Albert"), None);
         match engine.apply(&tx).unwrap() {
             CategorizationResult::Match { category_id, .. } => {
                 assert_eq!(category_id, "cat_groceries");
@@ -514,10 +401,10 @@ mod tests {
     fn test_new_categorization_iban_only() {
         // Rule b) - platba má jen iban → vytvořit pravidlo s iban
         let mut engine = ExactMatchEngine::new();
-        engine.learn_hierarchical(None, Some("CZ123"), None, "cat_utilities");
+        engine.learn_hierarchical(None, Some("CZ123"), "cat_utilities");
 
         // Should create iban_only_default
-        let tx = make_tx_full(None, Some("CZ123"), None);
+        let tx = make_tx_full(None, Some("CZ123"));
         match engine.apply(&tx).unwrap() {
             CategorizationResult::Match { category_id, .. } => {
                 assert_eq!(category_id, "cat_utilities");
@@ -530,11 +417,11 @@ mod tests {
     fn test_new_categorization_iban_plus_payee_creates_iban_rule() {
         // Rule c) - platba má iban + payee → vytvořit pravidlo JEN s iban
         let mut engine = ExactMatchEngine::new();
-        engine.learn_hierarchical(Some("Albert"), Some("CZ123"), None, "cat_groceries");
+        engine.learn_hierarchical(Some("Albert"), Some("CZ123"), "cat_groceries");
 
         // Should create iban_only_default, NOT payee_default
         // Check: same IBAN, DIFFERENT payee should still match
-        let tx = make_tx_full(Some("Different Payee"), Some("CZ123"), None);
+        let tx = make_tx_full(Some("Different Payee"), Some("CZ123"));
         match engine.apply(&tx).unwrap() {
             CategorizationResult::Match { category_id, .. } => {
                 assert_eq!(category_id, "cat_groceries");
@@ -543,120 +430,25 @@ mod tests {
         }
 
         // Same payee, DIFFERENT IBAN should NOT match
-        let tx2 = make_tx_full(Some("Albert"), Some("CZ999"), None);
+        let tx2 = make_tx_full(Some("Albert"), Some("CZ999"));
         assert!(
             engine.apply(&tx2).is_none(),
             "Different IBAN should not match"
         );
     }
 
-    #[test]
-    fn test_new_categorization_iban_plus_payee_plus_vs_creates_iban_rule() {
-        // Rule c) - platba má iban + payee + vs → vytvořit pravidlo JEN s iban
-        let mut engine = ExactMatchEngine::new();
-        engine.learn_hierarchical(Some("Albert"), Some("CZ123"), Some("100"), "cat_groceries");
-
-        // Should create iban_only_default (not payee_default, not exact)
-        // Same IBAN, different payee, different VS should still match
-        let tx = make_tx_full(Some("Different Payee"), Some("CZ123"), Some("999"));
-        match engine.apply(&tx).unwrap() {
-            CategorizationResult::Match { category_id, .. } => {
-                assert_eq!(category_id, "cat_groceries");
-            }
-            _ => panic!("Expected Match - iban_only_default should be created"),
-        }
-    }
-
     // ==================== RECATEGORIZATION TESTS ====================
 
     #[test]
-    fn test_recategorization_generic_iban_with_vs_creates_specific() {
-        // Existing iban_only_default + transaction with VS → create iban_only_exact
-        let mut engine = ExactMatchEngine::new();
-        // First categorization: creates iban_only_default
-        engine.learn_hierarchical(None, Some("CZ123"), None, "cat_utilities");
-
-        // Recategorization with VS: should create iban_only_exact
-        engine.learn_hierarchical(None, Some("CZ123"), Some("100"), "cat_taxes");
-
-        // VS 100 should now match the specific rule
-        let tx = make_tx_full(None, Some("CZ123"), Some("100"));
-        match engine.apply(&tx).unwrap() {
-            CategorizationResult::Match { category_id, .. } => {
-                assert_eq!(category_id, "cat_taxes");
-            }
-            _ => panic!("Expected Match"),
-        }
-
-        // Other VS should still match the general rule
-        let tx2 = make_tx_full(None, Some("CZ123"), Some("200"));
-        match engine.apply(&tx2).unwrap() {
-            CategorizationResult::Match { category_id, .. } => {
-                assert_eq!(category_id, "cat_utilities");
-            }
-            _ => panic!("Expected Match to general rule"),
-        }
-    }
-
-    #[test]
-    fn test_recategorization_generic_payee_with_vs_creates_specific() {
-        // Existing payee_default + transaction with VS (no IBAN) → create payee_exact
-        let mut engine = ExactMatchEngine::new();
-        // First categorization: creates payee_default
-        engine.learn_hierarchical(Some("Albert"), None, None, "cat_groceries");
-
-        // Recategorization with VS (no IBAN): should create payee_exact
-        engine.learn_hierarchical(Some("Albert"), None, Some("100"), "cat_taxes");
-
-        // VS 100 should now match the specific rule
-        let tx = make_tx_full(Some("Albert"), None, Some("100"));
-        match engine.apply(&tx).unwrap() {
-            CategorizationResult::Match { category_id, .. } => {
-                assert_eq!(category_id, "cat_taxes");
-            }
-            _ => panic!("Expected Match"),
-        }
-
-        // Other VS or no VS should still match the general rule
-        let tx2 = make_tx_full(Some("Albert"), None, None);
-        match engine.apply(&tx2).unwrap() {
-            CategorizationResult::Match { category_id, .. } => {
-                assert_eq!(category_id, "cat_groceries");
-            }
-            _ => panic!("Expected Match to general rule"),
-        }
-    }
-
-    #[test]
-    fn test_recategorization_generic_payee_with_vs_and_iban_creates_iban_specific() {
-        // Existing payee_default + transaction with IBAN and VS → create iban_only_exact
-        let mut engine = ExactMatchEngine::new();
-        // First categorization (payee only): creates payee_default
-        engine.learn_hierarchical(Some("Albert"), None, None, "cat_groceries");
-
-        // Recategorization with IBAN + VS: should create iban_only_exact
-        engine.learn_hierarchical(Some("Albert"), Some("CZ123"), Some("100"), "cat_taxes");
-
-        // IBAN + VS 100 should now match the specific rule
-        let tx = make_tx_full(Some("Albert"), Some("CZ123"), Some("100"));
-        match engine.apply(&tx).unwrap() {
-            CategorizationResult::Match { category_id, .. } => {
-                assert_eq!(category_id, "cat_taxes");
-            }
-            _ => panic!("Expected Match"),
-        }
-    }
-
-    #[test]
     fn test_recategorization_generic_without_vs_overwrites() {
-        // Existing generic rule + transaction without VS → overwrite existing
+        // Existing generic rule + transaction → overwrite existing
         let mut engine = ExactMatchEngine::new();
-        engine.learn_hierarchical(Some("Albert"), None, None, "cat_groceries");
+        engine.learn_hierarchical(Some("Albert"), None, "cat_groceries");
 
-        // Recategorization without VS: should overwrite
-        engine.learn_hierarchical(Some("Albert"), None, None, "cat_dining");
+        // Recategorization: should overwrite
+        engine.learn_hierarchical(Some("Albert"), None, "cat_dining");
 
-        let tx = make_tx_full(Some("Albert"), None, None);
+        let tx = make_tx_full(Some("Albert"), None);
         match engine.apply(&tx).unwrap() {
             CategorizationResult::Match { category_id, .. } => {
                 assert_eq!(category_id, "cat_dining");
@@ -667,30 +459,30 @@ mod tests {
 
     #[test]
     fn test_recategorization_payee_default_replaced_by_iban_when_iban_present() {
-        // Existing payee_default + transaction now has IBAN (no VS)
+        // Existing payee_default + transaction now has IBAN
         // → delete payee_default and create iban_only_default
         let mut engine = ExactMatchEngine::new();
 
         // First categorization (payee only): creates payee_default
-        engine.learn_hierarchical(Some("Albert"), None, None, "cat_groceries");
+        engine.learn_hierarchical(Some("Albert"), None, "cat_groceries");
 
         // Verify payee_default was created
-        let tx_payee_only = make_tx_full(Some("Albert"), None, None);
+        let tx_payee_only = make_tx_full(Some("Albert"), None);
         assert!(engine.apply(&tx_payee_only).is_some());
 
-        // Recategorization: same payee but NOW with IBAN (no VS)
+        // Recategorization: same payee but NOW with IBAN
         // This should DELETE payee_default and CREATE iban_only_default
-        engine.learn_hierarchical(Some("Albert"), Some("CZ123"), None, "cat_utilities");
+        engine.learn_hierarchical(Some("Albert"), Some("CZ123"), "cat_utilities");
 
         // Check: payee_default should be GONE
-        let tx_payee_only2 = make_tx_full(Some("Albert"), None, None);
+        let tx_payee_only2 = make_tx_full(Some("Albert"), None);
         assert!(
             engine.apply(&tx_payee_only2).is_none(),
             "payee_default should have been deleted"
         );
 
         // Check: iban_only_default should now exist
-        let tx_with_iban = make_tx_full(Some("Albert"), Some("CZ123"), None);
+        let tx_with_iban = make_tx_full(Some("Albert"), Some("CZ123"));
         match engine.apply(&tx_with_iban).unwrap() {
             CategorizationResult::Match { category_id, .. } => {
                 assert_eq!(category_id, "cat_utilities");
@@ -699,7 +491,7 @@ mod tests {
         }
 
         // Same IBAN, different payee should also match (because it's iban_only_default)
-        let tx_different_payee = make_tx_full(Some("Different"), Some("CZ123"), None);
+        let tx_different_payee = make_tx_full(Some("Different"), Some("CZ123"));
         match engine.apply(&tx_different_payee).unwrap() {
             CategorizationResult::Match { category_id, .. } => {
                 assert_eq!(category_id, "cat_utilities");
@@ -708,59 +500,7 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_recategorization_specific_overwrites() {
-        // Existing specific rule → overwrite it
-        let mut engine = ExactMatchEngine::new();
-        engine.learn_hierarchical(None, Some("CZ123"), None, "cat_utilities");
-        engine.learn_hierarchical(None, Some("CZ123"), Some("100"), "cat_taxes");
-
-        // Recategorize the specific rule
-        engine.learn_hierarchical(None, Some("CZ123"), Some("100"), "cat_income");
-
-        let tx = make_tx_full(None, Some("CZ123"), Some("100"));
-        match engine.apply(&tx).unwrap() {
-            CategorizationResult::Match { category_id, .. } => {
-                assert_eq!(category_id, "cat_income");
-            }
-            _ => panic!("Expected Match"),
-        }
-    }
-
     // ==================== MATCHING PRIORITY TESTS ====================
-
-    #[test]
-    fn test_specific_iban_rule_takes_priority() {
-        let mut engine = ExactMatchEngine::new();
-        // Create IBAN general rule
-        engine.payee_map.insert(
-            format!("{}CZ123", KEY_IBAN_ONLY_DEFAULT),
-            "cat_general".to_string(),
-        );
-        // Create IBAN + VS specific rule
-        engine.payee_map.insert(
-            format!("{}CZ123|100", KEY_IBAN_ONLY_EXACT),
-            "cat_specific".to_string(),
-        );
-
-        // Specific rule should take priority
-        let tx = make_tx_full(Some("Any Payee"), Some("CZ123"), Some("100"));
-        match engine.apply(&tx).unwrap() {
-            CategorizationResult::Match { category_id, .. } => {
-                assert_eq!(category_id, "cat_specific");
-            }
-            _ => panic!("Expected Match"),
-        }
-
-        // Other VS falls back to general
-        let tx2 = make_tx_full(Some("Any Payee"), Some("CZ123"), Some("200"));
-        match engine.apply(&tx2).unwrap() {
-            CategorizationResult::Match { category_id, .. } => {
-                assert_eq!(category_id, "cat_general");
-            }
-            _ => panic!("Expected Match"),
-        }
-    }
 
     #[test]
     fn test_iban_rule_takes_priority_over_payee() {
@@ -777,7 +517,7 @@ mod tests {
         );
 
         // IBAN rule should take priority when transaction has both
-        let tx = make_tx_full(Some("Albert"), Some("CZ123"), None);
+        let tx = make_tx_full(Some("Albert"), Some("CZ123"));
         match engine.apply(&tx).unwrap() {
             CategorizationResult::Match { category_id, .. } => {
                 assert_eq!(category_id, "cat_iban");
@@ -804,50 +544,65 @@ mod tests {
     fn test_forget() {
         let mut engine = ExactMatchEngine::new();
         engine.learn("Uber Eats", "cat_dining");
-        assert!(engine.knows_payee("Uber Eats"));
+
+        let tx = make_tx(None, Some("Uber Eats"));
+        assert!(engine.apply(&tx).is_some());
 
         engine.forget("Uber Eats");
-        assert!(!engine.knows_payee("Uber Eats"));
-    }
-
-    #[test]
-    fn test_no_match() {
-        let engine = ExactMatchEngine::new();
-        let tx = make_tx(Some("Unknown merchant"), None);
         assert!(engine.apply(&tx).is_none());
     }
 
     #[test]
-    fn test_export_legacy() {
+    fn test_forget_hierarchical() {
         let mut engine = ExactMatchEngine::new();
-        engine.learn("Albert", "cat_groceries");
-        engine.learn("Lidl", "cat_groceries");
+        engine.learn_hierarchical(None, Some("CZ123"), "cat_utilities");
 
-        let exported = engine.export_legacy();
-        assert_eq!(exported.len(), 2);
-        assert!(exported.contains_key("albert")); // Normalized
-    }
+        let tx = make_tx_full(None, Some("CZ123"));
+        assert!(engine.apply(&tx).is_some());
 
-    #[test]
-    fn test_short_payee_ignored() {
-        let mut engine = ExactMatchEngine::new();
-        engine.learn("AB", "cat_other"); // Too short
-        assert!(engine.is_empty());
+        engine.forget_hierarchical(None, Some("CZ123"));
+        assert!(engine.apply(&tx).is_none());
     }
 
     #[test]
     fn test_partial_iban_suggestion() {
         let mut engine = ExactMatchEngine::new();
-        engine.learn_hierarchical(None, Some("CZ123"), None, "cat_utilities");
+        // Learn creates both default and partial
+        engine.learn_hierarchical(None, Some("CZ123"), "cat_utilities");
 
-        // Different payee with same IBAN -> suggestion via partial
-        let tx = make_tx_full(Some("Unknown Payee"), Some("CZ123"), None);
-        // Since we have iban_only_default, it should be a Match, not Suggestion
-        match engine.apply(&tx).unwrap() {
-            CategorizationResult::Match { category_id, .. } => {
+        // If we remove the default, partial should still give suggestion
+        engine
+            .payee_map
+            .remove(&format!("{}CZ123", KEY_IBAN_ONLY_DEFAULT));
+
+        let tx = make_tx_full(None, Some("CZ123"));
+        match engine.apply(&tx) {
+            Some(CategorizationResult::Suggestion {
+                category_id,
+                confidence,
+            }) => {
                 assert_eq!(category_id, "cat_utilities");
+                assert!((confidence - 0.70).abs() < 0.01);
             }
-            _ => panic!("Expected Match"),
+            _ => panic!("Expected Suggestion"),
         }
+    }
+
+    #[test]
+    fn test_export_import() {
+        let mut engine1 = ExactMatchEngine::new();
+        engine1.learn("Test Payee", "cat_other");
+        engine1.learn_hierarchical(None, Some("CZ123"), "cat_utilities");
+
+        let exported = engine1.export();
+        assert!(!exported.is_empty());
+
+        let engine2 = ExactMatchEngine::from_raw_map(exported);
+
+        let tx_payee = make_tx(None, Some("Test Payee"));
+        assert!(engine2.apply(&tx_payee).is_some());
+
+        let tx_iban = make_tx_full(None, Some("CZ123"));
+        assert!(engine2.apply(&tx_iban).is_some());
     }
 }

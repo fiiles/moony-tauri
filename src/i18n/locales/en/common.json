@@ -22,7 +22,8 @@
         "calculators": "Calculators",
         "annuityCalculator": "Annuity Calculator",
         "estateCalculator": "Estate Profitability",
-        "stocksAnalysis": "Stocks Analysis"
+        "stocksAnalysis": "Stocks Analysis",
+        "categorizationRules": "Categorization Rules"
     },
     "app": {
         "name": "Moony",

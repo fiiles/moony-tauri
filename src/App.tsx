@@ -30,6 +30,7 @@ import StocksAnalysis from "@/pages/StocksAnalysis";
 import Budgeting from "@/pages/Budgeting";
 import BankAccounts from "@/pages/BankAccounts";
 import BankAccountDetail from "@/pages/BankAccountDetail";
+import CategorizationRules from "@/pages/CategorizationRules";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { CurrencyProvider } from "@/lib/currency";
@@ -66,6 +67,7 @@ function Router() {
       <ProtectedRoute path="/calculators/estate" component={EstateCalculator} />
       <ProtectedRoute path="/bank-accounts" component={BankAccounts} />
       <ProtectedRoute path="/bank-accounts/:id" component={BankAccountDetail} />
+      <ProtectedRoute path="/settings/categorization-rules" component={CategorizationRules} />
       <Route component={NotFound} />
     </Switch>
   );

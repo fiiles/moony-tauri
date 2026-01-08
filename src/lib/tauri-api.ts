@@ -780,6 +780,46 @@ export interface TrainingSample {
   categoryId: string;
 }
 
+// ==================== Learned Payees Management ====================
+
+// Learned payee entry for display in management UI
+export interface LearnedPayeeEntry {
+  id: string;
+  /** Rule type: "payee_default", "iban_default", "iban_only_default" */
+  ruleType: string;
+  normalizedPayee?: string;
+  originalPayee?: string;
+  counterpartyIban?: string;
+  categoryId: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Custom rule from database
+export interface CustomRule {
+  id: string;
+  name: string;
+  ruleType: string;
+  pattern: string;
+  categoryId: string;
+  priority: number;
+  isActive: boolean;
+  stopProcessing: boolean;
+  isSystem: boolean;
+  createdAt: number;
+}
+
+// Input for creating/updating custom rules
+export interface CustomRuleInput {
+  name: string;
+  ruleType: string;
+  pattern: string;
+  categoryId: string;
+  priority: number;
+  isActive: boolean;
+  stopProcessing: boolean;
+}
+
 export const categorizationApi = {
   // Categorize a single transaction
   categorize: (transaction: TransactionInput) =>
@@ -790,30 +830,26 @@ export const categorizationApi = {
     tauriInvoke<CategorizationResult[]>('categorize_batch', { transactions }),
 
   // Learn from user's manual categorization with hierarchical matching
-  // Supports: payee + iban + vs (exact), payee + iban (iban default), payee only (payee default)
+  // Supports: payee + iban (iban default), payee only (payee default)
   learn: (
     payee: string | null,
     counterpartyIban: string | null,
-    variableSymbol: string | null,
     categoryId: string
   ) =>
     tauriInvoke<void>('learn_categorization', {
       payee,
       counterpartyIban,
-      variableSymbol,
       categoryId,
     }),
 
   // Forget a learned payee combination
   forget: (
     payee: string | null,
-    counterpartyIban: string | null,
-    variableSymbol: string | null
+    counterpartyIban: string | null
   ) =>
     tauriInvoke<boolean>('forget_payee', {
       payee,
       counterpartyIban,
-      variableSymbol,
     }),
 
   // Update categorization rules
@@ -847,6 +883,42 @@ export const categorizationApi = {
   // Initialize ML model from existing categorized transactions
   initializeFromTransactions: (samples: TrainingSample[]) =>
     tauriInvoke<void>('initialize_ml_from_transactions', { samples }),
+
+  // ==================== Learned Payees Management ====================
+
+  // Get all learned payees for management UI
+  getLearnedPayees: () =>
+    tauriInvoke<LearnedPayeeEntry[]>('get_learned_payees_list'),
+
+  // Delete a learned payee by ID
+  deleteLearnedPayee: (id: string) =>
+    tauriInvoke<void>('delete_learned_payee', { id }),
+
+  // Bulk delete learned payees
+  deleteLearnedPayeesBulk: (ids: string[]) =>
+    tauriInvoke<number>('delete_learned_payees_bulk', { ids }),
+
+  // Update learned payee category
+  updateLearnedPayeeCategory: (id: string, categoryId: string) =>
+    tauriInvoke<void>('update_learned_payee_category', { id, categoryId }),
+
+  // ==================== Custom Rules Management ====================
+
+  // Get all custom rules
+  getCustomRules: () =>
+    tauriInvoke<CustomRule[]>('get_custom_rules'),
+
+  // Create a new custom rule
+  createCustomRule: (data: CustomRuleInput) =>
+    tauriInvoke<CustomRule>('create_custom_rule', { data }),
+
+  // Update an existing custom rule
+  updateCustomRule: (id: string, data: CustomRuleInput) =>
+    tauriInvoke<CustomRule>('update_custom_rule', { id, data }),
+
+  // Delete a custom rule
+  deleteCustomRule: (id: string) =>
+    tauriInvoke<void>('delete_custom_rule', { id }),
 };
 
 // ============================================================================

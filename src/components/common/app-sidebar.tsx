@@ -11,7 +11,7 @@ import {
     SidebarFooter,
     SidebarRail,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, TrendingUp, Home as HomeIcon, Shield, Settings, Lock, Bitcoin, Gem, ChevronsUpDown, CreditCard, FileText, BarChart3, Calculator, LineChart, Building, Landmark, Tag, PiggyBank } from "lucide-react";
+import { LayoutDashboard, TrendingUp, Home as HomeIcon, Shield, Settings, Lock, Bitcoin, Gem, ChevronsUpDown, CreditCard, FileText, BarChart3, Calculator, LineChart, Building, Landmark, Tag, PiggyBank, ListFilter } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/use-auth";
@@ -234,6 +234,12 @@ export function AppSidebar() {
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuGroup>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/settings/categorization-rules">
+                                            <ListFilter className="mr-2 h-4 w-4" />
+                                            {t('nav.categorizationRules')}
+                                        </Link>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
                                         <Link href="/settings">
                                             <Settings className="mr-2 h-4 w-4" />
