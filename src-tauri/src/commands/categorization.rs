@@ -63,11 +63,9 @@ pub async fn learn_categorization(
     category_id: String,
 ) -> Result<(), String> {
     // Update in-memory engine
-    state.0.learn_from_user(
-        payee.as_deref(),
-        counterparty_iban.as_deref(),
-        &category_id,
-    );
+    state
+        .0
+        .learn_from_user(payee.as_deref(), counterparty_iban.as_deref(), &category_id);
 
     // Persist to database using DELETE + INSERT pattern
     // (SQLite treats NULLs as distinct in unique indexes, so INSERT OR REPLACE doesn't work)
@@ -80,7 +78,7 @@ pub async fn learn_categorization(
     db.with_conn(|conn| {
         // First delete any existing entry with matching composite key
         conn.execute(
-            "DELETE FROM learned_payees WHERE 
+            "DELETE FROM learned_payees WHERE
              (normalized_payee IS ?1 OR (?1 IS NULL AND normalized_payee IS NULL))
              AND (counterparty_iban IS ?2 OR (?2 IS NULL AND counterparty_iban IS NULL))",
             rusqlite::params![&normalized, &iban_clone],
@@ -115,10 +113,9 @@ pub async fn forget_payee(
     counterparty_iban: Option<String>,
 ) -> Result<bool, String> {
     // Remove from in-memory engine
-    let forgotten = state.0.forget_payee(
-        payee.as_deref(),
-        counterparty_iban.as_deref(),
-    );
+    let forgotten = state
+        .0
+        .forget_payee(payee.as_deref(), counterparty_iban.as_deref());
 
     if forgotten {
         // Also remove from database
@@ -126,7 +123,7 @@ pub async fn forget_payee(
         db.with_conn(|conn| {
             // Delete matching the exact combination
             conn.execute(
-                "DELETE FROM learned_payees WHERE 
+                "DELETE FROM learned_payees WHERE
                  (normalized_payee IS ?1 OR (?1 IS NULL AND normalized_payee IS NULL))
                  AND (counterparty_iban IS ?2 OR (?2 IS NULL AND counterparty_iban IS NULL))",
                 rusqlite::params![normalized, counterparty_iban],
@@ -224,7 +221,7 @@ pub async fn load_learned_payees_from_db(
     let entries = db
         .with_conn(|conn| {
             let mut stmt = conn.prepare(
-                "SELECT normalized_payee, counterparty_iban, category_id FROM learned_payees"
+                "SELECT normalized_payee, counterparty_iban, category_id FROM learned_payees",
             )?;
             let rows = stmt.query_map([], |row| {
                 Ok((
@@ -354,15 +351,15 @@ pub async fn get_learned_payees_list(
 ) -> Result<Vec<LearnedPayeeEntry>, String> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, normalized_payee, original_payee, counterparty_iban, category_id, created_at, updated_at 
-             FROM learned_payees 
+            "SELECT id, normalized_payee, original_payee, counterparty_iban, category_id, created_at, updated_at
+             FROM learned_payees
              ORDER BY updated_at DESC"
         )?;
-        
+
         let entries = stmt.query_map([], |row| {
             let normalized_payee: Option<String> = row.get(1)?;
             let counterparty_iban: Option<String> = row.get(3)?;
-            
+
             // Determine rule type based on which fields are present
             let rule_type = match (&normalized_payee, &counterparty_iban) {
                 (Some(_), Some(_)) => "iban_default",
@@ -370,7 +367,7 @@ pub async fn get_learned_payees_list(
                 (None, Some(_)) => "iban_only_default",
                 (None, None) => "unknown",
             };
-            
+
             Ok(LearnedPayeeEntry {
                 id: row.get(0)?,
                 rule_type: rule_type.to_string(),
@@ -384,7 +381,7 @@ pub async fn get_learned_payees_list(
         })?
         .filter_map(|r| r.ok())
         .collect();
-        
+
         Ok(entries)
     }).map_err(|e| format!("Failed to load learned payees: {}", e))
 }
@@ -397,32 +394,37 @@ pub async fn delete_learned_payee(
     id: String,
 ) -> Result<(), String> {
     // First get the payee details to remove from in-memory engine
-    let payee_data = db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT normalized_payee, counterparty_iban FROM learned_payees WHERE id = ?1"
-        )?;
-        let result: Option<(Option<String>, Option<String>)> = stmt.query_row([&id], |row| {
-            Ok((
-                row.get::<_, Option<String>>(0)?,
-                row.get::<_, Option<String>>(1)?,
-            ))
-        }).optional()?;
-        Ok(result)
-    }).map_err(|e| format!("Failed to find payee: {}", e))?;
-    
+    let payee_data = db
+        .with_conn(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT normalized_payee, counterparty_iban FROM learned_payees WHERE id = ?1",
+            )?;
+            let result: Option<(Option<String>, Option<String>)> = stmt
+                .query_row([&id], |row| {
+                    Ok((
+                        row.get::<_, Option<String>>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                    ))
+                })
+                .optional()?;
+            Ok(result)
+        })
+        .map_err(|e| format!("Failed to find payee: {}", e))?;
+
     if let Some((payee, iban)) = payee_data {
         // Remove from in-memory engine
         state.0.forget_payee(payee.as_deref(), iban.as_deref());
-        
+
         // Remove from database
         db.with_conn(|conn| {
             conn.execute("DELETE FROM learned_payees WHERE id = ?1", [&id])?;
             Ok(())
-        }).map_err(|e| format!("Failed to delete payee: {}", e))?;
-        
+        })
+        .map_err(|e| format!("Failed to delete payee: {}", e))?;
+
         log::info!("Deleted learned payee: {}", id);
     }
-    
+
     Ok(())
 }
 
@@ -436,44 +438,50 @@ pub async fn delete_learned_payees_bulk(
     if ids.is_empty() {
         return Ok(0);
     }
-    
+
     // Get all payee details first
-    let payees_data = db.with_conn(|conn| {
-        let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-        let sql = format!(
+    let payees_data = db
+        .with_conn(|conn| {
+            let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            let sql = format!(
             "SELECT id, normalized_payee, counterparty_iban FROM learned_payees WHERE id IN ({})",
             placeholders
         );
-        let mut stmt = conn.prepare(&sql)?;
-        let params: Vec<&dyn rusqlite::ToSql> = ids.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
-        let entries = stmt.query_map(params.as_slice(), |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, Option<String>>(1)?,
-                row.get::<_, Option<String>>(2)?,
-            ))
-        })?
-        .filter_map(|r| r.ok())
-        .collect::<Vec<_>>();
-        Ok(entries)
-    }).map_err(|e| format!("Failed to find payees: {}", e))?;
-    
+            let mut stmt = conn.prepare(&sql)?;
+            let params: Vec<&dyn rusqlite::ToSql> =
+                ids.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+            let entries = stmt
+                .query_map(params.as_slice(), |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                    ))
+                })?
+                .filter_map(|r| r.ok())
+                .collect::<Vec<_>>();
+            Ok(entries)
+        })
+        .map_err(|e| format!("Failed to find payees: {}", e))?;
+
     let count = payees_data.len();
-    
+
     // Remove from in-memory engine
     for (_id, payee, iban) in &payees_data {
         state.0.forget_payee(payee.as_deref(), iban.as_deref());
     }
-    
+
     // Remove from database
     db.with_conn(|conn| {
         let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
         let sql = format!("DELETE FROM learned_payees WHERE id IN ({})", placeholders);
-        let params: Vec<&dyn rusqlite::ToSql> = ids.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+        let params: Vec<&dyn rusqlite::ToSql> =
+            ids.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
         conn.execute(&sql, params.as_slice())?;
         Ok(())
-    }).map_err(|e| format!("Failed to delete payees: {}", e))?;
-    
+    })
+    .map_err(|e| format!("Failed to delete payees: {}", e))?;
+
     log::info!("Bulk deleted {} learned payees", count);
     Ok(count)
 }
@@ -487,23 +495,29 @@ pub async fn update_learned_payee_category(
     category_id: String,
 ) -> Result<(), String> {
     // Get the payee details first
-    let payee_data = db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT normalized_payee, counterparty_iban FROM learned_payees WHERE id = ?1"
-        )?;
-        let result: Option<(Option<String>, Option<String>)> = stmt.query_row([&id], |row| {
-            Ok((
-                row.get::<_, Option<String>>(0)?,
-                row.get::<_, Option<String>>(1)?,
-            ))
-        }).optional()?;
-        Ok(result)
-    }).map_err(|e| format!("Failed to find payee: {}", e))?;
-    
+    let payee_data = db
+        .with_conn(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT normalized_payee, counterparty_iban FROM learned_payees WHERE id = ?1",
+            )?;
+            let result: Option<(Option<String>, Option<String>)> = stmt
+                .query_row([&id], |row| {
+                    Ok((
+                        row.get::<_, Option<String>>(0)?,
+                        row.get::<_, Option<String>>(1)?,
+                    ))
+                })
+                .optional()?;
+            Ok(result)
+        })
+        .map_err(|e| format!("Failed to find payee: {}", e))?;
+
     if let Some((payee, iban)) = payee_data {
         // Update in-memory engine
-        state.0.learn_from_user(payee.as_deref(), iban.as_deref(), &category_id);
-        
+        state
+            .0
+            .learn_from_user(payee.as_deref(), iban.as_deref(), &category_id);
+
         // Update in database
         db.with_conn(|conn| {
             conn.execute(
@@ -512,10 +526,10 @@ pub async fn update_learned_payee_category(
             )?;
             Ok(())
         }).map_err(|e| format!("Failed to update payee category: {}", e))?;
-        
+
         log::info!("Updated learned payee {} to category {}", id, category_id);
     }
-    
+
     Ok(())
 }
 
@@ -552,16 +566,14 @@ pub struct CustomRuleInput {
 
 /// Get all custom categorization rules
 #[tauri::command]
-pub async fn get_custom_rules(
-    db: State<'_, Database>,
-) -> Result<Vec<CustomRule>, String> {
+pub async fn get_custom_rules(db: State<'_, Database>) -> Result<Vec<CustomRule>, String> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, name, rule_type, pattern, category_id, priority, is_active, stop_processing, is_system, created_at 
-             FROM categorization_rules 
+            "SELECT id, name, rule_type, pattern, category_id, priority, is_active, stop_processing, is_system, created_at
+             FROM categorization_rules
              ORDER BY priority DESC, created_at ASC"
         )?;
-        
+
         let entries = stmt.query_map([], |row| {
             Ok(CustomRule {
                 id: row.get(0)?,
@@ -578,7 +590,7 @@ pub async fn get_custom_rules(
         })?
         .filter_map(|r| r.ok())
         .collect();
-        
+
         Ok(entries)
     }).map_err(|e| format!("Failed to load custom rules: {}", e))
 }
@@ -594,10 +606,10 @@ pub async fn create_custom_rule(
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs() as i64)
         .unwrap_or(0);
-    
+
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO categorization_rules (id, name, rule_type, pattern, category_id, priority, is_active, stop_processing, is_system, created_at) 
+            "INSERT INTO categorization_rules (id, name, rule_type, pattern, category_id, priority, is_active, stop_processing, is_system, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9)",
             rusqlite::params![
                 &id,
@@ -613,9 +625,9 @@ pub async fn create_custom_rule(
         )?;
         Ok(())
     }).map_err(|e| format!("Failed to create rule: {}", e))?;
-    
+
     log::info!("Created custom rule: {} ({})", data.name, id);
-    
+
     Ok(CustomRule {
         id,
         name: data.name,
@@ -638,23 +650,25 @@ pub async fn update_custom_rule(
     data: CustomRuleInput,
 ) -> Result<CustomRule, String> {
     // Check if rule is system rule (cannot be edited)
-    let is_system = db.with_conn(|conn| {
-        let val = conn.query_row(
-            "SELECT is_system FROM categorization_rules WHERE id = ?1",
-            [&id],
-            |row| row.get::<_, i32>(0),
-        )?;
-        Ok(val)
-    }).map_err(|e| format!("Failed to find rule: {}", e))?;
-    
+    let is_system = db
+        .with_conn(|conn| {
+            let val = conn.query_row(
+                "SELECT is_system FROM categorization_rules WHERE id = ?1",
+                [&id],
+                |row| row.get::<_, i32>(0),
+            )?;
+            Ok(val)
+        })
+        .map_err(|e| format!("Failed to find rule: {}", e))?;
+
     if is_system != 0 {
         return Err("Cannot modify system rules".to_string());
     }
-    
+
     db.with_conn(|conn| {
         conn.execute(
-            "UPDATE categorization_rules 
-             SET name = ?1, rule_type = ?2, pattern = ?3, category_id = ?4, priority = ?5, is_active = ?6, stop_processing = ?7 
+            "UPDATE categorization_rules
+             SET name = ?1, rule_type = ?2, pattern = ?3, category_id = ?4, priority = ?5, is_active = ?6, stop_processing = ?7
              WHERE id = ?8 AND is_system = 0",
             rusqlite::params![
                 &data.name,
@@ -669,18 +683,20 @@ pub async fn update_custom_rule(
         )?;
         Ok(())
     }).map_err(|e| format!("Failed to update rule: {}", e))?;
-    
-    let created_at = db.with_conn(|conn| {
-        let val = conn.query_row(
-            "SELECT created_at FROM categorization_rules WHERE id = ?1",
-            [&id],
-            |row| row.get::<_, i64>(0),
-        )?;
-        Ok(val)
-    }).unwrap_or(0);
-    
+
+    let created_at = db
+        .with_conn(|conn| {
+            let val = conn.query_row(
+                "SELECT created_at FROM categorization_rules WHERE id = ?1",
+                [&id],
+                |row| row.get::<_, i64>(0),
+            )?;
+            Ok(val)
+        })
+        .unwrap_or(0);
+
     log::info!("Updated custom rule: {} ({})", data.name, id);
-    
+
     Ok(CustomRule {
         id,
         name: data.name,
@@ -697,29 +713,32 @@ pub async fn update_custom_rule(
 
 /// Delete a custom categorization rule
 #[tauri::command]
-pub async fn delete_custom_rule(
-    db: State<'_, Database>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_custom_rule(db: State<'_, Database>, id: String) -> Result<(), String> {
     // Check if rule is system rule (cannot be deleted)
-    let is_system = db.with_conn(|conn| {
-        let val = conn.query_row(
-            "SELECT is_system FROM categorization_rules WHERE id = ?1",
-            [&id],
-            |row| row.get::<_, i32>(0),
-        )?;
-        Ok(val)
-    }).map_err(|e| format!("Failed to find rule: {}", e))?;
-    
+    let is_system = db
+        .with_conn(|conn| {
+            let val = conn.query_row(
+                "SELECT is_system FROM categorization_rules WHERE id = ?1",
+                [&id],
+                |row| row.get::<_, i32>(0),
+            )?;
+            Ok(val)
+        })
+        .map_err(|e| format!("Failed to find rule: {}", e))?;
+
     if is_system != 0 {
         return Err("Cannot delete system rules".to_string());
     }
-    
+
     db.with_conn(|conn| {
-        conn.execute("DELETE FROM categorization_rules WHERE id = ?1 AND is_system = 0", [&id])?;
+        conn.execute(
+            "DELETE FROM categorization_rules WHERE id = ?1 AND is_system = 0",
+            [&id],
+        )?;
         Ok(())
-    }).map_err(|e| format!("Failed to delete rule: {}", e))?;
-    
+    })
+    .map_err(|e| format!("Failed to delete rule: {}", e))?;
+
     log::info!("Deleted custom rule: {}", id);
     Ok(())
 }

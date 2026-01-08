@@ -41,7 +41,6 @@ import { categorizationApi, bankAccountsApi, type CustomRule } from '@/lib/tauri
 import { 
   Trash2, 
   Search, 
-  Info, 
   Plus, 
   BookOpen, 
   Settings2,
@@ -276,15 +275,7 @@ export default function CategorizationRules() {
         <p className="page-subtitle">{t('subtitle')}</p>
       </div>
 
-      {/* Info Card */}
-      <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/20">
-        <CardContent className="flex items-start gap-3 pt-4">
-          <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-blue-800 dark:text-blue-200">
-            {t('learnedRules.hierarchyInfo')}
-          </p>
-        </CardContent>
-      </Card>
+
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'learned' | 'custom')}>
@@ -406,6 +397,7 @@ export default function CategorizationRules() {
                                 }
                               }}
                               compact
+                              enableLearning={false}
                             />
                           </div>
                         </TableCell>

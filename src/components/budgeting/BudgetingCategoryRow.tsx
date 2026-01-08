@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Target, Tag, ShoppingCart, Utensils, Car, Zap, Film, Heart, Home, Briefcase, Plane, Gift, Coffee, Gamepad2, Dumbbell, PiggyBank, TrendingUp, HelpCircle, type LucideIcon } from "lucide-react";
+import { ChevronDown, ChevronRight, Target, Tag, type LucideProps } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -11,29 +11,10 @@ import { budgetingApi } from "@/lib/tauri-api";
 import { useQuery } from "@tanstack/react-query";
 import { CategorySelector } from "@/components/bank-accounts/CategorySelector";
 import type { TransactionCategory } from "@shared/schema";
+import { ICON_MAP } from "@/components/common/category-icons-map";
+import type { ComponentType } from "react";
 
-// Simple icon map for category display
-const ICON_MAP: Record<string, LucideIcon> = {
-  'shopping-cart': ShoppingCart,
-  'utensils': Utensils,
-  'car': Car,
-  'zap': Zap,
-  'film': Film,
-  'heart': Heart,
-  'home': Home,
-  'briefcase': Briefcase,
-  'plane': Plane,
-  'gift': Gift,
-  'coffee': Coffee,
-  'gamepad-2': Gamepad2,
-  'dumbbell': Dumbbell,
-  'piggy-bank': PiggyBank,
-  'trending-up': TrendingUp,
-  'help-circle': HelpCircle,
-  'tag': Tag,
-};
-
-function getCategoryIcon(iconName: string | null | undefined): LucideIcon {
+function getCategoryIcon(iconName: string | null | undefined): ComponentType<LucideProps> {
   return ICON_MAP[iconName || 'tag'] || Tag;
 }
 

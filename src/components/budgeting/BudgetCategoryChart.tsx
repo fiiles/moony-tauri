@@ -330,17 +330,25 @@ export function BudgetCategoryChart({
               <BarChart
                 data={chartData}
                 margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
-                barCategoryGap="10%"
+                barCategoryGap="20%" // Slightly increased gap for better look with overlaid bars
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="name" 
-                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  xAxisId="0"
+                  tick={{ fontSize: 14, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={{ stroke: 'hsl(var(--border))' }}
                   axisLine={{ stroke: 'hsl(var(--border))' }}
                   angle={-45}
                   textAnchor="end"
                   height={70}
+                  interval={0}
+                />
+                {/* Secondary hidden axis to allow layering bars on top of each other */}
+                <XAxis 
+                  dataKey="name" 
+                  xAxisId="1"
+                  hide
                   interval={0}
                 />
                 <YAxis 
@@ -349,7 +357,7 @@ export function BudgetCategoryChart({
                     if (value >= 1000) return `${Math.round(value / 1000)} tis.`;
                     return `${value}`;
                   }}
-                  tick={{ fontSize: 13, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: 14, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={{ stroke: 'hsl(var(--border))' }}
                   axisLine={{ stroke: 'hsl(var(--border))' }}
                   width={70}
@@ -359,34 +367,59 @@ export function BudgetCategoryChart({
                   cursor={{ fill: 'hsl(var(--muted-foreground) / 0.2)' }}
                 />
                 
-                {/* Budget bars (shadow) */}
-                <Bar
-                  dataKey="budget"
-                  fill="hsl(var(--muted-foreground) / 0.3)"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={80}
-                />
-                
                 {/* Actual spending bars */}
                 <Bar
                   dataKey="amount"
+                  xAxisId="0"
                   radius={[6, 6, 0, 0]}
                   cursor="pointer"
-                  maxBarSize={70}
+                  maxBarSize={80} // Increased maxBarSize slightly
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onClick={(data: any) => handleBarClick(data)}
                 >
                   {chartData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={entry.hasBudget && entry.amount > entry.budget 
-                        ? "#ef4444"
-                        : entry.color}
+                      fill={entry.color}
                       stroke={selectedCategoryId === entry.categoryId ? "hsl(var(--primary))" : undefined}
                       strokeWidth={selectedCategoryId === entry.categoryId ? 3 : 0}
                     />
                   ))}
                 </Bar>
+
+                {/* Budget lines (overlaid) */}
+                <Bar
+                  dataKey="budget"
+                  xAxisId="1"
+                  shape={(props: unknown) => {
+                    const { x, y, width, payload } = props as { x: number; y: number; width: number; payload: { budget: number } };
+                    // Only draw line if there is a budget
+                    if (!width || payload?.budget === 0) return <g />;
+                    
+                    // Calculate the full width of the category slot
+                    // User requested 1.35x width
+                    const fullWidth = width * 1.35;
+                    const offset = (fullWidth - width) / 2;
+                    
+                    return (
+                       <g>
+                        {/* The dashed line */}
+                        <line 
+                          x1={x - offset} 
+                          y1={y} 
+                          x2={x + width + offset} 
+                          y2={y} 
+                          stroke="hsl(var(--foreground))" 
+                          strokeWidth={2} 
+                          strokeDasharray="2 4"
+                          strokeLinecap="round"
+                          className=""
+                        />
+                       </g>
+                    );
+                  }}
+                  isAnimationActive={false} // Disable animation for the line to avoid weird transitions
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -398,7 +431,7 @@ export function BudgetCategoryChart({
               <span>{t('actualSpending')}</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded bg-muted border" />
+              <div className="w-8 h-0 border-t-2 border-dotted border-foreground" />
               <span>{t('budgetLimit')}</span>
             </div>
           </div>
