@@ -1471,7 +1471,7 @@ mod tests {
         assert!(categories.contains("cat_health"));
         assert!(categories.contains("cat_travel"));
         assert!(categories.contains("cat_income"));
-        assert!(categories.contains("cat_transfer"));
+        assert!(categories.contains("cat_internal_transfers"));
         assert!(categories.contains("cat_investments"));
         assert!(categories.contains("cat_housing"));
         assert!(categories.contains("cat_taxes"));

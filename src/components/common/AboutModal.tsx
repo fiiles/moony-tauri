@@ -107,7 +107,7 @@ export function AboutModal() {
             </Button>
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="sm:max-w-md bg-gradient-to-b from-background to-muted/30 border-border/50">
+                <DialogContent className="sm:max-w-md bg-background border-border/50">
                     <DialogHeader className="pb-2">
                         <div className="flex items-center gap-3">
                             <div className="flex aspect-square size-12 shrink-0 items-center justify-center rounded-lg overflow-hidden">

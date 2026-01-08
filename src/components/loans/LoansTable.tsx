@@ -73,10 +73,10 @@ export function LoansTable({ loans, onEdit, onDelete }: LoansTableProps) {
                     comparison = Number(a.interestRate) - Number(b.interestRate);
                     break;
                 case 'monthlyPayment':
-                    comparison = Number((a as any).monthlyPayment || 0) - Number((b as any).monthlyPayment || 0);
+                    comparison = Number(a.monthlyPayment || 0) - Number(b.monthlyPayment || 0);
                     break;
                 case 'rateValidity':
-                    comparison = Number((a as any).interestRateValidityDate || 0) - Number((b as any).interestRateValidityDate || 0);
+                    comparison = Number(a.interestRateValidityDate || 0) - Number(b.interestRateValidityDate || 0);
                     break;
                 case 'endDate':
                     comparison = Number(a.endDate || 0) - Number(b.endDate || 0);
@@ -143,16 +143,16 @@ export function LoansTable({ loans, onEdit, onDelete }: LoansTableProps) {
                                                 {Number(loan.interestRate).toFixed(2)}%
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {formatCurrency(convertToCzK(Number((loan as any).monthlyPayment || 0), loan.currency as CurrencyCode))}
+                                                {formatCurrency(convertToCzK(Number(loan.monthlyPayment || 0), loan.currency as CurrencyCode))}
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {(loan as any).interestRateValidityDate
-                                                    ? formatDate(new Date((loan as any).interestRateValidityDate * 1000))
+                                                {loan.interestRateValidityDate
+                                                    ? formatDate(new Date(loan.interestRateValidityDate * 1000))
                                                     : "—"}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {loan.endDate
-                                                    ? formatDate(new Date((loan.endDate as any) * 1000))
+                                                    ? formatDate(new Date(Number(loan.endDate) * 1000))
                                                     : "—"}
                                             </TableCell>
                                             <TableCell className="text-right">

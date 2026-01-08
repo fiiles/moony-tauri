@@ -122,8 +122,6 @@ interface CategorySelectorProps {
   categorizationResult?: CategorizationResult;
   counterpartyName?: string | null;
   counterpartyIban?: string | null;
-  /** Variable symbol for hierarchical matching */
-  variableSymbol?: string | null;
   categories: TransactionCategory[];
   onCategoryChange: (categoryId: string | null) => void;
   onDeclineSuggestion?: () => void;
@@ -163,7 +161,6 @@ export function CategorySelector({
   categorizationResult,
   counterpartyName,
   counterpartyIban,
-  variableSymbol,
   categories,
   onCategoryChange,
   onDeclineSuggestion,
@@ -199,23 +196,19 @@ export function CategorySelector({
     }
 
     // Learn from counterparty details with hierarchical matching:
-    // - payee + iban + vs = exact match
-    // - payee + iban (null vs) = iban default
-    // - payee only (null iban + vs) = payee default
+    // - payee + iban = iban default
+    // - payee only (null iban) = payee default
     const payee = (counterpartyName && counterpartyName.trim().length > 2)
       ? counterpartyName.trim()
       : null;
     const iban = (counterpartyIban && counterpartyIban.trim().length > 5)
       ? counterpartyIban.trim()
       : null;
-    const vs = (variableSymbol && variableSymbol.trim().length > 0)
-      ? variableSymbol.trim()
-      : null;
 
     // Only learn if we have at least payee or iban
     if (payee || iban) {
       try {
-        await categorizationApi.learn(payee, iban, vs, categoryId);
+        await categorizationApi.learn(payee, iban, categoryId);
         const category = getCategoryDisplay(categoryId, categories);
         const learnKey = payee || iban || 'unknown';
         toast({

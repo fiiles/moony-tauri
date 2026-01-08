@@ -1,0 +1,94 @@
+{
+    "title": "Pravidla kategorizace",
+    "subtitle": "Spravujte automatickou kategorizaci transakcí",
+    "tabs": {
+        "learnedRules": "Naučená pravidla",
+        "customRules": "Vlastní pravidla"
+    },
+    "learnedRules": {
+        "title": "Naučená pravidla",
+        "description": "Pravidla naučená z vašich ručních kategorizací",
+        "noRules": "Zatím žádná naučená pravidla",
+        "noRulesDescription": "Když kategorizujete transakce, vzory se zde zobrazí.",
+        "columns": {
+            "ruleType": "Typ pravidla",
+            "pattern": "Vzor",
+            "payee": "Příjemce",
+            "iban": "IBAN",
+            "vs": "Variabilní symbol",
+            "category": "Kategorie",
+            "updatedAt": "Naposledy upraveno"
+        },
+        "ruleTypes": {
+            "payee_default": "Příjemce",
+            "iban_default": "Příjemce + IBAN",
+            "iban_only_default": "Pouze IBAN",
+            "unknown": "Neznámý"
+        },
+        "ruleTypeTooltips": {
+            "payee_default": "Odpovídá jakékoli transakci s tímto příjemcem",
+            "iban_default": "Odpovídá transakcím s tímto příjemcem A IBAN",
+            "iban_only_default": "Odpovídá jakékoli transakci s tímto IBAN (bez příjemce)"
+        },
+        "hierarchyInfo": "Specifičtější pravidla (s IBAN) mají přednost před obecnými pravidly.",
+        "bulkDelete": "Smazat vybrané",
+        "deleteConfirmTitle": "Smazat naučené pravidlo",
+        "deleteConfirmDescription": "Opravdu chcete smazat toto naučené pravidlo? Tuto akci nelze vrátit zpět.",
+        "bulkDeleteConfirmTitle": "Smazat vybraná pravidla",
+        "bulkDeleteConfirmDescription": "Opravdu chcete smazat {{count}} vybraných pravidel? Tuto akci nelze vrátit zpět.",
+        "deleteSuccess": "Pravidlo úspěšně smazáno",
+        "bulkDeleteSuccess": "{{count}} pravidel úspěšně smazáno",
+        "updateCategorySuccess": "Kategorie úspěšně aktualizována",
+        "selectAll": "Vybrat vše",
+        "selected": "{{count}} vybráno"
+    },
+    "customRules": {
+        "title": "Vlastní pravidla",
+        "description": "Pravidla založená na vzorech pro automatickou kategorizaci",
+        "noRules": "Zatím žádná vlastní pravidla",
+        "noRulesDescription": "Vytvořte pravidla pro automatickou kategorizaci transakcí na základě vzorů.",
+        "addRule": "Přidat pravidlo",
+        "editRule": "Upravit pravidlo",
+        "columns": {
+            "name": "Název",
+            "type": "Typ",
+            "pattern": "Vzor",
+            "category": "Kategorie",
+            "priority": "Priorita",
+            "active": "Aktivní",
+            "stopProcessing": "Zastavit zpracování"
+        },
+        "ruleTypes": {
+            "Contains": "Obsahuje",
+            "Regex": "Regex",
+            "StartsWith": "Začíná na",
+            "EndsWith": "Končí na"
+        },
+        "form": {
+            "name": "Název pravidla",
+            "namePlaceholder": "např. Nákupy v supermarketu",
+            "type": "Typ shody",
+            "pattern": "Vzor",
+            "patternPlaceholder": "např. LIDL nebo ^ALBERT.*",
+            "category": "Kategorie",
+            "priority": "Priorita",
+            "priorityHelp": "Pravidla s vyšší prioritou jsou kontrolována první (1-100)",
+            "active": "Pravidlo je aktivní",
+            "stopProcessing": "Zastavit zpracování při shodě",
+            "stopProcessingHelp": "Pokud je povoleno, po shodě tohoto pravidla se nekontrolují další pravidla"
+        },
+        "systemRule": "Systémové pravidlo",
+        "systemRuleTooltip": "Systémová pravidla nelze upravovat ani mazat",
+        "deleteConfirmTitle": "Smazat vlastní pravidlo",
+        "deleteConfirmDescription": "Opravdu chcete smazat toto vlastní pravidlo? Tuto akci nelze vrátit zpět.",
+        "createSuccess": "Pravidlo úspěšně vytvořeno",
+        "updateSuccess": "Pravidlo úspěšně aktualizováno",
+        "deleteSuccess": "Pravidlo úspěšně smazáno"
+    },
+    "errors": {
+        "loadFailed": "Nepodařilo se načíst pravidla",
+        "deleteFailed": "Nepodařilo se smazat pravidlo",
+        "updateFailed": "Nepodařilo se aktualizovat pravidlo",
+        "createFailed": "Nepodařilo se vytvořit pravidlo"
+    }
+}

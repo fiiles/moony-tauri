@@ -1067,7 +1067,6 @@ export default function BankAccountDetail() {
                         categorizationResult={categorizationResults.get(tx.id)}
                         counterpartyName={tx.counterpartyName}
                         counterpartyIban={tx.counterpartyIban}
-                        variableSymbol={tx.variableSymbol}
                         categories={categories}
                         onCategoryChange={(catId) => handleCategoryChange(tx.id, catId)}
                         onDeclineSuggestion={() => {

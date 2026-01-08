@@ -74,11 +74,10 @@ interface UseCategorization {
   categorize: (transaction: BankTransaction) => Promise<CategorizationResult>;
   // Categorize multiple transactions
   categorizeBatch: (transactions: BankTransaction[]) => Promise<CategorizationResult[]>;
-  // Learn from user's manual categorization (hierarchical: payee + iban + vs)
+  // Learn from user's manual categorization (hierarchical: payee + iban)
   learn: (
     payee: string | null,
     counterpartyIban: string | null,
-    variableSymbol: string | null,
     categoryId: string
   ) => Promise<void>;
   // Get engine statistics
@@ -186,7 +185,6 @@ export function useCategorization(): UseCategorization {
   const learn = useCallback(async (
     payee: string | null,
     counterpartyIban: string | null,
-    variableSymbol: string | null,
     categoryId: string
   ): Promise<void> => {
     if (!categoryId) return;
@@ -194,7 +192,7 @@ export function useCategorization(): UseCategorization {
     if (!payee && !counterpartyIban) return;
 
     try {
-      await categorizationApi.learn(payee, counterpartyIban, variableSymbol, categoryId);
+      await categorizationApi.learn(payee, counterpartyIban, categoryId);
       
       // Invalidate cache for transactions with this payee/iban
       // This is a simple approach - could be optimized

@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { MenuPreferences } from "@shared/schema";
+import { CurrencyCode } from "@shared/currencies";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { currencies, useCurrency } from "@/lib/currency";
 import { useAuth } from "@/hooks/use-auth";
@@ -326,7 +328,7 @@ export default function SettingsPage() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Partial<ProfileData & { currency?: string; language?: string; excludePersonalRealEstate?: boolean; menuPreferences?: MenuPreferences }>) => {
       await authApi.updateProfile(data);
     },
     onSuccess: (_data, variables) => {
@@ -345,7 +347,7 @@ export default function SettingsPage() {
 
 
   const updateMenuMutation = useMutation({
-    mutationFn: async (menuPreferences: any) => {
+    mutationFn: async (menuPreferences: MenuPreferences) => {
       await authApi.updateProfile({ menuPreferences });
     },
     onSuccess: () => {
@@ -473,14 +475,14 @@ export default function SettingsPage() {
           <RadioGroup
             value={currencyCode}
             onValueChange={(value: string) => {
-              setCurrency(value as any);
+              setCurrency(value as CurrencyCode);
               updateProfileMutation.mutate({ currency: value });
             }}
             className="flex flex-col gap-2"
           >
             {currencies.map((c) => (
               <div key={c.code} className="flex items-center space-x-3 p-2 rounded hover:bg-accent cursor-pointer" onClick={() => {
-                setCurrency(c.code as any);
+                setCurrency(c.code as CurrencyCode);
                 updateProfileMutation.mutate({ currency: c.code });
               }}>
                 <RadioGroupItem value={c.code} id={c.code} />

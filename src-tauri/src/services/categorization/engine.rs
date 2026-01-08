@@ -194,37 +194,25 @@ impl CategorizationEngine {
 
     /// Learn from user's manual categorization with hierarchical matching
     ///
-    /// This adds the payee/iban/vs combination to the exact match engine.
+    /// This adds the payee/iban combination to the exact match engine.
     /// The engine uses cascading defaults:
-    /// - payee + iban + vs = exact match
-    /// - payee + iban + null = IBAN default (catches any vs)
-    /// - payee + null + null = payee default (catches any iban/vs)
-    pub fn learn_from_user(
-        &self,
-        payee: Option<&str>,
-        iban: Option<&str>,
-        variable_symbol: Option<&str>,
-        category_id: &str,
-    ) {
+    /// - iban = IBAN default (catches any payee)
+    /// - payee = payee default (catches any iban)
+    pub fn learn_from_user(&self, payee: Option<&str>, iban: Option<&str>, category_id: &str) {
         if let Ok(mut exact) = self.exact_match.write() {
-            exact.learn_hierarchical(payee, iban, variable_symbol, category_id);
+            exact.learn_hierarchical(payee, iban, category_id);
         }
     }
 
     /// Legacy learn - creates payee default
     pub fn learn_from_user_simple(&self, payee: &str, category_id: &str) {
-        self.learn_from_user(Some(payee), None, None, category_id);
+        self.learn_from_user(Some(payee), None, category_id);
     }
 
     /// Forget a learned payee combination
-    pub fn forget_payee(
-        &self,
-        payee: Option<&str>,
-        iban: Option<&str>,
-        variable_symbol: Option<&str>,
-    ) -> bool {
+    pub fn forget_payee(&self, payee: Option<&str>, iban: Option<&str>) -> bool {
         if let Ok(mut exact) = self.exact_match.write() {
-            exact.forget_hierarchical(payee, iban, variable_symbol)
+            exact.forget_hierarchical(payee, iban)
         } else {
             false
         }
@@ -232,7 +220,7 @@ impl CategorizationEngine {
 
     /// Legacy forget - removes payee default
     pub fn forget_payee_simple(&self, payee: &str) -> bool {
-        self.forget_payee(Some(payee), None, None)
+        self.forget_payee(Some(payee), None)
     }
 
     /// Update rules (e.g., after user edits)
