@@ -57,6 +57,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             "028_remove_variable_symbol_from_learned_payees",
             MIGRATION_028,
         ),
+        ("029_update_investments_icon", MIGRATION_029),
     ];
 
     for (name, sql) in migrations {
@@ -1054,4 +1055,12 @@ ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL;
 
 -- Index for partial IBAN matching (for suggestions)
 CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_partial ON learned_payees(counterparty_iban);
+"#;
+
+/// Migration 029: Update Investments category icon to differentiate from Income
+const MIGRATION_029: &str = r#"
+-- Update Investments category icon to line-chart (was trending-up, same as Income)
+UPDATE transaction_categories 
+SET icon = 'line-chart' 
+WHERE id = 'cat_investments';
 "#;

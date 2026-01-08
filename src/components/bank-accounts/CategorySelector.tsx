@@ -7,51 +7,14 @@
  * - Learning on manual selection (toast notification)
  */
 
-import { useState, useMemo, type ComponentType } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   Check, 
   ChevronsUpDown, 
   Sparkles, 
   Tag,
-  ShoppingCart,
-  Utensils,
-  Car,
-  Zap,
-  Film,
-  ShoppingBag,
-  Heart,
-  Home,
-  Briefcase,
-  GraduationCap,
-  Plane,
-  Gift,
-  Wallet,
-  CreditCard,
-  Building,
-  Coffee,
-  Gamepad2,
-  Dumbbell,
-  Phone,
-  Wifi,
-  Fuel,
-  Bus,
-  Train,
-  Baby,
-  PawPrint,
-  Scissors,
-  Shirt,
-  PiggyBank,
-  ArrowRightLeft,
-  TrendingUp,
-  Repeat,
-  LineChart,
-  Hammer,
-  MoreHorizontal,
-  Landmark,
-  Shield,
   X,
   Brain,
-  type LucideProps,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -76,46 +39,8 @@ import { categorizationApi, type CategorizationResult } from '@/lib/tauri-api';
 import type { TransactionCategory } from '@shared/schema';
 import { useTranslation } from 'react-i18next';
 
-// Map Lucide icon names to components
-const ICON_MAP: Record<string, ComponentType<LucideProps>> = {
-  'shopping-cart': ShoppingCart,
-  'utensils': Utensils,
-  'car': Car,
-  'zap': Zap,
-  'film': Film,
-  'shopping-bag': ShoppingBag,
-  'heart': Heart,
-  'home': Home,
-  'briefcase': Briefcase,
-  'graduation-cap': GraduationCap,
-  'plane': Plane,
-  'gift': Gift,
-  'wallet': Wallet,
-  'credit-card': CreditCard,
-  'building': Building,
-  'coffee': Coffee,
-  'gamepad-2': Gamepad2,
-  'dumbbell': Dumbbell,
-  'phone': Phone,
-  'wifi': Wifi,
-  'fuel': Fuel,
-  'bus': Bus,
-  'train': Train,
-  'baby': Baby,
-  'paw-print': PawPrint,
-  'scissors': Scissors,
-  'shirt': Shirt,
-  // New category icons
-  'piggy-bank': PiggyBank,
-  'arrows-right-left': ArrowRightLeft,
-  'trending-up': TrendingUp,
-  'repeat': Repeat,
-  'line-chart': LineChart,
-  'hammer': Hammer,
-  'more-horizontal': MoreHorizontal,
-  'landmark': Landmark,
-  'shield': Shield,
-};
+
+import { CategoryIcon } from '@/components/common/CategoryIcon';
 
 interface CategorySelectorProps {
   currentCategoryId?: string | null;
@@ -127,6 +52,7 @@ interface CategorySelectorProps {
   onDeclineSuggestion?: () => void;
   disabled?: boolean;
   compact?: boolean;
+  enableLearning?: boolean;
 }
 
 /** Get category display info */
@@ -145,12 +71,6 @@ function getCategoryDisplay(categoryId: string | null, categories: TransactionCa
   };
 }
 
-/** Render icon component from name */
-function CategoryIcon({ iconName, className }: { iconName: string; className?: string }) {
-  const IconComponent = ICON_MAP[iconName] || Tag;
-  return <IconComponent className={className} />;
-}
-
 /** Check if result is a suggestion with confidence */
 function isSuggestion(result?: CategorizationResult): boolean {
   return result?.type === 'Suggestion';
@@ -166,6 +86,7 @@ export function CategorySelector({
   onDeclineSuggestion,
   disabled = false,
   compact = false,
+  enableLearning = true,
 }: CategorySelectorProps) {
   const { t } = useTranslation('bank_accounts');
   const { toast } = useToast();
@@ -191,7 +112,8 @@ export function CategorySelector({
     onCategoryChange(categoryId);
 
     // Skip learning if explicitly requested (one-time categorization)
-    if (skipLearning) {
+    // OR if learning is disabled for this selector
+    if (skipLearning || !enableLearning) {
       return;
     }
 
@@ -257,6 +179,7 @@ export function CategorySelector({
               categories={categories}
               selectedId={currentCategoryId}
               onSelect={handleSelect}
+              enableLearning={enableLearning}
             />
           </PopoverContent>
         </Popover>
@@ -319,6 +242,7 @@ export function CategorySelector({
             categories={categories}
             selectedId={currentCategoryId}
             onSelect={handleSelect}
+            enableLearning={enableLearning}
           />
         </PopoverContent>
       </Popover>
@@ -359,6 +283,7 @@ export function CategorySelector({
           categories={categories}
           selectedId={currentCategoryId}
           onSelect={handleSelect}
+          enableLearning={enableLearning}
         />
       </PopoverContent>
     </Popover>
@@ -370,10 +295,12 @@ function CategoryCommandList({
   categories,
   selectedId,
   onSelect,
+  enableLearning = true,
 }: {
   categories: TransactionCategory[];
   selectedId?: string | null;
   onSelect: (id: string, skipLearning: boolean) => void;
+  enableLearning?: boolean;
 }) {
   const { t } = useTranslation('bank_accounts');
   const [rememberForFuture, setRememberForFuture] = useState(true);
@@ -413,26 +340,28 @@ function CategoryCommandList({
           ))}
         </CommandGroup>
       </CommandList>
-      {/* Toggle for learning preference */}
-      <div className="border-t px-3 py-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Brain className="h-3.5 w-3.5 text-muted-foreground" />
-            <Label 
-              htmlFor="remember-toggle" 
-              className="text-xs text-muted-foreground cursor-pointer"
-            >
-              {t('categorization.rememberForFuture', 'Remember for future')}
-            </Label>
+      {/* Toggle for learning preference - only if learning is enabled */}
+      {enableLearning && (
+        <div className="border-t px-3 py-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Brain className="h-3.5 w-3.5 text-muted-foreground" />
+              <Label 
+                htmlFor="remember-toggle" 
+                className="text-xs text-muted-foreground cursor-pointer"
+              >
+                {t('categorization.rememberForFuture', 'Remember for future')}
+              </Label>
+            </div>
+            <Switch
+              id="remember-toggle"
+              checked={rememberForFuture}
+              onCheckedChange={setRememberForFuture}
+              className="scale-75 data-[state=unchecked]:bg-muted-foreground/30 data-[state=unchecked]:border data-[state=unchecked]:border-muted-foreground/40"
+            />
           </div>
-          <Switch
-            id="remember-toggle"
-            checked={rememberForFuture}
-            onCheckedChange={setRememberForFuture}
-            className="scale-75 data-[state=unchecked]:bg-muted-foreground/30 data-[state=unchecked]:border data-[state=unchecked]:border-muted-foreground/40"
-          />
         </div>
-      </div>
+      )}
     </Command>
   );
 }

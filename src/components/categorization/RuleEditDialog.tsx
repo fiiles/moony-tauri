@@ -28,6 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { categorizationApi, type CustomRule, type CustomRuleInput } from '@/lib/tauri-api';
+import { CategoryIcon } from '@/components/common/CategoryIcon';
 import type { TransactionCategory } from '@shared/schema';
 
 interface RuleEditDialogProps {
@@ -200,7 +201,7 @@ export default function RuleEditDialog({
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       <div className="flex items-center gap-2">
-                        {category.icon && <span>{category.icon}</span>}
+                        <CategoryIcon iconName={category.icon || 'tag'} className="h-4 w-4" />
                         <span>{category.name}</span>
                       </div>
                     </SelectItem>
