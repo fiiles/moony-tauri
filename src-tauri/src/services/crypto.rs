@@ -43,14 +43,14 @@ pub fn derive_key(secret: &str, salt: &[u8]) -> Result<[u8; KEY_LENGTH]> {
 /// Generate random master key for SQLCipher (32 bytes)
 pub fn generate_master_key() -> [u8; KEY_LENGTH] {
     let mut key = [0u8; KEY_LENGTH];
-    rand::thread_rng().fill_bytes(&mut key);
+    rand::rng().fill_bytes(&mut key);
     key
 }
 
 /// Generate random salt (32 bytes)
 pub fn generate_salt() -> [u8; SALT_LENGTH] {
     let mut salt = [0u8; SALT_LENGTH];
-    rand::thread_rng().fill_bytes(&mut salt);
+    rand::rng().fill_bytes(&mut salt);
     salt
 }
 
@@ -63,7 +63,7 @@ pub fn encrypt_with_key(data: &[u8], key: &[u8; KEY_LENGTH]) -> Result<Vec<u8>> 
 
     // Generate random IV
     let mut iv = [0u8; IV_LENGTH];
-    rand::thread_rng().fill_bytes(&mut iv);
+    rand::rng().fill_bytes(&mut iv);
     let nonce = Nonce::from_slice(&iv);
 
     // Encrypt (ciphertext includes auth tag appended by aes-gcm)
@@ -118,7 +118,7 @@ pub fn decrypt_with_key(encrypted_data: &[u8], key: &[u8; KEY_LENGTH]) -> Result
 pub fn generate_recovery_key() -> String {
     const CHARS: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0, O, 1, I
     let mut key = String::with_capacity(29); // 24 chars + 5 dashes
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut bytes = [0u8; 24];
     rng.fill_bytes(&mut bytes);
 
