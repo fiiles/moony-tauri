@@ -47,7 +47,7 @@ chrono = { version = "0.4", features = ["serde"] }
 ring = "0.17"
 hex = "0.4"
 base64 = "0.22"
-rand = "0.8"
+rand = "0.9"
 scrypt = "0.11"      # For scrypt key derivation (matches Node.js)
 aes-gcm = "0.10"     # For AES-256-GCM encryption (matches Node.js)
 
