@@ -37,24 +37,7 @@ export function WelcomeModal({ open, onOpenChange, language, onLanguageChange }:
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg bg-gradient-to-b from-background to-muted/30 border-border/50">
-                {/* Language Picker - Top Right */}
-                <div className="absolute top-4 right-10">
-                    <Select value={language} onValueChange={(v) => onLanguageChange(v as SupportedLanguage)}>
-                        <SelectTrigger className="w-[120px] h-8 text-xs gap-1">
-                            <Globe className="h-3 w-3 opacity-70" />
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {SUPPORTED_LANGUAGES.map((lang) => (
-                                <SelectItem key={lang} value={lang}>
-                                    {LANGUAGE_NAMES[lang].native}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
+            <DialogContent className="sm:max-w-lg bg-background border-border">
                 <DialogHeader className="pb-2">
                     <div className="flex items-center gap-3">
                         <div className="flex aspect-square size-12 shrink-0 items-center justify-center rounded-lg overflow-hidden">
@@ -68,6 +51,20 @@ export function WelcomeModal({ open, onOpenChange, language, onLanguageChange }:
                                 {t("welcomeModal.subtitle")}
                             </DialogDescription>
                         </div>
+                        {/* Language Picker - In header row */}
+                        <Select value={language} onValueChange={(v) => onLanguageChange(v as SupportedLanguage)}>
+                            <SelectTrigger className="w-[120px] h-8 text-xs gap-1 shrink-0">
+                                <Globe className="h-3 w-3 opacity-70" />
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {SUPPORTED_LANGUAGES.map((lang) => (
+                                    <SelectItem key={lang} value={lang}>
+                                        {LANGUAGE_NAMES[lang].native}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </DialogHeader>
 
