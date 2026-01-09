@@ -21,12 +21,15 @@ import type { CategorySpendingSummary } from "@/lib/tauri-api";
 import { budgetingApi } from "@/lib/tauri-api";
 import { useQuery } from "@tanstack/react-query";
 
+type Timeframe = "monthly" | "quarterly" | "yearly";
+
 interface BudgetCategoryChartProps {
   categories: CategorySpendingSummary[];
   uncategorizedAmount?: number;
   uncategorizedCount?: number;
   startDate: number;
   endDate: number;
+  timeframe: Timeframe;
   isLoading?: boolean;
 }
 
@@ -67,8 +70,11 @@ export function BudgetCategoryChart({
   uncategorizedCount = 0,
   startDate,
   endDate,
+  timeframe,
   isLoading = false,
 }: BudgetCategoryChartProps) {
+  // Budget multiplier: budgets are stored as monthly, scale for quarterly/yearly
+  const budgetMultiplier = timeframe === "yearly" ? 12 : timeframe === "quarterly" ? 3 : 1;
   const { t } = useTranslation('budgeting');
   const { formatCurrency } = useCurrency();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -143,7 +149,7 @@ export function BudgetCategoryChart({
       .map((cat, index) => ({
         name: t(`categories.${cat.categoryId}`, { defaultValue: cat.categoryName }),
         amount: Math.abs(parseFloat(cat.totalAmount) || 0),
-        budget: cat.budgetGoal ? parseFloat(cat.budgetGoal.amount) || 0 : 0,
+        budget: cat.budgetGoal ? (parseFloat(cat.budgetGoal.amount) || 0) * budgetMultiplier : 0,
         color: getCategoryColor(cat.categoryId, index),
         hasBudget: !!cat.budgetGoal,
         categoryId: cat.categoryId,
@@ -163,7 +169,7 @@ export function BudgetCategoryChart({
     }
 
     return filtered.sort((a, b) => b.amount - a.amount).slice(0, 12);
-  }, [categories, uncategorizedAmount, uncategorizedCount, excludedCategoryIds, t]);
+  }, [categories, uncategorizedAmount, uncategorizedCount, excludedCategoryIds, budgetMultiplier, t]);
 
   // Fetch transactions for selected category
   const { data: transactions = [], isLoading: txLoading } = useQuery({

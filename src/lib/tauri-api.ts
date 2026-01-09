@@ -124,8 +124,7 @@ export const authApi = {
     language?: string;
   }) => tauriInvoke<UserProfile>('confirm_setup', { data }),
 
-  unlock: (password: string) =>
-    tauriInvoke<UserProfile>('unlock', { password }),
+  unlock: (password: string) => tauriInvoke<UserProfile>('unlock', { password }),
 
   // Legacy recover (kept for compatibility)
   recover: (data: { recoveryKey: string; newPassword: string }) =>
@@ -135,11 +134,8 @@ export const authApi = {
   prepareRecover: (data: { recoveryKey: string; newPassword: string }) =>
     tauriInvoke<{ recoveryKey: string }>('prepare_recover', { data }),
 
-  confirmRecover: (data: {
-    oldRecoveryKey: string;
-    newPassword: string;
-    newRecoveryKey: string;
-  }) => tauriInvoke<UserProfile>('confirm_recover', { data }),
+  confirmRecover: (data: { oldRecoveryKey: string; newPassword: string; newRecoveryKey: string }) =>
+    tauriInvoke<UserProfile>('confirm_recover', { data }),
 
   logout: () => tauriInvoke<void>('logout'),
 
@@ -172,7 +168,8 @@ export const savingsApi = {
 
   get: (id: string) => tauriInvoke<SavingsAccount | null>('get_savings_account', { id }),
 
-  create: (data: InsertSavingsAccount) => tauriInvoke<SavingsAccount>('create_savings_account', { data }),
+  create: (data: InsertSavingsAccount) =>
+    tauriInvoke<SavingsAccount>('create_savings_account', { data }),
 
   update: (id: string, data: Partial<InsertSavingsAccount>) =>
     tauriInvoke<SavingsAccount>('update_savings_account', { id, data }),
@@ -182,10 +179,10 @@ export const savingsApi = {
   getZones: (accountId: string) =>
     tauriInvoke<SavingsAccountZone[]>('get_account_zones', { accountId }),
 
-  createZone: (data: Omit<SavingsAccountZone, 'id' | 'createdAt'>) => tauriInvoke<SavingsAccountZone>('create_account_zone', { data }),
+  createZone: (data: Omit<SavingsAccountZone, 'id' | 'createdAt'>) =>
+    tauriInvoke<SavingsAccountZone>('create_account_zone', { data }),
 
-  deleteZone: (zoneId: string) =>
-    tauriInvoke<void>('delete_account_zone', { zoneId }),
+  deleteZone: (zoneId: string) => tauriInvoke<void>('delete_account_zone', { zoneId }),
 };
 
 // ============================================================================
@@ -201,8 +198,10 @@ export const investmentsApi = {
   getWithDetails: (id: string) =>
     tauriInvoke<InvestmentWithDetails>('get_investment_with_details', { id }),
 
-  create: (data: { ticker: string; companyName: string }, initialTransaction?: InsertInvestmentTransaction) =>
-    tauriInvoke<StockInvestmentWithPrice>('create_investment', { data, initialTransaction }),
+  create: (
+    data: { ticker: string; companyName: string },
+    initialTransaction?: InsertInvestmentTransaction
+  ) => tauriInvoke<StockInvestmentWithPrice>('create_investment', { data, initialTransaction }),
 
   delete: (id: string) => tauriInvoke<void>('delete_investment', { id }),
 
@@ -212,14 +211,12 @@ export const investmentsApi = {
   getTransactions: (investmentId: string) =>
     tauriInvoke<InvestmentTransaction[]>('get_investment_transactions', { investmentId }),
 
-  getAllTransactions: () =>
-    tauriInvoke<InvestmentTransaction[]>('get_all_stock_transactions'),
+  getAllTransactions: () => tauriInvoke<InvestmentTransaction[]>('get_all_stock_transactions'),
 
   createTransaction: (investmentId: string, data: InsertInvestmentTransaction) =>
     tauriInvoke<InvestmentTransaction>('create_investment_transaction', { investmentId, data }),
 
-  deleteTransaction: (txId: string) =>
-    tauriInvoke<void>('delete_investment_transaction', { txId }),
+  deleteTransaction: (txId: string) => tauriInvoke<void>('delete_investment_transaction', { txId }),
 
   updateTransaction: (txId: string, data: Partial<InsertInvestmentTransaction>) =>
     tauriInvoke<InvestmentTransaction>('update_investment_transaction', { txId, data }),
@@ -227,24 +224,26 @@ export const investmentsApi = {
   setManualPrice: (ticker: string, price: string, currency: string) =>
     tauriInvoke<void>('set_manual_price', { ticker, price, currency }),
 
-  deleteManualPrice: (ticker: string) =>
-    tauriInvoke<void>('delete_manual_price', { ticker }),
+  deleteManualPrice: (ticker: string) => tauriInvoke<void>('delete_manual_price', { ticker }),
 
   setManualDividend: (ticker: string, amount: string, currency: string) =>
     tauriInvoke<void>('set_manual_dividend', { ticker, amount, currency }),
 
-  deleteManualDividend: (ticker: string) =>
-    tauriInvoke<void>('delete_manual_dividend', { ticker }),
+  deleteManualDividend: (ticker: string) => tauriInvoke<void>('delete_manual_dividend', { ticker }),
 
-  importTransactions: (transactions: Record<string, string | number | boolean | null | undefined>[], defaultCurrency: string) =>
+  importTransactions: (
+    transactions: Record<string, string | number | boolean | null | undefined>[],
+    defaultCurrency: string
+  ) =>
     tauriInvoke<ImportResult>('import_investment_transactions', { transactions, defaultCurrency }),
 
-
-  refreshMetadata: (ticker: string) =>
-    tauriInvoke<boolean>('refresh_stock_metadata', { ticker }),
+  refreshMetadata: (ticker: string) => tauriInvoke<boolean>('refresh_stock_metadata', { ticker }),
 
   getHistory: (ticker: string, startDate?: number, endDate?: number) =>
     tauriInvoke<TickerValueHistory[]>('get_stock_value_history', { ticker, startDate, endDate }),
+
+  backfillHistory: (ticker: string) =>
+    tauriInvoke<BackfillResult>('backfill_stock_ticker_history', { ticker }),
 };
 
 // ============================================================================
@@ -254,22 +253,24 @@ export const investmentsApi = {
 export const cryptoApi = {
   getAll: () => tauriInvoke<CryptoInvestmentWithPrice[]>('get_all_crypto'),
 
-  create: (data: { ticker: string; name: string; coingeckoId?: string }, initialTransaction?: Omit<CryptoTransaction, 'id' | 'investmentId' | 'createdAt'>) =>
-    tauriInvoke<CryptoInvestmentWithPrice>('create_crypto', { data, initialTransaction }),
+  create: (
+    data: { ticker: string; name: string; coingeckoId?: string },
+    initialTransaction?: Omit<CryptoTransaction, 'id' | 'investmentId' | 'createdAt'>
+  ) => tauriInvoke<CryptoInvestmentWithPrice>('create_crypto', { data, initialTransaction }),
 
   delete: (id: string) => tauriInvoke<void>('delete_crypto', { id }),
 
   getTransactions: (investmentId: string) =>
     tauriInvoke<CryptoTransaction[]>('get_crypto_transactions', { investmentId }),
 
-  getAllTransactions: () =>
-    tauriInvoke<CryptoTransaction[]>('get_all_crypto_transactions'),
+  getAllTransactions: () => tauriInvoke<CryptoTransaction[]>('get_all_crypto_transactions'),
 
-  createTransaction: (investmentId: string, data: Omit<CryptoTransaction, 'id' | 'investmentId' | 'createdAt'>) =>
-    tauriInvoke<CryptoTransaction>('create_crypto_transaction', { investmentId, data }),
+  createTransaction: (
+    investmentId: string,
+    data: Omit<CryptoTransaction, 'id' | 'investmentId' | 'createdAt'>
+  ) => tauriInvoke<CryptoTransaction>('create_crypto_transaction', { investmentId, data }),
 
-  deleteTransaction: (txId: string) =>
-    tauriInvoke<void>('delete_crypto_transaction', { txId }),
+  deleteTransaction: (txId: string) => tauriInvoke<void>('delete_crypto_transaction', { txId }),
 
   updatePrice: (symbol: string, price: string, currency: string, coingeckoId?: string) =>
     tauriInvoke<void>('update_crypto_price', { symbol, price, currency, coingeckoId }),
@@ -279,6 +280,9 @@ export const cryptoApi = {
 
   getHistory: (ticker: string, startDate?: number, endDate?: number) =>
     tauriInvoke<TickerValueHistory[]>('get_crypto_value_history', { ticker, startDate, endDate }),
+
+  backfillHistory: (ticker: string) =>
+    tauriInvoke<BackfillResult>('backfill_crypto_ticker_history', { ticker }),
 };
 
 // ============================================================================
@@ -312,8 +316,7 @@ export const loansApi = {
   getRealEstate: (loanId: string) =>
     tauriInvoke<RealEstate | null>('get_loan_real_estate', { loanId }),
 
-  getAvailable: () =>
-    tauriInvoke<Loan[]>('get_available_loans'),
+  getAvailable: () => tauriInvoke<Loan[]>('get_available_loans'),
 };
 
 // ============================================================================
@@ -338,8 +341,7 @@ export const realEstateApi = {
   createCost: (data: InsertRealEstateOneTimeCost) =>
     tauriInvoke<RealEstateOneTimeCost>('create_real_estate_cost', { data }),
 
-  deleteCost: (costId: string) =>
-    tauriInvoke<void>('delete_real_estate_cost', { costId }),
+  deleteCost: (costId: string) => tauriInvoke<void>('delete_real_estate_cost', { costId }),
 
   updateCost: (costId: string, data: Partial<InsertRealEstateOneTimeCost>) =>
     tauriInvoke<RealEstateOneTimeCost>('update_real_estate_cost', { costId, data }),
@@ -376,17 +378,19 @@ export const realEstateApi = {
   updatePhotoBatch: (batchId: string, data: { photoDate?: number; description?: string }) =>
     tauriInvoke<RealEstatePhotoBatch>('update_photo_batch', { batchId, data }),
 
-  deletePhotoBatch: (batchId: string) =>
-    tauriInvoke<void>('delete_photo_batch', { batchId }),
+  deletePhotoBatch: (batchId: string) => tauriInvoke<void>('delete_photo_batch', { batchId }),
 
-  deletePhoto: (photoId: string) =>
-    tauriInvoke<void>('delete_real_estate_photo', { photoId }),
+  deletePhoto: (photoId: string) => tauriInvoke<void>('delete_real_estate_photo', { photoId }),
 
   // Document management
   getDocuments: (realEstateId: string) =>
     tauriInvoke<RealEstateDocument[]>('get_real_estate_documents', { realEstateId }),
 
-  addDocument: (realEstateId: string, filePath: string, data: { name: string; description?: string; fileType?: string }) =>
+  addDocument: (
+    realEstateId: string,
+    filePath: string,
+    data: { name: string; description?: string; fileType?: string }
+  ) =>
     tauriInvoke<RealEstateDocument>('add_real_estate_document', { realEstateId, filePath, data }),
 
   deleteDocument: (documentId: string) =>
@@ -405,7 +409,8 @@ export const insuranceApi = {
 
   get: (id: string) => tauriInvoke<InsurancePolicy | null>('get_insurance', { id }),
 
-  create: (data: InsertInsurancePolicy) => tauriInvoke<InsurancePolicy>('create_insurance', { data }),
+  create: (data: InsertInsurancePolicy) =>
+    tauriInvoke<InsurancePolicy>('create_insurance', { data }),
 
   update: (id: string, data: Partial<InsertInsurancePolicy>) =>
     tauriInvoke<InsurancePolicy>('update_insurance', { id, data }),
@@ -416,8 +421,11 @@ export const insuranceApi = {
   getDocuments: (insuranceId: string) =>
     tauriInvoke<InsuranceDocument[]>('get_insurance_documents', { insuranceId }),
 
-  addDocument: (insuranceId: string, filePath: string, data: { name: string; description?: string; fileType?: string }) =>
-    tauriInvoke<InsuranceDocument>('add_insurance_document', { insuranceId, filePath, data }),
+  addDocument: (
+    insuranceId: string,
+    filePath: string,
+    data: { name: string; description?: string; fileType?: string }
+  ) => tauriInvoke<InsuranceDocument>('add_insurance_document', { insuranceId, filePath, data }),
 
   deleteDocument: (documentId: string) =>
     tauriInvoke<void>('delete_insurance_document', { documentId }),
@@ -429,8 +437,7 @@ export const insuranceApi = {
   getRealEstate: (insuranceId: string) =>
     tauriInvoke<RealEstate | null>('get_insurance_real_estate', { insuranceId }),
 
-  getAvailable: () =>
-    tauriInvoke<InsurancePolicy[]>('get_available_insurances'),
+  getAvailable: () => tauriInvoke<InsurancePolicy[]>('get_available_insurances'),
 };
 
 // ============================================================================
@@ -547,9 +554,9 @@ export const priceApi = {
 
   refreshDividends: () => tauriInvoke<DividendResult[]>('refresh_dividends'),
 
-  searchStockTickers: (query: string) => tauriInvoke<StockSearchResult[]>('search_stock_tickers', { query }),
+  searchStockTickers: (query: string) =>
+    tauriInvoke<StockSearchResult[]>('search_stock_tickers', { query }),
 };
-
 
 // ============================================================================
 // Cashflow API
@@ -638,7 +645,8 @@ export const bankAccountsApi = {
   getAll: () => tauriInvoke<BankAccountWithInstitution[]>('get_all_bank_accounts'),
   get: (id: string) => tauriInvoke<BankAccountWithInstitution | null>('get_bank_account', { id }),
   create: (data: InsertBankAccount) => tauriInvoke<BankAccount>('create_bank_account', { data }),
-  update: (id: string, data: InsertBankAccount) => tauriInvoke<BankAccount>('update_bank_account', { id, data }),
+  update: (id: string, data: InsertBankAccount) =>
+    tauriInvoke<BankAccount>('update_bank_account', { id, data }),
   delete: (id: string) => tauriInvoke<void>('delete_bank_account', { id }),
 
   // Institutions
@@ -671,17 +679,16 @@ export const bankAccountsApi = {
   getCsvPresetByInstitution: (institutionId: string) =>
     tauriInvoke<BankCsvPreset | null>('get_csv_preset_by_institution', { institutionId }),
   parseCsvFile: (filePath: string, delimiter?: string, skipRows?: number) =>
-    tauriInvoke<CsvPreviewResult>('parse_csv_file', { 
-      filePath, 
-      delimiter,  // Let backend auto-detect if undefined
-      skipRows: skipRows || 0 
+    tauriInvoke<CsvPreviewResult>('parse_csv_file', {
+      filePath,
+      delimiter, // Let backend auto-detect if undefined
+      skipRows: skipRows || 0,
     }),
   importCsvTransactions: (accountId: string, filePath: string, config: CsvImportConfigInput) =>
     tauriInvoke<CsvImportResult>('import_csv_transactions', { accountId, filePath, config }),
   getImportBatches: (accountId: string) =>
     tauriInvoke<CsvImportBatch[]>('get_import_batches', { accountId }),
-  deleteImportBatch: (batchId: string) =>
-    tauriInvoke<void>('delete_import_batch', { batchId }),
+  deleteImportBatch: (batchId: string) => tauriInvoke<void>('delete_import_batch', { batchId }),
 };
 
 // ============================================================================
@@ -753,7 +760,14 @@ export interface TransactionInput {
 }
 
 // Categorization rule types
-export type RuleType = 'Regex' | 'Contains' | 'StartsWith' | 'EndsWith' | 'VariableSymbol' | 'ConstantSymbol' | 'SpecificSymbol';
+export type RuleType =
+  | 'Regex'
+  | 'Contains'
+  | 'StartsWith'
+  | 'EndsWith'
+  | 'VariableSymbol'
+  | 'ConstantSymbol'
+  | 'SpecificSymbol';
 
 export interface CategorizationRule {
   id: string;
@@ -807,6 +821,8 @@ export interface CustomRule {
   stopProcessing: boolean;
   isSystem: boolean;
   createdAt: number;
+  ibanPattern?: string;
+  variableSymbol?: string;
 }
 
 // Input for creating/updating custom rules
@@ -818,6 +834,8 @@ export interface CustomRuleInput {
   priority: number;
   isActive: boolean;
   stopProcessing: boolean;
+  ibanPattern?: string;
+  variableSymbol?: string;
 }
 
 export const categorizationApi = {
@@ -831,11 +849,7 @@ export const categorizationApi = {
 
   // Learn from user's manual categorization with hierarchical matching
   // Supports: payee + iban (iban default), payee only (payee default)
-  learn: (
-    payee: string | null,
-    counterpartyIban: string | null,
-    categoryId: string
-  ) =>
+  learn: (payee: string | null, counterpartyIban: string | null, categoryId: string) =>
     tauriInvoke<void>('learn_categorization', {
       payee,
       counterpartyIban,
@@ -843,10 +857,7 @@ export const categorizationApi = {
     }),
 
   // Forget a learned payee combination
-  forget: (
-    payee: string | null,
-    counterpartyIban: string | null
-  ) =>
+  forget: (payee: string | null, counterpartyIban: string | null) =>
     tauriInvoke<boolean>('forget_payee', {
       payee,
       counterpartyIban,
@@ -857,28 +868,26 @@ export const categorizationApi = {
     tauriInvoke<void>('update_categorization_rules', { rules }),
 
   // Get engine statistics
-  getStats: () =>
-    tauriInvoke<CategorizationStats>('get_categorization_stats'),
+  getStats: () => tauriInvoke<CategorizationStats>('get_categorization_stats'),
 
   // Retrain ML model with samples
-  retrainModel: (samples: TrainingSample[]) =>
-    tauriInvoke<void>('retrain_ml_model', { samples }),
+  retrainModel: (samples: TrainingSample[]) => tauriInvoke<void>('retrain_ml_model', { samples }),
 
   // Export learned payees for backup/persistence
-  exportLearnedPayees: () =>
-    tauriInvoke<Record<string, string>>('export_learned_payees'),
+  exportLearnedPayees: () => tauriInvoke<Record<string, string>>('export_learned_payees'),
 
   // Import learned payees
   importLearnedPayees: (payees: Record<string, string>) =>
     tauriInvoke<number>('import_learned_payees', { payees }),
 
   // Load learned payees from database (call after app unlock)
-  loadFromDb: () =>
-    tauriInvoke<number>('load_learned_payees_from_db'),
+  loadFromDb: () => tauriInvoke<number>('load_learned_payees_from_db'),
 
   // Load user's own IBANs for internal transfer detection (call after app unlock)
-  loadOwnIbans: () =>
-    tauriInvoke<number>('load_own_ibans_from_db'),
+  loadOwnIbans: () => tauriInvoke<number>('load_own_ibans_from_db'),
+
+  // Load custom rules from database into the categorization engine (call after app unlock)
+  loadCustomRulesFromDb: () => tauriInvoke<number>('load_custom_rules_from_db'),
 
   // Initialize ML model from existing categorized transactions
   initializeFromTransactions: (samples: TrainingSample[]) =>
@@ -887,12 +896,10 @@ export const categorizationApi = {
   // ==================== Learned Payees Management ====================
 
   // Get all learned payees for management UI
-  getLearnedPayees: () =>
-    tauriInvoke<LearnedPayeeEntry[]>('get_learned_payees_list'),
+  getLearnedPayees: () => tauriInvoke<LearnedPayeeEntry[]>('get_learned_payees_list'),
 
   // Delete a learned payee by ID
-  deleteLearnedPayee: (id: string) =>
-    tauriInvoke<void>('delete_learned_payee', { id }),
+  deleteLearnedPayee: (id: string) => tauriInvoke<void>('delete_learned_payee', { id }),
 
   // Bulk delete learned payees
   deleteLearnedPayeesBulk: (ids: string[]) =>
@@ -905,8 +912,7 @@ export const categorizationApi = {
   // ==================== Custom Rules Management ====================
 
   // Get all custom rules
-  getCustomRules: () =>
-    tauriInvoke<CustomRule[]>('get_custom_rules'),
+  getCustomRules: () => tauriInvoke<CustomRule[]>('get_custom_rules'),
 
   // Create a new custom rule
   createCustomRule: (data: CustomRuleInput) =>
@@ -917,8 +923,7 @@ export const categorizationApi = {
     tauriInvoke<CustomRule>('update_custom_rule', { id, data }),
 
   // Delete a custom rule
-  deleteCustomRule: (id: string) =>
-    tauriInvoke<void>('delete_custom_rule', { id }),
+  deleteCustomRule: (id: string) => tauriInvoke<void>('delete_custom_rule', { id }),
 };
 
 // ============================================================================
@@ -993,19 +998,21 @@ export const budgetingApi = {
 
   // Get transactions for a specific category
   getCategoryTransactions: (categoryId: string, startDate: number, endDate: number) =>
-    tauriInvoke<BudgetingTransaction[]>('get_category_transactions', { categoryId, startDate, endDate }),
+    tauriInvoke<BudgetingTransaction[]>('get_category_transactions', {
+      categoryId,
+      startDate,
+      endDate,
+    }),
 
   // Get all budget goals
-  getBudgetGoals: () =>
-    tauriInvoke<BudgetGoal[]>('get_budget_goals'),
+  getBudgetGoals: () => tauriInvoke<BudgetGoal[]>('get_budget_goals'),
 
   // Create or update a budget goal
   upsertBudgetGoal: (data: InsertBudgetGoal) =>
     tauriInvoke<BudgetGoal>('upsert_budget_goal', { data }),
 
   // Delete a budget goal
-  deleteBudgetGoal: (id: string) =>
-    tauriInvoke<void>('delete_budget_goal', { id }),
+  deleteBudgetGoal: (id: string) => tauriInvoke<void>('delete_budget_goal', { id }),
 };
 
 // ============================================================================
@@ -1034,4 +1041,3 @@ export const api = {
 };
 
 export default api;
-

@@ -1,11 +1,13 @@
 //! Master categorization engine orchestrating the waterfall flow
 //!
 //! This engine combines:
-//! 1. Rule Engine - Regex and pattern-based matching
+//! 1. Custom Rule Engine - User-defined rules (highest priority)
 //! 2. Exact Match Engine - HashMap lookup for known payees
-//! 3. ML Classifier - Naive Bayes prediction for unknown transactions
+//! 3. Internal Transfer Detection - Own IBAN matching
+//! 4. Default Rule Engine - System rules
+//! 5. ML Classifier - Naive Bayes prediction for unknown transactions
 //!
-//! Flow: Rules → Exact Match → ML Prediction
+//! Flow: Custom Rules → Learned Payees → Internal Transfers → Default Rules → ML Prediction
 
 use anyhow::Result;
 use std::collections::{HashMap, HashSet};
@@ -19,7 +21,10 @@ use super::types::{CategorizationResult, CategorizationRule, TransactionInput};
 
 /// Main categorization engine orchestrating all classification methods
 pub struct CategorizationEngine {
-    rule_engine: RwLock<RuleEngine>,
+    /// User-defined custom rules (highest priority, checked first)
+    custom_rule_engine: RwLock<RuleEngine>,
+    /// System/default rules (checked after learned payees)
+    default_rule_engine: RwLock<RuleEngine>,
     exact_match: RwLock<ExactMatchEngine>,
     ml_classifier: RwLock<MLClassifier>,
     /// Minimum confidence threshold for ML predictions
@@ -29,10 +34,11 @@ pub struct CategorizationEngine {
 }
 
 impl CategorizationEngine {
-    /// Create a new engine with the given rules
-    pub fn new(rules: Vec<CategorizationRule>) -> Self {
+    /// Create a new engine with the given default rules
+    pub fn new(default_rules: Vec<CategorizationRule>) -> Self {
         Self {
-            rule_engine: RwLock::new(RuleEngine::new(rules)),
+            custom_rule_engine: RwLock::new(RuleEngine::empty()),
+            default_rule_engine: RwLock::new(RuleEngine::new(default_rules)),
             exact_match: RwLock::new(ExactMatchEngine::new()),
             ml_classifier: RwLock::new(MLClassifier::new()),
             ml_min_confidence: 0.60, // Default threshold
@@ -102,7 +108,8 @@ impl CategorizationEngine {
         };
 
         Ok(Self {
-            rule_engine: RwLock::new(RuleEngine::new(rules)),
+            custom_rule_engine: RwLock::new(RuleEngine::empty()),
+            default_rule_engine: RwLock::new(RuleEngine::new(rules)),
             exact_match: RwLock::new(ExactMatchEngine::from_map(payee_map)),
             ml_classifier: RwLock::new(ml_classifier),
             ml_min_confidence: 0.60,
@@ -146,20 +153,28 @@ impl CategorizationEngine {
     /// Categorize a single transaction using waterfall approach
     ///
     /// Flow (priority order):
-    /// 1. Try exact payee match FIRST (user's learned categorizations take priority)
-    /// 2. Check if counterparty IBAN matches user's own accounts (internal transfer)
-    /// 3. Try rules (regex, patterns, symbols)
-    /// 4. Try ML classifier
-    /// 5. Return None if nothing matches
+    /// 1. Try CUSTOM rules FIRST (user-defined rules override everything)
+    /// 2. Try exact payee match (user's learned categorizations)
+    /// 3. Check if counterparty IBAN matches user's own accounts (internal transfer)
+    /// 4. Try DEFAULT rules (system rules)
+    /// 5. Try ML classifier
+    /// 6. Return None if nothing matches
     pub fn categorize(&self, tx: &TransactionInput) -> CategorizationResult {
-        // Step 1: Try exact payee match FIRST (learned payees override everything)
+        // Step 1: Try CUSTOM rules FIRST (user-defined rules override everything)
+        if let Ok(rules) = self.custom_rule_engine.read() {
+            if let Some((result, _stop_processing)) = rules.apply(tx) {
+                return result;
+            }
+        }
+
+        // Step 2: Try exact payee match (learned payees)
         if let Ok(exact) = self.exact_match.read() {
             if let Some(result) = exact.apply(tx) {
                 return result;
             }
         }
 
-        // Step 2: Check own IBANs for internal transfer detection
+        // Step 3: Check own IBANs for internal transfer detection
         if self.is_internal_transfer(tx.counterparty_iban.as_deref()) {
             return CategorizationResult::Match {
                 category_id: "cat_internal_transfers".to_string(),
@@ -170,14 +185,14 @@ impl CategorizationEngine {
             };
         }
 
-        // Step 3: Try rules (patterns, regex)
-        if let Ok(rules) = self.rule_engine.read() {
+        // Step 4: Try DEFAULT rules (system rules)
+        if let Ok(rules) = self.default_rule_engine.read() {
             if let Some((result, _stop_processing)) = rules.apply(tx) {
                 return result;
             }
         }
 
-        // Step 4: Try ML classifier
+        // Step 5: Try ML classifier
         if let Ok(ml) = self.ml_classifier.read() {
             if let Some(result) = ml.predict(tx, self.ml_min_confidence) {
                 return result;
@@ -223,9 +238,16 @@ impl CategorizationEngine {
         self.forget_payee(Some(payee), None)
     }
 
-    /// Update rules (e.g., after user edits)
+    /// Update default rules (system rules)
     pub fn update_rules(&self, rules: Vec<CategorizationRule>) {
-        if let Ok(mut engine) = self.rule_engine.write() {
+        if let Ok(mut engine) = self.default_rule_engine.write() {
+            *engine = RuleEngine::new(rules);
+        }
+    }
+
+    /// Update custom rules (user-defined rules, checked first in waterfall)
+    pub fn update_custom_rules(&self, rules: Vec<CategorizationRule>) {
+        if let Ok(mut engine) = self.custom_rule_engine.write() {
             *engine = RuleEngine::new(rules);
         }
     }
@@ -280,8 +302,14 @@ impl CategorizationEngine {
 
     /// Get statistics about the engine
     pub fn stats(&self) -> EngineStats {
-        let rules_count = self
-            .rule_engine
+        let custom_rules = self
+            .custom_rule_engine
+            .read()
+            .map(|r| r.active_rule_count())
+            .unwrap_or(0);
+
+        let default_rules = self
+            .default_rule_engine
             .read()
             .map(|r| r.active_rule_count())
             .unwrap_or(0);
@@ -295,7 +323,7 @@ impl CategorizationEngine {
             .unwrap_or((0, 0));
 
         EngineStats {
-            active_rules: rules_count,
+            active_rules: custom_rules + default_rules,
             learned_payees,
             ml_classes,
             ml_vocabulary_size: ml_vocab,
@@ -349,6 +377,8 @@ mod tests {
             priority: 50,
             is_active: true,
             stop_processing: false,
+            iban_pattern: None,
+            variable_symbol: None,
         }];
 
         let engine = CategorizationEngine::new(rules);
@@ -399,6 +429,8 @@ mod tests {
             priority: 50,
             is_active: true,
             stop_processing: false,
+            iban_pattern: None,
+            variable_symbol: None,
         }];
 
         let engine = CategorizationEngine::new(rules);

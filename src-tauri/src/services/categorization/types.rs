@@ -174,7 +174,7 @@ impl std::str::FromStr for RuleType {
     }
 }
 
-/// Enhanced categorization rule with stop_processing flag
+/// Enhanced categorization rule with stop_processing flag and compound matching
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct CategorizationRule {
     pub id: String,
@@ -190,6 +190,12 @@ pub struct CategorizationRule {
     /// If true, stop the waterfall when this rule matches
     #[serde(rename = "stopProcessing")]
     pub stop_processing: bool,
+    /// Optional IBAN/BBAN pattern to match against counterparty IBAN
+    #[serde(rename = "ibanPattern")]
+    pub iban_pattern: Option<String>,
+    /// Optional variable symbol for exact matching
+    #[serde(rename = "variableSymbol")]
+    pub variable_symbol: Option<String>,
 }
 
 impl CategorizationRule {
@@ -210,6 +216,8 @@ impl CategorizationRule {
             priority: 50,
             is_active: true,
             stop_processing: false,
+            iban_pattern: None,
+            variable_symbol: None,
         }
     }
 }

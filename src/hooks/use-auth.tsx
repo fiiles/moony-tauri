@@ -159,6 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             categorizationApi.loadFromDb().catch(console.error);
             // Load user's own IBANs for internal transfer detection
             categorizationApi.loadOwnIbans().catch(console.error);
+            // Load custom categorization rules from database
+            categorizationApi.loadCustomRulesFromDb().catch(console.error);
             // Recovery key will be cleared by auth-page when user dismisses modal
             toast({
                 title: "Setup complete!",
@@ -204,6 +206,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             categorizationApi.loadFromDb().catch(console.error);
             // Load user's own IBANs for internal transfer detection
             categorizationApi.loadOwnIbans().catch(console.error);
+            // Load custom categorization rules from database
+            categorizationApi.loadCustomRulesFromDb().catch(console.error);
         },
         onError: (error: Error) => {
             // Check if this is a password-related error and show a friendly message
@@ -287,6 +291,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             categorizationApi.loadFromDb().catch(console.error);
             // Load user's own IBANs for internal transfer detection
             categorizationApi.loadOwnIbans().catch(console.error);
+            // Load custom categorization rules from database
+            categorizationApi.loadCustomRulesFromDb().catch(console.error);
             // Recovery key will be cleared by auth-page
             toast({
                 title: "Password reset successful!",

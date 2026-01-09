@@ -1371,6 +1371,8 @@ fn rule(
         priority,
         is_active: true,
         stop_processing: false,
+        iban_pattern: None,
+        variable_symbol: None,
     }
 }
 

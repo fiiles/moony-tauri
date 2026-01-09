@@ -58,6 +58,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             MIGRATION_028,
         ),
         ("029_update_investments_icon", MIGRATION_029),
+        ("030_add_iban_vs_to_rules", MIGRATION_030),
     ];
 
     for (name, sql) in migrations {
@@ -1063,4 +1064,17 @@ const MIGRATION_029: &str = r#"
 UPDATE transaction_categories 
 SET icon = 'line-chart' 
 WHERE id = 'cat_investments';
+"#;
+
+/// Migration 030: Add IBAN pattern and Variable Symbol fields to categorization_rules
+/// This enables compound matching rules (e.g., match IBAN + VS combination)
+const MIGRATION_030: &str = r#"
+-- Add iban_pattern column for matching against counterparty IBAN
+ALTER TABLE categorization_rules ADD COLUMN iban_pattern TEXT;
+
+-- Add variable_symbol column for exact VS matching
+ALTER TABLE categorization_rules ADD COLUMN variable_symbol TEXT;
+
+-- Create index for IBAN pattern lookups
+CREATE INDEX IF NOT EXISTS idx_categorization_rules_iban ON categorization_rules(iban_pattern) WHERE iban_pattern IS NOT NULL;
 "#;

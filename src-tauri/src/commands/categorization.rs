@@ -273,6 +273,59 @@ pub async fn load_own_ibans_from_db(
     Ok(count)
 }
 
+/// Load custom categorization rules from the database
+///
+/// This should be called after app unlock to populate the in-memory engine
+/// with user-defined custom rules. Custom rules are loaded into separate engine
+/// and take priority over learned payees in the waterfall.
+#[tauri::command]
+pub async fn load_custom_rules_from_db(
+    state: State<'_, CategorizationState>,
+    db: State<'_, Database>,
+) -> Result<usize, String> {
+    use crate::services::categorization::types::RuleType;
+
+    // Load custom rules from database (only non-system rules)
+    let custom_rules = db
+        .with_conn(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT id, name, rule_type, pattern, category_id, priority, is_active, stop_processing, iban_pattern, variable_symbol
+                 FROM categorization_rules
+                 WHERE is_active = 1 AND is_system = 0
+                 ORDER BY priority DESC",
+            )?;
+            let rows = stmt.query_map([], |row| {
+                let rule_type_str: String = row.get(2)?;
+                let rule_type: RuleType = rule_type_str.parse().unwrap_or(RuleType::Contains);
+
+                Ok(CategorizationRule {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    rule_type,
+                    pattern: row.get(3)?,
+                    category_id: row.get(4)?,
+                    priority: row.get(5)?,
+                    is_active: row.get::<_, i32>(6)? != 0,
+                    stop_processing: row.get::<_, i32>(7)? != 0,
+                    iban_pattern: row.get(8)?,
+                    variable_symbol: row.get(9)?,
+                })
+            })?;
+            let rules: Vec<CategorizationRule> = rows.filter_map(|r| r.ok()).collect();
+            Ok(rules)
+        })
+        .map_err(|e| format!("Failed to load custom rules: {}", e))?;
+
+    let count = custom_rules.len();
+
+    // Update the custom rules engine (separate from default rules)
+    // Custom rules take priority over learned payees in the waterfall
+    state.0.update_custom_rules(custom_rules);
+
+    log::info!("Loaded {} custom rules from database", count);
+    Ok(count)
+}
+
 /// Initialize engine with training data from the database
 /// This should be called after app startup to train on existing categorized transactions
 #[tauri::command]
@@ -549,6 +602,8 @@ pub struct CustomRule {
     pub stop_processing: bool,
     pub is_system: bool,
     pub created_at: i64,
+    pub iban_pattern: Option<String>,
+    pub variable_symbol: Option<String>,
 }
 
 /// Input for creating/updating custom rules
@@ -562,6 +617,8 @@ pub struct CustomRuleInput {
     pub priority: i32,
     pub is_active: bool,
     pub stop_processing: bool,
+    pub iban_pattern: Option<String>,
+    pub variable_symbol: Option<String>,
 }
 
 /// Get all custom categorization rules
@@ -569,7 +626,7 @@ pub struct CustomRuleInput {
 pub async fn get_custom_rules(db: State<'_, Database>) -> Result<Vec<CustomRule>, String> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, name, rule_type, pattern, category_id, priority, is_active, stop_processing, is_system, created_at
+            "SELECT id, name, rule_type, pattern, category_id, priority, is_active, stop_processing, is_system, created_at, iban_pattern, variable_symbol
              FROM categorization_rules
              ORDER BY priority DESC, created_at ASC"
         )?;
@@ -586,6 +643,8 @@ pub async fn get_custom_rules(db: State<'_, Database>) -> Result<Vec<CustomRule>
                 stop_processing: row.get::<_, i32>(7)? != 0,
                 is_system: row.get::<_, i32>(8)? != 0,
                 created_at: row.get(9)?,
+                iban_pattern: row.get(10)?,
+                variable_symbol: row.get(11)?,
             })
         })?
         .filter_map(|r| r.ok())
@@ -609,8 +668,8 @@ pub async fn create_custom_rule(
 
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO categorization_rules (id, name, rule_type, pattern, category_id, priority, is_active, stop_processing, is_system, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9)",
+            "INSERT INTO categorization_rules (id, name, rule_type, pattern, category_id, priority, is_active, stop_processing, is_system, created_at, iban_pattern, variable_symbol)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9, ?10, ?11)",
             rusqlite::params![
                 &id,
                 &data.name,
@@ -621,6 +680,8 @@ pub async fn create_custom_rule(
                 data.is_active as i32,
                 data.stop_processing as i32,
                 now,
+                &data.iban_pattern,
+                &data.variable_symbol,
             ],
         )?;
         Ok(())
@@ -639,6 +700,8 @@ pub async fn create_custom_rule(
         stop_processing: data.stop_processing,
         is_system: false,
         created_at: now,
+        iban_pattern: data.iban_pattern,
+        variable_symbol: data.variable_symbol,
     })
 }
 
@@ -668,8 +731,8 @@ pub async fn update_custom_rule(
     db.with_conn(|conn| {
         conn.execute(
             "UPDATE categorization_rules
-             SET name = ?1, rule_type = ?2, pattern = ?3, category_id = ?4, priority = ?5, is_active = ?6, stop_processing = ?7
-             WHERE id = ?8 AND is_system = 0",
+             SET name = ?1, rule_type = ?2, pattern = ?3, category_id = ?4, priority = ?5, is_active = ?6, stop_processing = ?7, iban_pattern = ?8, variable_symbol = ?9
+             WHERE id = ?10 AND is_system = 0",
             rusqlite::params![
                 &data.name,
                 &data.rule_type,
@@ -678,6 +741,8 @@ pub async fn update_custom_rule(
                 data.priority,
                 data.is_active as i32,
                 data.stop_processing as i32,
+                &data.iban_pattern,
+                &data.variable_symbol,
                 &id,
             ],
         )?;
@@ -708,6 +773,8 @@ pub async fn update_custom_rule(
         stop_processing: data.stop_processing,
         is_system: false,
         created_at,
+        iban_pattern: data.iban_pattern,
+        variable_symbol: data.variable_symbol,
     })
 }
 
