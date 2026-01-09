@@ -48,7 +48,7 @@ export default function Insurance() {
       yearlyAmount = converted * 12;
     } else if (policy.paymentFrequency === 'quarterly') {
       yearlyAmount = converted * 4;
-    } else if (policy.paymentFrequency === 'yearly') {
+    } else if (policy.paymentFrequency === 'annually') {
       yearlyAmount = converted;
     } else if (policy.paymentFrequency === 'one_time') {
       yearlyAmount = 0; // One-time payments don't contribute to recurring costs

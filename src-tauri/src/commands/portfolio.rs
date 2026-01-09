@@ -276,6 +276,140 @@ pub async fn get_portfolio_history(
     })
 }
 
+/// Record today's per-ticker values to stock_value_history and crypto_value_history tables
+/// This is called alongside update_todays_snapshot to ensure per-ticker chart data is available
+fn record_todays_ticker_values(db: &Database) -> Result<()> {
+    use crate::services::currency::convert_to_czk;
+
+    let now = chrono::Utc::now();
+    let today_start = now
+        .date_naive()
+        .and_hms_opt(0, 0, 0)
+        .expect("Valid date should have valid midnight time")
+        .and_utc()
+        .timestamp();
+
+    db.with_conn(|conn| {
+        // Record stock values
+        let mut inv_stmt = conn.prepare(
+            "SELECT si.ticker, si.quantity FROM stock_investments si"
+        )?;
+        let investments: Vec<(String, String)> = inv_stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        for (ticker, qty_str) in investments {
+            let qty: f64 = qty_str.parse().unwrap_or(0.0);
+            if qty <= 0.0 {
+                continue;
+            }
+
+            // Get current price
+            let price_data: Option<(String, String)> = conn.query_row(
+                "SELECT COALESCE(
+                    (SELECT price FROM stock_price_overrides WHERE ticker = ?1),
+                    (SELECT original_price FROM stock_data WHERE ticker = ?1)
+                ),
+                COALESCE(
+                    (SELECT currency FROM stock_price_overrides WHERE ticker = ?1),
+                    (SELECT currency FROM stock_data WHERE ticker = ?1)
+                )",
+                [&ticker],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            ).ok();
+
+            if let Some((price_str, currency)) = price_data {
+                let price: f64 = price_str.parse().unwrap_or(0.0);
+                if price <= 0.0 {
+                    continue;
+                }
+                let value_czk = convert_to_czk(qty * price, &currency);
+                let id = Uuid::new_v4().to_string();
+
+                conn.execute(
+                    "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                     ON CONFLICT(ticker, recorded_at) DO UPDATE SET
+                         value_czk = excluded.value_czk,
+                         quantity = excluded.quantity,
+                         price = excluded.price,
+                         currency = excluded.currency",
+                    rusqlite::params![
+                        id,
+                        ticker,
+                        today_start,
+                        value_czk.to_string(),
+                        qty.to_string(),
+                        price.to_string(),
+                        currency,
+                    ],
+                )?;
+            }
+        }
+
+        // Record crypto values
+        let mut crypto_stmt = conn.prepare(
+            "SELECT ticker, quantity FROM crypto_investments"
+        )?;
+        let cryptos: Vec<(String, String)> = crypto_stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        for (ticker, qty_str) in cryptos {
+            let qty: f64 = qty_str.parse().unwrap_or(0.0);
+            if qty <= 0.0 {
+                continue;
+            }
+
+            // Get current price - prefer override over API price
+            let price_data: Option<(String, String)> = conn.query_row(
+                "SELECT COALESCE(
+                    (SELECT price FROM crypto_price_overrides WHERE symbol = ?1),
+                    (SELECT price FROM crypto_prices WHERE symbol = ?1)
+                ),
+                COALESCE(
+                    (SELECT currency FROM crypto_price_overrides WHERE symbol = ?1),
+                    (SELECT currency FROM crypto_prices WHERE symbol = ?1)
+                )",
+                [&ticker],
+                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            ).ok();
+
+            if let Some((price_str, currency)) = price_data {
+                let price: f64 = price_str.parse().unwrap_or(0.0);
+                if price <= 0.0 {
+                    continue;
+                }
+                let value_czk = convert_to_czk(qty * price, &currency);
+                let id = Uuid::new_v4().to_string();
+
+                conn.execute(
+                    "INSERT INTO crypto_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                     ON CONFLICT(ticker, recorded_at) DO UPDATE SET
+                         value_czk = excluded.value_czk,
+                         quantity = excluded.quantity,
+                         price = excluded.price,
+                         currency = excluded.currency",
+                    rusqlite::params![
+                        id,
+                        ticker,
+                        today_start,
+                        value_czk.to_string(),
+                        qty.to_string(),
+                        price.to_string(),
+                        currency,
+                    ],
+                )?;
+            }
+        }
+
+        Ok(())
+    })
+}
+
 /// Update today's portfolio snapshot (or create one if it doesn't exist)
 pub async fn update_todays_snapshot(db: &Database) -> Result<()> {
     // We need to calculate metrics first.
@@ -351,7 +485,12 @@ pub async fn update_todays_snapshot(db: &Database) -> Result<()> {
             )?;
         }
         Ok(())
-    })
+    })?;
+
+    // Also record per-ticker values for stock and crypto history charts
+    record_todays_ticker_values(db)?;
+
+    Ok(())
 }
 
 /// Record current portfolio snapshot
@@ -890,6 +1029,166 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
 #[tauri::command]
 pub async fn start_snapshot_backfill(db: State<'_, Database>) -> Result<BackfillResult> {
     backfill_missing_snapshots(&db).await
+}
+
+/// Tauri command to backfill a specific stock ticker's value history on demand
+/// This is called when the user views a stock detail page to ensure the chart has data
+#[tauri::command]
+pub async fn backfill_stock_ticker_history(
+    db: State<'_, Database>,
+    ticker: String,
+) -> Result<BackfillResult> {
+    println!(
+        "[BACKFILL] On-demand backfill requested for stock ticker: {}",
+        ticker
+    );
+
+    // Get the oldest transaction date for this ticker to determine backfill range
+    let oldest_tx_date: Option<i64> = db.with_conn(|conn| {
+        let result: Option<i64> = conn
+            .query_row(
+                "SELECT MIN(transaction_date) FROM investment_transactions WHERE ticker = ?1",
+                [&ticker.to_uppercase()],
+                |row| row.get(0),
+            )
+            .ok()
+            .flatten();
+        Ok(result)
+    })?;
+
+    let from_timestamp = match oldest_tx_date {
+        Some(date) => date,
+        None => {
+            println!(
+                "[BACKFILL] No transactions found for ticker {}, nothing to backfill",
+                ticker
+            );
+            return Ok(BackfillResult {
+                days_processed: 0,
+                total_days: 0,
+                completed: true,
+                message: "No transactions found for this ticker".to_string(),
+            });
+        }
+    };
+
+    // Limit to last 365 days to avoid too many API calls
+    let now = chrono::Utc::now().timestamp();
+    let one_year_ago = now - (365 * 86400);
+    let effective_from = from_timestamp.max(one_year_ago);
+
+    let from_day = (effective_from / 86400) * 86400;
+    let today_start = (now / 86400) * 86400;
+
+    // Count days to process
+    let total_days = ((today_start - from_day) / 86400 + 1) as i32;
+
+    // Call the existing recalculation function
+    recalculate_stock_ticker_history(&db, &ticker, effective_from).await?;
+
+    println!(
+        "[BACKFILL] On-demand backfill completed for ticker {}",
+        ticker
+    );
+
+    Ok(BackfillResult {
+        days_processed: total_days,
+        total_days,
+        completed: true,
+        message: format!("Backfilled {} days for {}", total_days, ticker),
+    })
+}
+
+/// Tauri command to backfill a specific crypto ticker's value history on demand
+/// This is called when the user views a crypto detail page to ensure the chart has data
+#[tauri::command]
+pub async fn backfill_crypto_ticker_history(
+    db: State<'_, Database>,
+    ticker: String,
+) -> Result<BackfillResult> {
+    println!(
+        "[BACKFILL] On-demand backfill requested for crypto ticker: {}",
+        ticker
+    );
+
+    // Get the coingecko_id and oldest transaction date for this ticker
+    let (coingecko_id, oldest_tx_date): (Option<String>, Option<i64>) = db.with_conn(|conn| {
+        let cg_id: Option<String> = conn
+            .query_row(
+                "SELECT coingecko_id FROM crypto_investments WHERE ticker = ?1",
+                [&ticker.to_uppercase()],
+                |row| row.get(0),
+            )
+            .ok()
+            .flatten();
+
+        let oldest: Option<i64> = conn
+            .query_row(
+                "SELECT MIN(transaction_date) FROM crypto_transactions WHERE ticker = ?1",
+                [&ticker.to_uppercase()],
+                |row| row.get(0),
+            )
+            .ok()
+            .flatten();
+
+        Ok((cg_id, oldest))
+    })?;
+
+    let coingecko_id = match coingecko_id {
+        Some(id) if !id.is_empty() => id,
+        _ => {
+            println!(
+                "[BACKFILL] No coingecko_id found for crypto {}, skipping",
+                ticker
+            );
+            return Ok(BackfillResult {
+                days_processed: 0,
+                total_days: 0,
+                completed: true,
+                message: "No CoinGecko ID configured for this crypto".to_string(),
+            });
+        }
+    };
+
+    let from_timestamp = match oldest_tx_date {
+        Some(date) => date,
+        None => {
+            println!(
+                "[BACKFILL] No transactions found for crypto {}, nothing to backfill",
+                ticker
+            );
+            return Ok(BackfillResult {
+                days_processed: 0,
+                total_days: 0,
+                completed: true,
+                message: "No transactions found for this crypto".to_string(),
+            });
+        }
+    };
+
+    // Limit to last 365 days
+    let now = chrono::Utc::now().timestamp();
+    let one_year_ago = now - (365 * 86400);
+    let effective_from = from_timestamp.max(one_year_ago);
+
+    let from_day = (effective_from / 86400) * 86400;
+    let today_start = (now / 86400) * 86400;
+
+    let total_days = ((today_start - from_day) / 86400 + 1) as i32;
+
+    recalculate_crypto_ticker_history(&db, &ticker, &coingecko_id, effective_from).await?;
+
+    println!(
+        "[BACKFILL] On-demand backfill completed for crypto {}",
+        ticker
+    );
+
+    Ok(BackfillResult {
+        days_processed: total_days,
+        total_days,
+        completed: true,
+        message: format!("Backfilled {} days for {}", total_days, ticker),
+    })
 }
 
 // ============================================================================

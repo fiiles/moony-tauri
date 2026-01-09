@@ -109,7 +109,7 @@ export default function InsuranceDetail() {
         yearlyCost = regularPaymentInCzk * 12;
     } else if (policy.paymentFrequency === 'quarterly') {
         yearlyCost = regularPaymentInCzk * 4;
-    } else if (policy.paymentFrequency === 'yearly') {
+    } else if (policy.paymentFrequency === 'annually') {
         yearlyCost = regularPaymentInCzk;
     }
 

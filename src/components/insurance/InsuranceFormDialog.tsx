@@ -303,7 +303,7 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                                 <SelectContent>
                                                     <SelectItem value="monthly">{t('modal.frequency.monthly')}</SelectItem>
                                                     <SelectItem value="quarterly">{t('modal.frequency.quarterly')}</SelectItem>
-                                                    <SelectItem value="yearly">{t('modal.frequency.yearly')}</SelectItem>
+                                                    <SelectItem value="annually">{t('modal.frequency.annually')}</SelectItem>
                                                     <SelectItem value="one_time">{t('modal.frequency.one_time')}</SelectItem>
                                                 </SelectContent>
                                             </Select>

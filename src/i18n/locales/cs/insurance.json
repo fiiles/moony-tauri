@@ -92,6 +92,7 @@
             "monthly": "Měsíčně",
             "quarterly": "Čtvrtletně",
             "yearly": "Ročně",
+            "annually": "Ročně",
             "one_time": "Jednorázově"
         },
         "linkRealEstate": "Připojit k nemovitosti",

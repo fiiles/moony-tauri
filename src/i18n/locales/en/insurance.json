@@ -92,6 +92,7 @@
             "monthly": "Monthly",
             "quarterly": "Quarterly",
             "yearly": "Yearly",
+            "annually": "Annually",
             "one_time": "One Time"
         },
         "linkRealEstate": "Link to Real Estate",

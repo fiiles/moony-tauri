@@ -176,23 +176,28 @@ impl ExactMatchEngine {
             .filter(|i| !i.is_empty());
 
         // Try to find and remove the most specific matching rule
-        // Priority order: iban_only_default, payee_default
-        let keys_to_try = [
-            // iban only
-            norm_iban
-                .as_ref()
-                .map(|i| format!("{KEY_IBAN_ONLY_DEFAULT}{}", i)),
-            // payee only
-            norm_payee
-                .as_ref()
-                .map(|p| format!("{KEY_PAYEE_DEFAULT}{}", p)),
-        ];
 
-        for key_opt in keys_to_try.into_iter().flatten() {
-            if self.payee_map.remove(&key_opt).is_some() {
+        // 1. Try generic IBAN rule first (most specific)
+        if let Some(ref i) = norm_iban {
+            let key = format!("{KEY_IBAN_ONLY_DEFAULT}{}", i);
+            if self.payee_map.remove(&key).is_some() {
+                // IMPORTANT: If we remove the exact IBAN rule, we MUST also remove
+                // the partial/suggestion rule. Otherwise apply() will still return
+                // a Suggestion, and the "forget" won't be complete.
+                let partial_key = format!("{KEY_IBAN_PARTIAL}{}", i);
+                self.payee_map.remove(&partial_key);
                 return true;
             }
         }
+
+        // 2. Try generic Payee rule
+        if let Some(ref p) = norm_payee {
+            let key = format!("{KEY_PAYEE_DEFAULT}{}", p);
+            if self.payee_map.remove(&key).is_some() {
+                return true;
+            }
+        }
+
         false
     }
 

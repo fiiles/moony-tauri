@@ -154,15 +154,25 @@ export function AddDocumentModal({ open: isOpen, onOpenChange, insuranceId }: Ad
                                     <FormLabel>{t('documents.file')}</FormLabel>
                                     <FormControl>
                                         <div
-                                            className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                                            className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors overflow-hidden"
                                             onClick={handleSelectFile}
                                         >
-                                            {selectedFileName ? (
-                                                <div className="flex items-center justify-center gap-2 max-w-full overflow-hidden">
-                                                    <FileText className="h-5 w-5 flex-shrink-0 text-primary" />
-                                                    <span className="font-medium truncate" title={selectedFileName}>{selectedFileName}</span>
-                                                </div>
-                                            ) : (
+                                            {selectedFileName ? (() => {
+                                                // Split filename to preserve extension
+                                                const lastDot = selectedFileName.lastIndexOf('.');
+                                                const name = lastDot > 0 ? selectedFileName.slice(0, lastDot) : selectedFileName;
+                                                const ext = lastDot > 0 ? selectedFileName.slice(lastDot) : '';
+                                                const maxNameLength = 25;
+                                                const displayName = name.length > maxNameLength 
+                                                    ? name.slice(0, maxNameLength) + '...' + ext
+                                                    : selectedFileName;
+                                                return (
+                                                    <div className="flex items-center justify-center gap-2 min-w-0 w-full">
+                                                        <FileText className="h-5 w-5 flex-shrink-0 text-primary" />
+                                                        <span className="font-medium" title={selectedFileName}>{displayName}</span>
+                                                    </div>
+                                                );
+                                            })() : (
                                                 <div className="space-y-2">
                                                     <Upload className="mx-auto h-8 w-8 text-muted-foreground" />
                                                     <p className="text-sm text-muted-foreground">

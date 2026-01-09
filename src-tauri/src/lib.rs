@@ -151,6 +151,8 @@ pub fn run() {
             commands::portfolio::refresh_exchange_rates,
             commands::portfolio::get_exchange_rates,
             commands::portfolio::start_snapshot_backfill,
+            commands::portfolio::backfill_stock_ticker_history,
+            commands::portfolio::backfill_crypto_ticker_history,
             // Price API commands
             commands::price_api::get_api_keys,
             commands::price_api::set_api_keys,
@@ -241,6 +243,7 @@ pub fn run() {
             commands::categorization::import_learned_payees,
             commands::categorization::load_learned_payees_from_db,
             commands::categorization::load_own_ibans_from_db,
+            commands::categorization::load_custom_rules_from_db,
             commands::categorization::initialize_ml_from_transactions,
             // Categorization rules management commands
             commands::categorization::get_learned_payees_list,

@@ -10,18 +10,87 @@ A modern, privacy-focused personal finance management application built with Tau
 
 ## Features
 
-- 📊 **Dashboard** - Get a comprehensive overview of your net worth and portfolio performance
-- 💰 **Stock Investments** - Track stocks with live price updates via Marketstack API
-- 🪙 **Cryptocurrency** - Monitor crypto holdings with CoinGecko integration
-- 🏠 **Real Estate** - Manage property portfolio with photo galleries and valuation tracking
-- 💵 **Savings Accounts** - Track savings with simple or zoned interest rates
-- 📈 **Bonds** - Monitor fixed-income investments
-- 💳 **Loans** - Track liabilities and loan payments
-- 🛡️ **Insurance** - Keep track of insurance policies
-- 📦 **Other Assets** - Manage miscellaneous assets (art, collectibles, etc.)
-- 💱 **Multi-currency Support** - Automatic currency conversion with ECB exchange rates
-- 🔒 **Local-first & Encrypted** - SQLCipher encrypted database, your data never leaves your device
-- 🌍 **Internationalization** - Multi-language support (i18n)
+### 📊 Dashboard & Overview
+- **Net Worth Dashboard** - Comprehensive overview of your total net worth and portfolio performance
+- **Historical Tracking** - View net worth trends over time with interactive charts
+- **Multi-currency Support** - Automatic currency conversion with ECB exchange rates
+
+---
+
+### 💰 Asset Management
+
+- **💵 Bank Accounts** - Track checking and savings accounts with full transaction history
+  - CSV transaction import (FIO Bank format)
+  - Smart auto-categorization with learned and custom rules
+  - Transaction filtering and search
+- **📈 Stock Investments** - Track stocks with live price updates
+  - Price fetching via Yahoo Finance
+  - Portfolio tagging system for organization
+  - Performance analysis with gain/loss tracking
+  - Dividend tracking
+- **🪙 Cryptocurrency** - Monitor crypto holdings with CoinGecko integration
+  - Real-time price updates
+  - Transaction history tracking
+- **🏠 Real Estate** - Manage property portfolio
+  - Photo galleries and document storage
+  - Valuation tracking over time
+  - Rental income monitoring
+- **📈 Bonds** - Monitor fixed-income investments
+- **📦 Other Assets** - Manage miscellaneous assets (art, collectibles, vehicles, etc.)
+
+---
+
+### 💳 Liabilities & Insurance
+
+- **💳 Loans** - Track liabilities and loan payments with amortization
+- **🛡️ Insurance** - Keep track of insurance policies with document attachments
+
+---
+
+### 📊 Analytics & Reporting
+
+- **💰 Budgeting** - Category-based expense tracking with budget goals
+  - Visual spending analysis by category
+  - Monthly, quarterly, and yearly views
+  - Budget limit tracking with visual indicators
+- **📊 Expense Tracking** - Analyze spending patterns across bank accounts
+- **🔄 Cashflow Planning** - Plan and forecast personal and investment cashflows
+- **📈 Portfolio Projection** - Project future net worth with customizable growth rates
+- **📊 Stock Analysis** - Detailed stock portfolio analysis with tagging and grouping
+
+---
+
+### 🧮 Calculators
+
+- **💰 Annuity Calculator** - Calculate loan payments with amortization schedules
+- **🏠 Real Estate Calculator** - Evaluate property investments with ROI analysis
+
+---
+
+### 🏷️ Smart Categorization
+
+- **Learned Rules** - Automatically learn categorization from your choices
+- **Custom Rules** - Create pattern-based and IBAN-based categorization rules
+- **IBAN/BBAN Matching** - Smart matching for Czech bank account formats
+
+---
+
+### ⚙️ Settings & Customization
+
+- **Multi-language Support** - Full i18n with English and Czech
+- **Currency Selection** - Choose your preferred display currency (CZK, EUR, USD, GBP)
+- **Menu Customization** - Show/hide menu items based on your needs
+- **Auto-updates** - Built-in update notification system
+
+---
+
+### 🔒 Privacy & Security
+
+- **🔐 Local-only Storage** - All data is stored locally on your device
+- **🛡️ SQLCipher Encryption** - Database is encrypted with AES-256
+- **🚫 No Cloud Sync** - Your financial data never leaves your computer
+- **🔑 Password Protected** - Access is protected by your account password with recovery key
+- **🔄 Password Change** - Secure password change with new recovery key generation
 
 ## Tech Stack
 
@@ -148,10 +217,11 @@ For other Linux distributions, see [Tauri Linux Prerequisites](https://tauri.app
 
 ### API Keys (Optional)
 
-For live stock and crypto price updates, you can configure API keys in the Settings page:
+For live crypto price updates, you can configure an API key in the Settings page:
 
-- **Marketstack API** - For stock prices and dividends ([Get API Key](https://marketstack.com/))
-- **CoinGecko API** - For cryptocurrency prices (optional, works without key with rate limits)
+- **CoinGecko API** - For cryptocurrency prices ([Get API Key](https://www.coingecko.com/en/api))
+
+Stock prices are fetched via Yahoo Finance and do not require an API key.
 
 > **Note**: API keys are stored securely in the local encrypted database. They are never transmitted anywhere except to the respective API services.
 
@@ -177,13 +247,6 @@ moony-tauri/
 └── public/                 # Static assets
 ```
 
-## Privacy & Security
-
-- 🔐 **Local-only storage** - All data is stored locally on your device
-- 🛡️ **SQLCipher encryption** - Database is encrypted with AES-256
-- 🚫 **No cloud sync** - Your financial data never leaves your computer
-- 🔑 **Password protected** - Access is protected by your account password
-
 ## Recommended IDE Setup
 
 - [VS Code](https://code.visualstudio.com/)
@@ -193,7 +256,7 @@ moony-tauri/
 
 ## License
 
-Copyright © 2025 Filip Král. All rights reserved.
+Copyright © 2025-2026 Filip Král. All rights reserved.
 
 This software is **open source for non-commercial use only**:
 - ✅ Free for personal use

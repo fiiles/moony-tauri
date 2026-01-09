@@ -391,6 +391,7 @@ export default function Budgeting() {
         uncategorizedCount={report?.uncategorizedTransactionCount || 0}
         startDate={startDate}
         endDate={endDate}
+        timeframe={timeframe}
         isLoading={isLoading}
       />
 

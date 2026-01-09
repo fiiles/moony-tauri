@@ -73,43 +73,89 @@ impl RuleEngine {
                 continue;
             }
 
-            let matched = match compiled.rule.rule_type {
-                RuleType::Regex => compiled
-                    .compiled_regex
-                    .as_ref()
-                    .map(|re| re.is_match(&search_text))
-                    .unwrap_or(false),
+            let mut matched = false;
+            let mut iban_mode = false;
 
-                RuleType::Contains => search_text.contains(&compiled.lowercase_pattern),
+            // Check if this is an Exclusive IBAN rule (has non-empty IBAN pattern)
+            if let Some(ref iban_pattern) = compiled.rule.iban_pattern {
+                if !iban_pattern.is_empty() {
+                    // EXCLUSIVE IBAN MODE:
+                    // If IBAN pattern is present, we ignore the text pattern/RuleType entirely
+                    // and match strictly based on IBAN.
+                    iban_mode = true;
+                    matched = tx
+                        .counterparty_iban
+                        .as_ref()
+                        .map(|iban| matches_iban(iban, iban_pattern))
+                        .unwrap_or(false);
+                }
+            }
 
-                RuleType::StartsWith => search_text.starts_with(&compiled.lowercase_pattern),
+            // If not in exclusive IBAN mode, use standard RuleType matching
+            if !iban_mode {
+                matched = match compiled.rule.rule_type {
+                    RuleType::Regex => compiled
+                        .compiled_regex
+                        .as_ref()
+                        .map(|re| re.is_match(&search_text))
+                        .unwrap_or(false),
 
-                RuleType::EndsWith => search_text.ends_with(&compiled.lowercase_pattern),
+                    RuleType::Contains => search_text.contains(&compiled.lowercase_pattern),
 
-                RuleType::VariableSymbol => tx
-                    .variable_symbol
-                    .as_ref()
-                    .map(|vs| vs == &compiled.rule.pattern)
-                    .unwrap_or(false),
+                    RuleType::StartsWith => search_text.starts_with(&compiled.lowercase_pattern),
 
-                RuleType::ConstantSymbol => tx
-                    .constant_symbol
-                    .as_ref()
-                    .map(|ks| ks == &compiled.rule.pattern)
-                    .unwrap_or(false),
+                    RuleType::EndsWith => search_text.ends_with(&compiled.lowercase_pattern),
 
-                RuleType::SpecificSymbol => tx
-                    .specific_symbol
-                    .as_ref()
-                    .map(|ss| ss == &compiled.rule.pattern)
-                    .unwrap_or(false),
+                    RuleType::VariableSymbol => tx
+                        .variable_symbol
+                        .as_ref()
+                        .map(|vs| vs == &compiled.rule.pattern)
+                        .unwrap_or(false),
 
-                RuleType::IsCredit => tx.is_credit,
+                    RuleType::ConstantSymbol => tx
+                        .constant_symbol
+                        .as_ref()
+                        .map(|ks| ks == &compiled.rule.pattern)
+                        .unwrap_or(false),
 
-                RuleType::IsDebit => !tx.is_credit,
+                    RuleType::SpecificSymbol => tx
+                        .specific_symbol
+                        .as_ref()
+                        .map(|ss| ss == &compiled.rule.pattern)
+                        .unwrap_or(false),
+
+                    RuleType::IsCredit => tx.is_credit,
+
+                    RuleType::IsDebit => !tx.is_credit,
+                };
+            }
+
+            // Primary condition must match
+            if !matched {
+                continue;
+            }
+
+            // Note: We don't need to check iban_pattern again here because:
+            // 1. If iban_mode=true, we already checked it and set 'matched' based on it.
+            // 2. If iban_mode=false, iban_pattern is None or Empty, so nothing to check.
+
+            // Check additional Variable Symbol if specified
+            // This applies to BOTH IBAN-mode rules and Standard rules
+            let vs_matches = if let Some(ref vs_pattern) = compiled.rule.variable_symbol {
+                if vs_pattern.is_empty() {
+                    true // Empty pattern is ignored
+                } else {
+                    tx.variable_symbol
+                        .as_ref()
+                        .map(|vs| vs == vs_pattern)
+                        .unwrap_or(false)
+                }
+            } else {
+                true // No VS pattern specified - matches anything
             };
 
-            if matched {
+            // All conditions must be met
+            if vs_matches {
                 return Some((
                     CategorizationResult::Match {
                         category_id: compiled.rule.category_id.clone(),
@@ -137,6 +183,62 @@ impl RuleEngine {
     }
 }
 
+/// Helper to match IBAN against user pattern (supports smart BBAN matching)
+fn matches_iban(transaction_iban: &str, user_pattern: &str) -> bool {
+    let tx_norm = transaction_iban.replace(' ', "").to_lowercase();
+    let pat_norm = user_pattern.replace(' ', "").to_lowercase();
+
+    // 1. Direct substring match (covers full IBANs and simple partials)
+    if tx_norm.contains(&pat_norm) {
+        return true;
+    }
+
+    // 2. Smart BBAN matching (e.g. "12345/0100" or "12-345/0100")
+    if pat_norm.contains('/') {
+        let parts: Vec<&str> = pat_norm.split('/').collect();
+        if parts.len() == 2 {
+            let account_part = parts[0]; // e.g. "12345" or "12-345"
+            let bank_code = parts[1]; // e.g. "0100"
+
+            // Verify bank code is present
+            // In CZ IBAN: CZkk bbbb pppp pppp pppp pppp
+            // Bank code is usually at index 4-7 (0-based)
+            if !tx_norm.contains(bank_code) {
+                return false;
+            }
+
+            // Verify account number (handle optional prefix)
+            // Account part might have a hyphen (prefix-number)
+            let account_clean = account_part.replace('-', "");
+
+            // The account number in IBAN is at the end (last 16 digits includes prefix + number)
+            // We check if the transaction IBAN *ends with* the account number
+            if tx_norm.ends_with(&account_clean) {
+                return true;
+            }
+
+            // Handling Prefix-Account format (hyphenated)
+            if account_part.contains('-') {
+                let acc_parts: Vec<&str> = account_part.split('-').collect();
+                if acc_parts.len() == 2 {
+                    let prefix = acc_parts[0];
+                    let number = acc_parts[1];
+
+                    // Basic heuristic: if it contains all parts, it's a match.
+                    if tx_norm.contains(bank_code)
+                        && tx_norm.contains(prefix)
+                        && tx_norm.contains(number)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,7 +261,20 @@ mod tests {
             priority,
             is_active: true,
             stop_processing: stop,
+            iban_pattern: None,
+            variable_symbol: None,
         }
+    }
+
+    // Helper to add IBAN/VS to rule
+    fn with_iban(mut rule: CategorizationRule, iban: &str) -> CategorizationRule {
+        rule.iban_pattern = Some(iban.into());
+        rule
+    }
+
+    fn with_vs(mut rule: CategorizationRule, vs: &str) -> CategorizationRule {
+        rule.variable_symbol = Some(vs.into());
+        rule
     }
 
     fn make_tx(description: &str, counterparty: Option<&str>) -> TransactionInput {
@@ -175,6 +290,13 @@ mod tests {
             is_credit: false,
             bank_account_id: None,
         }
+    }
+
+    fn make_tx_full(description: &str, iban: Option<&str>, vs: Option<&str>) -> TransactionInput {
+        let mut tx = make_tx(description, None);
+        tx.counterparty_iban = iban.map(|s| s.into());
+        tx.variable_symbol = vs.map(|s| s.into());
+        tx
     }
 
     #[test]
@@ -340,5 +462,92 @@ mod tests {
 
         let tx = make_tx("Platba DPP", None);
         assert!(engine.apply(&tx).is_none()); // DPP is not at start
+    }
+
+    #[test]
+    fn test_bban_exclusive_matching() {
+        // BBAN Rule with completely unrelated Text Pattern
+        // Should MATCH because text pattern is IGNORED in Exclusive Mode
+        let rule = with_iban(
+            make_rule(
+                "r1",
+                "My Rule",
+                RuleType::Contains,
+                "THIS TEXT IS NOT IN TRANSACTION",
+                "cat_test",
+                50,
+                false,
+            ),
+            "123456/0100",
+        );
+        let engine = RuleEngine::new(vec![rule]);
+
+        // Transaction with full IBAN but NO description matching pattern
+        let tx = make_tx_full("Platba", Some("CZ1201000000000000123456"), None);
+
+        assert!(
+            engine.apply(&tx).is_some(),
+            "Exclusive IBAN rule should ignore text pattern mismatch"
+        );
+    }
+
+    #[test]
+    fn test_full_iban_exclusive_matching() {
+        // Full IBAN Rule with unrelated text pattern
+        let rule = with_iban(
+            make_rule(
+                "r1",
+                "My Rule",
+                RuleType::Contains,
+                "Unrelated",
+                "cat_test",
+                50,
+                false,
+            ),
+            "CZ1201000000000000123456",
+        );
+        let engine = RuleEngine::new(vec![rule]);
+
+        let tx = make_tx_full("Platba", Some("CZ1201000000000000123456"), None);
+        assert!(
+            engine.apply(&tx).is_some(),
+            "Exclusive Full IBAN rule matches"
+        );
+    }
+
+    #[test]
+    fn test_bban_with_vs_matching() {
+        // BBAN + VS rule
+        let rule = with_vs(
+            with_iban(
+                make_rule(
+                    "r1",
+                    "VS Rule",
+                    RuleType::Contains,
+                    "Ignored Pattern",
+                    "cat_test",
+                    50,
+                    false,
+                ),
+                "123456/0100",
+            ),
+            "555", // VS Requirement
+        );
+        let engine = RuleEngine::new(vec![rule]);
+
+        // Case 1: Matching IBAN but wrong VS -> Should NOT match
+        let tx_wrong_vs = make_tx_full("Platba", Some("CZ1201000000000000123456"), Some("999"));
+        assert!(engine.apply(&tx_wrong_vs).is_none(), "Wrong VS matched");
+
+        // Case 2: Matching IBAN and correct VS -> Should match
+        let tx_correct = make_tx_full("Platba", Some("CZ1201000000000000123456"), Some("555"));
+        assert!(
+            engine.apply(&tx_correct).is_some(),
+            "Correct IBAN+VS should match"
+        );
+
+        // Case 3: Wrong IBAN, correct VS -> Should NOT match
+        let tx_wrong_iban = make_tx_full("Platba", Some("CZ9901000000000000999999"), Some("555"));
+        assert!(engine.apply(&tx_wrong_iban).is_none(), "Wrong IBAN matched");
     }
 }

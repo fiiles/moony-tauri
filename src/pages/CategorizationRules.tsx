@@ -49,6 +49,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import CategorySelector from '@/components/bank-accounts/CategorySelector';
+import { CategoryIcon } from '@/components/common/CategoryIcon';
 import RuleEditDialog from '@/components/categorization/RuleEditDialog';
 
 // Helper to format IBAN for display - shows Czech BBAN format if applicable
@@ -199,6 +200,7 @@ export default function CategorizationRules() {
     return (
       rule.name.toLowerCase().includes(query) ||
       rule.pattern.toLowerCase().includes(query) ||
+      rule.ibanPattern?.toLowerCase().includes(query) ||
       getCategoryName(rule.categoryId)?.toLowerCase().includes(query)
     );
   });
@@ -475,17 +477,47 @@ export default function CategorizationRules() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">
-                            {t(`customRules.ruleTypes.${rule.ruleType}`)}
-                          </Badge>
+                          {/* Show IBAN Match for IBAN-based rules (pattern is '*' and has ibanPattern) */}
+                          {rule.pattern === '*' && rule.ibanPattern ? (
+                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                              <Building className="h-3 w-3 mr-1" />
+                              {t('customRules.form.modeIban')}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">
+                              {t(`customRules.ruleTypes.${rule.ruleType}`)}
+                            </Badge>
+                          )}
                         </TableCell>
-                        <TableCell className="font-mono text-sm max-w-[200px] truncate">
-                          {rule.pattern}
+                        <TableCell className="font-mono text-sm max-w-[200px]">
+                          <div className="flex flex-col">
+                            <span className="truncate">
+                              {/* Show IBAN pattern for IBAN-based rules, otherwise show regular pattern */}
+                              {rule.pattern === '*' && rule.ibanPattern 
+                                ? formatIbanDisplay(rule.ibanPattern) 
+                                : rule.pattern
+                              }
+                            </span>
+                            {/* Show VS as subtitle if present */}
+                            {rule.variableSymbol && (
+                              <span className="text-xs text-muted-foreground">
+                                VS: {rule.variableSymbol}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <Badge style={{ backgroundColor: categories.find(c => c.id === rule.categoryId)?.color || undefined }}>
-                            {getCategoryName(rule.categoryId)}
-                          </Badge>
+                          {(() => {
+                            const category = categories.find(c => c.id === rule.categoryId);
+                            return category ? (
+                              <div className="flex items-center gap-2">
+                                <CategoryIcon iconName={category.icon || 'Tag'} className="h-4 w-4" />
+                                <span className="text-sm">{category.name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">{rule.categoryId}</span>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge variant="outline">{rule.priority}</Badge>
