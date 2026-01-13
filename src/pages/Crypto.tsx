@@ -118,7 +118,7 @@ export default function Crypto() {
     const holdings: CryptoHoldingData[] = (cryptoInvestments || []).map((inv) => {
         const quantity = parseFloat(String(inv.quantity));
         const avgPriceOriginal = parseFloat(String(inv.averagePrice));
-        const currentPriceInCzk = inv.currentPrice ?? 0;
+        const currentPriceInCzk = parseFloat(String(inv.currentPrice)) || 0;
         
         // Convert prices to preferred currency
         const preferredCurrency = currencyCode as CurrencyCode;

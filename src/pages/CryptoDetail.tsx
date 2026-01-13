@@ -203,7 +203,7 @@ export default function CryptoDetail() {
     // Map crypto investment to holding data for modals
     const quantity = parseFloat(String(crypto.quantity)) || 0;
     const avgPriceOriginal = parseFloat(String(crypto.averagePrice)) || 0;
-    const currentPriceInCzk = crypto.currentPrice ?? 0;
+    const currentPriceInCzk = parseFloat(String(crypto.currentPrice)) || 0;
     
     // Convert to preferred currency
     // averagePrice is stored in native currency (from first transaction)
