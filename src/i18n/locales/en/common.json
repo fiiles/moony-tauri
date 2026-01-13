@@ -191,5 +191,18 @@
         "failed": "Export Failed",
         "noData": "No Data",
         "noDataDescription": "There is no data to export."
+    },
+    "analytics": {
+        "consentTitle": "Help Improve Moony",
+        "consentDescription": "We would like to collect anonymous usage data to understand how you use the app and improve your experience.",
+        "dataCollected": "What we collect",
+        "dataPoints": {
+            "screens": "Which screens you visit",
+            "device": "App version, OS version, and language"
+        },
+        "privacyNote": "Privacy First",
+        "privacyDetail": "No personal data, financial information, or IP addresses are ever collected or sent.",
+        "allow": "Allow Analytics",
+        "decline": "Decline"
     }
 }

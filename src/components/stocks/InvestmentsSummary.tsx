@@ -18,7 +18,7 @@ interface InvestmentsSummaryProps {
 }
 
 export function InvestmentsSummary({ metrics, latestFetchedAt, isLoading }: InvestmentsSummaryProps) {
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, formatCurrencyRaw } = useCurrency();
   const { t } = useTranslation('stocks');
 
   return (
@@ -28,14 +28,14 @@ export function InvestmentsSummary({ metrics, latestFetchedAt, isLoading }: Inve
     )}>
       <SummaryCard
         title={t('summary.totalValue')}
-        value={formatCurrency(metrics.totalValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        value={formatCurrencyRaw(metrics.totalValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         icon={<Wallet className="h-4 w-4" />}
         subtitle={latestFetchedAt ? t('summary.lastUpdated', { date: latestFetchedAt.toLocaleDateString() }) : undefined}
       />
 
       <SummaryCard
         title={t('summary.totalGainLoss')}
-        value={formatCurrency(Math.abs(metrics.overallGainLoss), { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        value={formatCurrencyRaw(Math.abs(metrics.overallGainLoss), { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         icon={metrics.overallGainLoss >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
         subtitle={`${metrics.overallGainLoss >= 0 ? "+" : ""}${metrics.overallGainLossPercent.toFixed(2)}%`}
         valueClassName={metrics.overallGainLoss >= 0 ? "text-positive" : "text-negative"}

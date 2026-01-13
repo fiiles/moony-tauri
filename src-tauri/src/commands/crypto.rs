@@ -16,25 +16,28 @@ use uuid::Uuid;
 pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCryptoInvestment>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, ticker, coingecko_id, name, quantity, average_price FROM crypto_investments"
+            "SELECT id, ticker, coingecko_id, name, quantity, average_price, currency FROM crypto_investments"
         )?;
 
-        let investments: Vec<CryptoInvestment> = stmt
+        let investments: Vec<(CryptoInvestment, String)> = stmt
             .query_map([], |row| {
-                Ok(CryptoInvestment {
-                    id: row.get(0)?,
-                    ticker: row.get(1)?,
-                    coingecko_id: row.get(2)?,
-                    name: row.get(3)?,
-                    quantity: row.get(4)?,
-                    average_price: row.get(5)?,
-                })
+                Ok((
+                    CryptoInvestment {
+                        id: row.get(0)?,
+                        ticker: row.get(1)?,
+                        coingecko_id: row.get(2)?,
+                        name: row.get(3)?,
+                        quantity: row.get(4)?,
+                        average_price: row.get(5)?,
+                    },
+                    row.get::<_, Option<String>>(6)?.unwrap_or_else(|| "USD".to_string()),
+                ))
             })?
             .filter_map(|r| r.ok())
             .collect();
 
         let mut enriched = Vec::new();
-        for inv in investments {
+        for (inv, avg_price_currency) in investments {
             // Get price override (manual price) - same pattern as stocks
             let override_price: Option<(String, String, i64)> = conn
                 .query_row(
@@ -80,6 +83,7 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
                 name: inv.name,
                 quantity: inv.quantity,
                 average_price: inv.average_price,
+                average_price_currency: avg_price_currency,
                 current_price: current_price.to_string(),
                 original_price,
                 currency,

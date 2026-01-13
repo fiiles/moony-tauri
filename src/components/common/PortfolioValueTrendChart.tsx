@@ -131,7 +131,7 @@ export default function PortfolioValueTrendChart({
   isRefreshing = false,
   transactionMarkers = [],
 }: PortfolioValueTrendChartProps) {
-  const { formatCurrency } = useCurrency();
+  const { formatCurrencyRaw, convert, currencyCode } = useCurrency();
   const { t } = useTranslation(type === 'investments' ? 'stocks' : 'crypto');
   const { formatDate } = useLanguage();
   const queryClient = useQueryClient();
@@ -220,12 +220,15 @@ export default function PortfolioValueTrendChart({
     // Reverse history to get chronological order (Oldest -> Newest)
     // portfolioHistory is DESC (Newest -> Oldest)
     const historyData: TrendData[] = [...(portfolioHistory || [])].reverse().map(h => {
-      let value: number;
+      let valueInCzk: number;
       if (type === 'investments') {
-        value = Number(h.totalInvestments);
+        valueInCzk = Number(h.totalInvestments);
       } else {
-        value = Number(h.totalCrypto || 0);
+        valueInCzk = Number(h.totalCrypto || 0);
       }
+      
+      // Convert historical value from CZK to display currency
+      const value = convert(valueInCzk, "CZK", currencyCode);
       
       // Include year in date format for multi-year periods
       const includeYear = selectedPeriod === '1Y' || selectedPeriod === '5Y' || selectedPeriod === 'All';
@@ -238,14 +241,18 @@ export default function PortfolioValueTrendChart({
       const dayStart = new Date(recordedDate.getFullYear(), recordedDate.getMonth(), recordedDate.getDate()).getTime() / 1000;
       const marker = markerMap.get(dayStart);
       
+      // Convert marker amounts from CZK to display currency
+      const buyAmount = marker ? convert(marker.buyAmount, "CZK", currencyCode) : undefined;
+      const sellAmount = marker ? convert(marker.sellAmount, "CZK", currencyCode) : undefined;
+      
       return {
         date: dateStr,
         dateTimestamp: h.recordedAt,
         value,
         hasBuy: marker ? marker.buyAmount > 0 : false,
         hasSell: marker ? marker.sellAmount > 0 : false,
-        buyAmount: marker?.buyAmount,
-        sellAmount: marker?.sellAmount,
+        buyAmount,
+        sellAmount,
         buyTickers: marker?.buyTickers,
         sellTickers: marker?.sellTickers,
       };
@@ -266,20 +273,36 @@ export default function PortfolioValueTrendChart({
       if (todayMarker) {
         lastPoint.hasBuy = todayMarker.buyAmount > 0;
         lastPoint.hasSell = todayMarker.sellAmount > 0;
-        lastPoint.buyAmount = todayMarker.buyAmount;
-        lastPoint.sellAmount = todayMarker.sellAmount;
+        
+        // Convert today's marker if extending last point
+        const buyVal = convert(todayMarker.buyAmount, "CZK", currencyCode);
+        const sellVal = convert(todayMarker.sellAmount, "CZK", currencyCode);
+        
+        lastPoint.buyAmount = buyVal;
+        lastPoint.sellAmount = sellVal;
         lastPoint.buyTickers = todayMarker.buyTickers;
         lastPoint.sellTickers = todayMarker.sellTickers;
       }
     } else {
+      // For a fresh today point, use already converted values if found?
+      // Wait, history data loop above wouldn't run for today if it's not in history.
+      // So we must handle conversion here too if using todayMarker.
+      
+      let buyVal = undefined;
+      let sellVal = undefined;
+      if (todayMarker) {
+         buyVal = convert(todayMarker.buyAmount, "CZK", currencyCode);
+         sellVal = convert(todayMarker.sellAmount, "CZK", currencyCode);
+      }
+
       historyData.push({
         date: todayStr,
         dateTimestamp: Math.floor(Date.now() / 1000),
         value: currentValue,
         hasBuy: todayMarker ? todayMarker.buyAmount > 0 : false,
         hasSell: todayMarker ? todayMarker.sellAmount > 0 : false,
-        buyAmount: todayMarker?.buyAmount,
-        sellAmount: todayMarker?.sellAmount,
+        buyAmount: buyVal,
+        sellAmount: sellVal,
         buyTickers: todayMarker?.buyTickers,
         sellTickers: todayMarker?.sellTickers,
       });
@@ -292,7 +315,7 @@ export default function PortfolioValueTrendChart({
       : 0;
 
     return { data: historyData, change: changePercent };
-  }, [portfolioHistory, currentValue, type, formatDate, markerMap, selectedPeriod]);
+  }, [portfolioHistory, currentValue, type, formatDate, markerMap, selectedPeriod, convert, currencyCode]);
 
   const isPositive = change >= 0;
 
@@ -351,7 +374,7 @@ export default function PortfolioValueTrendChart({
         <div className="flex flex-col gap-2">
           <p className="text-lg font-medium">{t('chart.title')}</p>
           <p className="text-4xl font-bold tracking-tight">
-            {formatCurrency(currentValue)}
+            {formatCurrencyRaw(currentValue)}
           </p>
           <div className="flex gap-2 items-center">
             <p className={`text-sm font-medium ${isPositive ? 'text-positive' : 'text-negative'}`}>
@@ -383,7 +406,7 @@ export default function PortfolioValueTrendChart({
             />
             <YAxis hide domain={yAxisDomain} />
             <Tooltip 
-              content={<CustomTooltip formatCurrency={formatCurrency} t={t} />}
+              content={<CustomTooltip formatCurrency={formatCurrencyRaw} t={t} />}
             />
             <Area
               type="monotone"

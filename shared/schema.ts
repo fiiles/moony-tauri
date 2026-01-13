@@ -493,6 +493,8 @@ export interface StockInvestmentWithPrice extends StockInvestment {
 // Crypto Investment with Price (enriched type from API)
 export interface CryptoInvestmentWithPrice extends CryptoInvestment {
     currentPrice: string;
+    /** Currency of the average price (native currency from first transaction) */
+    averagePriceCurrency?: string;
     fetchedAt: number | null;
 }
 

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { MenuPreferences } from "@shared/schema";
 import { CurrencyCode } from "@shared/currencies";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { currencies, useCurrency } from "@/lib/currency";
+import { useCurrency } from "@/lib/currency";
+import { currencies } from "@/lib/currency";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +19,8 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, EyeOff, ExternalLink, Copy, Check, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, ExternalLink, Copy, Check, ShieldCheck, AlertTriangle, Activity } from "lucide-react";
+import { getConsent, setConsent } from "@/lib/analytics";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
 import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type SupportedLanguage } from "@/i18n/index";
@@ -317,6 +319,7 @@ export default function SettingsPage() {
   const { currencyCode, setCurrency } = useCurrency();
   const { user } = useAuth();
   const { toast } = useToast();
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(getConsent() ?? false);
 
   const form = useForm<ProfileData>({
     resolver: zodResolver(profileSchema),
@@ -567,6 +570,32 @@ export default function SettingsPage() {
               checked={user?.excludePersonalRealEstate ?? false}
               onCheckedChange={(checked) => {
                 updateProfileMutation.mutate({ excludePersonalRealEstate: checked });
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Privacy Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            {t('privacy.title')}
+          </CardTitle>
+          <CardDescription>{t('privacy.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-2 border rounded">
+            <div>
+              <span className="text-sm font-medium">{t('privacy.analytics')}</span>
+              <p className="text-xs text-muted-foreground">{t('privacy.analyticsHint')}</p>
+            </div>
+            <Switch
+              checked={analyticsEnabled}
+              onCheckedChange={(checked) => {
+                setConsent(checked);
+                setAnalyticsEnabled(checked);
               }}
             />
           </div>

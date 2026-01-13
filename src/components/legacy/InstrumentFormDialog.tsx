@@ -19,7 +19,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Instrument, InsertInstrument } from "@shared/schema";
-import { useCurrency, currencies } from "@/lib/currency";
+import { useCurrency } from "@/lib/currency";
+import { currencies } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
 
 type UpdateInstrumentData = {
@@ -84,42 +85,42 @@ export function InstrumentFormDialog({
   });
 
   useEffect(() => {
-    if (open) {
-      if (instrument) {
-        // Convert stored CZK prices to user's currency for display
-        const displayCurrentPrice = convert(Number(instrument.currentPrice), "CZK", userCurrency);
-        const displayPreviousPrice = instrument.previousPrice
-          ? convert(Number(instrument.previousPrice), "CZK", userCurrency)
-          : null;
+    if (!open) return;
 
-        setFormData({
-          name: instrument.name,
-          code: instrument.code,
-          type: instrument.type,
-          currentPrice: displayCurrentPrice.toFixed(2),
-          previousPrice: displayPreviousPrice ? displayPreviousPrice.toFixed(2) : null,
-        });
-        setSelectedCurrency(userCurrency);
-      } else {
-        setFormData({
-          name: "",
-          code: "",
-          type: "stock",
-          currentPrice: "0",
-          previousPrice: null,
-        });
-        // Reset purchase data to defaults
-        setPurchaseData({
-          purchaseDate: new Date().toISOString().split("T")[0],
-          quantity: "",
-          pricePerUnit: "",
-          fees: "",
-          note: "",
-        });
-        setSelectedCurrency(userCurrency);
-      }
+    if (instrument) {
+      // Convert stored CZK prices to user's currency for display
+      const displayCurrentPrice = convert(Number(instrument.currentPrice), "CZK", userCurrency);
+      const displayPreviousPrice = instrument.previousPrice
+        ? convert(Number(instrument.previousPrice), "CZK", userCurrency)
+        : null;
+
+      setFormData({
+        name: instrument.name,
+        code: instrument.code,
+        type: instrument.type,
+        currentPrice: displayCurrentPrice.toFixed(2),
+        previousPrice: displayPreviousPrice ? displayPreviousPrice.toFixed(2) : null,
+      });
+      setSelectedCurrency(userCurrency);
+    } else {
+      setFormData({
+        name: "",
+        code: "",
+        type: "stock",
+        currentPrice: "0",
+        previousPrice: null,
+      });
+      // Reset purchase data to defaults
+      setPurchaseData({
+        purchaseDate: new Date().toISOString().split("T")[0],
+        quantity: "",
+        pricePerUnit: "",
+        fees: "",
+        note: "",
+      });
+      setSelectedCurrency(userCurrency);
     }
-  }, [instrument, open, userCurrency, convert]);
+  }, [open, instrument, userCurrency, convert]);
 
   const handleSubmit = () => {
     // Convert input amounts from SELECTED currency to BASE currency (CZK)
@@ -271,7 +272,7 @@ export function InstrumentFormDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {currencies.map((c) => (
+                      {currencies.map((c: { code: string; symbol: string }) => (
                         <SelectItem key={c.code} value={c.code}>
                           {c.code} ({c.symbol})
                         </SelectItem>

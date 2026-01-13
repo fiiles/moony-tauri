@@ -345,7 +345,7 @@ export default function StockDetail() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">{t('detail.currentValue')}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(currentValue)}</div>
+                        <div className="text-2xl font-bold">{formatCurrencyRaw(currentValue)}</div>
                         <div className="text-sm text-muted-foreground">
                             {quantity.toFixed(0)} {t('detail.shares')}
                         </div>
@@ -357,7 +357,7 @@ export default function StockDetail() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">{t('detail.totalInvested')}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(totalInvested)}</div>
+                        <div className="text-2xl font-bold">{formatCurrencyRaw(totalInvested)}</div>
                         <div className="text-sm text-muted-foreground">
                             <span className="flex items-center gap-1 flex-wrap">
                                 @ {(avgPriceOriginal).toLocaleString(undefined, {
@@ -384,7 +384,7 @@ export default function StockDetail() {
                     <CardContent>
                         <div className={`text-2xl font-bold flex items-center gap-1 ${unrealizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {unrealizedPnL >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-                            {formatCurrency(Math.abs(unrealizedPnL))}
+                            {formatCurrencyRaw(Math.abs(unrealizedPnL))}
                         </div>
                         <div className={`text-sm ${unrealizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {unrealizedPnL >= 0 ? '+' : ''}{unrealizedPnLPercent.toFixed(2)}%
@@ -401,7 +401,7 @@ export default function StockDetail() {
                             {dividendYieldPercent > 0 ? `${dividendYieldPercent.toFixed(2)}%` : '-'}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                            {yearlyDividend > 0 ? `${formatCurrency(yearlyDividend)} / ${t('detail.year')}` : t('detail.noDividend')}
+                            {yearlyDividend > 0 ? `${formatCurrencyRaw(yearlyDividend)} / ${t('detail.year')}` : t('detail.noDividend')}
                             {investment.isManualDividend && (
                                 <span className="ml-1 text-amber-600 dark:text-amber-400">({t('detail.manual')})</span>
                             )}
@@ -445,12 +445,12 @@ export default function StockDetail() {
                         </div>
                         <div>
                             <div className="text-sm text-muted-foreground">{t('detail.position.avgPrice')}</div>
-                            <div className="text-lg font-medium">{formatCurrency(avgPrice)}</div>
+                            <div className="text-lg font-medium">{formatCurrencyRaw(avgPrice)}</div>
                         </div>
                         <div>
                             <div className="text-sm text-muted-foreground">{t('detail.position.currentPrice')}</div>
                             <div className="text-lg font-medium">
-                                {formatCurrency(currentPrice)}
+                                {formatCurrencyRaw(currentPrice)}
                                 {investment.isManualPrice && (
                                     <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">
                                         ({t('detail.manual')})

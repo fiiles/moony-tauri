@@ -20,6 +20,9 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useTranslation } from "react-i18next";
+import { Checkbox } from "@/components/ui/checkbox";
+import { setConsent } from "@/lib/analytics";
+import { useState } from "react";
 import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type SupportedLanguage } from "@/i18n/index";
 
 
@@ -34,6 +37,12 @@ export function WelcomeModal({ open, onOpenChange, language, onLanguageChange }:
     const { t } = useTranslation("auth");
 
     const privacyPoints = ["encryption", "localOnly", "noCloud", "noThirdParty"];
+    const [consent, setConsentState] = useState(false);
+
+    const handleGetStarted = () => {
+        setConsent(consent);
+        onOpenChange(false);
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,9 +112,26 @@ export function WelcomeModal({ open, onOpenChange, language, onLanguageChange }:
                         </p>
                     </div>
 
+                    {/* Analytics Consent */}
+                    <div className="flex items-start gap-2 p-1">
+                        <Checkbox 
+                            id="analytics-consent" 
+                            checked={consent}
+                            onCheckedChange={(checked) => setConsentState(checked === true)}
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                            <label 
+                                htmlFor="analytics-consent" 
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                                {t("welcomeModal.analyticsConsent")}
+                            </label>
+                        </div>
+                    </div>
+
                     {/* Get Started Button */}
                     <Button 
-                        onClick={() => onOpenChange(false)} 
+                        onClick={handleGetStarted} 
                         className="w-full"
                         size="lg"
                     >

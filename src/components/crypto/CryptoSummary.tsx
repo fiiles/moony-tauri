@@ -18,7 +18,7 @@ interface CryptoSummaryProps {
 }
 
 export function CryptoSummary({ metrics, latestFetchedAt, isLoading }: CryptoSummaryProps) {
-    const { formatCurrency } = useCurrency();
+    const { formatCurrencyRaw } = useCurrency();
     const { t } = useTranslation('crypto');
 
     return (
@@ -28,14 +28,14 @@ export function CryptoSummary({ metrics, latestFetchedAt, isLoading }: CryptoSum
         )}>
             <SummaryCard
                 title={t('summary.totalCrypto')}
-                value={formatCurrency(metrics.totalValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                value={formatCurrencyRaw(metrics.totalValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 icon={<Bitcoin className="h-4 w-4" />}
                 subtitle={latestFetchedAt ? t('summary.lastUpdated', { date: latestFetchedAt.toLocaleDateString() }) : undefined}
             />
 
             <SummaryCard
                 title={t('summary.totalGainLoss')}
-                value={formatCurrency(Math.abs(metrics.overallGainLoss), { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                value={formatCurrencyRaw(Math.abs(metrics.overallGainLoss), { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 icon={metrics.overallGainLoss >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                 subtitle={`${metrics.overallGainLoss >= 0 ? "+" : ""}${metrics.overallGainLossPercent.toFixed(2)}%`}
                 valueClassName={metrics.overallGainLoss >= 0 ? "text-positive" : "text-negative"}
@@ -45,12 +45,12 @@ export function CryptoSummary({ metrics, latestFetchedAt, isLoading }: CryptoSum
                 title={t('summary.largestHolding')}
                 value={metrics.largestHolding?.ticker || "N/A"}
                 icon={<Award className="h-4 w-4" />}
-                subtitle={metrics.largestHolding ? formatCurrency(metrics.largestHolding.value, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : undefined}
+                subtitle={metrics.largestHolding ? formatCurrencyRaw(metrics.largestHolding.value, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : undefined}
             />
 
             <SummaryCard
                 title={t('summary.totalCost')}
-                value={formatCurrency(metrics.totalCost, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                value={formatCurrencyRaw(metrics.totalCost, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 icon={<Wallet className="h-4 w-4" />}
                 subtitle={t('summary.investedCapital')}
             />

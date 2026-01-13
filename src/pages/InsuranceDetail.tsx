@@ -273,9 +273,9 @@ export default function InsuranceDetail() {
                                 <CardTitle>{t('detail.coverageLimits')}</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {policy.limits && (policy.limits as any[]).length > 0 ? (
+                                {policy.limits && policy.limits.length > 0 ? (
                                     <div className="space-y-2">
-                                        {(policy.limits as any[]).map((limit, index) => (
+                                        {policy.limits.map((limit, index) => (
                                             <div key={index} className="flex justify-between items-center p-3 bg-muted/50 rounded">
                                                 <span className="font-medium">{limit.title}</span>
                                                 <span className="text-muted-foreground">

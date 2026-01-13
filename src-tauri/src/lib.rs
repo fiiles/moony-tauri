@@ -19,7 +19,16 @@ pub fn run() {
     // Initialize categorization engine with default rules
     let categorization_engine = Arc::new(CategorizationEngine::with_defaults());
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // Initialize Aptabase if key is present at compile time
+    // TODO: Re-enable when tauri-plugin-aptabase fixes Tokio runtime panic
+    // See: https://github.com/aptabase/tauri-plugin-aptabase/issues
+    // if let Some(key) = std::option_env!("VITE_APTABASE_KEY") {
+    //     builder = builder.plugin(tauri_plugin_aptabase::Builder::new(key).build());
+    // }
+
+    builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

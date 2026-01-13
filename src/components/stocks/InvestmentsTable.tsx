@@ -35,7 +35,7 @@ export function InvestmentsTable({
   onViewDetail,
   isLoading,
 }: InvestmentsTableProps) {
-  const { formatCurrency, currencyCode } = useCurrency();
+  const { formatCurrency, formatCurrencyRaw, currencyCode } = useCurrency();
   const { t } = useTranslation('stocks');
   const [search, setSearch] = useState("");
 
@@ -193,7 +193,7 @@ export function InvestmentsTable({
                     <TableCell className="text-right">
                       <div className="flex flex-col items-end">
                         <span className="data-value">
-                          {formatCurrency(holding.avgCost, { 
+                          {formatCurrencyRaw(holding.avgCost, { 
                             minimumFractionDigits: holding.avgCost >= 1000 ? 0 : 2, 
                             maximumFractionDigits: holding.avgCost >= 1000 ? 0 : 2 
                           })}
@@ -225,7 +225,7 @@ export function InvestmentsTable({
                               </Tooltip>
                             </TooltipProvider>
                           )}
-                          <span className="data-value">{formatCurrency(holding.currentPrice, { 
+                          <span className="data-value">{formatCurrencyRaw(holding.currentPrice, { 
                             minimumFractionDigits: holding.currentPrice >= 1000 ? 0 : 2, 
                             maximumFractionDigits: holding.currentPrice >= 1000 ? 0 : 2 
                           })}</span>
@@ -241,7 +241,7 @@ export function InvestmentsTable({
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-semibold data-value">
-                      {formatCurrency(holding.marketValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      {formatCurrencyRaw(holding.marketValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </TableCell>
                     <TableCell className="text-right">
                       <div
@@ -251,7 +251,7 @@ export function InvestmentsTable({
                       >
                         <p className="font-semibold data-value">
                           {holding.gainLoss >= 0 ? "+" : "-"}
-                          {formatCurrency(Math.abs(holding.gainLoss), { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          {formatCurrencyRaw(Math.abs(holding.gainLoss), { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </p>
                         <p className="text-xs data-value">
                           ({holding.gainLoss >= 0 ? "+" : ""}

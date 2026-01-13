@@ -30,7 +30,7 @@ export default function BankAccounts() {
   const { accounts, metrics, isLoading } = useBankAccounts();
   const { institutions } = useInstitutions();
   const { createAccount } = useBankAccountMutations();
-  const { formatCurrencyRaw, formatCurrency } = useCurrency();
+  const { formatCurrency } = useCurrency();
   const queryClient = useQueryClient();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -133,7 +133,7 @@ export default function BankAccounts() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <SummaryCard
           title={t("metrics.totalBalance")}
-          value={formatCurrencyRaw(metrics.totalBalance)}
+          value={formatCurrency(metrics.totalBalance)}
           icon={<Landmark className="h-4 w-4" />}
         />
         <SummaryCard
@@ -145,7 +145,7 @@ export default function BankAccounts() {
         />
         <SummaryCard
           title={t("metrics.expectedYearlyInterest")}
-          value={formatCurrencyRaw(metrics.expectedYearlyInterest)}
+          value={formatCurrency(metrics.expectedYearlyInterest)}
           icon={<TrendingUp className="h-4 w-4" />}
           valueClassName="text-positive"
         />

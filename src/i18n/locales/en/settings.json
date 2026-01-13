@@ -71,6 +71,12 @@
         "confirmDescription": "This action cannot be undone. This will permanently delete your account and remove all your data from this device. Since Moony is a local-only app, there is no data on our servers to delete.",
         "deleting": "Deleting..."
     },
+    "privacy": {
+        "title": "Privacy & Analytics",
+        "description": "Manage how your data is used.",
+        "analytics": "Send anonymous usage statistics",
+        "analyticsHint": "Helps us improve the app. Includes screen views and app version. No personal or financial data."
+    },
     "toast": {
         "profileUpdated": "Profile updated",
         "profileUpdatedDescription": "Your profile details have been saved.",

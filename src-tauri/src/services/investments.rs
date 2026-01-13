@@ -96,6 +96,7 @@ pub fn create_transaction_internal(
 ) -> Result<InvestmentTransaction> {
     let tx_id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
+    let currency_upper = currency.to_uppercase();
 
     conn.execute(
         "INSERT INTO investment_transactions
@@ -109,7 +110,7 @@ pub fn create_transaction_internal(
             company_name,
             quantity,
             price_per_unit,
-            currency,
+            currency_upper,
             transaction_date,
             now,
         ],
@@ -123,7 +124,7 @@ pub fn create_transaction_internal(
         company_name: company_name.to_string(),
         quantity: quantity.to_string(),
         price_per_unit: price_per_unit.to_string(),
-        currency: currency.to_string(),
+        currency: currency_upper,
         transaction_date,
         created_at: now,
     })
@@ -157,11 +158,12 @@ pub fn get_or_create_investment(
             let id = Uuid::new_v4().to_string();
             let qty = initial_quantity.unwrap_or("0");
             let avg = initial_avg_price.unwrap_or("0");
+            let currency_upper = currency.to_uppercase();
 
             conn.execute(
                 "INSERT INTO stock_investments (id, ticker, company_name, quantity, average_price, currency)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                rusqlite::params![id, ticker_upper, company_name, qty, avg, currency],
+                rusqlite::params![id, ticker_upper, company_name, qty, avg, currency_upper],
             )?;
             Ok(id)
         }

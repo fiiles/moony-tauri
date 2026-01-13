@@ -33,7 +33,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useCurrency, currencies } from "@/lib/currency";
+import { useCurrency } from "@/lib/currency";
+import { currencies } from "@/lib/currency";
 import { realEstateApi, loansApi, insuranceApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
 
@@ -367,7 +368,7 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        {currencies.map((c) => (
+                                                        {currencies.map((c: { code: string }) => (
                                                             <SelectItem key={c.code} value={c.code}>
                                                                 {c.code}
                                                             </SelectItem>
@@ -407,7 +408,7 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        {currencies.map((c) => (
+                                                        {currencies.map((c: { code: string }) => (
                                                             <SelectItem key={c.code} value={c.code}>
                                                                 {c.code}
                                                             </SelectItem>
@@ -448,7 +449,7 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                                             </SelectTrigger>
                                                         </FormControl>
                                                         <SelectContent>
-                                                            {currencies.map((c) => (
+                                                            {currencies.map((c: { code: string }) => (
                                                                 <SelectItem key={c.code} value={c.code}>
                                                                     {c.code}
                                                                 </SelectItem>
@@ -519,7 +520,7 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                                             </SelectTrigger>
                                                         </FormControl>
                                                         <SelectContent>
-                                                            {currencies.map((c) => (
+                                                            {currencies.map((c: { code: string }) => (
                                                                 <SelectItem key={c.code} value={c.code}>
                                                                     {c.code}
                                                                 </SelectItem>
