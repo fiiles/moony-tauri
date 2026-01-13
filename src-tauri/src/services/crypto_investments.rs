@@ -6,13 +6,13 @@
 
 use crate::error::Result;
 use crate::models::{CryptoInvestment, CryptoTransaction, InsertCryptoTransaction};
-use crate::services::currency::convert_to_czk;
+use crate::services::currency::convert_between;
 use uuid::Uuid;
 
 /// Recalculate crypto investment metrics from transactions
 /// SINGLE SOURCE OF TRUTH for crypto metrics calculation
-/// Recalculate crypto investment metrics from transactions
-/// SINGLE SOURCE OF TRUTH for crypto metrics calculation
+/// NOTE: Average price is calculated in the investment's native currency (from first transaction)
+/// Transactions in other currencies are converted to the native currency before averaging
 pub fn recalculate_crypto_metrics(conn: &rusqlite::Connection, investment_id: &str) -> Result<()> {
     // Get all transactions for this investment (including currency), sorted by date
     let mut stmt = conn.prepare(
@@ -29,21 +29,33 @@ pub fn recalculate_crypto_metrics(conn: &rusqlite::Connection, investment_id: &s
                 tx_type,
                 qty.parse().unwrap_or(0.0),
                 price.parse().unwrap_or(0.0),
-                currency,
+                currency.to_uppercase(),
             ))
         })?
         .filter_map(|r| r.ok())
         .collect();
 
+    // If no transactions, nothing to recalculate
+    if txs.is_empty() {
+        return Ok(());
+    }
+
+    // Native currency is the currency of the first transaction
+    let native_currency = txs[0].3.clone();
+
     let mut total_qty = 0.0f64;
     let mut total_cost = 0.0f64;
 
     for (tx_type, qty, price, currency) in txs {
-        // Convert price to CZK (base currency)
-        let price_czk = convert_to_czk(price, &currency);
+        // Convert price to native currency if different
+        let price_in_native = if currency == native_currency {
+            price
+        } else {
+            convert_between(price, &currency, &native_currency)
+        };
 
         if tx_type == "buy" {
-            total_cost += qty * price_czk;
+            total_cost += qty * price_in_native;
             total_qty += qty;
         } else if tx_type == "sell" {
             // Reduce quantity, adjust cost proportionally
@@ -69,9 +81,10 @@ pub fn recalculate_crypto_metrics(conn: &rusqlite::Connection, investment_id: &s
         0.0
     };
 
+    // Update both average_price (in native currency) and currency column
     conn.execute(
-        "UPDATE crypto_investments SET quantity = ?1, average_price = ?2 WHERE id = ?3",
-        rusqlite::params![total_qty.to_string(), avg_price.to_string(), investment_id],
+        "UPDATE crypto_investments SET quantity = ?1, average_price = ?2, currency = ?3 WHERE id = ?4",
+        rusqlite::params![total_qty.to_string(), avg_price.to_string(), native_currency, investment_id],
     )?;
 
     Ok(())

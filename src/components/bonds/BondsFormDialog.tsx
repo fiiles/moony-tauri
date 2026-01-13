@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Bond, InsertBond } from "@shared/schema";
-import { useCurrency, currencies } from "@/lib/currency";
+import { useCurrency } from "@/lib/currency";
+import { currencies } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
 import { FileText, Coins } from "lucide-react";
@@ -54,26 +55,26 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(userCurrency);
 
   useEffect(() => {
-    if (open) {
-      if (bond) {
-        setName(bond.name);
-        setIsin(bond.isin);
-        setCouponValue(bond.couponValue);
-        setQuantity(bond.quantity || "1");
-        setInterestRate(bond.interestRate.toString());
-        setMaturityDate(bond.maturityDate ? new Date(bond.maturityDate * 1000).toISOString().split('T')[0] : "");
-        setSelectedCurrency((bond.currency as CurrencyCode) || "CZK");
-      } else {
-        setName("");
-        setIsin("");
-        setCouponValue("0");
-        setQuantity("1");
-        setInterestRate("0");
-        setMaturityDate("");
-        setSelectedCurrency(userCurrency);
-      }
+    if (!open) return;
+
+    if (bond) {
+      setName(bond.name);
+      setIsin(bond.isin);
+      setCouponValue(bond.couponValue);
+      setQuantity(bond.quantity || "1");
+      setInterestRate(bond.interestRate.toString());
+      setMaturityDate(bond.maturityDate ? new Date(bond.maturityDate * 1000).toISOString().split('T')[0] : "");
+      setSelectedCurrency((bond.currency as CurrencyCode) || "CZK");
+    } else {
+      setName("");
+      setIsin("");
+      setCouponValue("0");
+      setQuantity("1");
+      setInterestRate("0");
+      setMaturityDate("");
+      setSelectedCurrency(userCurrency);
     }
-  }, [bond, open, userCurrency]);
+  }, [open, bond, userCurrency]);
 
   const handleSubmit = () => {
     const submissionData = {
@@ -183,7 +184,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {currencies.map((c) => (
+                      {currencies.map((c: { code: string; symbol: string }) => (
                         <SelectItem key={c.code} value={c.code}>
                           {c.code} ({c.symbol})
                         </SelectItem>

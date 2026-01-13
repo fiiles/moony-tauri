@@ -1,4 +1,7 @@
 import { Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
+import { trackEvent, useScreenTracking } from "@/lib/analytics";
+import { AnalyticsConsentModal } from "@/components/common/AnalyticsConsentModal";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -75,6 +78,7 @@ function Router() {
 
 function AppLayout() {
   const [location] = useLocation();
+  useScreenTracking();
 
   if (location === "/auth") {
     return <AuthPage />;
@@ -87,6 +91,7 @@ function AppLayout() {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
+      <AnalyticsConsentModal />
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
@@ -106,6 +111,10 @@ function AppLayout() {
 }
 
 export default function App() {
+  useEffect(() => {
+    trackEvent("app_started");
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">

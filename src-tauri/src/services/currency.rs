@@ -26,30 +26,50 @@ lazy_static! {
 }
 
 /// Convert an amount from a currency to CZK
+/// Convert an amount from a currency to CZK
 #[allow(dead_code)]
 pub fn convert_to_czk(amount: f64, currency: &str) -> f64 {
+    let currency = currency.to_uppercase();
     if currency == "CZK" {
         return amount;
     }
 
     let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
-    let rate = rates.get(currency).copied().unwrap_or(1.0);
+    let rate = rates.get(&currency).copied().unwrap_or(1.0);
     amount * rate
 }
 
 /// Convert an amount from CZK to another currency
 #[allow(dead_code)]
 pub fn convert_from_czk(amount: f64, currency: &str) -> f64 {
+    let currency = currency.to_uppercase();
     if currency == "CZK" {
         return amount;
     }
 
     let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
-    let rate = rates.get(currency).copied().unwrap_or(1.0);
+    let rate = rates.get(&currency).copied().unwrap_or(1.0);
     if rate == 0.0 {
         return amount;
     }
     amount / rate
+}
+
+/// Convert an amount from one currency to another (via CZK as intermediary)
+/// Example: convert_between(100.0, "EUR", "USD") converts 100 EUR to USD
+#[allow(dead_code)]
+pub fn convert_between(amount: f64, from_currency: &str, to_currency: &str) -> f64 {
+    let from = from_currency.to_uppercase();
+    let to = to_currency.to_uppercase();
+
+    // If same currency, no conversion needed
+    if from == to {
+        return amount;
+    }
+
+    // Convert to CZK first, then to target currency
+    let amount_in_czk = convert_to_czk(amount, &from);
+    convert_from_czk(amount_in_czk, &to)
 }
 
 /// Update exchange rates (called after fetching from ECB)
@@ -209,5 +229,19 @@ mod tests {
     fn test_convert_from_czk() {
         let eur = convert_from_czk(2500.0, "EUR");
         assert_eq!(eur, 100.0); // 2500 CZK / 25 = 100 EUR
+    }
+
+    #[test]
+    fn test_currency_case_sensitivity() {
+        // "USD" is in the map with 23.0
+        let val_upper = convert_to_czk(100.0, "USD");
+        // "usd" is NOT in the map conceptually if it's case sensitive
+        let val_lower = convert_to_czk(100.0, "usd");
+
+        // If they are equal, then it handles casing. If not, we found the bug.
+        assert_eq!(
+            val_upper, val_lower,
+            "Currency conversion should be case insensitive"
+        );
     }
 }

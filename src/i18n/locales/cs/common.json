@@ -191,5 +191,18 @@
         "failed": "Export selhal",
         "noData": "Žádná data",
         "noDataDescription": "Nejsou žádná data k exportu."
+    },
+    "analytics": {
+        "consentTitle": "Pomozte zlepšit Moony",
+        "consentDescription": "Rádi bychom sbírali anonymní data o používání, abychom pochopili, jak aplikaci používáte, a mohli ji vylepšovat.",
+        "dataCollected": "Co sbíráme",
+        "dataPoints": {
+            "screens": "Které obrazovky navštěvujete",
+            "device": "Verze aplikace, verze OS a jazyk"
+        },
+        "privacyNote": "Soukromí na prvním místě",
+        "privacyDetail": "Nikdy nesbíráme ani neodesíláme osobní data, finanční informace ani IP adresy.",
+        "allow": "Povolit analytiku",
+        "decline": "Odmítnout"
     }
 }

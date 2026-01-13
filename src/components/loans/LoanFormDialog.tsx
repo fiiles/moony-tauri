@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form";
+import { useForm, DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertLoanSchema, InsertLoan, Loan } from "@shared/schema";
 import {
@@ -26,10 +26,9 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { format } from "date-fns";
 import { useCurrency, currencies } from "@/lib/currency";
-import { CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
 import { FileText, Coins } from "lucide-react";
 
@@ -50,56 +49,56 @@ export function LoanFormDialog({
 }: LoanFormDialogProps) {
     const { t } = useTranslation('loans');
     const { t: tc } = useTranslation('common');
-    const { convert, currencyCode: userCurrency } = useCurrency();
-    const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(userCurrency);
+    const { currencyCode: userCurrency } = useCurrency();
 
     const form = useForm<InsertLoan>({
         resolver: zodResolver(insertLoanSchema),
         defaultValues: {
             name: "",
             principal: "0",
+            currency: userCurrency,
             interestRate: "0",
             monthlyPayment: "0",
             interestRateValidityDate: undefined,
             startDate: new Date(),
             endDate: undefined,
-        } as any,
+        } as DefaultValues<InsertLoan>,
     });
 
     useEffect(() => {
         if (open) {
             if (loan) {
                 // Display loan in its STORED currency (no conversion)
-                const storedCurrency = (loan as any).currency || "CZK";
-
+                const storedCurrency = loan.currency || "CZK";
+                
                 form.reset({
                     name: loan.name,
                     principal: loan.principal.toString(),
+                    currency: storedCurrency,
                     interestRate: loan.interestRate.toString(),
-                    monthlyPayment: (loan as any).monthlyPayment?.toString() || "0",
-                    interestRateValidityDate: (loan as any).interestRateValidityDate ? new Date((loan as any).interestRateValidityDate * 1000) : undefined,
-                    startDate: (loan as any).startDate ? new Date((loan as any).startDate * 1000) : new Date(),
-                    endDate: (loan as any).endDate ? new Date((loan as any).endDate * 1000) : undefined,
-                } as any);
-                setSelectedCurrency(storedCurrency as CurrencyCode);
+                    monthlyPayment: loan.monthlyPayment?.toString() || "0",
+                    interestRateValidityDate: loan.interestRateValidityDate ? new Date(loan.interestRateValidityDate * 1000) : undefined,
+                    startDate: loan.startDate ? new Date(loan.startDate * 1000) : new Date(),
+                    endDate: loan.endDate ? new Date(loan.endDate * 1000) : undefined,
+                } as DefaultValues<InsertLoan>);
             } else {
                 form.reset({
                     name: "",
                     principal: "0",
+                    currency: userCurrency,
                     interestRate: "0",
                     monthlyPayment: "0",
                     interestRateValidityDate: undefined,
                     startDate: new Date(),
                     endDate: undefined,
-                } as any);
-                setSelectedCurrency(userCurrency);
+                } as DefaultValues<InsertLoan>);
             }
         }
     }, [loan, form, open, userCurrency]);
 
     const handleSubmit = (data: InsertLoan) => {
         // Convert Date objects to Unix timestamps (seconds)
-        const convertToTimestamp = (value: any): number | undefined => {
+        const convertToTimestamp = (value: Date | number | string | undefined | null): number | undefined => {
             if (!value) return undefined;
             if (value instanceof Date) {
                 return Math.floor(value.getTime() / 1000);
@@ -107,13 +106,14 @@ export function LoanFormDialog({
             if (typeof value === 'number') {
                 return value;
             }
+            // Should not happen for validated form data but safe handling
             return undefined;
         };
 
         // Send amounts in ORIGINAL currency (no conversion to CZK)
         const submissionData = {
             ...data,
-            currency: selectedCurrency,
+            // Currency is already in data from form
             principal: data.principal,
             monthlyPayment: data.monthlyPayment,
             startDate: convertToTimestamp(data.startDate),
@@ -187,24 +187,32 @@ export function LoanFormDialog({
                                             </FormItem>
                                         )}
                                     />
-                                    <FormItem>
-                                        <FormLabel>{tc('labels.currency')}</FormLabel>
-                                        <Select
-                                            value={selectedCurrency}
-                                            onValueChange={(v) => setSelectedCurrency(v as CurrencyCode)}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {currencies.map((c) => (
-                                                    <SelectItem key={c.code} value={c.code}>
-                                                        {c.code} ({c.symbol})
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </FormItem>
+                                    <FormField
+                                        control={form.control}
+                                        name="currency"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>{tc('labels.currency')}</FormLabel>
+                                                <Select
+                                                    value={field.value}
+                                                    onValueChange={field.onChange}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {currencies.map((c) => (
+                                                            <SelectItem key={c.code} value={c.code}>
+                                                                {c.code} ({c.symbol})
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">

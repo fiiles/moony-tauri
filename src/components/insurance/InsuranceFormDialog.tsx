@@ -31,7 +31,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Plus, Trash2, Shield, Wallet, Info } from "lucide-react";
-import { useCurrency, currencies } from "@/lib/currency";
+import { useCurrency } from "@/lib/currency";
+import { currencies } from "@/lib/currency";
 import { insuranceApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
 

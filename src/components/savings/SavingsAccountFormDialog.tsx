@@ -19,7 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { SavingsAccount, InsertSavingsAccount } from "@shared/schema";
-import { useCurrency, currencies } from "@/lib/currency";
+import { useCurrency } from "@/lib/currency";
+import { currencies } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
 import { SavingsAccountZoneManager } from "@/components/savings/SavingsAccountZoneManager";
 import { savingsApi } from "@/lib/tauri-api";
@@ -59,7 +60,7 @@ export function SavingsAccountFormDialog({
 }: SavingsAccountFormDialogProps) {
   const { t } = useTranslation('savings');
   const { t: tc } = useTranslation('common');
-  const { convert, currencyCode: userCurrency } = useCurrency();
+  const { currencyCode: userCurrency } = useCurrency();
   const isEditMode = !!account;
 
   // Form state - balance and currency are stored as-is (not converted)
@@ -72,51 +73,51 @@ export function SavingsAccountFormDialog({
   const [terminationDate, setTerminationDate] = useState<string>("");
 
   useEffect(() => {
-    if (open) {
-      if (account) {
-        // Edit mode: Display account in its STORED currency
-        setName(account.name);
-        setBalance(account.balance.toString());
-        setInterestRate(account.interestRate.toString());
-        setSelectedCurrency((account as any).currency || "CZK"); // Use stored currency
-        setHasZoneDesignation(account.hasZoneDesignation || false);
-        setTerminationDate(
-          account.terminationDate
-            ? new Date(account.terminationDate * 1000).toISOString().split('T')[0]
-            : ""
-        );
+    if (!open) return;
 
-        // Fetch zones if the account has zone designation
-        if (account.hasZoneDesignation) {
-          savingsApi.getZones(account.id)
-            .then(data => {
-              const formattedZones = data.map((zone: any) => ({
-                id: zone.id,
-                fromAmount: zone.fromAmount,
-                toAmount: zone.toAmount || "",
-                interestRate: zone.interestRate,
-              }));
-              setZones(formattedZones);
-            })
-            .catch(err => {
-              console.error("Failed to fetch zones:", err);
-              setZones([]);
-            });
-        } else {
-          setZones([]);
-        }
+    if (account) {
+      // Edit mode: Display account in its STORED currency
+      setName(account.name);
+      setBalance(account.balance.toString());
+      setInterestRate(account.interestRate.toString());
+      setSelectedCurrency((account.currency as CurrencyCode) || "CZK"); // Use stored currency
+      setHasZoneDesignation(account.hasZoneDesignation || false);
+      setTerminationDate(
+        account.terminationDate
+          ? new Date(account.terminationDate * 1000).toISOString().split('T')[0]
+          : ""
+      );
+
+      // Fetch zones if the account has zone designation
+      if (account.hasZoneDesignation) {
+        savingsApi.getZones(account.id)
+          .then(data => {
+            const formattedZones = data.map((zone: any) => ({
+              id: zone.id,
+              fromAmount: zone.fromAmount,
+              toAmount: zone.toAmount || "",
+              interestRate: zone.interestRate,
+            }));
+            setZones(formattedZones);
+          })
+          .catch(err => {
+            console.error("Failed to fetch zones:", err);
+            setZones([]);
+          });
       } else {
-        // Add mode
-        setName("");
-        setBalance("0");
-        setInterestRate("0");
-        setSelectedCurrency(userCurrency);
-        setHasZoneDesignation(false);
         setZones([]);
-        setTerminationDate("");
       }
+    } else {
+      // Add mode
+      setName("");
+      setBalance("0");
+      setInterestRate("0");
+      setSelectedCurrency(userCurrency);
+      setHasZoneDesignation(false);
+      setZones([]);
+      setTerminationDate("");
     }
-  }, [account, open, userCurrency]);
+  }, [open, account, userCurrency]);
 
   const handleSubmit = () => {
     const terminationTimestamp = terminationDate
@@ -142,7 +143,7 @@ export function SavingsAccountFormDialog({
         interestRate: hasZoneDesignation ? "0" : interestRate,
         hasZoneDesignation,
         terminationDate: terminationTimestamp,
-      } as any, hasZoneDesignation ? zones : undefined);
+      }, hasZoneDesignation ? zones : undefined);
     }
   };
 
@@ -213,7 +214,7 @@ export function SavingsAccountFormDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {currencies.map((c) => (
+                      {currencies.map((c: { code: string; symbol: string }) => (
                         <SelectItem key={c.code} value={c.code}>
                           {c.code} ({c.symbol})
                         </SelectItem>

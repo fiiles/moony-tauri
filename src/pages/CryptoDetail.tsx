@@ -57,7 +57,7 @@ export default function CryptoDetail() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const id = params?.id;
-    const { formatCurrency, currencyCode, convert } = useCurrency();
+    const { formatCurrencyRaw, formatPrice, currencyCode, convert } = useCurrency();
     const { t } = useTranslation('crypto');
     const { t: tc } = useTranslation('common');
     const { formatDate } = useLanguage();
@@ -202,8 +202,14 @@ export default function CryptoDetail() {
 
     // Map crypto investment to holding data for modals
     const quantity = parseFloat(String(crypto.quantity)) || 0;
-    const averagePrice = parseFloat(String(crypto.averagePrice)) || 0;
-    const currentPrice = crypto.currentPrice ?? 0;
+    const avgPriceOriginal = parseFloat(String(crypto.averagePrice)) || 0;
+    const currentPriceInCzk = crypto.currentPrice ?? 0;
+    
+    // Convert to preferred currency
+    // averagePrice is stored in native currency (from first transaction)
+    const avgPriceCurrency = (crypto.averagePriceCurrency || "USD") as CurrencyCode;
+    const averagePrice = convert(avgPriceOriginal, avgPriceCurrency, currencyCode);
+    const currentPrice = convert(currentPriceInCzk, "CZK", currencyCode);
 
     const holdingData = mapCryptoInvestmentToHolding(
         crypto.id,
@@ -280,7 +286,7 @@ export default function CryptoDetail() {
                     </AlertDialog>
                 </div>
             </div>
-
+            
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <Card>
@@ -288,7 +294,7 @@ export default function CryptoDetail() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">{t('detail.currentValue')}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(currentValue)}</div>
+                        <div className="text-2xl font-bold">{formatCurrencyRaw(currentValue)}</div>
                         <div className="text-sm text-muted-foreground">
                             {quantity.toFixed(8)} {t('detail.units')}
                         </div>
@@ -300,9 +306,9 @@ export default function CryptoDetail() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">{t('detail.totalInvested')}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(totalInvested)}</div>
+                        <div className="text-2xl font-bold">{formatCurrencyRaw(totalInvested)}</div>
                         <div className="text-sm text-muted-foreground">
-                            @ {formatCurrency(holdingData.avgCost)} {t('detail.avgPrice')}
+                            @ {formatPrice(holdingData.avgCost)} {t('detail.avgPrice')}
                         </div>
                     </CardContent>
                 </Card>
@@ -314,7 +320,7 @@ export default function CryptoDetail() {
                     <CardContent>
                         <div className={`text-2xl font-bold flex items-center gap-1 ${unrealizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {unrealizedPnL >= 0 ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-                            {formatCurrency(Math.abs(unrealizedPnL))}
+                            {formatCurrencyRaw(Math.abs(unrealizedPnL))}
                         </div>
                         <div className={`text-sm ${unrealizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                             {unrealizedPnL >= 0 ? '+' : ''}{unrealizedPnLPercent.toFixed(2)}%
@@ -358,12 +364,12 @@ export default function CryptoDetail() {
                         </div>
                         <div>
                             <div className="text-sm text-muted-foreground">{t('detail.position.avgPrice')}</div>
-                            <div className="text-lg font-medium">{formatCurrency(holdingData.avgCost)}</div>
+                            <div className="text-lg font-medium">{formatPrice(holdingData.avgCost)}</div>
                         </div>
                         <div>
                             <div className="text-sm text-muted-foreground">{t('detail.position.currentPrice')}</div>
                             <div className="text-lg font-medium">
-                                {formatCurrency(holdingData.currentPrice)}
+                                {formatPrice(holdingData.currentPrice)}
                                 {crypto.isManualPrice && (
                                     <span className="ml-2 text-xs text-amber-600 dark:text-amber-400">
                                         ({t('detail.manual')})
@@ -409,9 +415,9 @@ export default function CryptoDetail() {
                                                 const txQty = parseFloat(tx.quantity) || 0;
                                                 const txPrice = parseFloat(tx.pricePerUnit) || 0;
                                                 const txCurrency = (tx.currency || currencyCode) as CurrencyCode;
-                                                // Convert price to CZK (base currency) then format will convert to user's display currency
-                                                const txPriceInBase = convert(txPrice, txCurrency, "CZK");
-                                                const txTotal = txQty * txPriceInBase;
+                                                // Convert price to preferred currency
+                                                const txPriceInPreferred = convert(txPrice, txCurrency, currencyCode);
+                                                const txTotal = txQty * txPriceInPreferred;
                                                 // Format original price with its original currency symbol
                                                 const originalCurrencyDef = CURRENCIES[txCurrency as DisplayCurrencyCode] || CURRENCIES.CZK;
                                                 const formattedOriginalPrice = originalCurrencyDef.position === "before" 
@@ -431,8 +437,8 @@ export default function CryptoDetail() {
                                                         {hasMixedCurrencies && (
                                                             <TableCell className="text-right">{formattedOriginalPrice}</TableCell>
                                                         )}
-                                                        <TableCell className="text-right">{formatCurrency(txPriceInBase)}</TableCell>
-                                                        <TableCell className="text-right font-medium">{formatCurrency(txTotal)}</TableCell>
+                                                        <TableCell className="text-right">{formatCurrencyRaw(txPriceInPreferred)}</TableCell>
+                                                        <TableCell className="text-right font-medium">{formatCurrencyRaw(txTotal)}</TableCell>
                                                         <TableCell>
                                                             <Button
                                                                 variant="ghost"

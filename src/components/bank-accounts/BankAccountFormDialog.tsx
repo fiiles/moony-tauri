@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/select";
 
 import type { BankAccountWithInstitution, InsertBankAccount, AccountType, Institution } from "@shared/schema";
-import { useCurrency, currencies } from "@/lib/currency";
+import { useCurrency } from "@/lib/currency";
+import { currencies } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
 import { SavingsAccountZoneManager } from "@/components/savings/SavingsAccountZoneManager";
 import { InstitutionCombobox } from "@/components/bank-accounts/InstitutionCombobox";

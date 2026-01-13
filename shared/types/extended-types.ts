@@ -61,6 +61,8 @@ export interface CryptoInvestmentWithPrice extends CryptoInvestment {
     currentPrice: number;
     /** Original price in its source currency (before conversion) */
     originalPrice?: number;
+    /** Currency of the average price (native currency from first transaction) */
+    averagePriceCurrency?: string;
     /** Currency of the current market price (e.g., USD, EUR) */
     currency?: string;
     fetchedAt?: Date | string;

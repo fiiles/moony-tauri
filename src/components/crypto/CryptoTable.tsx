@@ -40,7 +40,7 @@ export function CryptoTable({
 }: CryptoTableProps) {
     const { t } = useTranslation('crypto');
     const { t: tc } = useTranslation('common');
-    const { formatCurrency } = useCurrency();
+    const { formatCurrencyRaw, formatPrice } = useCurrency();
     const [search, setSearch] = useState("");
     const [, setLocation] = useLocation();
 
@@ -189,7 +189,7 @@ export function CryptoTable({
                                             {holding.quantity.toFixed(8)}
                                         </TableCell>
                                         <TableCell className="text-right data-value">
-                                            {formatCurrency(holding.avgCost)}
+                                            {formatPrice(holding.avgCost)}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
@@ -207,11 +207,11 @@ export function CryptoTable({
                                                         </Tooltip>
                                                     </TooltipProvider>
                                                 )}
-                                                <span className="data-value">{formatCurrency(holding.currentPrice)}</span>
+                                                <span className="data-value">{formatPrice(holding.currentPrice)}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right font-semibold data-value">
-                                            {formatCurrency(holding.marketValue)}
+                                            {formatCurrencyRaw(holding.marketValue)}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div
@@ -221,7 +221,7 @@ export function CryptoTable({
                                             >
                                                 <p className="font-semibold data-value">
                                                     {holding.gainLoss >= 0 ? "+" : "-"}
-                                                    {formatCurrency(Math.abs(holding.gainLoss))}
+                                                    {formatCurrencyRaw(Math.abs(holding.gainLoss))}
                                                 </p>
                                                 <p className="text-xs data-value">
                                                     ({holding.gainLoss >= 0 ? "+" : ""}

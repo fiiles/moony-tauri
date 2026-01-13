@@ -1,22 +1,24 @@
 version: 2
+# NOTE: PR creation is disabled. See .github/workflows/dependency-check.yml
+# for the weekly dependency summary workflow.
 updates:
   # Maintain npm dependencies
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
       interval: 'weekly'
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0 # Disabled - using summary workflow instead
 
   # Maintain Rust dependencies
   - package-ecosystem: 'cargo'
     directory: '/src-tauri'
     schedule:
       interval: 'weekly'
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0 # Disabled - using summary workflow instead
 
   # Maintain GitHub Actions
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'weekly'
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 0 # Disabled - using summary workflow instead

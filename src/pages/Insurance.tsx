@@ -36,7 +36,7 @@ export default function Insurance() {
     if (policy.status !== 'active') return sum;
 
     const regularPayment = Number(policy.regularPayment);
-    const currency = (policy as any).regularPaymentCurrency || "CZK";
+    const currency = policy.regularPaymentCurrency || "CZK";
 
     // Convert to CZK first, then to user currency
     const inCzk = convertToCzK(regularPayment, currency as CurrencyCode);

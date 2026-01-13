@@ -24,7 +24,7 @@ export default function Crypto() {
     const { t } = useTranslation('crypto');
     const queryClient = useQueryClient();
     const { toast } = useToast();
-    const { convert } = useCurrency();
+    const { convert, currencyCode } = useCurrency();
 
     const { data: cryptoInvestments, isLoading } = useQuery<CryptoInvestmentWithPrice[]>({
         queryKey: ["crypto"],
@@ -117,8 +117,15 @@ export default function Crypto() {
     // Transform data using shared calculation module
     const holdings: CryptoHoldingData[] = (cryptoInvestments || []).map((inv) => {
         const quantity = parseFloat(String(inv.quantity));
-        const averagePrice = parseFloat(String(inv.averagePrice));
-        const currentPrice = inv.currentPrice ?? 0;
+        const avgPriceOriginal = parseFloat(String(inv.averagePrice));
+        const currentPriceInCzk = inv.currentPrice ?? 0;
+        
+        // Convert prices to preferred currency
+        const preferredCurrency = currencyCode as CurrencyCode;
+        // averagePrice is stored in native currency (from first transaction)
+        const avgPriceCurrency = (inv.averagePriceCurrency || "USD") as CurrencyCode;
+        const averagePrice = convert(avgPriceOriginal, avgPriceCurrency, preferredCurrency);
+        const currentPrice = convert(currentPriceInCzk, "CZK", preferredCurrency);
 
         return mapCryptoInvestmentToHolding(
             inv.id,

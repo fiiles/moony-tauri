@@ -121,7 +121,7 @@ export default function TickerValueTrendChart({
   isRefreshing = false,
   transactionMarkers = [],
 }: TickerValueTrendChartProps) {
-  const { formatCurrency } = useCurrency();
+  const { formatCurrencyRaw, convert, currencyCode } = useCurrency();
   const { t } = useTranslation(type === 'stock' ? 'stocks' : 'crypto');
   const { formatDate } = useLanguage();
   const queryClient = useQueryClient();
@@ -224,7 +224,9 @@ export default function TickerValueTrendChart({
     // Reverse history to get chronological order (Oldest -> Newest)
     // tickerHistory is DESC (Newest -> Oldest)
     const historyData: TrendData[] = [...(tickerHistory || [])].reverse().map(h => {
-      const value = Number(h.valueCzk) || 0;
+      const valueInCzk = Number(h.valueCzk) || 0;
+      // Convert to preferred currency
+      const value = convert(valueInCzk, "CZK", currencyCode);
       
       // Include year in date format for multi-year periods
       const includeYear = selectedPeriod === '1Y' || selectedPeriod === '5Y' || selectedPeriod === 'All';
@@ -236,6 +238,10 @@ export default function TickerValueTrendChart({
       const recordedDate = new Date(h.recordedAt * 1000);
       const dayStart = new Date(recordedDate.getFullYear(), recordedDate.getMonth(), recordedDate.getDate()).getTime() / 1000;
       const marker = markerMap.get(dayStart);
+
+      // Convert marker amounts
+      const buyAmount = marker ? convert(marker.buyAmount, "CZK", currencyCode) : undefined;
+      const sellAmount = marker ? convert(marker.sellAmount, "CZK", currencyCode) : undefined;
       
       return {
         date: dateStr,
@@ -243,8 +249,8 @@ export default function TickerValueTrendChart({
         value,
         hasBuy: marker ? marker.buyAmount > 0 : false,
         hasSell: marker ? marker.sellAmount > 0 : false,
-        buyAmount: marker?.buyAmount,
-        sellAmount: marker?.sellAmount,
+        buyAmount,
+        sellAmount,
       };
     });
 
@@ -258,13 +264,21 @@ export default function TickerValueTrendChart({
     const todayDayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() / 1000;
     const todayMarker = markerMap.get(todayDayStart);
 
+    // Prepare today's marker values
+    let todayBuyAmount: number | undefined;
+    let todaySellAmount: number | undefined;
+    if (todayMarker) {
+      todayBuyAmount = convert(todayMarker.buyAmount, "CZK", currencyCode);
+      todaySellAmount = convert(todayMarker.sellAmount, "CZK", currencyCode);
+    }
+
     if (lastPoint && lastPoint.date === todayStr) {
       lastPoint.value = currentValue;
       if (todayMarker) {
         lastPoint.hasBuy = todayMarker.buyAmount > 0;
         lastPoint.hasSell = todayMarker.sellAmount > 0;
-        lastPoint.buyAmount = todayMarker.buyAmount;
-        lastPoint.sellAmount = todayMarker.sellAmount;
+        lastPoint.buyAmount = todayBuyAmount;
+        lastPoint.sellAmount = todaySellAmount;
       }
     } else {
       historyData.push({
@@ -273,8 +287,8 @@ export default function TickerValueTrendChart({
         value: currentValue,
         hasBuy: todayMarker ? todayMarker.buyAmount > 0 : false,
         hasSell: todayMarker ? todayMarker.sellAmount > 0 : false,
-        buyAmount: todayMarker?.buyAmount,
-        sellAmount: todayMarker?.sellAmount,
+        buyAmount: todayBuyAmount,
+        sellAmount: todaySellAmount,
       });
     }
 
@@ -285,7 +299,7 @@ export default function TickerValueTrendChart({
       : 0;
 
     return { data: historyData, change: changePercent };
-  }, [tickerHistory, currentValue, formatDate, markerMap, selectedPeriod]);
+  }, [tickerHistory, currentValue, formatDate, markerMap, selectedPeriod, convert, currencyCode]);
 
   const isPositive = change >= 0;
 
@@ -342,7 +356,7 @@ export default function TickerValueTrendChart({
         <div className="flex flex-col gap-2">
           <p className="text-lg font-medium">{t('chart.positionTitle')}</p>
           <p className="text-4xl font-bold tracking-tight">
-            {formatCurrency(currentValue)}
+            {formatCurrencyRaw(currentValue)}
           </p>
           <div className="flex gap-2 items-center">
             <p className={`text-sm font-medium ${isPositive ? 'text-positive' : 'text-negative'}`}>
@@ -374,7 +388,7 @@ export default function TickerValueTrendChart({
             />
             <YAxis hide domain={yAxisDomain} />
             <Tooltip 
-              content={<CustomTooltip formatCurrency={formatCurrency} t={t} />}
+              content={<CustomTooltip formatCurrency={formatCurrencyRaw} t={t} />}
             />
             <Area
               type="monotone"

@@ -75,8 +75,8 @@ export function BudgetCategoryChart({
 }: BudgetCategoryChartProps) {
   // Budget multiplier: budgets are stored as monthly, scale for quarterly/yearly
   const budgetMultiplier = timeframe === "yearly" ? 12 : timeframe === "quarterly" ? 3 : 1;
-  const { t } = useTranslation('budgeting');
-  const { formatCurrency } = useCurrency();
+  const { t, i18n } = useTranslation('budgeting');
+  const { formatCurrencyRaw, currencyCode, convert } = useCurrency();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [excludedCategoryIds, setExcludedCategoryIds] = useState<string[]>([]);
 
@@ -146,20 +146,26 @@ export function BudgetCategoryChart({
         cat.categoryId !== 'cat_income' &&
         !excludedCategoryIds.includes(cat.categoryId)
       )
-      .map((cat, index) => ({
-        name: t(`categories.${cat.categoryId}`, { defaultValue: cat.categoryName }),
-        amount: Math.abs(parseFloat(cat.totalAmount) || 0),
-        budget: cat.budgetGoal ? (parseFloat(cat.budgetGoal.amount) || 0) * budgetMultiplier : 0,
-        color: getCategoryColor(cat.categoryId, index),
-        hasBudget: !!cat.budgetGoal,
-        categoryId: cat.categoryId,
-        transactionCount: cat.transactionCount,
-      }));
+      .map((cat, index) => {
+        const amountCzk = Math.abs(parseFloat(cat.totalAmount) || 0);
+        const budgetCzk = cat.budgetGoal ? (parseFloat(cat.budgetGoal.amount) || 0) * budgetMultiplier : 0;
+        
+        return {
+          name: t(`categories.${cat.categoryId}`, { defaultValue: cat.categoryName }),
+          amount: convert(amountCzk, "CZK", currencyCode),
+          budget: convert(budgetCzk, "CZK", currencyCode),
+          color: getCategoryColor(cat.categoryId, index),
+          hasBudget: !!cat.budgetGoal,
+          categoryId: cat.categoryId,
+          transactionCount: cat.transactionCount,
+        };
+      });
 
     if (uncategorizedAmount > 0 && !excludedCategoryIds.includes('uncategorized')) {
+      const amountCzk = Math.abs(uncategorizedAmount);
       filtered.push({
         name: t('uncategorized'),
-        amount: Math.abs(uncategorizedAmount),
+        amount: convert(amountCzk, "CZK", currencyCode),
         budget: 0,
         color: CATEGORY_COLORS['uncategorized'],
         hasBudget: false,
@@ -169,7 +175,7 @@ export function BudgetCategoryChart({
     }
 
     return filtered.sort((a, b) => b.amount - a.amount).slice(0, 12);
-  }, [categories, uncategorizedAmount, uncategorizedCount, excludedCategoryIds, budgetMultiplier, t]);
+  }, [categories, uncategorizedAmount, uncategorizedCount, excludedCategoryIds, budgetMultiplier, t, currencyCode, convert]);
 
   // Fetch transactions for selected category
   const { data: transactions = [], isLoading: txLoading } = useQuery({
@@ -225,13 +231,13 @@ export function BudgetCategoryChart({
           <p className="text-sm">
             <span className="text-muted-foreground">{t('spent')}: </span>
             <span className="font-bold text-red-600 dark:text-red-400">
-              {formatCurrency(data.amount)}
+              {formatCurrencyRaw(data.amount)}
             </span>
           </p>
           {data.hasBudget && (
             <p className="text-sm mt-1">
               <span className="text-muted-foreground">{t('budget')}: </span>
-              <span className="font-medium">{formatCurrency(data.budget)}</span>
+              <span className="font-medium">{formatCurrencyRaw(data.budget)}</span>
             </p>
           )}
           <p className="text-xs text-muted-foreground mt-2">
@@ -285,7 +291,7 @@ export function BudgetCategoryChart({
                 <CardTitle className="text-xl font-semibold">{t('expenses')}</CardTitle>
                 {excludedCategoryIds.length > 0 && (
                   <span className="text-sm text-muted-foreground">
-                    {t('total', 'Total')} <span className="font-semibold text-foreground">{formatCurrency(chartData.reduce((sum, cat) => sum + cat.amount, 0))}</span>
+                    {t('total', 'Total')} <span className="font-semibold text-foreground">{formatCurrencyRaw(chartData.reduce((sum, cat) => sum + cat.amount, 0))}</span>
                   </span>
                 )}
               </div>
@@ -359,9 +365,12 @@ export function BudgetCategoryChart({
                 />
                 <YAxis 
                   tickFormatter={(value) => {
-                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)} mil.`;
-                    if (value >= 1000) return `${Math.round(value / 1000)} tis.`;
-                    return `${value}`;
+                    if (value === 0) return "0";
+                    return new Intl.NumberFormat(i18n.language, {
+                      notation: "compact",
+                      compactDisplay: "short",
+                      maximumFractionDigits: 1,
+                    }).format(value);
                   }}
                   tick={{ fontSize: 14, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={{ stroke: 'hsl(var(--border))' }}

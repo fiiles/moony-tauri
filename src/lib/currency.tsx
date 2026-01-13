@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { portfolioApi } from "@/lib/tauri-api";
 import { CURRENCIES, CurrencyCode, CurrencyDef, convertFromCzK, convertToCzK, updateExchangeRates } from "@shared/currencies";
+
+export const currencies = Object.values(CURRENCIES);
 
 type CurrencyContextValue = {
   currencyCode: CurrencyCode;
@@ -10,14 +12,22 @@ type CurrencyContextValue = {
   formatCurrency: (value: number, opts?: Intl.NumberFormatOptions) => string;
   formatCurrencyRaw: (value: number, opts?: Intl.NumberFormatOptions) => string;
   formatCurrencyShort: (value: number) => string;
+  /** Format a price with smart rounding: 2 decimals for values < 1000, 0 decimals for values >= 1000 */
+  formatPrice: (value: number) => string;
   convert: (amount: number, from: CurrencyCode, to: CurrencyCode) => number;
+  ratesTimestamp: number; // Added to trigger re-renders when rates update
 };
 
 const CurrencyContext = createContext<CurrencyContextValue | undefined>(undefined);
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [currencyCode, setCurrencyCode] = useState<CurrencyCode>("CZK");
+  const [ratesTimestamp, setRatesTimestamp] = useState(0);
+
+  // Derive currencyCode from user profile - no need for separate state
+  const currencyCode = useMemo<CurrencyCode>(() => {
+    return (user?.currency as CurrencyCode) ?? "CZK";
+  }, [user?.currency]);
 
   // Fetch ECB rates on mount using Tauri API
   useEffect(() => {
@@ -26,6 +36,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         const rates = await portfolioApi.refreshExchangeRates();
         if (rates && typeof rates === 'object') {
           updateExchangeRates(rates);
+          setRatesTimestamp(Date.now()); // Trigger update
         }
       } catch (error) {
         console.warn("[CURRENCY] Failed to fetch ECB rates, using fallbacks:", error);
@@ -33,12 +44,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     }
     fetchExchangeRates();
   }, []);
-
-  useEffect(() => {
-    if (user?.currency) {
-      setCurrencyCode(user.currency as CurrencyCode);
-    }
-  }, [user?.currency]);
 
   const currency = (CURRENCIES as Record<CurrencyCode, CurrencyDef | undefined>)[currencyCode] ?? CURRENCIES.CZK;
 
@@ -114,9 +119,26 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     return formatCurrency(value, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
 
+  /**
+   * Format a price with smart rounding:
+   * - 2 decimal places for values <= 999
+   * - 0 decimal places for values > 999
+   * Use this for per-unit prices (e.g., crypto/stock price per unit)
+   */
+  function formatPrice(value: number): string {
+    const decimals = Math.abs(value) >= 1000 ? 0 : 2;
+    return formatCurrencyRaw(value, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  }
+
+  // No-op: currency is now derived from user.currency, changes go through profile API
+  const setCurrency = (_code: CurrencyCode) => {
+    // Intentionally empty - currency updates happen via profile API
+    // The currencyCode is derived from user.currency via useMemo
+  };
+
   return (
     <CurrencyContext.Provider
-      value={{ currencyCode, currency, setCurrency: setCurrencyCode, formatCurrency, formatCurrencyRaw, formatCurrencyShort, convert }}
+      value={{ currencyCode, currency, setCurrency, formatCurrency, formatCurrencyRaw, formatCurrencyShort, formatPrice, convert, ratesTimestamp }}
     >
       {children}
     </CurrencyContext.Provider>
@@ -128,5 +150,3 @@ export function useCurrency() {
   if (!ctx) throw new Error("useCurrency must be used within CurrencyProvider");
   return ctx;
 }
-
-export const currencies = Object.values(CURRENCIES);
