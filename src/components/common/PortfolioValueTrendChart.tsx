@@ -160,23 +160,45 @@ export default function PortfolioValueTrendChart({
   // Calculate date range based on selected period
   const dateRange = useMemo(() => {
     const now = new Date();
+    
+    // Get the earliest transaction date - never show data before this
+    const earliestTransaction = transactionMarkers.length > 0
+      ? new Date(Math.min(...transactionMarkers.map(m => m.date)) * 1000)
+      : undefined;
+    
+    // Calculate period start date
+    let periodStart: Date;
     switch (selectedPeriod) {
       case '30D':
-        return { start: subDays(now, 30), end: now };
+        periodStart = subDays(now, 30);
+        break;
       case '90D':
-        return { start: subDays(now, 90), end: now };
+        periodStart = subDays(now, 90);
+        break;
       case 'YTD':
-        return { start: startOfYear(now), end: now };
+        periodStart = startOfYear(now);
+        break;
       case '1Y':
-        return { start: subDays(now, 365), end: now };
+        periodStart = subDays(now, 365);
+        break;
       case '5Y':
-        return { start: subDays(now, 365 * 5), end: now };
+        periodStart = subDays(now, 365 * 5);
+        break;
       case 'All':
-        return { start: undefined, end: now };
+        // For 'All', use earliest transaction or fallback to 5 years
+        periodStart = earliestTransaction ?? subDays(now, 365 * 5);
+        break;
       default:
-        return { start: subDays(now, 30), end: now };
+        periodStart = subDays(now, 30);
     }
-  }, [selectedPeriod]);
+    
+    // Never show data before the first transaction
+    const effectiveStart = earliestTransaction && periodStart < earliestTransaction
+      ? earliestTransaction
+      : periodStart;
+    
+    return { start: effectiveStart, end: now };
+  }, [selectedPeriod, transactionMarkers]);
 
   // Fetch portfolio history
   const { data: portfolioHistory } = useQuery<PortfolioMetricsHistory[]>({

@@ -601,6 +601,7 @@ fn calculate_metrics_for_day(
     day_timestamp: i64,
     stock_prices: &HashMap<String, Vec<HistoricalPrice>>,
     crypto_prices: &HashMap<String, Vec<HistoricalPrice>>,
+    last_known_crypto_prices: &mut HashMap<String, (f64, String)>,
 ) -> Result<PortfolioMetrics> {
     use crate::services::currency::convert_to_czk;
 
@@ -711,11 +712,27 @@ fn calculate_metrics_for_day(
             .collect();
 
         for (ticker, qty) in cryptos {
-            if let Some(prices) = crypto_prices.get(&ticker) {
+            let (price, currency) = if let Some(prices) = crypto_prices.get(&ticker) {
                 if let Some(price) = find_closest_price(prices, day_timestamp) {
-                    let value_in_czk = convert_to_czk(price.price * qty, &price.currency);
-                    total_crypto += value_in_czk;
+                    // Update last known
+                    last_known_crypto_prices
+                        .insert(ticker.clone(), (price.price, price.currency.clone()));
+                    (price.price, price.currency.as_str())
+                } else if let Some((last_price, last_curr)) = last_known_crypto_prices.get(&ticker)
+                {
+                    (*last_price, last_curr.as_str())
+                } else {
+                    (0.0, "USD")
                 }
+            } else if let Some((last_price, last_curr)) = last_known_crypto_prices.get(&ticker) {
+                (*last_price, last_curr.as_str())
+            } else {
+                (0.0, "USD")
+            };
+
+            if price > 0.0 {
+                let value_in_czk = convert_to_czk(price * qty, currency);
+                total_crypto += value_in_czk;
             }
         }
 
@@ -902,9 +919,40 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
     // Create snapshots for each missing day
     let mut days_processed = 0;
 
+    // Initialize last known prices for fallback
+    // Try to get current prices as a baseline if no history available
+    // In a real scenario we might want to fetch from DB history, but this is a reasonable start
+    // for when the API completely fails on first run.
+    let mut last_known_crypto_prices: HashMap<String, (f64, String)> = HashMap::new();
+
+    // Seed with current prices
+    if !crypto_id_map.is_empty() {
+        let current_prices = db.with_conn(|conn| {
+            let mut stmt = conn.prepare("SELECT symbol, price, currency FROM crypto_prices")?;
+            let prices: HashMap<String, (f64, String)> = stmt
+                .query_map([], |row| {
+                    let symbol: String = row.get(0)?;
+                    let price: f64 = row.get::<_, String>(1)?.parse().unwrap_or(0.0);
+                    let currency: String = row.get(2)?;
+                    Ok((symbol, (price, currency)))
+                })?
+                .filter_map(|r| r.ok())
+                .collect();
+            Ok(prices)
+        })?;
+
+        last_known_crypto_prices = current_prices;
+    }
+
     for day_timestamp in missing_days.clone() {
         // Calculate metrics for this day using historical prices
-        let metrics = calculate_metrics_for_day(db, day_timestamp, &stock_prices, &crypto_prices)?;
+        let metrics = calculate_metrics_for_day(
+            db,
+            day_timestamp,
+            &stock_prices,
+            &crypto_prices,
+            &mut last_known_crypto_prices,
+        )?;
 
         // Insert snapshot
         insert_snapshot_for_day(db, &metrics, day_timestamp)?;
@@ -1021,7 +1069,14 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
         days_processed,
         total_days: total_missing,
         completed: true,
-        message: format!("Created {} historical snapshots", days_processed),
+        message: if api_keys.coingecko.is_none() || api_keys.coingecko.as_deref() == Some("") {
+            format!(
+                "Backfilled {} days. WARNING: CoinGecko API key missing, used fallback prices.",
+                days_processed
+            )
+        } else {
+            format!("Created {} historical snapshots", days_processed)
+        },
     })
 }
 
@@ -2014,6 +2069,44 @@ pub async fn recalculate_crypto_ticker_history(
     )
     .await?;
 
+    // Get the last known price before the recalculation start date to seed the fallback
+    // This ensures continuity if the API fails for the first few days
+    let mut last_known_price: Option<(f64, String)> = db.with_conn(|conn| {
+        let res = conn
+            .query_row(
+                "SELECT price, currency FROM crypto_value_history 
+             WHERE ticker = ?1 AND recorded_at < ?2 
+             ORDER BY recorded_at DESC LIMIT 1",
+                rusqlite::params![ticker, from_day],
+                |row| {
+                    let price: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                    let currency: String = row.get(1)?;
+                    Ok((price, currency))
+                },
+            )
+            .ok();
+        Ok(res)
+    })?;
+
+    // If no history exists, try to use the current price as a fallback seed
+    // This is useful if we're backfilling for the first time and API fails immediately
+    if last_known_price.is_none() {
+        last_known_price = db.with_conn(|conn| {
+            let res = conn
+                .query_row(
+                    "SELECT price, currency FROM crypto_prices WHERE symbol = ?1",
+                    rusqlite::params![ticker],
+                    |row| {
+                        let price: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                        let currency: String = row.get(1)?;
+                        Ok((price, currency))
+                    },
+                )
+                .ok();
+            Ok(res)
+        })?;
+    }
+
     // Calculate and store value for each day
     let ticker_clone = ticker.to_string();
     db.with_conn(move |conn| {
@@ -2028,12 +2121,22 @@ pub async fn recalculate_crypto_ticker_history(
                 continue;
             }
 
+            // Determine price to use
             let (price, currency) = if let Some(prices) = crypto_prices.get(&ticker_clone) {
                 if let Some(hp) = find_closest_price(prices, day_timestamp) {
+                    // Found price in API data, update last known
+                    last_known_price = Some((hp.price, hp.currency.clone()));
                     (hp.price, hp.currency.clone())
+                } else if let Some((last_price, last_currency)) = &last_known_price {
+                    // Gap in API data, use last known
+                    (*last_price, last_currency.clone())
                 } else {
+                    // No API data and no last known, skip
                     continue;
                 }
+            } else if let Some((last_price, last_currency)) = &last_known_price {
+                 // No API data keys at all for this ticker, use last known
+                 (*last_price, last_currency.clone())
             } else {
                 continue;
             };

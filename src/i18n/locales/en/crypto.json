@@ -124,7 +124,7 @@
         "addFailed": "Failed to add crypto"
     },
     "chart": {
-        "title": "Portfolio Value Trend",
+        "title": "Cryptocurrency Value Trend",
         "bought": "Bought",
         "positionTitle": "Position Value Development",
         "sold": "Sold"

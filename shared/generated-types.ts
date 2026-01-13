@@ -58,7 +58,11 @@ export type DividendOverride = { id: string; ticker: string; yearlyDividendSum: 
 /**
  * Enriched crypto with current price
  */
-export type EnrichedCryptoInvestment = { id: string; ticker: string; coingeckoId: string; name: string; quantity: string; averagePrice: string; currentPrice: string; 
+export type EnrichedCryptoInvestment = { id: string; ticker: string; coingeckoId: string; name: string; quantity: string; averagePrice: string; 
+/**
+ * Currency of the average price (native currency from first transaction)
+ */
+averagePriceCurrency: string; currentPrice: string; 
 /**
  * Original price in its source currency (before conversion to CZK)
  */
