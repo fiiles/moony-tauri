@@ -24,8 +24,7 @@ pub async fn run() {
     // Workaround for issue: https://github.com/aptabase/tauri-plugin-aptabase/issues/22
     // Using async run() with #[tokio::main] allows the plugin to initialize correctly
     let builder = if let Some(key) = std::option_env!("VITE_APTABASE_KEY") {
-        tauri::Builder::default()
-            .plugin(tauri_plugin_aptabase::Builder::new(key).build())
+        tauri::Builder::default().plugin(tauri_plugin_aptabase::Builder::new(key).build())
     } else {
         tauri::Builder::default()
     };
