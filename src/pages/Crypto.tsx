@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddCryptoModal } from "@/components/crypto/AddCryptoModal";
+import { CoinGeckoApiKeyModal } from "@/components/crypto/CoinGeckoApiKeyModal";
 import { CryptoSummary } from "@/components/crypto/CryptoSummary";
 import { CryptoTable, type CryptoHoldingData } from "@/components/crypto/CryptoTable";
 import { cryptoApi, priceApi, exportApi } from "@/lib/tauri-api";
@@ -160,6 +161,8 @@ export default function Crypto() {
     }
 
     return (
+        <>
+        <CoinGeckoApiKeyModal />
         <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto space-y-8">
             <div className="flex items-center justify-between">
                 <div>
@@ -215,5 +218,6 @@ export default function Crypto() {
             />
 
         </div>
+        </>
     );
 }

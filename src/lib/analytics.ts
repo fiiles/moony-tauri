@@ -1,7 +1,12 @@
 /// <reference types="vite/client" />
-import { trackEvent as aptabaseTrack } from '@aptabase/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
+
+// Tauri v2 compatible Aptabase tracking - bypasses outdated @aptabase/tauri package
+async function aptabaseTrack(name: string, props?: Record<string, string | number>) {
+  await invoke('plugin:aptabase|track_event', { name, props });
+}
 
 const CONSENT_KEY = 'moony-analytics-consent';
 
@@ -17,7 +22,10 @@ export function setConsent(granted: boolean) {
 }
 
 export async function trackEvent(name: string, props?: Record<string, string | number | boolean>) {
-  if (getConsent() === true) {
+  const consent = getConsent();
+  console.log(`[APTABASE] trackEvent called: ${name}`, { consent, props });
+  
+  if (consent === true) {
     try {
       // Convert booleans to strings for Aptabase compatibility
       const safeProps: Record<string, string | number> | undefined = props 
@@ -27,10 +35,14 @@ export async function trackEvent(name: string, props?: Record<string, string | n
           }, {} as Record<string, string | number>)
         : undefined;
 
+      console.log(`[APTABASE] Sending event: ${name}`, safeProps);
       await aptabaseTrack(name, safeProps);
+      console.log(`[APTABASE] Event sent successfully: ${name}`);
     } catch (error) {
-      console.warn("Failed to track event:", error);
+      console.warn("[APTABASE] Failed to track event:", error);
     }
+  } else {
+    console.log(`[APTABASE] Event skipped (consent=${consent}): ${name}`);
   }
 }
 
@@ -87,6 +99,8 @@ export function useScreenTracking() {
         else if (location.startsWith('/real-estate/')) screen = 'real_estate_detail';
         else if (location.startsWith('/settings/')) screen = 'settings_subpage';
     }
+    
+    console.log(`[APTABASE] useScreenTracking - location: ${location}, screen: ${screen || 'NOT_MAPPED'}`);
     
     if (screen) {
       trackEvent('screen_view', { screen });

@@ -28,7 +28,7 @@ export type BankTransaction = { id: string; bankAccountId: string; transactionId
 /**
  * Bond holding
  */
-export type Bond = { id: string; name: string; isin: string; couponValue: string; quantity: string; currency: string; interestRate: string; maturityDate: number | null; createdAt: number; updatedAt: number }
+export type Bond = { id: string; name: string; isin: string | null; couponValue: string; quantity: string; currency: string; interestRate: string; maturityDate: number | null; createdAt: number; updatedAt: number }
 
 /**
  * User-defined cashflow item (income or expense)
@@ -110,7 +110,7 @@ export type InsertBankTransaction = { bankAccountId: string; transactionId: stri
 /**
  * Data for creating/updating bond
  */
-export type InsertBond = { name: string; isin: string; couponValue: string; quantity: string | null; currency: string | null; interestRate: string | null; maturityDate: number | null }
+export type InsertBond = { name: string; isin: string | null; couponValue: string; quantity: string | null; currency: string | null; interestRate: string | null; maturityDate: number | null }
 
 /**
  * Data for creating/updating cashflow item
@@ -344,10 +344,10 @@ export type TransactionType = "credit" | "debit"
 /**
  * Data for updating user profile (partial updates)
  */
-export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null }
+export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null; coingeckoModalDismissed: boolean | null }
 
 /**
  * User profile stored in database
  */
-export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; createdAt: number }
+export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; coingeckoModalDismissed?: boolean; createdAt: number }
 

@@ -35,16 +35,17 @@ import { useCurrency } from "@/lib/currency";
 import { currencies } from "@/lib/currency";
 import { insuranceApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
+import { translateApiError } from "@/lib/translate-api-error";
 
 // Form-specific schema with Date objects
 const insuranceFormSchema = z.object({
-    type: z.string().min(1),
-    provider: z.string().min(1),
-    policyName: z.string().min(1),
+    type: z.string().min(1, "validation.insuranceTypeRequired"),
+    provider: z.string().min(1, "validation.providerRequired"),
+    policyName: z.string().min(1, "validation.policyNameRequired"),
     policyNumber: z.string().optional(),
-    startDate: z.date(),
+    startDate: z.date({ required_error: "validation.dateRequired" }),
     endDate: z.date().optional().nullable(),
-    paymentFrequency: z.string(),
+    paymentFrequency: z.string().min(1, "validation.paymentFrequencyInvalid"),
     oneTimePayment: z.string().optional(),
     oneTimePaymentCurrency: z.string().optional(),
     regularPayment: z.string().optional(),
@@ -142,7 +143,7 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
             toast({ title: tc('status.success'), description: t('toast.added') });
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: "destructive" });
+            toast({ title: tc('status.error'), description: translateApiError(error, tc), variant: "destructive" });
         },
     });
 
@@ -161,7 +162,7 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
             toast({ title: tc('status.success'), description: t('toast.updated') });
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: "destructive" });
+            toast({ title: tc('status.error'), description: translateApiError(error, tc), variant: "destructive" });
         },
     });
 

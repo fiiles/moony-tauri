@@ -51,6 +51,8 @@ pub struct UserProfile {
     pub language: String,
     #[serde(rename = "excludePersonalRealEstate")]
     pub exclude_personal_real_estate: bool,
+    #[serde(rename = "coingeckoModalDismissed", default)]
+    pub coingecko_modal_dismissed: bool,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
 }
@@ -81,6 +83,8 @@ pub struct UpdateUserProfile {
     pub language: Option<String>,
     #[serde(rename = "excludePersonalRealEstate")]
     pub exclude_personal_real_estate: Option<bool>,
+    #[serde(rename = "coingeckoModalDismissed")]
+    pub coingecko_modal_dismissed: Option<bool>,
 }
 
 /// Setup data from frontend

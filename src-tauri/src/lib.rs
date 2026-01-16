@@ -15,18 +15,20 @@ use commands::categorization::CategorizationState;
 use db::Database;
 use services::categorization::CategorizationEngine;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+#[tokio::main]
+pub async fn run() {
     // Initialize categorization engine with default rules
     let categorization_engine = Arc::new(CategorizationEngine::with_defaults());
 
-    let builder = tauri::Builder::default();
-
     // Initialize Aptabase if key is present at compile time
-    // TODO: Re-enable when tauri-plugin-aptabase fixes Tokio runtime panic
-    // See: https://github.com/aptabase/tauri-plugin-aptabase/issues
-    // if let Some(key) = std::option_env!("VITE_APTABASE_KEY") {
-    //     builder = builder.plugin(tauri_plugin_aptabase::Builder::new(key).build());
-    // }
+    // Workaround for issue: https://github.com/aptabase/tauri-plugin-aptabase/issues/22
+    // Using async run() with #[tokio::main] allows the plugin to initialize correctly
+    let builder = if let Some(key) = std::option_env!("VITE_APTABASE_KEY") {
+        tauri::Builder::default()
+            .plugin(tauri_plugin_aptabase::Builder::new(key).build())
+    } else {
+        tauri::Builder::default()
+    };
 
     builder
         .plugin(tauri_plugin_opener::init())

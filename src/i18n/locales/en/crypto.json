@@ -94,7 +94,7 @@
             "quantity": "Quantity",
             "selectCrypto": "Select Cryptocurrency",
             "multipleResults": "Multiple results found. Please select the correct coin (Ranked by Market Cap):",
-            "noResults": "No cryptocurrencies found for that search term."
+            "noResults": "No cryptocurrencies found for that search term. Make sure you have CoinGecko API Key setup."
         },
         "buy": {
             "title": "Buy",
@@ -165,5 +165,18 @@
             "title": "Delete Cryptocurrency",
             "description": "Are you sure you want to delete {{name}} ({{ticker}})? This will remove all transactions. This action cannot be undone."
         }
+    },
+    "coingeckoModal": {
+        "title": "CoinGecko API Key Recommended",
+        "description": "To get the most out of cryptocurrency tracking, we recommend setting up a CoinGecko API key.",
+        "withApiKey": "With an API key you can:",
+        "features": {
+            "search": "Search cryptocurrencies by name",
+            "prices": "Load historical price data",
+            "refresh": "Automatic price updates"
+        },
+        "getApiKey": "Get a free API key",
+        "goToSettings": "Go to Settings",
+        "dismiss": "Continue without"
     }
 }

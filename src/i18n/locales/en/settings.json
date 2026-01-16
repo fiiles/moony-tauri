@@ -79,11 +79,12 @@
     },
     "toast": {
         "profileUpdated": "Profile updated",
-        "profileUpdatedDescription": "Your profile details have been saved.",
-        "passwordUpdated": "Password updated",
-        "passwordUpdatedDescription": "Your password has been changed successfully.",
+        "profileUpdatedDesc": "Your profile details have been saved.",
+        "passwordChanged": "Password changed",
+        "passwordChangedDesc": "Your password has been updated successfully. Make sure to keep your new recovery key safe!",
         "preferencesUpdated": "Preferences updated",
-        "preferencesUpdatedDescription": "Menu visibility settings saved.",
+        "preferencesUpdatedDesc": "Menu visibility settings saved.",
+        "verificationFailed": "Verification failed",
         "updateFailed": "Update failed",
         "deletionFailed": "Deletion failed"
     },

@@ -208,7 +208,7 @@ export default function AuthPage() {
                                             <FormItem>
                                                 <FormLabel>{t('register.email')}</FormLabel>
                                                 <FormControl>
-                                                    <Input type="email" placeholder={t('register.emailPlaceholder')} {...field} />
+                                                    <Input type="text" placeholder={t('register.emailPlaceholder')} {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

@@ -166,35 +166,29 @@ impl InsertBankAccount {
     pub fn validate(&self) -> Result<()> {
         // Name validation
         if self.name.is_empty() {
-            return Err(AppError::Validation("Account name cannot be empty".into()));
+            return Err(AppError::Validation(
+                "validation.accountNameRequired".into(),
+            ));
         }
         if self.name.len() > 100 {
-            return Err(AppError::Validation(
-                "Account name too long (max 100 characters)".into(),
-            ));
+            return Err(AppError::Validation("validation.accountNameTooLong".into()));
         }
 
         // Account type validation (if provided)
         if let Some(ref account_type) = self.account_type {
             let valid_types = ["checking", "savings", "credit_card", "investment"];
             if !valid_types.contains(&account_type.to_lowercase().as_str()) {
-                return Err(AppError::Validation(
-                    format!("Invalid account type '{}' (must be checking, savings, credit_card, or investment)", account_type)
-                ));
+                return Err(AppError::Validation("validation.accountTypeInvalid".into()));
             }
         }
 
         // Currency validation (if provided)
         if let Some(ref currency) = self.currency {
             if currency.len() != 3 {
-                return Err(AppError::Validation(
-                    "Currency must be 3 letters (e.g., USD, EUR)".into(),
-                ));
+                return Err(AppError::Validation("validation.currencyInvalid".into()));
             }
             if !currency.chars().all(|c| c.is_ascii_alphabetic()) {
-                return Err(AppError::Validation(
-                    "Currency must contain only letters".into(),
-                ));
+                return Err(AppError::Validation("validation.currencyInvalid".into()));
             }
         }
 
@@ -203,20 +197,18 @@ impl InsertBankAccount {
             if !balance.is_empty() {
                 balance
                     .parse::<f64>()
-                    .map_err(|_| AppError::Validation(format!("Invalid balance '{}'", balance)))?;
+                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
             }
         }
 
         // Interest rate validation (if provided)
         if let Some(ref rate) = self.interest_rate {
             if !rate.is_empty() {
-                let rate_val: f64 = rate.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid interest rate '{}'", rate))
-                })?;
+                let rate_val: f64 = rate
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
                 if !(0.0..=100.0).contains(&rate_val) {
-                    return Err(AppError::Validation(
-                        "Interest rate must be between 0 and 100".into(),
-                    ));
+                    return Err(AppError::Validation("validation.interestRateRange".into()));
                 }
             }
         }
@@ -231,21 +223,17 @@ impl InsertInstitution {
         // Name validation
         if self.name.is_empty() {
             return Err(AppError::Validation(
-                "Institution name cannot be empty".into(),
+                "validation.institutionNameRequired".into(),
             ));
         }
         if self.name.len() > 100 {
-            return Err(AppError::Validation(
-                "Institution name too long (max 100 characters)".into(),
-            ));
+            return Err(AppError::Validation("validation.nameTooLong".into()));
         }
 
         // BIC validation (if provided) - should be 8 or 11 characters
         if let Some(ref bic) = self.bic {
             if !bic.is_empty() && bic.len() != 8 && bic.len() != 11 {
-                return Err(AppError::Validation(
-                    "BIC must be 8 or 11 characters".into(),
-                ));
+                return Err(AppError::Validation("validation.bicInvalid".into()));
             }
         }
 

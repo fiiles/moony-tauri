@@ -94,7 +94,7 @@
             "quantity": "Množství",
             "selectCrypto": "Vyberte kryptoměnu",
             "multipleResults": "Bylo nalezeno více výsledků. Vyberte správnou minci (seřazeno dle tržní kapitalizace):",
-            "noResults": "Pro tento vyhledávací výraz nebyly nalezeny žádné kryptoměny."
+            "noResults": "Pro tento vyhledávací výraz nebyly nalezeny žádné kryptoměny. Ujistěte se, že máte nastavený CoinGecko API klíč."
         },
         "buy": {
             "title": "Koupit",
@@ -165,5 +165,18 @@
             "title": "Smazat kryptoměnu",
             "description": "Opravdu chcete smazat {{name}} ({{ticker}})? Všechny transakce budou odstraněny. Tuto akci nelze vrátit zpět."
         }
+    },
+    "coingeckoModal": {
+        "title": "Doporučujeme nastavit CoinGecko API klíč",
+        "description": "Pro plné využití sledování kryptoměn doporučujeme nastavit CoinGecko API klíč.",
+        "withApiKey": "S API klíčem můžete:",
+        "features": {
+            "search": "Vyhledávat kryptoměny podle názvu",
+            "prices": "Načítat historická cenová data",
+            "refresh": "Automaticky aktualizovat ceny"
+        },
+        "getApiKey": "Získat bezplatný API klíč",
+        "goToSettings": "Přejít do Nastavení",
+        "dismiss": "Pokračovat bez klíče"
     }
 }

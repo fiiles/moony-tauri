@@ -45,7 +45,7 @@ type UpdateBankAccountData = {
 interface ZoneData {
   id?: string;
   fromAmount: string;
-  toAmount: string;
+  toAmount?: string | null;
   interestRate: string;
 }
 

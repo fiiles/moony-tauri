@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -30,10 +30,23 @@ export function ImportInvestmentsModal() {
     const [successCount, setSuccessCount] = useState<number | null>(null);
     const [importErrors, setImportErrors] = useState<string[]>([]);
     const [importedItems, setImportedItems] = useState<string[]>([]);
-    const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
-    const [importStatus, setImportStatus] = useState<string>("");
+    const [showDelayedSubtitle, setShowDelayedSubtitle] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
+
+    // Show helpful subtitle after 5 seconds during import
+    useEffect(() => {
+        if (step !== "importing") {
+            setShowDelayedSubtitle(false);
+            return;
+        }
+        
+        const timer = setTimeout(() => {
+            setShowDelayedSubtitle(true);
+        }, 5000);
+        
+        return () => clearTimeout(timer);
+    }, [step]);
 
     const exampleCSVContent = `Date,Type,Ticker,Name,Quantity,Price,Currency
 2024-01-15,buy,AAPL,Apple Inc.,10,180.50,USD
@@ -63,14 +76,10 @@ export function ImportInvestmentsModal() {
     const importMutation = useMutation({
         mutationFn: async (transactions: Record<string, string>[]) => {
             setStep("importing");
-            setImportProgress({ current: 0, total: transactions.length });
-            setImportStatus(t("import.status.lookingUpNames"));
             
             // The backend will look up names, then process transactions
-            // We show a status message to indicate the phase
             const result = await investmentsApi.importTransactions(transactions, "USD");
             
-            setImportProgress({ current: transactions.length, total: transactions.length });
             return result;
         },
         onSuccess: (data) => {
@@ -83,23 +92,17 @@ export function ImportInvestmentsModal() {
             setParsedData([]);
             setFile(null);
             
-            // Show status for price/dividend refresh
-            setImportStatus(t("import.status.refreshingPrices"));
-            
             // Refresh prices and dividends for imported stocks (runs in background)
             priceApi.refreshStockPrices().then(() => {
                 queryClient.invalidateQueries({ queryKey: ["investments"] });
                 queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-                setImportStatus(t("import.status.refreshingDividends"));
                 return priceApi.refreshDividends();
             }).then(() => {
                 queryClient.invalidateQueries({ queryKey: ["investments"] });
                 queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
-                setImportStatus("");
                 setStep("done");
             }).catch((err: Error) => {
                 console.error("Background refresh error:", err);
-                setImportStatus("");
                 setStep("done");
             });
         },
@@ -246,8 +249,6 @@ export function ImportInvestmentsModal() {
         setImportErrors([]);
         setImportedItems([]);
         setStep("select");
-        setImportProgress({ current: 0, total: 0 });
-        setImportStatus("");
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -277,7 +278,7 @@ export function ImportInvestmentsModal() {
                     <DialogDescription>
                         {step === "select" && t("import.description")}
                         {step === "preview" && t("import.requiredColumns")}
-                        {step === "importing" && t("import.importingProgress", { current: importProgress.current, total: importProgress.total })}
+                        {step === "importing" && t("import.status.processing")}
                         {step === "done" && t("import.complete")}
                     </DialogDescription>
                 </DialogHeader>
@@ -373,10 +374,12 @@ export function ImportInvestmentsModal() {
                 {step === "importing" && (
                     <div className="py-12 text-center">
                         <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary mb-4" />
-                        <p className="text-lg font-medium">{importStatus || t("import.status.processing")}</p>
-                        <p className="text-sm text-muted-foreground mt-2">
-                            {t("import.importingProgress", { current: importProgress.current, total: importProgress.total })}
-                        </p>
+                        <p className="text-lg font-medium">{t("import.status.processing")}</p>
+                        {showDelayedSubtitle && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                                {t("import.status.loadingDetails")}
+                            </p>
+                        )}
                     </div>
                 )}
 
@@ -442,7 +445,7 @@ export function ImportInvestmentsModal() {
                                 {importMutation.isPending ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {t("import.importingProgress", { current: importProgress.current, total: importProgress.total })}
+                                        {t("import.status.processing")}
                                     </>
                                 ) : (
                                     t("import.importRecords", { count: parsedData.length })

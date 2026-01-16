@@ -51,7 +51,7 @@ pub async fn create_bond(db: State<'_, Database>, data: InsertBond) -> Result<Bo
         conn.execute(
             "INSERT INTO bonds (id, name, isin, coupon_value, quantity, currency, interest_rate, maturity_date, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
-            rusqlite::params![id, data.name, data.isin, data.coupon_value, quantity, currency, interest_rate, data.maturity_date, now],
+            rusqlite::params![id, data.name, data.isin.as_deref(), data.coupon_value, quantity, currency, interest_rate, data.maturity_date, now],
         )?;
 
         Ok(Bond {
@@ -84,7 +84,7 @@ pub async fn update_bond(db: State<'_, Database>, id: String, data: InsertBond) 
              interest_rate = COALESCE(?6, interest_rate), maturity_date = ?7, updated_at = ?8
              WHERE id = ?9",
             rusqlite::params![
-                data.name, data.isin, data.coupon_value, data.quantity,
+                data.name, data.isin.as_deref(), data.coupon_value, data.quantity,
                 data.currency, data.interest_rate, data.maturity_date, now, id
             ],
         )?;

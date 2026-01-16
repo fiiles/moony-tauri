@@ -224,7 +224,8 @@
             "lookingUpNames": "Looking up company names...",
             "savingTransactions": "Saving transactions...",
             "refreshingPrices": "Refreshing stock prices...",
-            "refreshingDividends": "Refreshing dividend data..."
+            "refreshingDividends": "Refreshing dividend data...",
+            "loadingDetails": "Looking for details, loading historical prices..."
         }
     }
 }

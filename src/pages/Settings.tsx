@@ -24,24 +24,26 @@ import { getConsent, setConsent } from "@/lib/analytics";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
 import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type SupportedLanguage } from "@/i18n/index";
+import { translateApiError } from "@/lib/translate-api-error";
 
 
 const profileSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  surname: z.string().min(1, "Surname is required"),
-  email: z.string().email("Invalid email address"),
+  name: z.string().min(1, "validation.nameRequired"),
+  surname: z.string().min(1, "validation.surnameRequired"),
+  email: z.string().email("validation.invalidEmail"),
 });
 
 type ProfileData = z.infer<typeof profileSchema>;
 
 const passwordSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+  currentPassword: z.string().min(1, "validation.currentPasswordRequired"),
+  newPassword: z.string().min(6, "validation.passwordMinLength6"),
+  confirmPassword: z.string().min(6, "validation.passwordMinLength6"),
 }).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords do not match",
+  message: "validation.passwordMismatch",
   path: ["confirmPassword"],
 });
+
 
 type PasswordData = z.infer<typeof passwordSchema>;
 
@@ -85,7 +87,7 @@ function ChangePasswordForm() {
       setStep('confirm');
     },
     onError: (error: Error) => {
-      toast({ title: "Verification failed", description: error.message, variant: "destructive" });
+      toast({ title: t('toast.verificationFailed'), description: translateApiError(error, t), variant: "destructive" });
     },
   });
 
@@ -100,13 +102,13 @@ function ChangePasswordForm() {
       });
     },
     onSuccess: () => {
-      toast({ title: "Password changed", description: "Your password has been updated successfully. Make sure to keep your new recovery key safe!" });
+      toast({ title: t('toast.passwordChanged'), description: t('toast.passwordChangedDesc') });
       setStep('form');
       setPendingData(null);
       form.reset();
     },
     onError: (error: Error) => {
-      toast({ title: "Password change failed", description: error.message, variant: "destructive" });
+      toast({ title: t('toast.updateFailed'), description: translateApiError(error, t), variant: "destructive" });
     },
   });
 
@@ -341,10 +343,10 @@ export default function SettingsPage() {
         queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
         queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
       }
-      toast({ title: "Profile updated", description: "Your profile details have been saved." });
+      toast({ title: t('toast.profileUpdated'), description: t('toast.profileUpdatedDesc') });
     },
     onError: (error: Error) => {
-      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      toast({ title: t('toast.updateFailed'), description: translateApiError(error, tc), variant: "destructive" });
     },
   });
 
@@ -355,10 +357,10 @@ export default function SettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-      toast({ title: "Preferences updated", description: "Menu visibility settings saved." });
+      toast({ title: t('toast.preferencesUpdated'), description: t('toast.preferencesUpdatedDesc') });
     },
     onError: (error: Error) => {
-      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      toast({ title: t('toast.updateFailed'), description: translateApiError(error, tc), variant: "destructive" });
     },
   });
 
@@ -370,7 +372,7 @@ export default function SettingsPage() {
       window.location.reload();
     },
     onError: (error: Error) => {
-      toast({ title: "Deletion failed", description: error.message, variant: "destructive" });
+      toast({ title: t('toast.deletionFailed'), description: translateApiError(error, tc), variant: "destructive" });
     },
   });
 

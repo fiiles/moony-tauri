@@ -106,6 +106,12 @@
     "noMatchingTransactions": "No transactions match the current filters"
   },
 
+  "confirmDelete": {
+    "title": "Delete Account?",
+    "description": "This will permanently delete the account and all its transactions. This action cannot be undone.",
+    "importDescription": "This will delete the import record and all transactions imported in this batch."
+  },
+
   "csvImport": {
     "button": "Import CSV",
     "title": "Import Transactions from CSV",
@@ -154,7 +160,8 @@
     "effective": "effective",
     "effectiveRate": "Effective Rate",
     "active": "Active",
-    "noZones": "No interest rate zones configured"
+    "noZones": "No interest rate zones configured",
+    "unlimited": "Unlimited"
   },
 
   "categorization": {

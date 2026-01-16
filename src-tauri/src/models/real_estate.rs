@@ -173,34 +173,34 @@ impl InsertRealEstate {
     pub fn validate(&self) -> Result<()> {
         // Name validation
         if self.name.is_empty() {
-            return Err(AppError::Validation("Property name cannot be empty".into()));
+            return Err(AppError::Validation(
+                "validation.propertyNameRequired".into(),
+            ));
         }
         if self.name.len() > 100 {
-            return Err(AppError::Validation(
-                "Property name too long (max 100 characters)".into(),
-            ));
+            return Err(AppError::Validation("validation.nameTooLong".into()));
         }
 
         // Address validation
         if self.address.is_empty() {
-            return Err(AppError::Validation("Address cannot be empty".into()));
+            return Err(AppError::Validation("validation.addressRequired".into()));
         }
 
         // Property type validation
         if self.property_type.is_empty() {
-            return Err(AppError::Validation("Property type cannot be empty".into()));
+            return Err(AppError::Validation(
+                "validation.propertyTypeRequired".into(),
+            ));
         }
 
         // Purchase price validation (if provided)
         if let Some(ref price) = self.purchase_price {
             if !price.is_empty() {
-                let price_val: f64 = price.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid purchase price '{}'", price))
-                })?;
+                let price_val: f64 = price
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
                 if price_val < 0.0 {
-                    return Err(AppError::Validation(
-                        "Purchase price cannot be negative".into(),
-                    ));
+                    return Err(AppError::Validation("validation.priceNonNegative".into()));
                 }
             }
         }
@@ -208,13 +208,11 @@ impl InsertRealEstate {
         // Market price validation (if provided)
         if let Some(ref price) = self.market_price {
             if !price.is_empty() {
-                let price_val: f64 = price.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid market price '{}'", price))
-                })?;
+                let price_val: f64 = price
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
                 if price_val < 0.0 {
-                    return Err(AppError::Validation(
-                        "Market price cannot be negative".into(),
-                    ));
+                    return Err(AppError::Validation("validation.priceNonNegative".into()));
                 }
             }
         }
@@ -222,13 +220,11 @@ impl InsertRealEstate {
         // Monthly rent validation (if provided)
         if let Some(ref rent) = self.monthly_rent {
             if !rent.is_empty() {
-                let rent_val: f64 = rent.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid monthly rent '{}'", rent))
-                })?;
+                let rent_val: f64 = rent
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
                 if rent_val < 0.0 {
-                    return Err(AppError::Validation(
-                        "Monthly rent cannot be negative".into(),
-                    ));
+                    return Err(AppError::Validation("validation.rentNonNegative".into()));
                 }
             }
         }
@@ -236,16 +232,12 @@ impl InsertRealEstate {
         // Currency validations (if provided)
         if let Some(ref currency) = self.purchase_price_currency {
             if currency.len() != 3 {
-                return Err(AppError::Validation(
-                    "Purchase price currency must be 3 letters".into(),
-                ));
+                return Err(AppError::Validation("validation.currencyInvalid".into()));
             }
         }
         if let Some(ref currency) = self.market_price_currency {
             if currency.len() != 3 {
-                return Err(AppError::Validation(
-                    "Market price currency must be 3 letters".into(),
-                ));
+                return Err(AppError::Validation("validation.currencyInvalid".into()));
             }
         }
 
@@ -259,33 +251,31 @@ impl InsertRealEstateOneTimeCost {
         // Real estate ID validation
         if self.real_estate_id.is_empty() {
             return Err(AppError::Validation(
-                "Real estate ID cannot be empty".into(),
+                "validation.realEstateIdRequired".into(),
             ));
         }
 
         // Name validation
         if self.name.is_empty() {
-            return Err(AppError::Validation("Cost name cannot be empty".into()));
+            return Err(AppError::Validation("validation.nameRequired".into()));
         }
 
         // Amount validation
         if self.amount.is_empty() {
-            return Err(AppError::Validation("Amount cannot be empty".into()));
+            return Err(AppError::Validation("validation.amountRequired".into()));
         }
         let amount: f64 = self
             .amount
             .parse()
-            .map_err(|_| AppError::Validation(format!("Invalid amount '{}'", self.amount)))?;
+            .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
         if amount < 0.0 {
-            return Err(AppError::Validation("Amount cannot be negative".into()));
+            return Err(AppError::Validation("validation.amountNonNegative".into()));
         }
 
         // Currency validation (if provided)
         if let Some(ref currency) = self.currency {
             if currency.len() != 3 {
-                return Err(AppError::Validation(
-                    "Currency must be 3 letters (e.g., USD, EUR)".into(),
-                ));
+                return Err(AppError::Validation("validation.currencyInvalid".into()));
             }
         }
 
@@ -298,12 +288,12 @@ impl InsertRealEstateDocument {
     pub fn validate(&self) -> Result<()> {
         // Name validation
         if self.name.is_empty() {
-            return Err(AppError::Validation("Document name cannot be empty".into()));
+            return Err(AppError::Validation(
+                "validation.documentNameRequired".into(),
+            ));
         }
         if self.name.len() > 200 {
-            return Err(AppError::Validation(
-                "Document name too long (max 200 characters)".into(),
-            ));
+            return Err(AppError::Validation("validation.nameTooLong".into()));
         }
 
         Ok(())

@@ -404,7 +404,7 @@ pub async fn get_cashflow_report(
         // 1. Interest Income (Savings)
         let mut savings_items: Vec<CashflowReportItem> = Vec::new();
         let mut savings_stmt = conn.prepare(
-            "SELECT id, name, balance, currency, interest_rate, has_zone_designation FROM savings_accounts"
+            "SELECT id, name, balance, currency, interest_rate, has_zone_designation FROM bank_accounts WHERE account_type = 'savings'"
         )?;
         let savings_rows = savings_stmt.query_map([], |row| {
             Ok((
@@ -425,8 +425,8 @@ pub async fn get_cashflow_report(
             let effective_rate = if has_zones {
                 let zones: Vec<(f64, Option<f64>, f64)> = {
                     let mut zone_stmt = conn.prepare(
-                        "SELECT from_amount, to_amount, interest_rate FROM savings_account_zones
-                         WHERE savings_account_id = ?1 ORDER BY from_amount ASC"
+                        "SELECT from_amount, to_amount, interest_rate FROM bank_account_zones
+                         WHERE bank_account_id = ?1 ORDER BY from_amount ASC"
                     )?;
                     let rows = zone_stmt.query_map([&row.0], |zrow| {
                         let from: f64 = zrow.get::<_, String>(0)?.parse().unwrap_or(0.0);

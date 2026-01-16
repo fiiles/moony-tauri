@@ -11,6 +11,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { authApi, priceApi, categorizationApi } from "../lib/tauri-api";
 import { queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
+import { translateApiError } from "@/lib/translate-api-error";
 import type { UserProfile } from "@shared/schema";
 import type { UseMutationResult } from "@tanstack/react-query";
 
@@ -56,6 +58,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const { toast } = useToast();
+    const { t } = useTranslation('auth');
+    const { t: tc } = useTranslation('common');
     const [recoveryKey, setRecoveryKey] = useState<string | null>(null);
     const [pendingSetup, setPendingSetup] = useState<PendingSetup | null>(null);
     const [pendingRecover, setPendingRecover] = useState<PendingRecover | null>(null);
@@ -128,14 +132,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Show recovery key modal
             setRecoveryKey(result.recoveryKey);
             toast({
-                title: "Almost done!",
-                description: "Please save your recovery key before continuing.",
+                title: t('toast.almostDone'),
+                description: t('toast.saveRecoveryKey'),
             });
         },
         onError: (error: Error) => {
             toast({
-                title: "Setup failed",
-                description: error.message,
+                title: t('toast.setupFailed'),
+                description: translateApiError(error, tc),
                 variant: "destructive",
             });
         },
@@ -163,14 +167,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             categorizationApi.loadCustomRulesFromDb().catch(console.error);
             // Recovery key will be cleared by auth-page when user dismisses modal
             toast({
-                title: "Setup complete!",
-                description: "Your account has been created successfully.",
+                title: t('toast.setupComplete'),
+                description: t('toast.setupCompleteDesc'),
             });
         },
         onError: (error: Error) => {
             toast({
-                title: "Setup failed",
-                description: error.message,
+                title: t('toast.setupFailed'),
+                description: translateApiError(error, tc),
                 variant: "destructive",
             });
         },
@@ -216,10 +220,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                                    errorLower.includes("corrupted") ||
                                    errorLower.includes("decryption failed");
             toast({
-                title: "Unlock failed",
+                title: t('toast.unlockFailed'),
                 description: isPasswordError
-                    ? "The password you entered is incorrect. Please try again."
-                    : error.message,
+                    ? t('toast.wrongPassword')
+                    : translateApiError(error, tc),
                 variant: "destructive",
             });
         },
@@ -236,8 +240,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         onError: (error: Error) => {
             toast({
-                title: "Lock failed",
-                description: error.message,
+                title: t('toast.lockFailed'),
+                description: translateApiError(error, tc),
                 variant: "destructive",
             });
         },
@@ -260,14 +264,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Show new recovery key modal
             setRecoveryKey(result.newRecoveryKey);
             toast({
-                title: "Recovery key verified!",
-                description: "Please save your new recovery key before continuing.",
+                title: t('toast.recoveryKeyVerified'),
+                description: t('toast.saveNewRecoveryKey'),
             });
         },
         onError: (error: Error) => {
             toast({
-                title: "Recovery failed",
-                description: error.message,
+                title: t('toast.recoveryFailed'),
+                description: translateApiError(error, tc),
                 variant: "destructive",
             });
         },
@@ -295,14 +299,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             categorizationApi.loadCustomRulesFromDb().catch(console.error);
             // Recovery key will be cleared by auth-page
             toast({
-                title: "Password reset successful!",
-                description: "Your password has been changed.",
+                title: t('toast.recoverySuccess'),
+                description: t('toast.newRecoveryKey'),
             });
         },
         onError: (error: Error) => {
             toast({
-                title: "Recovery failed",
-                description: error.message,
+                title: t('toast.recoveryFailed'),
+                description: translateApiError(error, tc),
                 variant: "destructive",
             });
         },

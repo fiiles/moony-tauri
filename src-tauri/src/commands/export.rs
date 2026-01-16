@@ -158,7 +158,7 @@ pub fn export_bonds(db: State<'_, Database>) -> Result<ExportResult> {
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?,
                 row.get::<_, String>(4)?,
@@ -176,7 +176,7 @@ pub fn export_bonds(db: State<'_, Database>) -> Result<ExportResult> {
             csv.push_str(&format!(
                 "\"{}\",{},{},{},{},{},{}\n",
                 escape_csv(&name),
-                isin,
+                isin.unwrap_or_default(),
                 coupon,
                 qty,
                 currency,
@@ -200,7 +200,7 @@ pub fn export_savings_accounts(db: State<'_, Database>) -> Result<ExportResult> 
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT name, balance, currency, interest_rate, has_zone_designation, termination_date
-            FROM savings_accounts
+            FROM bank_accounts
             ORDER BY name",
         )?;
 
@@ -247,10 +247,10 @@ pub fn export_savings_accounts(db: State<'_, Database>) -> Result<ExportResult> 
 pub fn export_savings_account_zones(db: State<'_, Database>) -> Result<ExportResult> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT s.name, z.from_amount, z.to_amount, z.interest_rate
-            FROM savings_account_zones z
-            JOIN savings_accounts s ON z.savings_account_id = s.id
-            ORDER BY s.name, z.from_amount",
+            "SELECT ba.name, z.from_amount, z.to_amount, z.interest_rate
+            FROM bank_account_zones z
+            JOIN bank_accounts ba ON z.bank_account_id = ba.id
+            ORDER BY ba.name, z.from_amount",
         )?;
 
         let rows = stmt.query_map([], |row| {

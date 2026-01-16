@@ -3,13 +3,15 @@
  * Note: This is a placeholder for legacy instrument support.
  * The main investment features use investmentsApi from tauri-api.ts
  */
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
+import { translateApiError } from "@/lib/translate-api-error";
 import type { InsertInstrument, InsertPurchase } from "@shared/schema";
 
 export function useInstrumentMutations() {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation('common');
 
   const createMutation = useMutation({
     mutationFn: async (_data: InsertInstrument & { purchase?: InsertPurchase }) => {
@@ -18,8 +20,8 @@ export function useInstrumentMutations() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to add investment",
+        title: t('status.error'),
+        description: translateApiError(error, t),
         variant: "destructive",
       });
     },
@@ -38,8 +40,8 @@ export function useInstrumentMutations() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to update instrument",
+        title: t('status.error'),
+        description: translateApiError(error, t),
         variant: "destructive",
       });
     },
@@ -51,8 +53,8 @@ export function useInstrumentMutations() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete instrument",
+        title: t('status.error'),
+        description: translateApiError(error, t),
         variant: "destructive",
       });
     },

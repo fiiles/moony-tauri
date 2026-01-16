@@ -44,13 +44,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
 const formSchema = z.object({
-    companyName: z.string().min(1, "Company name is required"),
-    ticker: z.string().min(1, "Ticker is required"),
-    quantity: z.coerce.number().positive("Quantity must be positive"),
-    pricePerUnit: z.coerce.number().positive("Price must be positive"),
+    companyName: z.string().min(1, "validation.companyNameRequired"),
+    ticker: z.string().min(1, "validation.tickerRequired"),
+    quantity: z.coerce.number().positive("validation.quantityPositive"),
+    pricePerUnit: z.coerce.number().positive("validation.pricePositive"),
     currency: z.enum(["USD", "EUR", "CZK"]),
     date: z.string().optional(), // Input type="date" returns string
 });
+
 
 export function AddInvestmentModal() {
     const { t } = useTranslation('stocks');

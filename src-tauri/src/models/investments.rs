@@ -205,26 +205,24 @@ impl InsertStockInvestment {
     pub fn validate(&self) -> Result<()> {
         // Ticker validation
         if self.ticker.is_empty() {
-            return Err(AppError::Validation("Ticker cannot be empty".into()));
+            return Err(AppError::Validation("validation.tickerRequired".into()));
         }
         if self.ticker.len() > 10 {
-            return Err(AppError::Validation(
-                "Ticker too long (max 10 characters)".into(),
-            ));
+            return Err(AppError::Validation("validation.tickerTooLong".into()));
         }
         if !self
             .ticker
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
         {
-            return Err(AppError::Validation(
-                "Ticker contains invalid characters".into(),
-            ));
+            return Err(AppError::Validation("validation.tickerInvalid".into()));
         }
 
         // Company name validation
         if self.company_name.is_empty() {
-            return Err(AppError::Validation("Company name cannot be empty".into()));
+            return Err(AppError::Validation(
+                "validation.companyNameRequired".into(),
+            ));
         }
 
         // Quantity validation (if provided)
@@ -232,9 +230,11 @@ impl InsertStockInvestment {
             if !qty.is_empty() {
                 let qty_val: f64 = qty
                     .parse()
-                    .map_err(|_| AppError::Validation(format!("Invalid quantity '{}'", qty)))?;
+                    .map_err(|_| AppError::Validation("validation.invalidQuantity".into()))?;
                 if qty_val < 0.0 {
-                    return Err(AppError::Validation("Quantity cannot be negative".into()));
+                    return Err(AppError::Validation(
+                        "validation.quantityNonNegative".into(),
+                    ));
                 }
             }
         }
@@ -242,12 +242,12 @@ impl InsertStockInvestment {
         // Average price validation (if provided)
         if let Some(ref price) = self.average_price {
             if !price.is_empty() {
-                let price_val: f64 = price.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid average price '{}'", price))
-                })?;
+                let price_val: f64 = price
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.invalidPrice".into()))?;
                 if price_val < 0.0 {
                     return Err(AppError::Validation(
-                        "Average price cannot be negative".into(),
+                        "validation.averagePriceNonNegative".into(),
                     ));
                 }
             }
@@ -263,44 +263,40 @@ impl InsertInvestmentTransaction {
         // Transaction type validation
         let tx_type = self.tx_type.to_lowercase();
         if tx_type != "buy" && tx_type != "sell" {
-            return Err(AppError::Validation(format!(
-                "Invalid transaction type '{}' (must be 'buy' or 'sell')",
-                self.tx_type
-            )));
+            return Err(AppError::Validation(
+                "validation.transactionTypeInvalid".into(),
+            ));
         }
 
         // Ticker validation
         if self.ticker.is_empty() {
-            return Err(AppError::Validation("Ticker cannot be empty".into()));
+            return Err(AppError::Validation("validation.tickerRequired".into()));
         }
 
         // Quantity validation
         let qty: f64 = self
             .quantity
             .parse()
-            .map_err(|_| AppError::Validation(format!("Invalid quantity '{}'", self.quantity)))?;
+            .map_err(|_| AppError::Validation("validation.invalidQuantity".into()))?;
         if qty <= 0.0 {
-            return Err(AppError::Validation("Quantity must be positive".into()));
+            return Err(AppError::Validation("validation.quantityPositive".into()));
         }
 
         // Price validation
-        let price: f64 = self.price_per_unit.parse().map_err(|_| {
-            AppError::Validation(format!("Invalid price '{}'", self.price_per_unit))
-        })?;
+        let price: f64 = self
+            .price_per_unit
+            .parse()
+            .map_err(|_| AppError::Validation("validation.invalidPrice".into()))?;
         if price <= 0.0 {
-            return Err(AppError::Validation("Price must be positive".into()));
+            return Err(AppError::Validation("validation.pricePositive".into()));
         }
 
         // Currency validation
         if self.currency.len() != 3 {
-            return Err(AppError::Validation(
-                "Currency must be 3 letters (e.g., USD, EUR)".into(),
-            ));
+            return Err(AppError::Validation("validation.currencyInvalid".into()));
         }
         if !self.currency.chars().all(|c| c.is_ascii_alphabetic()) {
-            return Err(AppError::Validation(
-                "Currency must contain only letters".into(),
-            ));
+            return Err(AppError::Validation("validation.currencyInvalid".into()));
         }
 
         Ok(())

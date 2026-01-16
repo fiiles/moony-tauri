@@ -105,6 +105,12 @@
     "noMatchingTransactions": "Žádné transakce neodpovídají aktuálním filtrům"
   },
 
+  "confirmDelete": {
+    "title": "Smazat účet?",
+    "description": "Tím trvale smažete účet a všechny jeho transakce. Tuto akci nelze vrátit zpět.",
+    "importDescription": "Tím smažete záznam o importu a všechny transakce importované v této dávce."
+  },
+
   "csvImport": {
     "button": "Import CSV",
     "title": "Import transakcí z CSV",
@@ -153,7 +159,8 @@
     "effective": "efektivní",
     "effectiveRate": "Efektivní sazba",
     "active": "Aktivní",
-    "noZones": "Nejsou nakonfigurována žádná úroková pásma"
+    "noZones": "Nejsou nakonfigurována žádná úroková pásma",
+    "unlimited": "Neomezeno"
   },
 
   "categorization": {

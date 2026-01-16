@@ -429,7 +429,7 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT id, name, surname, email, menu_preferences, currency,
-                    language, exclude_personal_real_estate, created_at
+                    language, exclude_personal_real_estate, coingecko_modal_dismissed, created_at
              FROM user_profile LIMIT 1",
         )?;
 
@@ -447,7 +447,8 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
                 currency: row.get(5)?,
                 language: row.get(6)?,
                 exclude_personal_real_estate: row.get::<_, i32>(7)? != 0,
-                created_at: row.get(8)?,
+                coingecko_modal_dismissed: row.get::<_, i32>(8)? != 0,
+                created_at: row.get(9)?,
             })
         });
 
@@ -498,6 +499,11 @@ pub fn update_user_profile(db: &Database, updates: UpdateUserProfile) -> Result<
         if let Some(exclude) = updates.exclude_personal_real_estate {
             set_clauses.push("exclude_personal_real_estate = ?".to_string());
             params.push(Box::new(exclude as i32));
+        }
+
+        if let Some(dismissed) = updates.coingecko_modal_dismissed {
+            set_clauses.push("coingecko_modal_dismissed = ?".to_string());
+            params.push(Box::new(dismissed as i32));
         }
 
         if set_clauses.is_empty() {

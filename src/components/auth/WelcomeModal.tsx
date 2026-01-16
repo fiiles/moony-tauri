@@ -46,7 +46,7 @@ export function WelcomeModal({ open, onOpenChange, language, onLanguageChange }:
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-lg bg-background border-border">
+            <DialogContent className="sm:max-w-lg bg-background border-border" hideCloseButton>
                 <DialogHeader className="pb-2">
                     <div className="flex items-center gap-3">
                         <div className="flex aspect-square size-12 shrink-0 items-center justify-center rounded-lg overflow-hidden">

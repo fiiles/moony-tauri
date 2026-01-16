@@ -2834,7 +2834,7 @@ dependencies = [
 
 [[package]]
 name = "moony"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -2844,6 +2844,7 @@ dependencies = [
  "csv",
  "encoding_rs",
  "env_logger",
+ "futures",
  "hex",
  "image",
  "lazy_static",

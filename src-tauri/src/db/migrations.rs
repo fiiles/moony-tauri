@@ -59,6 +59,9 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ),
         ("029_update_investments_icon", MIGRATION_029),
         ("030_add_iban_vs_to_rules", MIGRATION_030),
+        ("031_make_bond_isin_optional", MIGRATION_031),
+        ("032_bank_account_zones_fix", MIGRATION_032),
+        ("033_add_coingecko_modal_dismissed", MIGRATION_033),
     ];
 
     for (name, sql) in migrations {
@@ -1077,4 +1080,58 @@ ALTER TABLE categorization_rules ADD COLUMN variable_symbol TEXT;
 
 -- Create index for IBAN pattern lookups
 CREATE INDEX IF NOT EXISTS idx_categorization_rules_iban ON categorization_rules(iban_pattern) WHERE iban_pattern IS NOT NULL;
+"#;
+
+/// Migration 031: Make bond ISIN field optional
+/// SQLite doesn't support ALTER COLUMN, so we need to recreate the table
+const MIGRATION_031: &str = r#"
+-- Create new bonds table with nullable ISIN
+CREATE TABLE bonds_new (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    isin TEXT,
+    coupon_value TEXT NOT NULL,
+    interest_rate TEXT NOT NULL DEFAULT '0',
+    maturity_date INTEGER,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    quantity TEXT NOT NULL DEFAULT '1',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- Copy data from old table
+INSERT INTO bonds_new (id, name, isin, coupon_value, interest_rate, maturity_date, currency, quantity, created_at, updated_at)
+SELECT id, name, isin, coupon_value, interest_rate, maturity_date, currency, quantity, created_at, updated_at
+FROM bonds;
+
+-- Drop old table
+DROP TABLE bonds;
+
+-- Rename new table
+ALTER TABLE bonds_new RENAME TO bonds;
+"#;
+
+/// Migration 032: Fix bank account zones FK constraint
+/// Creates bank_account_zones table and migrates valid zones from savings_account_zones
+const MIGRATION_032: &str = r#"
+CREATE TABLE IF NOT EXISTS bank_account_zones (
+    id TEXT PRIMARY KEY,
+    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    from_amount TEXT NOT NULL,
+    to_amount TEXT,
+    interest_rate TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+-- Copy existing data where the account exists in bank_accounts
+INSERT INTO bank_account_zones (id, bank_account_id, from_amount, to_amount, interest_rate, created_at)
+SELECT id, savings_account_id, from_amount, to_amount, interest_rate, created_at
+FROM savings_account_zones
+WHERE savings_account_id IN (SELECT id FROM bank_accounts);
+"#;
+
+/// Migration 033: Add coingecko_modal_dismissed to user_profile
+/// Tracks if user has dismissed the CoinGecko API key recommendation modal
+const MIGRATION_033: &str = r#"
+ALTER TABLE user_profile ADD COLUMN coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0;
 "#;

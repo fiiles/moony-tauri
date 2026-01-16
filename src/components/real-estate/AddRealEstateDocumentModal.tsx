@@ -34,11 +34,12 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { FileText, Upload } from "lucide-react";
 
 const documentFormSchema = z.object({
-    name: z.string().min(1, "Name is required"),
+    name: z.string().min(1, "validation.nameRequired"),
     description: z.string().optional(),
     fileType: z.string().min(1),
-    filePath: z.string().min(1, "Please select a file"),
+    filePath: z.string().min(1, "validation.fileRequired"),
 });
+
 
 type DocumentFormData = z.infer<typeof documentFormSchema>;
 

@@ -224,7 +224,8 @@
             "lookingUpNames": "Vyhledávám názvy společností...",
             "savingTransactions": "Ukládám transakce...",
             "refreshingPrices": "Aktualizuji ceny akcií...",
-            "refreshingDividends": "Aktualizuji data o dividendách..."
+            "refreshingDividends": "Aktualizuji data o dividendách...",
+            "loadingDetails": "Hledám podrobnosti, načítám historické ceny..."
         }
     }
 }

@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 interface ZoneData {
     id?: string;
     fromAmount: string;
-    toAmount: string;
+    toAmount?: string | null;
     interestRate: string;
 }
 
@@ -175,7 +175,7 @@ export function SavingsAccountZoneManager({
                             id="toAmount"
                             type="number"
                             step="0.01"
-                            value={formData.toAmount}
+                            value={formData.toAmount ?? ""}
                             onChange={(e) => setFormData({ ...formData, toAmount: e.target.value })}
                             placeholder="Unlimited"
                             className="h-9"
