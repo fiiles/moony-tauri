@@ -52,46 +52,40 @@ impl InsertLoan {
     pub fn validate(&self) -> Result<()> {
         // Name validation
         if self.name.is_empty() {
-            return Err(AppError::Validation("Loan name cannot be empty".into()));
+            return Err(AppError::Validation("validation.loanNameRequired".into()));
         }
         if self.name.len() > 100 {
-            return Err(AppError::Validation(
-                "Loan name too long (max 100 characters)".into(),
-            ));
+            return Err(AppError::Validation("validation.loanNameRequired".into()));
         }
 
         // Principal validation
         if self.principal.is_empty() {
-            return Err(AppError::Validation(
-                "Principal amount cannot be empty".into(),
-            ));
+            return Err(AppError::Validation("validation.principalPositive".into()));
         }
         let principal: f64 = self
             .principal
             .parse()
-            .map_err(|_| AppError::Validation(format!("Invalid principal '{}'", self.principal)))?;
+            .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
         if principal <= 0.0 {
-            return Err(AppError::Validation("Principal must be positive".into()));
+            return Err(AppError::Validation("validation.principalPositive".into()));
         }
 
         // Currency validation (if provided)
         if let Some(ref currency) = self.currency {
             if currency.len() != 3 {
-                return Err(AppError::Validation(
-                    "Currency must be 3 letters (e.g., USD, EUR)".into(),
-                ));
+                return Err(AppError::Validation("validation.currencyInvalid".into()));
             }
         }
 
         // Interest rate validation (if provided)
         if let Some(ref rate) = self.interest_rate {
             if !rate.is_empty() {
-                let rate_val: f64 = rate.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid interest rate '{}'", rate))
-                })?;
+                let rate_val: f64 = rate
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.interestRatePositive".into()))?;
                 if !(0.0..=100.0).contains(&rate_val) {
                     return Err(AppError::Validation(
-                        "Interest rate must be between 0 and 100".into(),
+                        "validation.interestRatePositive".into(),
                     ));
                 }
             }
@@ -100,12 +94,12 @@ impl InsertLoan {
         // Monthly payment validation (if provided)
         if let Some(ref payment) = self.monthly_payment {
             if !payment.is_empty() {
-                let payment_val: f64 = payment.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid monthly payment '{}'", payment))
-                })?;
+                let payment_val: f64 = payment
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
                 if payment_val < 0.0 {
                     return Err(AppError::Validation(
-                        "Monthly payment cannot be negative".into(),
+                        "validation.monthlyPaymentPositive".into(),
                     ));
                 }
             }
@@ -114,9 +108,7 @@ impl InsertLoan {
         // Date validation
         if let (Some(start), Some(end)) = (self.start_date, self.end_date) {
             if end <= start {
-                return Err(AppError::Validation(
-                    "End date must be after start date".into(),
-                ));
+                return Err(AppError::Validation("validation.endDateAfterStart".into()));
             }
         }
 

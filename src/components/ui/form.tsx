@@ -11,6 +11,7 @@ import {
   type FieldPath,
   type FieldValues,
 } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
@@ -147,11 +148,22 @@ const FormMessage = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message ?? "") : children
+  const { t } = useTranslation("common")
+  
+  // Get error message from form error or children
+  const errorMessage = error ? String(error?.message ?? "") : children
 
-  if (!body) {
+  if (!errorMessage) {
     return null
   }
+
+  // Translate if the message starts with 'validation.' prefix
+  const isValidationKey = typeof errorMessage === "string" && 
+    errorMessage.startsWith("validation.")
+  
+  const displayMessage = isValidationKey 
+    ? t(errorMessage as string, errorMessage as string) 
+    : errorMessage
 
   return (
     <p
@@ -160,7 +172,7 @@ const FormMessage = React.forwardRef<
       className={cn("text-sm font-medium text-destructive", className)}
       {...props}
     >
-      {body}
+      {displayMessage}
     </p>
   )
 })

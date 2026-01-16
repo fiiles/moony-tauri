@@ -73,11 +73,12 @@
     },
     "toast": {
         "profileUpdated": "Profil aktualizován",
-        "profileUpdatedDescription": "Vaše údaje byly uloženy.",
-        "passwordUpdated": "Heslo aktualizováno",
-        "passwordUpdatedDescription": "Vaše heslo bylo úspěšně změněno.",
+        "profileUpdatedDesc": "Vaše údaje byly uloženy.",
+        "passwordChanged": "Heslo změněno",
+        "passwordChangedDesc": "Vaše heslo bylo aktualizováno. Nezapomeňte si bezpečně uložit nový obnovovací klíč!",
         "preferencesUpdated": "Preference aktualizovány",
-        "preferencesUpdatedDescription": "Nastavení viditelnosti menu bylo uloženo.",
+        "preferencesUpdatedDesc": "Nastavení viditelnosti menu bylo uloženo.",
+        "verificationFailed": "Ověření selhalo",
         "updateFailed": "Aktualizace selhala",
         "deletionFailed": "Smazání selhalo"
     },

@@ -1,19 +1,46 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { bankAccountsApi, portfolioApi } from "@/lib/tauri-api";
+import { bankAccountsApi, portfolioApi, savingsApi } from "@/lib/tauri-api";
 import type { InsertBankAccount, InsertBankTransaction, InsertTransactionCategory, InsertTransactionRule } from "@shared/schema";
 import { useToast } from "./use-toast";
 import { useTranslation } from "react-i18next";
+import { translateApiError } from "@/lib/translate-api-error";
+
+interface ZoneData {
+  id?: string;
+  fromAmount: string;
+  toAmount?: string | null;
+  interestRate: string;
+}
 
 export function useBankAccountMutations() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("bank_accounts");
+  const { t: tc } = useTranslation("common");
 
   const createAccount = useMutation({
-    mutationFn: (data: InsertBankAccount) => bankAccountsApi.create(data),
+    mutationFn: async ({ data, zones }: { data: InsertBankAccount; zones?: ZoneData[] }) => {
+      // 1. Create the account
+      const account = await bankAccountsApi.create(data);
+
+      // 2. If there are zones, create them linked to the new account
+      if (zones && zones.length > 0) {
+        for (const zone of zones) {
+          await savingsApi.createZone({
+            savingsAccountId: account.id,
+            fromAmount: zone.fromAmount,
+            toAmount: zone.toAmount === "" ? null : (zone.toAmount ?? null),
+            interestRate: zone.interestRate,
+          });
+        }
+      }
+
+      return account;
+    },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
       // Record new portfolio snapshot to update dashboard history
       await portfolioApi.recordSnapshot();
       queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
@@ -25,18 +52,49 @@ export function useBankAccountMutations() {
     onError: (error: Error) => {
       toast({
         title: t("messages.error", "Error"),
-        description: error.message,
+        description: translateApiError(error, tc),
         variant: "destructive",
       });
     },
   });
 
   const updateAccount = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: InsertBankAccount }) =>
-      bankAccountsApi.update(id, data),
+    mutationFn: async ({ id, data, zones }: { id: string; data: InsertBankAccount; zones?: ZoneData[] }) => {
+      // 1. Update the account
+      const account = await bankAccountsApi.update(id, data);
+
+      // 2. Handle zones if provided
+      if (zones) {
+        // Get existing zones
+        const existingZones = await savingsApi.getZones(id);
+
+        // Delete zones that no longer exist
+        for (const existingZone of existingZones) {
+          const stillExists = zones.some(z => z.id === existingZone.id);
+          if (!stillExists) {
+            await savingsApi.deleteZone(existingZone.id);
+          }
+        }
+
+        // Create new zones (those without id)
+        for (const zone of zones) {
+          if (!zone.id) {
+            await savingsApi.createZone({
+              savingsAccountId: id,
+              fromAmount: zone.fromAmount,
+              toAmount: zone.toAmount === "" ? null : (zone.toAmount ?? null),
+              interestRate: zone.interestRate,
+            });
+          }
+        }
+      }
+
+      return account;
+    },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
       // Record new portfolio snapshot to update dashboard history
       await portfolioApi.recordSnapshot();
       queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
@@ -48,7 +106,7 @@ export function useBankAccountMutations() {
     onError: (error: Error) => {
       toast({
         title: t("messages.error", "Error"),
-        description: error.message,
+        description: translateApiError(error, tc),
         variant: "destructive",
       });
     },
@@ -59,6 +117,7 @@ export function useBankAccountMutations() {
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["bank-accounts"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
       // Record new portfolio snapshot to update dashboard history
       await portfolioApi.recordSnapshot();
       queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
@@ -70,7 +129,7 @@ export function useBankAccountMutations() {
     onError: (error: Error) => {
       toast({
         title: t("messages.error", "Error"),
-        description: error.message,
+        description: translateApiError(error, tc),
         variant: "destructive",
       });
     },
@@ -87,6 +146,7 @@ export function useBankTransactionMutations(accountId?: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("bank_accounts");
+  const { t: tc } = useTranslation("common");
 
   const createTransaction = useMutation({
     mutationFn: (data: InsertBankTransaction) => bankAccountsApi.createTransaction(data),
@@ -99,7 +159,7 @@ export function useBankTransactionMutations(accountId?: string) {
     onError: (error: Error) => {
       toast({
         title: t("messages.error", "Error"),
-        description: error.message,
+        description: translateApiError(error, tc),
         variant: "destructive",
       });
     },
@@ -116,7 +176,7 @@ export function useBankTransactionMutations(accountId?: string) {
     onError: (error: Error) => {
       toast({
         title: t("messages.error", "Error"),
-        description: error.message,
+        description: translateApiError(error, tc),
         variant: "destructive",
       });
     },
@@ -132,6 +192,7 @@ export function useCategoryMutations() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("bank_accounts");
+  const { t: tc } = useTranslation("common");
 
   const createCategory = useMutation({
     mutationFn: (data: InsertTransactionCategory) => bankAccountsApi.createCategory(data),
@@ -144,7 +205,7 @@ export function useCategoryMutations() {
     onError: (error: Error) => {
       toast({
         title: t("messages.error", "Error"),
-        description: error.message,
+        description: translateApiError(error, tc),
         variant: "destructive",
       });
     },
@@ -161,7 +222,7 @@ export function useCategoryMutations() {
     onError: (error: Error) => {
       toast({
         title: t("messages.error", "Error"),
-        description: error.message,
+        description: translateApiError(error, tc),
         variant: "destructive",
       });
     },
@@ -177,6 +238,7 @@ export function useRuleMutations() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t } = useTranslation("bank_accounts");
+  const { t: tc } = useTranslation("common");
 
   const createRule = useMutation({
     mutationFn: (data: InsertTransactionRule) => bankAccountsApi.createRule(data),
@@ -189,7 +251,7 @@ export function useRuleMutations() {
     onError: (error: Error) => {
       toast({
         title: t("messages.error", "Error"),
-        description: error.message,
+        description: translateApiError(error, tc),
         variant: "destructive",
       });
     },
@@ -206,7 +268,7 @@ export function useRuleMutations() {
     onError: (error: Error) => {
       toast({
         title: t("messages.error", "Error"),
-        description: error.message,
+        description: translateApiError(error, tc),
         variant: "destructive",
       });
     },

@@ -2,20 +2,23 @@ import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { loansApi } from "@/lib/tauri-api";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
+import { translateApiError } from "@/lib/translate-api-error";
 import type { InsertLoan } from "@shared/schema";
 
 export function useLoanMutations() {
     const { toast } = useToast();
+    const { t } = useTranslation('common');
 
     const createMutation = useMutation({
         mutationFn: (data: InsertLoan) => loansApi.create(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["loans"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({ title: "Loan created" });
+            toast({ title: t('status.success') });
         },
         onError: (error: Error) => {
-            toast({ title: "Failed to create loan", description: error.message, variant: "destructive" });
+            toast({ title: t('status.error'), description: translateApiError(error, t), variant: "destructive" });
         },
     });
 
@@ -26,10 +29,10 @@ export function useLoanMutations() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["loans"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({ title: "Loan updated" });
+            toast({ title: t('status.success') });
         },
         onError: (error: Error) => {
-            toast({ title: "Failed to update loan", description: error.message, variant: "destructive" });
+            toast({ title: t('status.error'), description: translateApiError(error, t), variant: "destructive" });
         },
     });
 
@@ -38,10 +41,10 @@ export function useLoanMutations() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["loans"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({ title: "Loan deleted" });
+            toast({ title: t('status.success') });
         },
         onError: (error: Error) => {
-            toast({ title: "Failed to delete loan", description: error.message, variant: "destructive" });
+            toast({ title: t('status.error'), description: translateApiError(error, t), variant: "destructive" });
         },
     });
 
@@ -51,3 +54,4 @@ export function useLoanMutations() {
         deleteMutation,
     };
 }
+

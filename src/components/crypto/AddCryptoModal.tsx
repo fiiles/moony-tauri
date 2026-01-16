@@ -45,14 +45,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
 const formSchema = z.object({
-    name: z.string().min(1, "Name is required"),
-    ticker: z.string().min(1, "Ticker is required"),
+    name: z.string().min(1, "validation.nameRequired"),
+    ticker: z.string().min(1, "validation.tickerRequired"),
     coingeckoId: z.string().optional(),
-    quantity: z.coerce.number().positive("Quantity must be positive"),
-    pricePerUnit: z.coerce.number().min(0, "Price must be non-negative"),
+    quantity: z.coerce.number().positive("validation.quantityPositive"),
+    pricePerUnit: z.coerce.number().min(0, "validation.pricePositive"),
     currency: z.enum(["USD", "EUR", "CZK"]),
     date: z.string().optional(),
 });
+
 
 export function AddCryptoModal() {
     const { t } = useTranslation('crypto');

@@ -275,8 +275,8 @@ export default function BankAccounts() {
       <BankAccountFormDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onSubmit={(data) => {
-          createAccount.mutate(data as InsertBankAccount, {
+        onSubmit={(data, zones) => {
+          createAccount.mutate({ data: data as InsertBankAccount, zones }, {
             onSuccess: () => {
               setAddDialogOpen(false);
               // Ensure portfolio metrics are recalculated

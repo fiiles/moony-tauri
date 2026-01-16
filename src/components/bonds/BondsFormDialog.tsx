@@ -59,7 +59,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
 
     if (bond) {
       setName(bond.name);
-      setIsin(bond.isin);
+      setIsin(bond.isin || "");
       setCouponValue(bond.couponValue);
       setQuantity(bond.quantity || "1");
       setInterestRate(bond.interestRate.toString());
@@ -79,7 +79,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
   const handleSubmit = () => {
     const submissionData = {
       name,
-      isin,
+      isin: isin || null,
       couponValue: couponValue,
       quantity,
       currency: selectedCurrency,
@@ -139,13 +139,12 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="isin">{t('modal.isin')} *</Label>
+                <Label htmlFor="isin">{t('modal.isin')}</Label>
                 <Input
                   id="isin"
                   value={isin}
                   onChange={(e) => setIsin(e.target.value)}
                   placeholder={t('modal.isinPlaceholder')}
-                  required
                 />
                 <p className="text-xs text-muted-foreground">
                   {t('modal.isinHelp')}

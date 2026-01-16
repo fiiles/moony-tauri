@@ -1,6 +1,6 @@
 [package]
 name = "moony"
-version = "1.0.0"
+version = "1.0.1"
 description = "Moony - Personal Finance Manager"
 authors = ["Filip Král"]
 edition = "2021"
@@ -92,3 +92,6 @@ unicode-normalization = "0.1"
 # Model persistence
 bincode = "1.3"
 tauri-plugin-aptabase = "1.0.0"
+
+# Async executor for Aptabase plugin workaround
+futures = "0.3"

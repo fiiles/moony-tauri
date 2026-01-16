@@ -675,6 +675,15 @@ pub async fn import_investment_transactions(
 ) -> Result<serde_json::Value> {
     use crate::services::price_api;
     use std::collections::HashMap;
+    use tauri::Emitter;
+
+    // Progress event payload
+    #[derive(Clone, serde::Serialize)]
+    struct ImportProgress {
+        phase: String,
+        current: usize,
+        total: usize,
+    }
 
     let mut success_count = 0;
     let mut errors: Vec<String> = Vec::new();
@@ -739,7 +748,18 @@ pub async fn import_investment_transactions(
             tickers_needing_lookup.len()
         );
 
-        for ticker in &tickers_needing_lookup {
+        for (index, ticker) in tickers_needing_lookup.iter().enumerate() {
+            // Emit progress for name lookup phase
+            app.emit(
+                "stock-import-progress",
+                ImportProgress {
+                    phase: "lookup".to_string(),
+                    current: index + 1,
+                    total: tickers_needing_lookup.len(),
+                },
+            )
+            .ok();
+
             // Add small delay between lookups to avoid rate limiting
             tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
@@ -767,31 +787,40 @@ pub async fn import_investment_transactions(
     }
 
     // Second pass: process transactions with enriched names
-    db.with_conn(|conn| {
-        for (index, tx) in transactions.iter().enumerate() {
-            let result = process_import_transaction(conn, tx, &default_currency, &name_cache);
-            match result {
-                Ok((description, tx_date, ticker)) => {
-                    success_count += 1;
-                    imported.push(format!("Row {}: {}", index + 1, description));
-                    // Track the earliest transaction date per ticker
-                    if let Some(date) = tx_date {
-                        ticker_earliest_dates
-                            .entry(ticker)
-                            .and_modify(|e| *e = (*e).min(date))
-                            .or_insert(date);
-                    }
-                }
-                Err(e) => errors.push(format!("Row {}: {}", index + 1, e)),
-            }
-        }
+    // Process each transaction individually so we can emit progress events
+    let total_transactions = transactions.len();
+    for (index, tx) in transactions.iter().enumerate() {
+        // Emit progress for import phase
+        app.emit(
+            "stock-import-progress",
+            ImportProgress {
+                phase: "import".to_string(),
+                current: index + 1,
+                total: total_transactions,
+            },
+        )
+        .ok();
 
-        Ok(serde_json::json!({
-            "success": success_count,
-            "errors": errors,
-            "imported": imported
-        }))
-    })?;
+        let result = db.with_conn(|conn| {
+            process_import_transaction(conn, tx, &default_currency, &name_cache)
+                .map_err(crate::error::AppError::Validation)
+        });
+
+        match result {
+            Ok((description, tx_date, ticker)) => {
+                success_count += 1;
+                imported.push(format!("Row {}: {}", index + 1, description));
+                // Track the earliest transaction date per ticker
+                if let Some(date) = tx_date {
+                    ticker_earliest_dates
+                        .entry(ticker)
+                        .and_modify(|e| *e = (*e).min(date))
+                        .or_insert(date);
+                }
+            }
+            Err(e) => errors.push(format!("Row {}: {}", index + 1, e)),
+        }
+    }
 
     // Update portfolio snapshot after all imports
     portfolio::update_todays_snapshot(&db).await.ok();

@@ -16,7 +16,7 @@ pub async fn get_all_savings_accounts(db: State<'_, Database>) -> Result<Vec<Sav
         let mut stmt = conn.prepare(
             "SELECT id, name, balance, currency, interest_rate, has_zone_designation,
                     created_at, updated_at, termination_date
-             FROM savings_accounts ORDER BY name",
+             FROM bank_accounts ORDER BY name",
         )?;
 
         let accounts = stmt
@@ -89,7 +89,7 @@ pub async fn get_savings_account(
         let mut stmt = conn.prepare(
             "SELECT id, name, balance, currency, interest_rate, has_zone_designation,
                     created_at, updated_at, termination_date
-             FROM savings_accounts WHERE id = ?1",
+             FROM bank_accounts WHERE id = ?1",
         )?;
 
         let result = stmt.query_row([&id], |row| {
@@ -167,7 +167,7 @@ pub async fn create_savings_account(
 
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO savings_accounts (id, name, balance, currency, interest_rate, has_zone_designation, termination_date)
+            "INSERT INTO bank_accounts (id, name, balance, currency, interest_rate, has_zone_designation, termination_date)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             rusqlite::params![id, data.name, data.balance, currency, interest_rate, has_zone as i32, data.termination_date],
         )?;
@@ -194,7 +194,7 @@ pub async fn update_savings_account(
     db.with_conn(|conn| {
         // Simplified: just update all fields
         conn.execute(
-            "UPDATE savings_accounts SET name = ?1, balance = ?2, updated_at = ?3,
+            "UPDATE bank_accounts SET name = ?1, balance = ?2, updated_at = ?3,
              currency = COALESCE(?4, currency),
              interest_rate = COALESCE(?5, interest_rate),
              has_zone_designation = COALESCE(?6, has_zone_designation),
@@ -223,9 +223,9 @@ pub async fn update_savings_account(
 #[tauri::command]
 pub async fn delete_savings_account(db: State<'_, Database>, id: String) -> Result<()> {
     db.with_conn(|conn| {
-        let changes = conn.execute("DELETE FROM savings_accounts WHERE id = ?1", [&id])?;
+        let changes = conn.execute("DELETE FROM bank_accounts WHERE id = ?1", [&id])?;
         if changes == 0 {
-            return Err(AppError::NotFound("Savings account not found".into()));
+            return Err(AppError::NotFound("Bank account not found".into()));
         }
         Ok(())
     })
@@ -239,8 +239,8 @@ pub async fn get_account_zones(
 ) -> Result<Vec<SavingsAccountZone>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
-            "SELECT id, savings_account_id, from_amount, to_amount, interest_rate, created_at
-             FROM savings_account_zones WHERE savings_account_id = ?1 ORDER BY from_amount",
+            "SELECT id, bank_account_id, from_amount, to_amount, interest_rate, created_at
+             FROM bank_account_zones WHERE bank_account_id = ?1 ORDER BY from_amount",
         )?;
 
         let zones = stmt
@@ -275,7 +275,7 @@ pub async fn create_account_zone(
 
     db.with_conn(|conn| {
         conn.execute(
-            "INSERT INTO savings_account_zones (id, savings_account_id, from_amount, to_amount, interest_rate, created_at)
+            "INSERT INTO bank_account_zones (id, bank_account_id, from_amount, to_amount, interest_rate, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             rusqlite::params![
                 id,
@@ -302,10 +302,7 @@ pub async fn create_account_zone(
 #[tauri::command]
 pub async fn delete_account_zone(db: State<'_, Database>, zone_id: String) -> Result<()> {
     db.with_conn(|conn| {
-        conn.execute(
-            "DELETE FROM savings_account_zones WHERE id = ?1",
-            [&zone_id],
-        )?;
+        conn.execute("DELETE FROM bank_account_zones WHERE id = ?1", [&zone_id])?;
         Ok(())
     })
 }

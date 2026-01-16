@@ -110,23 +110,21 @@ impl InsertInsurancePolicy {
         // Policy type validation
         if self.policy_type.is_empty() {
             return Err(AppError::Validation(
-                "Insurance type cannot be empty".into(),
+                "validation.insuranceTypeRequired".into(),
             ));
         }
 
         // Provider validation
         if self.provider.is_empty() {
-            return Err(AppError::Validation("Provider cannot be empty".into()));
+            return Err(AppError::Validation("validation.providerRequired".into()));
         }
         if self.provider.len() > 100 {
-            return Err(AppError::Validation(
-                "Provider name too long (max 100 characters)".into(),
-            ));
+            return Err(AppError::Validation("validation.nameTooLong".into()));
         }
 
         // Policy name validation
         if self.policy_name.is_empty() {
-            return Err(AppError::Validation("Policy name cannot be empty".into()));
+            return Err(AppError::Validation("validation.policyNameRequired".into()));
         }
 
         // Payment frequency validation
@@ -139,20 +137,18 @@ impl InsertInsurancePolicy {
         ];
         if !valid_frequencies.contains(&self.payment_frequency.to_lowercase().as_str()) {
             return Err(AppError::Validation(
-                format!("Invalid payment frequency '{}' (must be monthly, quarterly, semi_annually, annually, or one_time)", self.payment_frequency)
+                "validation.paymentFrequencyInvalid".into(),
             ));
         }
 
         // Regular payment validation (if provided)
         if let Some(ref payment) = self.regular_payment {
             if !payment.is_empty() {
-                let payment_val: f64 = payment.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid regular payment '{}'", payment))
-                })?;
+                let payment_val: f64 = payment
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
                 if payment_val < 0.0 {
-                    return Err(AppError::Validation(
-                        "Regular payment cannot be negative".into(),
-                    ));
+                    return Err(AppError::Validation("validation.paymentNonNegative".into()));
                 }
             }
         }
@@ -160,13 +156,11 @@ impl InsertInsurancePolicy {
         // One-time payment validation (if provided)
         if let Some(ref payment) = self.one_time_payment {
             if !payment.is_empty() {
-                let payment_val: f64 = payment.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid one-time payment '{}'", payment))
-                })?;
+                let payment_val: f64 = payment
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
                 if payment_val < 0.0 {
-                    return Err(AppError::Validation(
-                        "One-time payment cannot be negative".into(),
-                    ));
+                    return Err(AppError::Validation("validation.paymentNonNegative".into()));
                 }
             }
         }
@@ -174,25 +168,19 @@ impl InsertInsurancePolicy {
         // Currency validations
         if let Some(ref currency) = self.regular_payment_currency {
             if currency.len() != 3 {
-                return Err(AppError::Validation(
-                    "Regular payment currency must be 3 letters".into(),
-                ));
+                return Err(AppError::Validation("validation.currencyInvalid".into()));
             }
         }
         if let Some(ref currency) = self.one_time_payment_currency {
             if currency.len() != 3 {
-                return Err(AppError::Validation(
-                    "One-time payment currency must be 3 letters".into(),
-                ));
+                return Err(AppError::Validation("validation.currencyInvalid".into()));
             }
         }
 
         // Date validation
         if let Some(end) = self.end_date {
             if end <= self.start_date {
-                return Err(AppError::Validation(
-                    "End date must be after start date".into(),
-                ));
+                return Err(AppError::Validation("validation.endDateAfterStart".into()));
             }
         }
 
@@ -205,12 +193,12 @@ impl InsertInsuranceDocument {
     pub fn validate(&self) -> Result<()> {
         // Name validation
         if self.name.is_empty() {
-            return Err(AppError::Validation("Document name cannot be empty".into()));
+            return Err(AppError::Validation(
+                "validation.documentNameRequired".into(),
+            ));
         }
         if self.name.len() > 200 {
-            return Err(AppError::Validation(
-                "Document name too long (max 200 characters)".into(),
-            ));
+            return Err(AppError::Validation("validation.nameTooLong".into()));
         }
 
         Ok(())

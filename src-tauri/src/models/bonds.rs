@@ -8,7 +8,7 @@ use specta::Type;
 pub struct Bond {
     pub id: String,
     pub name: String,
-    pub isin: String,
+    pub isin: Option<String>,
     #[serde(rename = "couponValue")]
     pub coupon_value: String,
     pub quantity: String,
@@ -27,7 +27,7 @@ pub struct Bond {
 #[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertBond {
     pub name: String,
-    pub isin: String,
+    pub isin: Option<String>,
     #[serde(rename = "couponValue")]
     pub coupon_value: String,
     pub quantity: Option<String>,
@@ -46,33 +46,32 @@ impl InsertBond {
     pub fn validate(&self) -> Result<()> {
         // Name validation
         if self.name.is_empty() {
-            return Err(AppError::Validation("Bond name cannot be empty".into()));
+            return Err(AppError::Validation("validation.bondNameRequired".into()));
         }
         if self.name.len() > 100 {
-            return Err(AppError::Validation(
-                "Bond name too long (max 100 characters)".into(),
-            ));
+            return Err(AppError::Validation("validation.bondNameRequired".into()));
         }
 
         // ISIN validation (12 characters: 2 letter country code + 9 alphanumeric + 1 check digit)
-        if self.isin.is_empty() {
-            return Err(AppError::Validation("ISIN cannot be empty".into()));
-        }
-        if self.isin.len() != 12 {
-            return Err(AppError::Validation("ISIN must be 12 characters".into()));
+        // Only validate if ISIN is provided
+        if let Some(ref isin) = self.isin {
+            if !isin.is_empty() && isin.len() != 12 {
+                return Err(AppError::Validation("validation.isinLength".into()));
+            }
         }
 
         // Coupon value validation
         if self.coupon_value.is_empty() {
-            return Err(AppError::Validation("Coupon value cannot be empty".into()));
-        }
-        let coupon: f64 = self.coupon_value.parse().map_err(|_| {
-            AppError::Validation(format!("Invalid coupon value '{}'", self.coupon_value))
-        })?;
-        if coupon < 0.0 {
             return Err(AppError::Validation(
-                "Coupon value cannot be negative".into(),
+                "validation.couponValueRequired".into(),
             ));
+        }
+        let coupon: f64 = self
+            .coupon_value
+            .parse()
+            .map_err(|_| AppError::Validation("validation.invalidAmount".into()))?;
+        if coupon < 0.0 {
+            return Err(AppError::Validation("validation.amountRequired".into()));
         }
 
         // Quantity validation (if provided)
@@ -80,9 +79,9 @@ impl InsertBond {
             if !qty.is_empty() {
                 let qty_val: f64 = qty
                     .parse()
-                    .map_err(|_| AppError::Validation(format!("Invalid quantity '{}'", qty)))?;
+                    .map_err(|_| AppError::Validation("validation.invalidQuantity".into()))?;
                 if qty_val <= 0.0 {
-                    return Err(AppError::Validation("Quantity must be positive".into()));
+                    return Err(AppError::Validation("validation.quantityPositive".into()));
                 }
             }
         }
@@ -90,21 +89,19 @@ impl InsertBond {
         // Currency validation (if provided)
         if let Some(ref currency) = self.currency {
             if currency.len() != 3 {
-                return Err(AppError::Validation(
-                    "Currency must be 3 letters (e.g., USD, EUR)".into(),
-                ));
+                return Err(AppError::Validation("validation.currencyInvalid".into()));
             }
         }
 
         // Interest rate validation (if provided)
         if let Some(ref rate) = self.interest_rate {
             if !rate.is_empty() {
-                let rate_val: f64 = rate.parse().map_err(|_| {
-                    AppError::Validation(format!("Invalid interest rate '{}'", rate))
-                })?;
+                let rate_val: f64 = rate
+                    .parse()
+                    .map_err(|_| AppError::Validation("validation.interestRatePositive".into()))?;
                 if !(0.0..=100.0).contains(&rate_val) {
                     return Err(AppError::Validation(
-                        "Interest rate must be between 0 and 100".into(),
+                        "validation.interestRatePositive".into(),
                     ));
                 }
             }

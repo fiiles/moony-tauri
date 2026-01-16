@@ -38,15 +38,16 @@ import { CURRENCIES } from "@shared/currencies";
 
 const formSchema = z.object({
     type: z.enum(["credit", "debit"]),
-    amount: z.coerce.number().positive("Amount must be positive"),
-    currency: z.string().min(1, "Currency is required"),
-    date: z.string().min(1, "Date is required"),
+    amount: z.coerce.number().positive("validation.amountRequired"),
+    currency: z.string().min(1, "validation.currencyRequired"),
+    date: z.string().min(1, "validation.dateRequired"),
     description: z.string().optional(),
     counterpartyName: z.string().optional(),
     counterpartyIban: z.string().optional(),
     variableSymbol: z.string().optional(),
     categoryId: z.string().nullable().optional(),
 });
+
 
 interface AddTransactionModalProps {
     accountId: string;

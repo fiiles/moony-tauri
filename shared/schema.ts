@@ -17,6 +17,7 @@ export interface UserProfile {
     currency: string;
     language?: string;
     excludePersonalRealEstate: boolean;
+    coingeckoModalDismissed?: boolean;
     createdAt: number;
 }
 
@@ -104,7 +105,7 @@ export interface CryptoTransaction {
 export interface Bond {
     id: string;
     name: string;
-    isin: string;
+    isin: string | null;
     couponValue: string;
     quantity: string;
     currency: string;
@@ -295,28 +296,29 @@ export interface PortfolioMetricsHistory {
 
 // Zod Schemas for form validation
 export const setupSchema = z.object({
-    name: z.string().min(1, "Name is required"),
-    surname: z.string().min(1, "Surname is required"),
-    email: z.string().email("Invalid email").optional().or(z.literal("")),
-    password: z.string().min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().min(8, "Confirm password is required"),
+    name: z.string().min(1, "validation.nameRequired"),
+    surname: z.string().min(1, "validation.surnameRequired"),
+    email: z.string().email("validation.invalidEmail").optional().or(z.literal("")),
+    password: z.string().min(8, "validation.passwordMinLength"),
+    confirmPassword: z.string().min(8, "validation.passwordRequired"),
 }).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
+    message: "validation.passwordMismatch",
     path: ["confirmPassword"],
 });
 
 export const unlockSchema = z.object({
-    password: z.string().min(1, "Password is required"),
+    password: z.string().min(1, "validation.passwordRequired"),
 });
 
 export const recoverSchema = z.object({
-    recoveryKey: z.string().min(1, "Recovery key is required"),
-    newPassword: z.string().min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string().min(8, "Confirm password is required"),
+    recoveryKey: z.string().min(1, "validation.recoveryKeyRequired"),
+    newPassword: z.string().min(8, "validation.passwordMinLength"),
+    confirmPassword: z.string().min(8, "validation.passwordRequired"),
 }).refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords do not match",
+    message: "validation.passwordMismatch",
     path: ["confirmPassword"],
 });
+
 
 export const insertSavingsAccountSchema = z.object({
     name: z.string().min(1),
@@ -328,7 +330,7 @@ export const insertSavingsAccountSchema = z.object({
 
 export const insertBondSchema = z.object({
     name: z.string().min(1),
-    isin: z.string().min(1),
+    isin: z.string().nullish(),
     couponValue: z.string(),
     quantity: z.string().optional(),
     interestRate: z.string().optional(),
@@ -337,8 +339,8 @@ export const insertBondSchema = z.object({
 export type InsertBond = z.infer<typeof insertBondSchema>;
 
 export const insertLoanSchema = z.object({
-    name: z.string().min(1),
-    principal: z.string(),
+    name: z.string().min(1, "validation.loanNameRequired"),
+    principal: z.string().min(1, "validation.principalPositive"),
     currency: z.string().optional(),
     interestRate: z.string().optional(),
     interestRateValidityDate: z.date().or(z.number()).optional(),
