@@ -21,6 +21,7 @@
         "assetAllocation": "Alokace aktiv",
         "assetsVsLiabilities": "Aktiva vs závazky",
         "assetsToLiabilitiesRatio": "Poměr aktiv k závazkům",
+        "assetClassTrend": "Čisté jmění dle tříd aktiv",
         "noHistoricalData": "Žádná historická data k dispozici"
     },
     "tooltips": {

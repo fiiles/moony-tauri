@@ -62,6 +62,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("031_make_bond_isin_optional", MIGRATION_031),
         ("032_bank_account_zones_fix", MIGRATION_032),
         ("033_add_coingecko_modal_dismissed", MIGRATION_033),
+        ("034_add_exchange_rates_table", MIGRATION_034),
+        ("035_add_stale_data_columns", MIGRATION_035),
     ];
 
     for (name, sql) in migrations {
@@ -1134,4 +1136,27 @@ WHERE savings_account_id IN (SELECT id FROM bank_accounts);
 /// Tracks if user has dismissed the CoinGecko API key recommendation modal
 const MIGRATION_033: &str = r#"
 ALTER TABLE user_profile ADD COLUMN coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0;
+"#;
+
+/// Migration 034: Add exchange_rates table to persist rates for offline use
+/// Stores the last downloaded exchange rates so they're available when offline
+const MIGRATION_034: &str = r#"
+CREATE TABLE IF NOT EXISTS exchange_rates (
+    currency TEXT PRIMARY KEY,
+    rate REAL NOT NULL,
+    fetched_at INTEGER NOT NULL
+);
+"#;
+
+/// Migration 035: Add is_stale columns to track data created from fallback prices
+/// Stale entries can be retried on startup to get fresh prices
+const MIGRATION_035: &str = r#"
+-- Add is_stale to portfolio metrics history
+ALTER TABLE portfolio_metrics_history ADD COLUMN is_stale INTEGER NOT NULL DEFAULT 0;
+
+-- Add is_stale to stock value history
+ALTER TABLE stock_value_history ADD COLUMN is_stale INTEGER NOT NULL DEFAULT 0;
+
+-- Add is_stale to crypto value history
+ALTER TABLE crypto_value_history ADD COLUMN is_stale INTEGER NOT NULL DEFAULT 0;
 "#;

@@ -9,20 +9,20 @@ interface CashflowSankeyChartProps {
     report: CashflowReport;
 }
 
-// Color palette - matching Dashboard allocation colors
+// Color palette using theme tokens
 const COLORS = {
-    income: "#10B981",      // Emerald/Green - matches savings
-    totalIncome: "#3B82F6", // Blue - matches realEstate
-    totalExpenses: "#8B5CF6", // Violet - matches investments
+    income: "hsl(var(--chart-6))",      // Green - matches savings
+    totalIncome: "hsl(var(--chart-8))", // Blue - matches realEstate
+    totalExpenses: "hsl(var(--chart-1))", // Violet - matches investments
     expenses: [
-        "#F59E0B", // Amber/Orange - matches bonds
-        "#EC4899", // Pink - matches crypto
-        "#6366F1", // Indigo - matches otherAssets
-        "#EF4444", // Red-500
-        "#8B5CF6", // Violet
-        "#14B8A6", // Teal
-        "#F97316", // Orange-500
-        "#A855F7", // Purple
+        "hsl(var(--chart-7))", // Amber/Orange - matches bonds
+        "hsl(var(--chart-4))", // Pink - matches crypto
+        "hsl(var(--chart-5))", // Red-ish - matches otherAssets
+        "hsl(var(--destructive))", // Red
+        "hsl(var(--chart-1))", // Violet
+        "hsl(var(--chart-3))", // Teal
+        "hsl(var(--chart-2))", // Orange-ish
+        "hsl(var(--primary))", // Purple
     ]
 };
 

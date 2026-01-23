@@ -55,6 +55,11 @@ impl Database {
         // Run migrations
         migrations::run_migrations(&conn)?;
 
+        // Load exchange rates from database for offline use
+        if let Err(e) = crate::services::currency::load_rates_from_db(&conn) {
+            println!("[DB] Warning: Failed to load exchange rates: {}", e);
+        }
+
         // Store connection and path
         *self
             .conn
@@ -86,6 +91,11 @@ impl Database {
         // Run migrations
         migrations::run_migrations(&conn)?;
 
+        // Load exchange rates from database for offline use
+        if let Err(e) = crate::services::currency::load_rates_from_db(&conn) {
+            println!("[DB] Warning: Failed to load exchange rates: {}", e);
+        }
+
         // Store connection and path
         *self
             .conn
@@ -114,6 +124,8 @@ impl Database {
 
         // Run migrations to create schema
         migrations::run_migrations(&conn)?;
+
+        // Note: No exchange rates to load on fresh database
 
         // Store connection and path
         *self
@@ -146,6 +158,8 @@ impl Database {
 
         // Run migrations to create schema
         migrations::run_migrations(&conn)?;
+
+        // Note: No exchange rates to load on fresh database
 
         // Store connection and path
         *self

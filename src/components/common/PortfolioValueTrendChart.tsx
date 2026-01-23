@@ -105,11 +105,11 @@ const TransactionDot = (props: {
   // Determine dot color based on transaction type
   let fill: string;
   if (payload.hasBuy && payload.hasSell) {
-    fill = '#f97316'; // Orange for both
+    fill = 'hsl(var(--chart-7))'; // Amber for both
   } else if (payload.hasBuy) {
-    fill = '#22c55e'; // Green for buy
+    fill = 'hsl(var(--positive))'; // Green for buy
   } else {
-    fill = '#ef4444'; // Red for sell
+    fill = 'hsl(var(--negative))'; // Red for sell
   }
   
   return (

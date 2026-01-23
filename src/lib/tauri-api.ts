@@ -476,6 +476,17 @@ export interface BackfillResult {
   message: string;
 }
 
+export interface PriceStatus {
+  stocksStale: boolean;
+  cryptoStale: boolean;
+  exchangeRatesStale: boolean;
+  oldestStockPriceAgeHours: number | null;
+  oldestCryptoPriceAgeHours: number | null;
+  exchangeRatesAgeHours: number | null;
+  stocksMissingPrice: number;
+  cryptoMissingPrice: number;
+}
+
 export const portfolioApi = {
   getMetrics: (excludePersonalRealEstate: boolean = false) =>
     tauriInvoke<PortfolioMetrics>('get_portfolio_metrics', { excludePersonalRealEstate }),
@@ -489,7 +500,12 @@ export const portfolioApi = {
 
   getExchangeRates: () => tauriInvoke<Record<string, number>>('get_exchange_rates'),
 
+  getPriceStatus: () => tauriInvoke<PriceStatus>('get_price_status'),
+
   startBackfill: () => tauriInvoke<BackfillResult>('start_snapshot_backfill'),
+
+  recalculateAllHistory: () =>
+    tauriInvoke<BackfillResult>('recalculate_all_portfolio_history'),
 };
 
 // ============================================================================

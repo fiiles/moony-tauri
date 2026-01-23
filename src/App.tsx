@@ -43,6 +43,7 @@ import { UpdateNotification } from "@/components/update-notification";
 import { AboutModal } from "@/components/common/AboutModal";
 import { UpdateStatusBadge } from "@/components/common/UpdateStatusBadge";
 import { SyncStatusBadge } from "@/components/common/SyncStatusBadge";
+import { StalePricesIndicator } from "@/components/common/StalePricesIndicator";
 import { SyncProvider } from "@/hooks/SyncProvider";
 
 function Router() {
@@ -99,6 +100,7 @@ function AppLayout() {
           <div className="flex items-center gap-2">
             <SyncStatusBadge />
             <UpdateStatusBadge />
+            <StalePricesIndicator />
             <AboutModal />
           </div>
         </header>

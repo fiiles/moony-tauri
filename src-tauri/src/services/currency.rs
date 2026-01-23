@@ -8,24 +8,20 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 lazy_static! {
-    /// Exchange rates relative to CZK (how many units of currency = 1 CZK)
-    /// These are inverted rates: to convert X USD to CZK, do X * RATES["USD"]
+    /// Exchange rates relative to CZK (how many CZK = 1 unit of currency)
+    /// These rates convert X CURRENCY to CZK via: amount * rate
+    /// Starts empty - will be populated from database on startup, then updated from ECB
     static ref EXCHANGE_RATES: RwLock<HashMap<String, f64>> = {
         let mut m = HashMap::new();
-        // Default rates (will be updated from ECB)
+        // Only CZK rate is hardcoded (1:1 conversion)
         m.insert("CZK".to_string(), 1.0);
-        m.insert("EUR".to_string(), 25.0);    // 1 EUR = 25 CZK
-        m.insert("USD".to_string(), 23.0);    // 1 USD = 23 CZK
-        m.insert("GBP".to_string(), 29.0);    // 1 GBP = 29 CZK
-        m.insert("CHF".to_string(), 26.0);    // 1 CHF = 26 CZK
-        m.insert("JPY".to_string(), 0.15);    // 1 JPY = 0.15 CZK
-        m.insert("CNY".to_string(), 3.2);     // 1 CNY = 3.2 CZK
-        m.insert("HKD".to_string(), 2.9);     // 1 HKD = 2.9 CZK
         RwLock::new(m)
     };
+
+    /// Timestamp when exchange rates were last fetched (Unix timestamp in seconds)
+    static ref EXCHANGE_RATES_FETCHED_AT: RwLock<Option<i64>> = RwLock::new(None);
 }
 
-/// Convert an amount from a currency to CZK
 /// Convert an amount from a currency to CZK
 #[allow(dead_code)]
 pub fn convert_to_czk(amount: f64, currency: &str) -> f64 {
@@ -72,7 +68,7 @@ pub fn convert_between(amount: f64, from_currency: &str, to_currency: &str) -> f
     convert_from_czk(amount_in_czk, &to)
 }
 
-/// Update exchange rates (called after fetching from ECB)
+/// Update exchange rates in memory (called after fetching from ECB or loading from DB)
 pub fn update_exchange_rates(new_rates: HashMap<String, f64>) {
     let mut rates = EXCHANGE_RATES
         .write()
@@ -80,6 +76,22 @@ pub fn update_exchange_rates(new_rates: HashMap<String, f64>) {
     for (currency, rate) in new_rates {
         rates.insert(currency, rate);
     }
+}
+
+/// Update the fetched_at timestamp
+pub fn set_exchange_rates_fetched_at(timestamp: i64) {
+    let mut fetched_at = EXCHANGE_RATES_FETCHED_AT
+        .write()
+        .expect("Exchange rates fetched_at lock poisoned");
+    *fetched_at = Some(timestamp);
+}
+
+/// Get the timestamp when exchange rates were last fetched
+pub fn get_exchange_rates_fetched_at() -> Option<i64> {
+    let fetched_at = EXCHANGE_RATES_FETCHED_AT
+        .read()
+        .expect("Exchange rates fetched_at lock poisoned");
+    *fetched_at
 }
 
 /// Get current exchange rate for a currency (to CZK)
@@ -93,6 +105,96 @@ pub fn get_exchange_rate(currency: &str) -> f64 {
 pub fn get_all_rates() -> HashMap<String, f64> {
     let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
     rates.clone()
+}
+
+/// Load exchange rates from database on startup
+/// This ensures we have rates available even when offline
+pub fn load_rates_from_db(conn: &rusqlite::Connection) -> crate::error::Result<()> {
+    // Check if exchange_rates table exists
+    let table_exists: bool = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='exchange_rates'",
+            [],
+            |row| row.get::<_, i32>(0),
+        )
+        .map(|count| count > 0)
+        .unwrap_or(false);
+
+    if !table_exists {
+        println!("[CURRENCY] exchange_rates table does not exist yet, skipping load");
+        return Ok(());
+    }
+
+    let mut stmt = conn.prepare("SELECT currency, rate, fetched_at FROM exchange_rates")?;
+    let mut rates = HashMap::new();
+    let mut oldest_fetched_at: Option<i64> = None;
+
+    let rows = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, f64>(1)?,
+            row.get::<_, i64>(2)?,
+        ))
+    })?;
+
+    for row in rows.flatten() {
+        let (currency, rate, fetched_at) = row;
+        rates.insert(currency, rate);
+
+        // Track the most recent fetch time
+        match oldest_fetched_at {
+            None => oldest_fetched_at = Some(fetched_at),
+            Some(existing) => {
+                if fetched_at > existing {
+                    oldest_fetched_at = Some(fetched_at);
+                }
+            }
+        }
+    }
+
+    if !rates.is_empty() {
+        println!(
+            "[CURRENCY] Loaded {} exchange rates from database",
+            rates.len()
+        );
+        update_exchange_rates(rates);
+
+        if let Some(ts) = oldest_fetched_at {
+            set_exchange_rates_fetched_at(ts);
+        }
+    } else {
+        println!("[CURRENCY] No exchange rates in database, will fetch from ECB");
+    }
+
+    Ok(())
+}
+
+/// Save exchange rates to database for offline use
+pub fn save_rates_to_db(
+    conn: &rusqlite::Connection,
+    rates: &HashMap<String, f64>,
+) -> crate::error::Result<()> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs() as i64;
+
+    for (currency, rate) in rates {
+        conn.execute(
+            "INSERT INTO exchange_rates (currency, rate, fetched_at)
+             VALUES (?1, ?2, ?3)
+             ON CONFLICT(currency) DO UPDATE SET rate = ?2, fetched_at = ?3",
+            rusqlite::params![currency, rate, now],
+        )?;
+    }
+
+    println!(
+        "[CURRENCY] Saved {} exchange rates to database",
+        rates.len()
+    );
+    set_exchange_rates_fetched_at(now);
+
+    Ok(())
 }
 
 /// Fetch exchange rates from ECB API
@@ -133,6 +235,13 @@ pub async fn fetch_ecb_rates() -> crate::error::Result<HashMap<String, f64>> {
 
     // Update global rates
     update_exchange_rates(rates.clone());
+
+    // Update fetched_at timestamp
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs() as i64;
+    set_exchange_rates_fetched_at(now);
 
     Ok(rates)
 }
@@ -217,28 +326,17 @@ mod tests {
 
     #[test]
     fn test_convert_to_czk() {
-        // Using default rates
+        // CZK to CZK should be identity
         let czk = convert_to_czk(100.0, "CZK");
         assert_eq!(czk, 100.0);
-
-        let czk = convert_to_czk(100.0, "EUR");
-        assert_eq!(czk, 2500.0); // 100 EUR * 25 = 2500 CZK
-    }
-
-    #[test]
-    fn test_convert_from_czk() {
-        let eur = convert_from_czk(2500.0, "EUR");
-        assert_eq!(eur, 100.0); // 2500 CZK / 25 = 100 EUR
     }
 
     #[test]
     fn test_currency_case_sensitivity() {
-        // "USD" is in the map with 23.0
-        let val_upper = convert_to_czk(100.0, "USD");
-        // "usd" is NOT in the map conceptually if it's case sensitive
-        let val_lower = convert_to_czk(100.0, "usd");
+        // Case sensitivity test - both should work the same
+        let val_upper = convert_to_czk(100.0, "CZK");
+        let val_lower = convert_to_czk(100.0, "czk");
 
-        // If they are equal, then it handles casing. If not, we found the bug.
         assert_eq!(
             val_upper, val_lower,
             "Currency conversion should be case insensitive"

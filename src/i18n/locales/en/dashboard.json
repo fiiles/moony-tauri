@@ -21,6 +21,7 @@
         "assetAllocation": "Asset Allocation",
         "assetsVsLiabilities": "Assets vs Liabilities",
         "assetsToLiabilitiesRatio": "Assets to Liabilities ratio",
+        "assetClassTrend": "Net Worth by Asset Class",
         "noHistoricalData": "No historical data available"
     },
     "tooltips": {

@@ -19,7 +19,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, EyeOff, ExternalLink, Copy, Check, ShieldCheck, AlertTriangle, Activity } from "lucide-react";
+import { Eye, EyeOff, ExternalLink, Copy, Check, ShieldCheck, AlertTriangle, Activity, User, Lock, Key, Coins, Languages, Menu, LayoutDashboard, Trash2 } from "lucide-react";
 import { getConsent, setConsent } from "@/lib/analytics";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
@@ -265,7 +265,10 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('apiKeys.title')}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Key className="h-5 w-5" />
+          {t('apiKeys.title')}
+        </CardTitle>
         <CardDescription>
           {t('apiKeys.description')}
         </CardDescription>
@@ -400,7 +403,10 @@ export default function SettingsPage() {
       {/* Profile Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('profile.title')}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            {t('profile.title')}
+          </CardTitle>
           <CardDescription>{t('profile.description')}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -458,7 +464,10 @@ export default function SettingsPage() {
       {/* Change Password */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('password.title')}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            {t('password.title')}
+          </CardTitle>
           <CardDescription>{t('password.description')}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -473,7 +482,10 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('currency.title')}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Coins className="h-5 w-5" />
+            {t('currency.title')}
+          </CardTitle>
           <CardDescription>{t('currency.description')}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -507,7 +519,10 @@ export default function SettingsPage() {
       {/* Language Settings */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('settings:language.title')}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Languages className="h-5 w-5" />
+            {t('settings:language.title')}
+          </CardTitle>
           <CardDescription>{t('settings:language.description')}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -538,7 +553,10 @@ export default function SettingsPage() {
       {/* Menu Visibility */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('menuVisibility.title')}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Menu className="h-5 w-5" />
+            {t('menuVisibility.title')}
+          </CardTitle>
           <CardDescription>{t('menuVisibility.description')}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -559,7 +577,10 @@ export default function SettingsPage() {
       {/* Dashboard Preferences */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('dashboardPreferences.title')}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <LayoutDashboard className="h-5 w-5" />
+            {t('dashboardPreferences.title')}
+          </CardTitle>
           <CardDescription>{t('dashboardPreferences.description')}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -607,7 +628,10 @@ export default function SettingsPage() {
       {/* Danger Zone */}
       <Card className="border-destructive/50">
         <CardHeader>
-          <CardTitle className="text-destructive">{t('dangerZone.title')}</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" />
+            {t('dangerZone.title')}
+          </CardTitle>
           <CardDescription>{t('dangerZone.description')}</CardDescription>
         </CardHeader>
         <CardContent>

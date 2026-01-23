@@ -3,9 +3,11 @@ import TimePeriodSelector, { type Period } from "@/components/cashflow/TimePerio
 import NetWorthTrendChart from "@/components/dashboard/NetWorthTrendChart";
 import AssetsLiabilitiesChart from "@/components/dashboard/AssetsLiabilitiesChart";
 import AssetAllocationDonut from "@/components/dashboard/AssetAllocationDonut";
+import AssetClassTrendChart from "@/components/dashboard/AssetClassTrendChart";
+import AssetClassCard from "@/components/dashboard/AssetClassCard";
 import { useAuth } from "@/hooks/use-auth";
 import { subDays, startOfYear } from "date-fns";
-import { TrendingUp, Wallet, CreditCard } from "lucide-react";
+import { TrendingUp, Wallet, CreditCard, Landmark, Bitcoin, FileText, Home, Gem } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { portfolioApi } from "@/lib/tauri-api";
 import type { PortfolioMetricsHistory } from "@shared/schema";
@@ -121,14 +123,14 @@ export default function Dashboard() {
     return change;
   }, [oldestSnapshot, totalLiabilities]);
 
-  // Distinct colors for asset allocation chart (high contrast palette)
+  // Using shadcn chart tokens for consistent theming
   const allocationColors = {
-    investments: '#8B5CF6', // Violet
-    savings: '#10B981',     // Emerald/Green
-    bonds: '#F59E0B',       // Amber/Orange
-    realEstate: '#3B82F6',  // Blue
-    crypto: '#EC4899',      // Pink
-    otherAssets: '#6366F1', // Indigo
+    investments: 'hsl(var(--chart-1))', // Primary violet
+    savings: 'hsl(var(--chart-6))',     // Green
+    bonds: 'hsl(var(--chart-7))',       // Amber
+    realEstate: 'hsl(var(--chart-8))',  // Blue
+    crypto: 'hsl(var(--chart-4))',      // Pink
+    otherAssets: 'hsl(var(--chart-5))', // Red-ish
   };
 
   const allocationData = [
@@ -253,6 +255,94 @@ export default function Dashboard() {
         </div>
         <AssetAllocationDonut data={allocationData} />
       </div>
+
+      {/* Asset Class Cards - 3x2 Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <AssetClassCard
+          title={t('cards.savings')}
+          value={totalSavings}
+          percentage={totalAssets ? Math.round((totalSavings / totalAssets) * 100) : 0}
+          icon={<Landmark className="h-4 w-4" />}
+        />
+        <AssetClassCard
+          title={t('cards.investments')}
+          value={totalInvestments}
+          percentage={totalAssets ? Math.round((totalInvestments / totalAssets) * 100) : 0}
+          icon={<TrendingUp className="h-4 w-4" />}
+        />
+        <AssetClassCard
+          title={t('cards.crypto')}
+          value={totalCrypto}
+          percentage={totalAssets ? Math.round((totalCrypto / totalAssets) * 100) : 0}
+          icon={<Bitcoin className="h-4 w-4" />}
+        />
+        <AssetClassCard
+          title={t('cards.bonds')}
+          value={totalBonds}
+          percentage={totalAssets ? Math.round((totalBonds / totalAssets) * 100) : 0}
+          icon={<FileText className="h-4 w-4" />}
+        />
+        <AssetClassCard
+          title={t('cards.realEstate')}
+          value={totalRealEstate}
+          percentage={totalAssets ? Math.round((totalRealEstate / totalAssets) * 100) : 0}
+          icon={<Home className="h-4 w-4" />}
+        />
+        <AssetClassCard
+          title={t('cards.otherAssets')}
+          value={totalOtherAssets}
+          percentage={totalAssets ? Math.round((totalOtherAssets / totalAssets) * 100) : 0}
+          icon={<Gem className="h-4 w-4" />}
+        />
+      </div>
+
+      {/* Asset Class Trend Chart - Full Width */}
+      <AssetClassTrendChart
+        data={(() => {
+          // Reverse history to get chronological order (Oldest -> Newest)
+          // Include year in date format for multi-year periods
+          const includeYear = selectedPeriod === '1Y' || selectedPeriod === '5Y' || selectedPeriod === 'All';
+          const dateOptions = includeYear
+            ? { month: 'short' as const, day: 'numeric' as const, year: '2-digit' as const }
+            : { month: 'short' as const, day: 'numeric' as const };
+
+          const chartData = [...(portfolioHistory || [])].reverse().map(h => ({
+            date: formatDate(new Date(h.recordedAt * 1000), dateOptions),
+            investments: Number(h.totalInvestments),
+            savings: Number(h.totalSavings),
+            bonds: Number(h.totalBonds),
+            realEstate: (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
+              Number(h.totalRealEstateInvestment),
+            crypto: Number(h.totalCrypto || 0),
+            otherAssets: Number(h.totalOtherAssets || 0),
+          }));
+
+          // Append or update with current live values
+          const todayStr = formatDate(new Date(), dateOptions);
+          const lastPoint = chartData[chartData.length - 1];
+
+          if (lastPoint && lastPoint.date === todayStr) {
+            lastPoint.investments = totalInvestments;
+            lastPoint.savings = totalSavings;
+            lastPoint.bonds = totalBonds;
+            lastPoint.realEstate = totalRealEstate;
+            lastPoint.crypto = totalCrypto;
+            lastPoint.otherAssets = totalOtherAssets;
+          } else {
+            chartData.push({
+              date: todayStr,
+              investments: totalInvestments,
+              savings: totalSavings,
+              bonds: totalBonds,
+              realEstate: totalRealEstate,
+              crypto: totalCrypto,
+              otherAssets: totalOtherAssets,
+            });
+          }
+
+          return chartData;
+        })()}
+      />
     </div>
   );
 }

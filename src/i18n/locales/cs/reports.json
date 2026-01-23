@@ -152,6 +152,10 @@
         "filterByGroup": "Filtrovat podle skupiny",
         "moveToGroup": "Přesunout do skupiny",
         "selectGroup": "Vyberte skupinu",
-        "move": "Přesunout"
+        "move": "Přesunout",
+        "selectTags": "Vyberte štítky",
+        "searchTags": "Hledat štítky...",
+        "noTagsFound": "Štítky nenalezeny",
+        "assignTags": "Přiřadit štítky"
     }
 }

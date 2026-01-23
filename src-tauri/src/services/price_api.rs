@@ -637,9 +637,17 @@ pub async fn get_historical_stock_prices_yahoo(
         end_timestamp
     );
 
-    // Create Yahoo connector
-    let provider = yahoo::YahooConnector::new()
-        .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {}", e)))?;
+    // Create Yahoo connector - return empty if offline/failed
+    let provider = match yahoo::YahooConnector::new() {
+        Ok(p) => p,
+        Err(e) => {
+            println!(
+                "[YAHOO HISTORICAL] Connector failed (offline?): {} - returning empty",
+                e
+            );
+            return Ok(HashMap::new());
+        }
+    };
 
     // Convert timestamps to time::OffsetDateTime
     let start = time::OffsetDateTime::from_unix_timestamp(start_timestamp)
