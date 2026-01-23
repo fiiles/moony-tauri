@@ -501,8 +501,14 @@ pub async fn record_portfolio_snapshot(db: State<'_, Database>) -> Result<()> {
 
 /// Update exchange rates from ECB and return them
 #[tauri::command]
-pub async fn refresh_exchange_rates() -> Result<std::collections::HashMap<String, f64>> {
+pub async fn refresh_exchange_rates(
+    db: State<'_, Database>,
+) -> Result<std::collections::HashMap<String, f64>> {
     let rates = crate::services::currency::fetch_ecb_rates().await?;
+
+    // Persist to database for offline use
+    db.with_conn(|conn| crate::services::currency::save_rates_to_db(conn, &rates))?;
+
     Ok(rates)
 }
 
@@ -510,6 +516,136 @@ pub async fn refresh_exchange_rates() -> Result<std::collections::HashMap<String
 #[tauri::command]
 pub fn get_exchange_rates() -> std::collections::HashMap<String, f64> {
     crate::services::currency::get_all_rates()
+}
+
+// ============================================================================
+// Price Status (for stale indicator)
+// ============================================================================
+
+/// Status of prices and exchange rates freshness
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PriceStatus {
+    /// Are any stock prices considered stale (older than 24 hours)?
+    pub stocks_stale: bool,
+    /// Are any crypto prices considered stale (older than 12 hours)?
+    pub crypto_stale: bool,
+    /// Are exchange rates considered stale (older than 48 hours)?
+    pub exchange_rates_stale: bool,
+    /// Age of oldest stock price in hours (None if no stocks)
+    pub oldest_stock_price_age_hours: Option<i64>,
+    /// Age of oldest crypto price in hours (None if no crypto)
+    pub oldest_crypto_price_age_hours: Option<i64>,
+    /// Age of exchange rates in hours (None if never fetched)
+    pub exchange_rates_age_hours: Option<i64>,
+    /// Number of stocks without any price data
+    pub stocks_missing_price: i32,
+    /// Number of cryptos without any price data
+    pub crypto_missing_price: i32,
+}
+
+/// Staleness thresholds in hours
+const STOCKS_STALE_THRESHOLD_HOURS: i64 = 24;
+const CRYPTO_STALE_THRESHOLD_HOURS: i64 = 12;
+const EXCHANGE_RATES_STALE_THRESHOLD_HOURS: i64 = 48;
+
+/// Get the status of prices and exchange rates freshness
+#[tauri::command]
+pub fn get_price_status(db: State<'_, Database>) -> Result<PriceStatus> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs() as i64;
+
+    db.with_conn(|conn| {
+        // Check stock prices
+        let (oldest_stock_fetched_at, stocks_missing): (Option<i64>, i32) = {
+            // Get oldest fetched_at from stock_data for investments we actually hold
+            let oldest: Option<i64> = conn
+                .query_row(
+                    "SELECT MIN(sd.fetched_at) FROM stock_investments si
+                 LEFT JOIN stock_data sd ON si.ticker = sd.ticker
+                 WHERE sd.fetched_at IS NOT NULL",
+                    [],
+                    |row| row.get(0),
+                )
+                .ok()
+                .flatten();
+
+            // Count stocks without price data
+            let missing: i32 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM stock_investments si
+                 LEFT JOIN stock_data sd ON si.ticker = sd.ticker
+                 WHERE sd.ticker IS NULL",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+
+            (oldest, missing)
+        };
+
+        // Check crypto prices
+        let (oldest_crypto_fetched_at, crypto_missing): (Option<i64>, i32) = {
+            let oldest: Option<i64> = conn
+                .query_row(
+                    "SELECT MIN(cp.fetched_at) FROM crypto_investments ci
+                 LEFT JOIN crypto_prices cp ON ci.ticker = cp.symbol
+                 WHERE cp.fetched_at IS NOT NULL",
+                    [],
+                    |row| row.get(0),
+                )
+                .ok()
+                .flatten();
+
+            let missing: i32 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM crypto_investments ci
+                 LEFT JOIN crypto_prices cp ON ci.ticker = cp.symbol
+                 WHERE cp.symbol IS NULL",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+
+            (oldest, missing)
+        };
+
+        // Get exchange rates fetched_at from memory
+        let exchange_rates_fetched_at = crate::services::currency::get_exchange_rates_fetched_at();
+
+        // Calculate ages in hours
+        let oldest_stock_price_age_hours = oldest_stock_fetched_at.map(|t| (now - t) / 3600);
+        let oldest_crypto_price_age_hours = oldest_crypto_fetched_at.map(|t| (now - t) / 3600);
+        let exchange_rates_age_hours = exchange_rates_fetched_at.map(|t| (now - t) / 3600);
+
+        // Determine staleness
+        let stocks_stale = oldest_stock_price_age_hours
+            .map(|h| h > STOCKS_STALE_THRESHOLD_HOURS)
+            .unwrap_or(false)
+            || stocks_missing > 0;
+
+        let crypto_stale = oldest_crypto_price_age_hours
+            .map(|h| h > CRYPTO_STALE_THRESHOLD_HOURS)
+            .unwrap_or(false)
+            || crypto_missing > 0;
+
+        let exchange_rates_stale = exchange_rates_age_hours
+            .map(|h| h > EXCHANGE_RATES_STALE_THRESHOLD_HOURS)
+            .unwrap_or(true); // Stale if never fetched
+
+        Ok(PriceStatus {
+            stocks_stale,
+            crypto_stale,
+            exchange_rates_stale,
+            oldest_stock_price_age_hours,
+            oldest_crypto_price_age_hours,
+            exchange_rates_age_hours,
+            stocks_missing_price: stocks_missing,
+            crypto_missing_price: crypto_missing,
+        })
+    })
 }
 
 // ============================================================================
@@ -601,6 +737,7 @@ fn calculate_metrics_for_day(
     day_timestamp: i64,
     stock_prices: &HashMap<String, Vec<HistoricalPrice>>,
     crypto_prices: &HashMap<String, Vec<HistoricalPrice>>,
+    last_known_stock_prices: &mut HashMap<String, (f64, String)>,
     last_known_crypto_prices: &mut HashMap<String, (f64, String)>,
 ) -> Result<PortfolioMetrics> {
     use crate::services::currency::convert_to_czk;
@@ -677,7 +814,7 @@ fn calculate_metrics_for_day(
             .filter_map(|r| r.ok())
             .sum();
 
-        // Calculate investments using historical prices
+        // Calculate investments using historical prices with fallback
         let mut total_investments = 0.0;
         let mut inv_stmt = conn.prepare("SELECT ticker, quantity FROM stock_investments")?;
         let investments: Vec<(String, f64)> = inv_stmt
@@ -690,12 +827,26 @@ fn calculate_metrics_for_day(
             .collect();
 
         for (ticker, qty) in investments {
-            if let Some(prices) = stock_prices.get(&ticker) {
-                // Find the closest price to this day
+            let (price, currency) = if let Some(prices) = stock_prices.get(&ticker) {
                 if let Some(price) = find_closest_price(prices, day_timestamp) {
-                    let value_in_czk = convert_to_czk(price.price * qty, &price.currency);
-                    total_investments += value_in_czk;
+                    // Update last known
+                    last_known_stock_prices
+                        .insert(ticker.clone(), (price.price, price.currency.clone()));
+                    (price.price, price.currency.as_str())
+                } else if let Some((last_price, last_curr)) = last_known_stock_prices.get(&ticker) {
+                    (*last_price, last_curr.as_str())
+                } else {
+                    (0.0, "USD")
                 }
+            } else if let Some((last_price, last_curr)) = last_known_stock_prices.get(&ticker) {
+                (*last_price, last_curr.as_str())
+            } else {
+                (0.0, "USD")
+            };
+
+            if price > 0.0 {
+                let value_in_czk = convert_to_czk(price * qty, currency);
+                total_investments += value_in_czk;
             }
         }
 
@@ -921,11 +1072,10 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
 
     // Initialize last known prices for fallback
     // Try to get current prices as a baseline if no history available
-    // In a real scenario we might want to fetch from DB history, but this is a reasonable start
-    // for when the API completely fails on first run.
     let mut last_known_crypto_prices: HashMap<String, (f64, String)> = HashMap::new();
+    let mut last_known_stock_prices: HashMap<String, (f64, String)> = HashMap::new();
 
-    // Seed with current prices
+    // Seed crypto with current prices
     if !crypto_id_map.is_empty() {
         let current_prices = db.with_conn(|conn| {
             let mut stmt = conn.prepare("SELECT symbol, price, currency FROM crypto_prices")?;
@@ -944,6 +1094,33 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
         last_known_crypto_prices = current_prices;
     }
 
+    // Seed stocks with current prices
+    if !stock_tickers.is_empty() {
+        let current_stock_prices = db.with_conn(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT ticker, COALESCE(
+                    (SELECT price FROM stock_price_overrides WHERE ticker = sd.ticker),
+                    sd.original_price
+                ), COALESCE(
+                    (SELECT currency FROM stock_price_overrides WHERE ticker = sd.ticker),
+                    sd.currency
+                ) FROM stock_data sd",
+            )?;
+            let prices: HashMap<String, (f64, String)> = stmt
+                .query_map([], |row| {
+                    let ticker: String = row.get(0)?;
+                    let price: f64 = row.get::<_, String>(1)?.parse().unwrap_or(0.0);
+                    let currency: String = row.get(2)?;
+                    Ok((ticker, (price, currency)))
+                })?
+                .filter_map(|r| r.ok())
+                .collect();
+            Ok(prices)
+        })?;
+
+        last_known_stock_prices = current_stock_prices;
+    }
+
     for day_timestamp in missing_days.clone() {
         // Calculate metrics for this day using historical prices
         let metrics = calculate_metrics_for_day(
@@ -951,6 +1128,7 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
             day_timestamp,
             &stock_prices,
             &crypto_prices,
+            &mut last_known_stock_prices,
             &mut last_known_crypto_prices,
         )?;
 
@@ -1084,6 +1262,47 @@ pub async fn backfill_missing_snapshots(db: &Database) -> Result<BackfillResult>
 #[tauri::command]
 pub async fn start_snapshot_backfill(db: State<'_, Database>) -> Result<BackfillResult> {
     backfill_missing_snapshots(&db).await
+}
+
+/// Tauri command to recalculate all portfolio history from scratch
+/// This is useful when historical data has been corrupted or needs to be regenerated
+#[tauri::command]
+pub async fn recalculate_all_portfolio_history(db: State<'_, Database>) -> Result<BackfillResult> {
+    println!("[RECALC] Starting full portfolio recalculation from oldest snapshot...");
+
+    // Get the oldest snapshot date
+    let (min_date, _, _) = get_snapshot_date_info(&db)?;
+
+    let from_timestamp = match min_date {
+        Some(date) => date,
+        None => {
+            // No snapshots exist, nothing to recalculate
+            return Ok(BackfillResult {
+                days_processed: 0,
+                total_days: 0,
+                completed: true,
+                message: "No existing snapshots to recalculate".to_string(),
+            });
+        }
+    };
+
+    // Trigger full recalculation
+    recalculate_history_from_date(&db, from_timestamp).await?;
+
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+    let from_day = (from_timestamp / 86400) * 86400;
+    let days_recalculated = ((today_start - from_day) / 86400) as i32;
+
+    Ok(BackfillResult {
+        days_processed: days_recalculated,
+        total_days: days_recalculated,
+        completed: true,
+        message: format!(
+            "Recalculated {} days of portfolio history",
+            days_recalculated
+        ),
+    })
 }
 
 /// Tauri command to backfill a specific stock ticker's value history on demand
@@ -2174,8 +2393,9 @@ pub async fn recalculate_crypto_ticker_history(
     Ok(())
 }
 
-/// Update portfolio_metrics_history by summing values from per-ticker history tables
-pub fn update_portfolio_history_from_ticker_tables(
+/// Update only stock investments in portfolio_metrics_history from stock_value_history
+/// Ensures all stock tickers have their history populated before aggregating
+pub async fn update_portfolio_stocks_from_ticker_table(
     db: &Database,
     from_timestamp: i64,
 ) -> Result<()> {
@@ -2183,13 +2403,43 @@ pub fn update_portfolio_history_from_ticker_tables(
     let now = chrono::Utc::now().timestamp();
     let today_start = (now / 86400) * 86400;
 
+    // Get all stock tickers that have holdings
+    let stock_tickers = get_stock_tickers(db)?;
+
+    if stock_tickers.is_empty() {
+        return Ok(());
+    }
+
+    // For each ticker, check if it has history data for the date range
+    // If not, backfill it from Yahoo API
+    for ticker in &stock_tickers {
+        let has_data = db.with_conn(|conn| {
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM stock_value_history 
+                     WHERE ticker = ?1 AND recorded_at >= ?2 AND recorded_at <= ?3",
+                    rusqlite::params![ticker, from_day, today_start],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+            Ok(count > 0)
+        })?;
+
+        if !has_data {
+            println!(
+                "[BACKFILL] Ticker {} missing history data for date range, fetching...",
+                ticker
+            );
+            // Backfill this ticker's history
+            recalculate_stock_ticker_history(db, ticker, from_timestamp).await?;
+        }
+    }
+
+    // Now aggregate from the populated stock_value_history table
     db.with_conn(|conn| {
-        // Get all distinct dates in the range that have data
+        // Get all distinct dates that have stock data in the range
         let mut stmt = conn.prepare(
             "SELECT DISTINCT recorded_at FROM stock_value_history 
-             WHERE recorded_at >= ?1 AND recorded_at <= ?2
-             UNION
-             SELECT DISTINCT recorded_at FROM crypto_value_history 
              WHERE recorded_at >= ?1 AND recorded_at <= ?2",
         )?;
         let dates: Vec<i64> = stmt
@@ -2207,6 +2457,73 @@ pub fn update_portfolio_history_from_ticker_tables(
                 )
                 .unwrap_or(0.0);
 
+            // Update only total_investments column
+            conn.execute(
+                "UPDATE portfolio_metrics_history 
+                 SET total_investments = ?2 
+                 WHERE (recorded_at / 86400) * 86400 = ?1",
+                rusqlite::params![day_timestamp, total_investments.to_string()],
+            )?;
+        }
+        Ok(())
+    })
+}
+
+/// Update only crypto in portfolio_metrics_history from crypto_value_history
+/// Ensures all crypto tickers have their history populated before aggregating
+pub async fn update_portfolio_crypto_from_ticker_table(
+    db: &Database,
+    from_timestamp: i64,
+) -> Result<()> {
+    let from_day = (from_timestamp / 86400) * 86400;
+    let now = chrono::Utc::now().timestamp();
+    let today_start = (now / 86400) * 86400;
+
+    // Get all crypto tickers that have holdings
+    let crypto_id_map = get_crypto_id_map(db)?;
+
+    if crypto_id_map.is_empty() {
+        return Ok(());
+    }
+
+    // For each ticker, check if it has history data for the date range
+    // If not, backfill it from CoinGecko API
+    for (coingecko_id, ticker) in &crypto_id_map {
+        let has_data = db.with_conn(|conn| {
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM crypto_value_history 
+                     WHERE ticker = ?1 AND recorded_at >= ?2 AND recorded_at <= ?3",
+                    rusqlite::params![ticker, from_day, today_start],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+            Ok(count > 0)
+        })?;
+
+        if !has_data {
+            println!(
+                "[BACKFILL] Crypto {} missing history data for date range, fetching...",
+                ticker
+            );
+            // Backfill this ticker's history
+            recalculate_crypto_ticker_history(db, ticker, coingecko_id, from_timestamp).await?;
+        }
+    }
+
+    // Now aggregate from the populated crypto_value_history table
+    db.with_conn(|conn| {
+        // Get all distinct dates that have crypto data in the range
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT recorded_at FROM crypto_value_history 
+             WHERE recorded_at >= ?1 AND recorded_at <= ?2",
+        )?;
+        let dates: Vec<i64> = stmt
+            .query_map([from_day, today_start], |row| row.get(0))?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        for day_timestamp in dates {
             // Sum crypto values for this day
             let total_crypto: f64 = conn
                 .query_row(
@@ -2216,20 +2533,27 @@ pub fn update_portfolio_history_from_ticker_tables(
                 )
                 .unwrap_or(0.0);
 
-            // Update portfolio_metrics_history
+            // Update only total_crypto column
             conn.execute(
                 "UPDATE portfolio_metrics_history 
-                 SET total_investments = ?2, total_crypto = ?3 
+                 SET total_crypto = ?2 
                  WHERE (recorded_at / 86400) * 86400 = ?1",
-                rusqlite::params![
-                    day_timestamp,
-                    total_investments.to_string(),
-                    total_crypto.to_string(),
-                ],
+                rusqlite::params![day_timestamp, total_crypto.to_string()],
             )?;
         }
         Ok(())
     })
+}
+
+/// Update portfolio_metrics_history by summing values from per-ticker history tables
+/// This updates BOTH stocks and crypto - use only when both asset types need updating
+pub async fn update_portfolio_history_from_ticker_tables(
+    db: &Database,
+    from_timestamp: i64,
+) -> Result<()> {
+    update_portfolio_stocks_from_ticker_table(db, from_timestamp).await?;
+    update_portfolio_crypto_from_ticker_table(db, from_timestamp).await?;
+    Ok(())
 }
 
 /// Trigger historical recalculation for a specific stock ticker
@@ -2253,8 +2577,8 @@ pub async fn trigger_historical_recalculation_for_stock_ticker(
         // Recalculate just this ticker's history
         recalculate_stock_ticker_history(db, ticker, transaction_date).await?;
 
-        // Update aggregate portfolio history from ticker tables
-        update_portfolio_history_from_ticker_tables(db, transaction_date)?;
+        // Update only stock values in aggregate portfolio history
+        update_portfolio_stocks_from_ticker_table(db, transaction_date).await?;
     }
 
     Ok(())
@@ -2278,7 +2602,8 @@ pub async fn trigger_historical_recalculation_for_crypto_ticker(
         );
 
         recalculate_crypto_ticker_history(db, ticker, coingecko_id, transaction_date).await?;
-        update_portfolio_history_from_ticker_tables(db, transaction_date)?;
+        // Update only crypto values in aggregate portfolio history
+        update_portfolio_crypto_from_ticker_table(db, transaction_date).await?;
     }
 
     Ok(())

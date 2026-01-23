@@ -30,23 +30,37 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { TrendingUp, TrendingDown, PieChart, Tag, Plus, Trash2, Settings2, FolderOpen, X, MoveRight } from "lucide-react";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import { TrendingUp, TrendingDown, PieChart, Tag, Plus, Trash2, Settings2, FolderOpen, X, MoveRight, Check, ChevronsUpDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import type { StockTag, StockTagGroup, StockInvestmentWithTags, TagMetrics } from "@shared/schema";
 
-// Predefined colors for tags
+// Chart color tokens for tag palette
 const TAG_COLORS = [
-    "#3B82F6", // blue
-    "#10B981", // green  
-    "#F59E0B", // amber
-    "#EF4444", // red
-    "#8B5CF6", // violet
-    "#EC4899", // pink
-    "#06B6D4", // cyan
-    "#F97316", // orange
+    'hsl(var(--chart-8))', // blue
+    'hsl(var(--chart-6))', // green
+    'hsl(var(--chart-7))', // amber
+    'hsl(var(--destructive))', // red
+    'hsl(var(--chart-1))', // violet
+    'hsl(var(--chart-4))', // pink
+    'hsl(var(--chart-3))', // cyan-ish
+    'hsl(var(--chart-2))', // orange-ish
 ];
 
 export default function StocksAnalysis() {
@@ -65,7 +79,8 @@ export default function StocksAnalysis() {
     const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
     const [newTagGroupId, setNewTagGroupId] = useState<string>("");
     const [isCreateTagDialogOpen, setIsCreateTagDialogOpen] = useState(false);
-    const [assignTagId, setAssignTagId] = useState<string>("");
+    const [assignTagIds, setAssignTagIds] = useState<string[]>([]);
+    const [assignTagsOpen, setAssignTagsOpen] = useState(false);
     // Group management state
     const [newGroupName, setNewGroupName] = useState("");
     const [newGroupDescription, setNewGroupDescription] = useState("");
@@ -147,7 +162,7 @@ export default function StocksAnalysis() {
             queryClient.invalidateQueries({ queryKey: ["stocks-analysis"] });
             queryClient.invalidateQueries({ queryKey: ["tag-metrics"] });
             setSelectedStockIds([]);
-            setAssignTagId("");
+            setAssignTagIds([]);
             toast({ title: tc('status.success') });
         },
         onError: (error: Error) => {
@@ -249,22 +264,33 @@ export default function StocksAnalysis() {
         }
     };
 
-    const handleAssignTagToSelected = () => {
-        if (!assignTagId || selectedStockIds.length === 0) return;
+    const handleAssignTagsToSelected = () => {
+        if (assignTagIds.length === 0 || selectedStockIds.length === 0) return;
 
-        // For each selected stock, add the tag to their existing tags
+        // For each selected stock, add all selected tags to their existing tags
         selectedStockIds.forEach(stockId => {
             const stock = stocks.find(s => s.id === stockId);
             if (stock) {
                 const existingTagIds = stock.tags.map(t => t.id);
-                if (!existingTagIds.includes(assignTagId)) {
+                // Merge existing tags with new tags, avoiding duplicates
+                const newTagIds = [...new Set([...existingTagIds, ...assignTagIds])];
+                // Only mutate if there are new tags to add
+                if (newTagIds.length > existingTagIds.length) {
                     setTagsMutation.mutate({
                         investmentId: stockId,
-                        tagIds: [...existingTagIds, assignTagId]
+                        tagIds: newTagIds
                     });
                 }
             }
         });
+    };
+
+    const handleToggleAssignTag = (tagId: string) => {
+        setAssignTagIds(prev =>
+            prev.includes(tagId)
+                ? prev.filter(id => id !== tagId)
+                : [...prev, tagId]
+        );
     };
 
     const handleRemoveTagFromStock = (stockId: string, tagId: string) => {
@@ -362,7 +388,7 @@ export default function StocksAnalysis() {
                                                 >
                                                     <span
                                                         className="w-2 h-2 rounded-full"
-                                                        style={{ backgroundColor: tag.color || '#3B82F6' }}
+                                                        style={{ backgroundColor: tag.color || 'hsl(var(--chart-8))' }}
                                                     />
                                                     {tag.name}
                                                     <Button
@@ -398,7 +424,7 @@ export default function StocksAnalysis() {
                                         >
                                             <span
                                                 className="w-2 h-2 rounded-full"
-                                                style={{ backgroundColor: tag.color || '#3B82F6' }}
+                                                style={{ backgroundColor: tag.color || 'hsl(var(--chart-8))' }}
                                             />
                                             {tag.name}
                                             <Button
@@ -428,7 +454,7 @@ export default function StocksAnalysis() {
                                                         <div className="flex items-center gap-2">
                                                             <span
                                                                 className="w-2 h-2 rounded-full"
-                                                                style={{ backgroundColor: tag.color || '#3B82F6' }}
+                                                                style={{ backgroundColor: tag.color || 'hsl(var(--chart-8))' }}
                                                             />
                                                             {tag.name}
                                                         </div>
@@ -465,34 +491,88 @@ export default function StocksAnalysis() {
 
                         {/* Bulk Assignment */}
                         {selectedStockIds.length > 0 && (
-                            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg flex-wrap">
                                 <span className="text-sm">
                                     {selectedStockIds.length} {t('stocksAnalysis.stocksSelected')}
                                 </span>
-                                <Select value={assignTagId} onValueChange={setAssignTagId}>
-                                    <SelectTrigger className="w-48 bg-white dark:bg-zinc-900 border">
-                                        <SelectValue placeholder={t('stocksAnalysis.selectTag')} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {tags.map(tag => (
-                                            <SelectItem key={tag.id} value={tag.id}>
-                                                <div className="flex items-center gap-2">
+                                <Popover open={assignTagsOpen} onOpenChange={setAssignTagsOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={assignTagsOpen}
+                                            className="w-64 justify-between bg-white dark:bg-zinc-900 border"
+                                        >
+                                            {assignTagIds.length > 0
+                                                ? `${assignTagIds.length} ${t('stocksAnalysis.tags').toLowerCase()}`
+                                                : t('stocksAnalysis.selectTags')}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64 p-0" align="start">
+                                        <Command>
+                                            <CommandInput placeholder={t('stocksAnalysis.searchTags')} />
+                                            <CommandList>
+                                                <CommandEmpty>{t('stocksAnalysis.noTagsFound')}</CommandEmpty>
+                                                <CommandGroup>
+                                                    {tags.map(tag => (
+                                                        <CommandItem
+                                                            key={tag.id}
+                                                            value={tag.name}
+                                                            onSelect={() => handleToggleAssignTag(tag.id)}
+                                                        >
+                                                            <Check
+                                                                className={cn(
+                                                                    "mr-2 h-4 w-4",
+                                                                    assignTagIds.includes(tag.id) ? "opacity-100" : "opacity-0"
+                                                                )}
+                                                            />
+                                                            <span
+                                                                className="w-3 h-3 rounded-full mr-2"
+                                                                style={{ backgroundColor: tag.color || 'hsl(var(--chart-8))' }}
+                                                            />
+                                                            {tag.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                {assignTagIds.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                        {assignTagIds.map(tagId => {
+                                            const tag = tags.find(t => t.id === tagId);
+                                            return tag ? (
+                                                <Badge
+                                                    key={tagId}
+                                                    variant="secondary"
+                                                    className="h-6 px-2 flex items-center gap-1"
+                                                    style={{ borderColor: tag.color || undefined }}
+                                                >
                                                     <span
-                                                        className="w-3 h-3 rounded-full"
-                                                        style={{ backgroundColor: tag.color || '#3B82F6' }}
+                                                        className="w-2 h-2 rounded-full"
+                                                        style={{ backgroundColor: tag.color || 'hsl(var(--chart-8))' }}
                                                     />
                                                     {tag.name}
-                                                </div>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                                    <button
+                                                        type="button"
+                                                        className="ml-1 hover:text-destructive"
+                                                        onClick={() => handleToggleAssignTag(tagId)}
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </button>
+                                                </Badge>
+                                            ) : null;
+                                        })}
+                                    </div>
+                                )}
                                 <Button
                                     size="sm"
-                                    onClick={handleAssignTagToSelected}
-                                    disabled={!assignTagId || setTagsMutation.isPending}
+                                    onClick={handleAssignTagsToSelected}
+                                    disabled={assignTagIds.length === 0 || setTagsMutation.isPending}
                                 >
-                                    {t('stocksAnalysis.assignTag')}
+                                    {t('stocksAnalysis.assignTags')}
                                 </Button>
                             </div>
                         )}
@@ -566,7 +646,7 @@ export default function StocksAnalysis() {
                                                             >
                                                                 <span
                                                                     className="w-2 h-2 rounded-full mr-1"
-                                                                    style={{ backgroundColor: tag.color || '#3B82F6' }}
+                                                                    style={{ backgroundColor: tag.color || 'hsl(var(--chart-8))' }}
                                                                 />
                                                                 {tag.name}
                                                                 <span className="ml-1">×</span>
@@ -663,7 +743,7 @@ export default function StocksAnalysis() {
                             >
                                 <span
                                     className="w-2 h-2 rounded-full mr-1.5"
-                                    style={{ backgroundColor: selectedTagIds.includes(tag.id) ? '#fff' : tag.color || '#3B82F6' }}
+                                    style={{ backgroundColor: selectedTagIds.includes(tag.id) ? '#fff' : tag.color || 'hsl(var(--chart-8))' }}
                                 />
                                 {tag.name}
                             </Badge>
@@ -786,7 +866,7 @@ export default function StocksAnalysis() {
                                         key={m.tag.id}
                                         dataKey={m.tag.id} 
                                         stackId="a" 
-                                        fill={m.tag.color || '#3B82F6'} 
+                                        fill={m.tag.color || 'hsl(var(--chart-8))'} 
                                         name={m.tag.id}
                                     />
                                 ))}
@@ -805,7 +885,7 @@ export default function StocksAnalysis() {
                             <Card key={metric.tag.id} className="overflow-hidden">
                                 <div
                                     className="h-1"
-                                    style={{ backgroundColor: metric.tag.color || '#3B82F6' }}
+                                    style={{ backgroundColor: metric.tag.color || 'hsl(var(--chart-8))' }}
                                 />
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-base flex items-center gap-2">

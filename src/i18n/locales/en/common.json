@@ -274,5 +274,22 @@
         "privacyDetail": "No personal data, financial information, or IP addresses are ever collected or sent.",
         "allow": "Allow Analytics",
         "decline": "Decline"
+    },
+    "priceStatus": {
+        "title": "Price Data Status",
+        "description": "Some prices may be outdated. This can happen when offline or due to API rate limits.",
+        "stale": "Prices may be outdated",
+        "stocks": "Stock prices",
+        "crypto": "Crypto prices",
+        "exchangeRates": "Exchange rates",
+        "missing": "missing",
+        "never": "Never fetched",
+        "lessThanHour": "Less than 1 hour ago",
+        "hoursAgo": "{{count}} hours ago",
+        "hoursAgo_one": "1 hour ago",
+        "daysAgo": "{{count}} days ago",
+        "daysAgo_one": "1 day ago",
+        "refresh": "Refresh Prices",
+        "refreshing": "Refreshing..."
     }
 }

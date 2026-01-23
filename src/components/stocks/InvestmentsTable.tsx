@@ -215,7 +215,7 @@ export function InvestmentsTable({
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 cursor-help h-5 px-1.5 text-[10px]">
+                                  <Badge variant="warning" className="cursor-help h-5 px-1.5 text-[10px]">
                                     {t('badges.manual')}
                                   </Badge>
                                 </TooltipTrigger>
@@ -265,7 +265,7 @@ export function InvestmentsTable({
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 cursor-help h-5 px-1.5 text-[10px]">
+                                <Badge variant="warning" className="cursor-help h-5 px-1.5 text-[10px]">
                                   {t('badges.manual')}
                                 </Badge>
                               </TooltipTrigger>

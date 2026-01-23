@@ -33,30 +33,35 @@ interface BudgetCategoryChartProps {
   isLoading?: boolean;
 }
 
-// Curated color palette - modern, vibrant
+// Category colors using theme tokens
 const CATEGORY_COLORS: Record<string, string> = {
-  'cat_investments': '#8b5cf6',
-  'cat_taxes': '#ef4444',
-  'cat_income': '#22c55e',
-  'cat_savings': '#f59e0b',
-  'cat_loan_payments': '#06b6d4',
-  'cat_groceries': '#10b981',
-  'cat_other': '#6366f1',
-  'cat_shopping': '#ec4899',
-  'cat_housing': '#f97316',
-  'cat_dining': '#14b8a6',
-  'cat_transport': '#3b82f6',
-  'cat_utilities': '#84cc16',
-  'cat_entertainment': '#a855f7',
-  'cat_health': '#ef4444',
-  'cat_travel': '#0ea5e9',
-  'cat_subscriptions': '#64748b',
-  'cat_insurance': '#78716c',
-  'uncategorized': '#9ca3af',
+  'cat_investments': 'hsl(var(--chart-1))',
+  'cat_taxes': 'hsl(var(--destructive))',
+  'cat_income': 'hsl(var(--positive))',
+  'cat_savings': 'hsl(var(--chart-7))',
+  'cat_loan_payments': 'hsl(var(--chart-3))',
+  'cat_groceries': 'hsl(var(--chart-6))',
+  'cat_other': 'hsl(var(--chart-5))',
+  'cat_shopping': 'hsl(var(--chart-4))',
+  'cat_housing': 'hsl(var(--chart-2))',
+  'cat_dining': 'hsl(var(--chart-3))',
+  'cat_transport': 'hsl(var(--chart-8))',
+  'cat_utilities': 'hsl(var(--chart-6))',
+  'cat_entertainment': 'hsl(var(--chart-1))',
+  'cat_health': 'hsl(var(--destructive))',
+  'cat_travel': 'hsl(var(--chart-8))',
+  'cat_subscriptions': 'hsl(var(--muted-foreground))',
+  'cat_insurance': 'hsl(var(--muted-foreground))',
+  'uncategorized': 'hsl(var(--muted-foreground))',
 };
 
 const getCategoryColor = (categoryId: string, index: number): string => {
-  const fallbackColors = ['#8b5cf6', '#ec4899', '#f97316', '#10b981', '#3b82f6', '#ef4444', '#06b6d4', '#f59e0b'];
+  const fallbackColors = [
+    'hsl(var(--chart-1))', 'hsl(var(--chart-4))',
+    'hsl(var(--chart-2))', 'hsl(var(--chart-6))',
+    'hsl(var(--chart-8))', 'hsl(var(--destructive))',
+    'hsl(var(--chart-3))', 'hsl(var(--chart-7))'
+  ];
   return CATEGORY_COLORS[categoryId] || fallbackColors[index % fallbackColors.length];
 };
 

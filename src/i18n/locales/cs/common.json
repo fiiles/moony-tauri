@@ -274,5 +274,22 @@
         "privacyDetail": "Nikdy nesbíráme ani neodesíláme osobní data, finanční informace ani IP adresy.",
         "allow": "Povolit analytiku",
         "decline": "Odmítnout"
+    },
+    "priceStatus": {
+        "title": "Stav cenových dat",
+        "description": "Některé ceny mohou být zastaralé. To může nastat při práci offline nebo kvůli limitům API.",
+        "stale": "Ceny mohou být zastaralé",
+        "stocks": "Ceny akcií",
+        "crypto": "Ceny kryptoměn",
+        "exchangeRates": "Směnné kurzy",
+        "missing": "chybí",
+        "never": "Nikdy nestaženo",
+        "lessThanHour": "Před méně než hodinou",
+        "hoursAgo": "Před {{count}} hodinami",
+        "hoursAgo_one": "Před 1 hodinou",
+        "daysAgo": "Před {{count}} dny",
+        "daysAgo_one": "Před 1 dnem",
+        "refresh": "Aktualizovat ceny",
+        "refreshing": "Aktualizuji..."
     }
 }

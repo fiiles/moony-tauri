@@ -152,6 +152,10 @@
         "filterByGroup": "Filter by group",
         "moveToGroup": "Move to group",
         "selectGroup": "Select group",
-        "move": "Move"
+        "move": "Move",
+        "selectTags": "Select tags",
+        "searchTags": "Search tags...",
+        "noTagsFound": "No tags found",
+        "assignTags": "Assign Tags"
     }
 }

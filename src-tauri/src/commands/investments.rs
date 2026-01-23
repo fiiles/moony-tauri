@@ -409,7 +409,7 @@ pub async fn delete_investment(db: State<'_, Database>, app: AppHandle, id: Stri
 
     // Update aggregate portfolio history from ticker tables
     if let Some((tx_date, _)) = tx_info {
-        portfolio::update_portfolio_history_from_ticker_tables(&db, tx_date)?;
+        portfolio::update_portfolio_history_from_ticker_tables(&db, tx_date).await?;
     }
 
     app.emit("recalculation-complete", ()).ok();

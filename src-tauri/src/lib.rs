@@ -160,7 +160,9 @@ pub async fn run() {
             commands::portfolio::record_portfolio_snapshot,
             commands::portfolio::refresh_exchange_rates,
             commands::portfolio::get_exchange_rates,
+            commands::portfolio::get_price_status,
             commands::portfolio::start_snapshot_backfill,
+            commands::portfolio::recalculate_all_portfolio_history,
             commands::portfolio::backfill_stock_ticker_history,
             commands::portfolio::backfill_crypto_ticker_history,
             // Price API commands

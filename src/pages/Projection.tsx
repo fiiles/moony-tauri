@@ -184,14 +184,14 @@ export default function Projection() {
     // Colors
     const colors = {
         netWorth: 'hsl(var(--chart-1))',
-        assets: '#10B981',
+        assets: 'hsl(var(--chart-6))',     // Green
         liabilities: 'hsl(var(--destructive))',
-        savings: '#10B981',
-        investments: '#8B5CF6',
-        crypto: '#EC4899',
-        bonds: '#F59E0B',
-        realEstate: '#3B82F6',
-        otherAssets: '#6366F1',
+        savings: 'hsl(var(--chart-6))',    // Green
+        investments: 'hsl(var(--chart-1))', // Violet (primary)
+        crypto: 'hsl(var(--chart-4))',     // Pink
+        bonds: 'hsl(var(--chart-7))',      // Amber
+        realEstate: 'hsl(var(--chart-8))', // Blue
+        otherAssets: 'hsl(var(--chart-5))', // Red-ish
     };
 
     // Slider config based on view type
