@@ -26,7 +26,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { HoldingData } from "@/utils/stocks";
 import { useCurrency } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
@@ -53,7 +53,6 @@ export function ManualDividendModal({
 }: ManualDividendModalProps) {
     const { t } = useTranslation('stocks');
     const { t: tc } = useTranslation('common');
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const { currencyCode: userCurrency, convert } = useCurrency();
     const form = useForm<FormData>({
@@ -87,18 +86,11 @@ export function ManualDividendModal({
             queryClient.invalidateQueries({ queryKey: ["investment", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({
-                title: tc('status.success'),
-                description: t('toast.updated'),
-            });
+            toast(tc('status.success'), { description: t('toast.updated') });
             onOpenChange(false);
         },
         onError: (error) => {
-            toast({
-                title: tc('status.error'),
-                description: error.message,
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -112,18 +104,11 @@ export function ManualDividendModal({
             queryClient.invalidateQueries({ queryKey: ["investment", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({
-                title: tc('status.success'),
-                description: t('toast.manualDividendDeleted', { defaultValue: 'Manual dividend override removed' }),
-            });
+            toast(tc('status.success'), { description: t('toast.manualDividendDeleted') });
             onOpenChange(false);
         },
         onError: (error: Error) => {
-            toast({
-                title: tc('status.error'),
-                description: error.message,
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 

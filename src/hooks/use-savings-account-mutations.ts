@@ -1,13 +1,12 @@
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { savingsApi } from "@/lib/tauri-api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { translateApiError } from "@/lib/translate-api-error";
 import type { InsertSavingsAccount } from "@shared/schema";
 
 export function useSavingsAccountMutations() {
-  const { toast } = useToast();
   const { t } = useTranslation('common');
 
   const createMutation = useMutation({
@@ -37,14 +36,10 @@ export function useSavingsAccountMutations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savings-accounts"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-      toast({ title: t('status.success') });
+      toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast({
-        title: t('status.error'),
-        description: translateApiError(error, t),
-        variant: "destructive",
-      });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -89,10 +84,10 @@ export function useSavingsAccountMutations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savings-accounts"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-      toast({ title: t('status.success') });
+      toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast({ title: t('status.error'), description: translateApiError(error, t), variant: "destructive" });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -101,10 +96,10 @@ export function useSavingsAccountMutations() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savings-accounts"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-      toast({ title: t('status.success') });
+      toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast({ title: t('status.error'), description: translateApiError(error, t), variant: "destructive" });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -112,10 +107,10 @@ export function useSavingsAccountMutations() {
     mutationFn: (data: { fromAmount: string; toAmount: string | null; interestRate: string; savingsAccountId: string }) => savingsApi.createZone(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savings-accounts"] });
-      toast({ title: t('status.success') });
+      toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast({ title: t('status.error'), description: translateApiError(error, t), variant: "destructive" });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -123,10 +118,10 @@ export function useSavingsAccountMutations() {
     mutationFn: (zoneId: string) => savingsApi.deleteZone(zoneId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savings-accounts"] });
-      toast({ title: t('status.success') });
+      toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast({ title: t('status.error'), description: translateApiError(error, t), variant: "destructive" });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 

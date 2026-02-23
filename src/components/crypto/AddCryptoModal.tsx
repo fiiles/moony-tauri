@@ -41,7 +41,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
 const formSchema = z.object({
@@ -63,7 +63,6 @@ export function AddCryptoModal() {
     const [showResultsDialog, setShowResultsDialog] = useState(false);
     const [searching, setSearching] = useState(false);
     const queryClient = useQueryClient();
-    const { toast } = useToast();
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -86,7 +85,7 @@ export function AddCryptoModal() {
         try {
             const results = await priceApi.searchCrypto(query);
             if (results.length === 0) {
-                toast({ title: t('toast.noResults'), description: t('modal.add.noResults') });
+                toast(t('toast.noResults'));
             } else if (results.length === 1) {
                 // Auto-select if only one result
                 selectTicker(results[0]);
@@ -95,7 +94,7 @@ export function AddCryptoModal() {
                 setShowResultsDialog(true);
             }
         } catch (error) {
-            toast({ title: t('toast.searchFailed'), description: error instanceof Error ? error.message : 'Unknown error', variant: "destructive" });
+            toast.error(t('toast.searchFailed'), { description: error instanceof Error ? error.message : 'Unknown error' });
         } finally {
             setSearching(false);
         }
@@ -135,7 +134,7 @@ export function AddCryptoModal() {
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             setOpen(false);
             form.reset();
-            toast({ title: tc('status.success'), description: t('toast.cryptoAdded') });
+            toast(tc('status.success'));
             
             // Refresh crypto prices via CoinGecko (runs in background)
             priceApi.refreshCryptoPrices().then(() => {
@@ -145,11 +144,7 @@ export function AddCryptoModal() {
         },
         onError: (error: Error) => {
             console.error("Failed to add crypto:", error);
-            toast({
-                title: tc('status.error'),
-                description: t('toast.addFailed') + ": " + error.message,
-                variant: "destructive"
-            });
+            toast.error(tc('status.error'), { description: t('toast.addFailed') + ": " + error.message });
         },
     });
 

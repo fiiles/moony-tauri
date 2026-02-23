@@ -34,7 +34,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { categorizationApi, type CategorizationResult } from '@/lib/tauri-api';
 import type { TransactionCategory } from '@shared/schema';
 import { useTranslation } from 'react-i18next';
@@ -89,7 +89,6 @@ export function CategorySelector({
   enableLearning = true,
 }: CategorySelectorProps) {
   const { t } = useTranslation('bank_accounts');
-  const { toast } = useToast();
   const [open, setOpen] = useState(false);
 
   const currentCategory = useMemo(
@@ -133,11 +132,7 @@ export function CategorySelector({
         await categorizationApi.learn(payee, iban, categoryId);
         const category = getCategoryDisplay(categoryId, categories);
         const learnKey = payee || iban || 'unknown';
-        toast({
-          title: t('categorization.learned', 'Category learned'),
-          description: `"${learnKey}" → ${category?.name || categoryId}`,
-          duration: 3000,
-        });
+        toast(t('categorization.learned'), { description: `"${learnKey}"` });
       } catch (e) {
         console.error('Failed to learn categorization:', e);
       }

@@ -14,7 +14,7 @@ import {
 } from "@shared/calculations";
 import type { CryptoInvestmentWithPrice } from "@shared/types";
 import type { CryptoTransaction } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import PortfolioValueTrendChart, { type TransactionMarker } from "@/components/common/PortfolioValueTrendChart";
 import { ExportButton } from "@/components/common/ExportButton";
@@ -24,7 +24,6 @@ import type { CurrencyCode } from "@shared/currencies";
 export default function Crypto() {
     const { t } = useTranslation('crypto');
     const queryClient = useQueryClient();
-    const { toast } = useToast();
     const { convert, currencyCode } = useCurrency();
 
     const { data: cryptoInvestments, isLoading } = useQuery<CryptoInvestmentWithPrice[]>({
@@ -96,17 +95,10 @@ export default function Crypto() {
         onSuccess: (results) => {
             queryClient.invalidateQueries({ queryKey: ["crypto"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({
-                title: t('toast.pricesRefreshed', { count: results.length }),
-                description: t('toast.pricesRefreshed', { count: results.length })
-            });
+            toast(t('toast.pricesRefreshed'), { description: t('toast.pricesRefreshed') });
         },
         onError: (error: Error) => {
-            toast({
-                title: t('toast.refreshFailed'),
-                description: error.message,
-                variant: "destructive"
-            });
+            toast.error(t('toast.refreshFailed'), { description: error.message });
         },
     });
 

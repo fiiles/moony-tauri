@@ -47,7 +47,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { bankAccountsApi } from "@/lib/tauri-api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import type { BankCsvPreset, CsvPreviewResult, CsvImportConfigInput } from "@shared/schema";
@@ -69,7 +69,6 @@ export function CsvImportDialog({
 }: CsvImportDialogProps) {
   const { t } = useTranslation("bank_accounts");
   const { t: tc } = useTranslation("common");
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [step, setStep] = useState<Step>("select");
@@ -170,11 +169,7 @@ export function CsvImportDialog({
           setStep("preview");
         } catch (e: unknown) {
           const errorMessage = e instanceof Error ? e.message : String(e);
-          toast({
-            title: tc("status.error"),
-            description: errorMessage,
-            variant: "destructive",
-          });
+          toast.error(tc("status.error"), { description: errorMessage });
         }
         setIsLoading(false);
       }
@@ -220,11 +215,7 @@ export function CsvImportDialog({
       setStep("done");
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : String(e);
-      toast({
-        title: tc("status.error"),
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast.error(tc("status.error"), { description: errorMessage });
       setStep("preview");
     }
 

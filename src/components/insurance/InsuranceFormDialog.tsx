@@ -28,7 +28,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Plus, Trash2, Shield, Wallet, Info } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
@@ -72,7 +72,6 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
     const { t } = useTranslation('insurance');
     const { t: tc } = useTranslation('common');
     const [internalOpen, setInternalOpen] = useState(false);
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const { currencyCode: userCurrency } = useCurrency();
 
@@ -140,10 +139,10 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["insurance"] });
             setIsOpen?.(false);
-            toast({ title: tc('status.success'), description: t('toast.added') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: translateApiError(error, tc), variant: "destructive" });
+            toast.error(tc('status.error'), { description: translateApiError(error, tc) });
         },
     });
 
@@ -159,10 +158,10 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["insurance"] });
             setIsOpen?.(false);
-            toast({ title: tc('status.success'), description: t('toast.updated') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: translateApiError(error, tc), variant: "destructive" });
+            toast.error(tc('status.error'), { description: translateApiError(error, tc) });
         },
     });
 

@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Trash } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { OtherAsset, OtherAssetTransaction } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { CURRENCIES } from "@shared/currencies";
 import { otherAssetsApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
@@ -46,7 +46,6 @@ interface Props {
 export function OtherAssetTransactionsModal({ asset, open, onOpenChange }: Props) {
     const { t } = useTranslation('otherAssets');
     const { t: tc } = useTranslation('common');
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const { data: transactions, isLoading } = useQuery<OtherAssetTransaction[]>({
         queryKey: ["other-asset-transactions", asset.id],
@@ -61,9 +60,9 @@ export function OtherAssetTransactionsModal({ asset, open, onOpenChange }: Props
             queryClient.invalidateQueries({ queryKey: ["other-assets"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
-            toast({ title: t('toast.deleted') });
+            toast(t('toast.deleted'));
         },
-        onError: () => toast({ title: tc('status.error'), variant: "destructive" })
+        onError: () => toast.error(tc('status.error'))
     });
 
     return (

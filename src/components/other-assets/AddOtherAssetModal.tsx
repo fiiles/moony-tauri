@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { otherAssetsApi } from "@/lib/tauri-api";
 import { insertOtherAssetSchema } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,7 +44,6 @@ interface AddOtherAssetModalProps {
 export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalProps) {
     const { t } = useTranslation('otherAssets');
     const { t: tc } = useTranslation('common');
-    const { toast } = useToast();
     const queryClient = useQueryClient();
 
     const form = useForm<FormData>({
@@ -97,13 +96,13 @@ export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalPro
             queryClient.invalidateQueries({ queryKey: ["other-assets"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
-            toast({ title: t('toast.added') });
+            toast(t('toast.added'));
             onOpenChange(false);
             form.reset();
         },
         onError: (err) => {
             console.error(err);
-            toast({ title: tc('status.error'), description: err.message, variant: "destructive" });
+            toast.error(tc('status.error'), { description: err.message });
         }
     });
 

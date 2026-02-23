@@ -12,7 +12,7 @@ import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from "@/ut
 import PortfolioValueTrendChart, { type TransactionMarker } from "@/components/common/PortfolioValueTrendChart";
 import { ExportButton } from "@/components/common/ExportButton";
 import { ImportInvestmentsModal } from "@/components/stocks/ImportInvestmentsModal";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
 import { useCurrency } from "@/lib/currency";
@@ -22,7 +22,6 @@ export default function Stocks() {
   const { t } = useTranslation('stocks');
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { convert, currencyCode } = useCurrency();
 
   const { data: investments, isLoading } = useQuery<StockInvestmentWithPrice[]>({
@@ -102,27 +101,13 @@ export default function Stocks() {
       
       // Check if rate limit was hit (either from API or because there were more tickers than limit)
       if (result.rate_limit_hit) {
-        toast({
-          title: t('toast.rateLimitReached'),
-          description: t('toast.rateLimitDescription', { 
-            updated: result.updated.length, 
-            remaining: result.remaining_tickers.length 
-          }),
-          variant: "default"
-        });
+        toast(t('toast.rateLimitReached'), { description: t('toast.rateLimitDescription') });
       } else {
-        toast({
-          title: t('toast.pricesRefreshed', { count: result.updated.length }),
-          description: t('toast.pricesRefreshedDescription', { count: result.updated.length })
-        });
+        toast(t('toast.pricesRefreshed'), { description: t('toast.pricesRefreshedDescription') });
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: t('toast.refreshFailed'),
-        description: error.message,
-        variant: "destructive"
-      });
+      toast.error(t('toast.refreshFailed'), { description: error.message });
     },
   });
 

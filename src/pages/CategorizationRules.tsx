@@ -36,7 +36,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { categorizationApi, bankAccountsApi, type CustomRule } from '@/lib/tauri-api';
 import { 
   Trash2, 
@@ -107,7 +107,6 @@ function RuleTypeBadge({
 export default function CategorizationRules() {
   const { t } = useTranslation('categorization');
   const { t: tCommon } = useTranslation('common');
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // State
@@ -140,10 +139,10 @@ export default function CategorizationRules() {
     mutationFn: (id: string) => categorizationApi.deleteLearnedPayee(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learnedPayees'] });
-      toast({ title: t('learnedRules.deleteSuccess') });
+      toast(t('learnedRules.deleteSuccess'));
     },
     onError: () => {
-      toast({ title: t('errors.deleteFailed'), variant: 'destructive' });
+      toast.error(t('errors.deleteFailed'));
     },
   });
 
@@ -152,10 +151,10 @@ export default function CategorizationRules() {
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['learnedPayees'] });
       setSelectedIds(new Set());
-      toast({ title: t('learnedRules.bulkDeleteSuccess', { count: ids.length }) });
+      toast(t('learnedRules.bulkDeleteSuccess'));
     },
     onError: () => {
-      toast({ title: t('errors.deleteFailed'), variant: 'destructive' });
+      toast.error(t('errors.deleteFailed'));
     },
   });
 
@@ -164,10 +163,10 @@ export default function CategorizationRules() {
       categorizationApi.updateLearnedPayeeCategory(id, categoryId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learnedPayees'] });
-      toast({ title: t('learnedRules.updateCategorySuccess') });
+      toast(t('learnedRules.updateCategorySuccess'));
     },
     onError: () => {
-      toast({ title: t('errors.updateFailed'), variant: 'destructive' });
+      toast.error(t('errors.updateFailed'));
     },
   });
 
@@ -175,10 +174,10 @@ export default function CategorizationRules() {
     mutationFn: (id: string) => categorizationApi.deleteCustomRule(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customRules'] });
-      toast({ title: t('customRules.deleteSuccess') });
+      toast(t('customRules.deleteSuccess'));
     },
     onError: () => {
-      toast({ title: t('errors.deleteFailed'), variant: 'destructive' });
+      toast.error(t('errors.deleteFailed'));
     },
   });
 

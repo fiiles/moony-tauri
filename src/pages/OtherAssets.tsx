@@ -16,7 +16,7 @@ import type { OtherAsset } from "@shared/schema";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { calculateMarketValue, calculateTotalCost, calculateAnnualYield, type YieldType } from "@shared/calculations";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
 import { ExportButton } from "@/components/common/ExportButton";
@@ -30,7 +30,6 @@ export default function OtherAssets() {
     const [transactionsModalOpen, setTransactionsModalOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const queryClient = useQueryClient();
-    const { toast } = useToast();
     const { formatCurrency } = useCurrency();
 
     const { data: assets, isLoading } = useQuery<OtherAsset[]>({
@@ -46,13 +45,13 @@ export default function OtherAssets() {
             queryClient.invalidateQueries({ queryKey: ["other-assets"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
-            toast({ title: "Asset deleted" });
+            toast("Asset deleted");
             setDeleteDialogOpen(false);
             setSelectedAsset(null);
         },
         onError: (err) => {
             console.error("[DELETE ASSET] Error:", err);
-            toast({ title: "Error deleting asset", variant: "destructive" });
+            toast.error("Error deleting asset");
         }
     });
 

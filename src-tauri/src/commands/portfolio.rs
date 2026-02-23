@@ -117,25 +117,8 @@ fn calculate_portfolio_metrics(
 
         for inv in investments.filter_map(|r| r.ok()) {
             let qty: f64 = inv.1.parse().unwrap_or(0.0);
-
-            // Try to get price
-            let price_data: rusqlite::Result<(Option<String>, Option<String>)> = conn.query_row(
-                "SELECT COALESCE(
-                    (SELECT price FROM stock_price_overrides WHERE ticker = ?1),
-                    (SELECT original_price FROM stock_data WHERE ticker = ?1)
-                ),
-                COALESCE(
-                    (SELECT currency FROM stock_price_overrides WHERE ticker = ?1),
-                    (SELECT currency FROM stock_data WHERE ticker = ?1)
-                )",
-                [&inv.0],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            );
-
-            if let Ok((Some(price_str), Some(currency))) = price_data {
-                let price: f64 = price_str.parse().unwrap_or(0.0);
-                let value_in_czk = convert_to_czk(price * qty, &currency);
-                total_investments += value_in_czk;
+            if let Some(resolved) = crate::services::pricing::resolve_stock_price(conn, &inv.0) {
+                total_investments += resolved.price_czk * qty;
             }
         }
 
@@ -148,25 +131,9 @@ fn calculate_portfolio_metrics(
 
         for crypto in cryptos.filter_map(|r| r.ok()) {
             let qty: f64 = crypto.1.parse().unwrap_or(0.0);
-
-            // Try to get price - prefer override (manual) over API price
-            let price_data: rusqlite::Result<(Option<String>, Option<String>)> = conn.query_row(
-                "SELECT COALESCE(
-                    (SELECT price FROM crypto_price_overrides WHERE symbol = ?1),
-                    (SELECT price FROM crypto_prices WHERE symbol = ?1)
-                ),
-                COALESCE(
-                    (SELECT currency FROM crypto_price_overrides WHERE symbol = ?1),
-                    (SELECT currency FROM crypto_prices WHERE symbol = ?1)
-                )",
-                [&crypto.0],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            );
-
-            if let Ok((Some(price_str), Some(currency))) = price_data {
-                let price: f64 = price_str.parse().unwrap_or(0.0);
-                let value_in_czk = convert_to_czk(price * qty, &currency);
-                total_crypto += value_in_czk;
+            if let Some(resolved) = crate::services::pricing::resolve_crypto_price(conn, &crypto.0)
+            {
+                total_crypto += resolved.price_czk * qty;
             }
         }
 
@@ -228,49 +195,49 @@ pub async fn get_portfolio_history(
     end_date: Option<i64>,
 ) -> Result<Vec<PortfolioMetricsHistory>> {
     db.with_conn(|conn| {
-        let sql = match (start_date, end_date) {
-            (Some(start), Some(end)) => {
-                format!(
-                    "SELECT id, total_savings, total_loans_principal, total_investments, total_crypto,
-                            total_bonds, total_real_estate_personal, total_real_estate_investment, total_other_assets, recorded_at
-                     FROM portfolio_metrics_history
-                     WHERE recorded_at >= {} AND recorded_at <= {}
-                     ORDER BY recorded_at DESC",
-                    start, end
-                )
-            }
-            (Some(start), None) => {
-                format!(
-                    "SELECT id, total_savings, total_loans_principal, total_investments, total_crypto,
-                            total_bonds, total_real_estate_personal, total_real_estate_investment, total_other_assets, recorded_at
-                     FROM portfolio_metrics_history
-                     WHERE recorded_at >= {}
-                     ORDER BY recorded_at DESC",
-                    start
-                )
-            }
-            _ => {
-                "SELECT id, total_savings, total_loans_principal, total_investments, total_crypto,
-                        total_bonds, total_real_estate_personal, total_real_estate_investment, total_other_assets, recorded_at
-                 FROM portfolio_metrics_history ORDER BY recorded_at DESC".to_string()
-            }
-        };
+        let mut query = String::from(
+            "SELECT id, total_savings, total_loans_principal, total_investments, total_crypto,
+                    total_bonds, total_real_estate_personal, total_real_estate_investment,
+                    total_other_assets, recorded_at
+             FROM portfolio_metrics_history",
+        );
 
-        let mut stmt = conn.prepare(&sql)?;
-        let history = stmt.query_map([], |row| {
-            Ok(PortfolioMetricsHistory {
-                id: row.get(0)?,
-                total_savings: row.get(1)?,
-                total_loans_principal: row.get(2)?,
-                total_investments: row.get(3)?,
-                total_crypto: row.get(4)?,
-                total_bonds: row.get(5)?,
-                total_real_estate_personal: row.get(6)?,
-                total_real_estate_investment: row.get(7)?,
-                total_other_assets: row.get(8).unwrap_or("0".to_string()),
-                recorded_at: row.get(9)?,
-            })
-        })?.filter_map(|r| r.ok()).collect();
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+        let mut conditions = Vec::new();
+
+        if let Some(start) = start_date {
+            conditions.push(" recorded_at >= ?");
+            params.push(Box::new(start));
+        }
+        if let Some(end) = end_date {
+            conditions.push(" recorded_at <= ?");
+            params.push(Box::new(end));
+        }
+
+        if !conditions.is_empty() {
+            query.push_str(" WHERE");
+            query.push_str(&conditions.join(" AND"));
+        }
+        query.push_str(" ORDER BY recorded_at DESC");
+
+        let mut stmt = conn.prepare(&query)?;
+        let history = stmt
+            .query_map(rusqlite::params_from_iter(params), |row| {
+                Ok(PortfolioMetricsHistory {
+                    id: row.get(0)?,
+                    total_savings: row.get(1)?,
+                    total_loans_principal: row.get(2)?,
+                    total_investments: row.get(3)?,
+                    total_crypto: row.get(4)?,
+                    total_bonds: row.get(5)?,
+                    total_real_estate_personal: row.get(6)?,
+                    total_real_estate_investment: row.get(7)?,
+                    total_other_assets: row.get(8).unwrap_or("0".to_string()),
+                    recorded_at: row.get(9)?,
+                })
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
 
         Ok(history)
     })
@@ -279,8 +246,6 @@ pub async fn get_portfolio_history(
 /// Record today's per-ticker values to stock_value_history and crypto_value_history tables
 /// This is called alongside update_todays_snapshot to ensure per-ticker chart data is available
 fn record_todays_ticker_values(db: &Database) -> Result<()> {
-    use crate::services::currency::convert_to_czk;
-
     let now = chrono::Utc::now();
     let today_start = now
         .date_naive()
@@ -305,26 +270,12 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                 continue;
             }
 
-            // Get current price
-            let price_data: Option<(String, String)> = conn.query_row(
-                "SELECT COALESCE(
-                    (SELECT price FROM stock_price_overrides WHERE ticker = ?1),
-                    (SELECT original_price FROM stock_data WHERE ticker = ?1)
-                ),
-                COALESCE(
-                    (SELECT currency FROM stock_price_overrides WHERE ticker = ?1),
-                    (SELECT currency FROM stock_data WHERE ticker = ?1)
-                )",
-                [&ticker],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            ).ok();
-
-            if let Some((price_str, currency)) = price_data {
-                let price: f64 = price_str.parse().unwrap_or(0.0);
+            if let Some(resolved) = crate::services::pricing::resolve_stock_price(conn, &ticker) {
+                let price: f64 = resolved.original_price.parse().unwrap_or(0.0);
                 if price <= 0.0 {
                     continue;
                 }
-                let value_czk = convert_to_czk(qty * price, &currency);
+                let value_czk = resolved.price_czk * qty;
                 let id = Uuid::new_v4().to_string();
 
                 conn.execute(
@@ -342,7 +293,7 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                         value_czk.to_string(),
                         qty.to_string(),
                         price.to_string(),
-                        currency,
+                        resolved.currency,
                     ],
                 )?;
             }
@@ -363,26 +314,12 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                 continue;
             }
 
-            // Get current price - prefer override over API price
-            let price_data: Option<(String, String)> = conn.query_row(
-                "SELECT COALESCE(
-                    (SELECT price FROM crypto_price_overrides WHERE symbol = ?1),
-                    (SELECT price FROM crypto_prices WHERE symbol = ?1)
-                ),
-                COALESCE(
-                    (SELECT currency FROM crypto_price_overrides WHERE symbol = ?1),
-                    (SELECT currency FROM crypto_prices WHERE symbol = ?1)
-                )",
-                [&ticker],
-                |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-            ).ok();
-
-            if let Some((price_str, currency)) = price_data {
-                let price: f64 = price_str.parse().unwrap_or(0.0);
+            if let Some(resolved) = crate::services::pricing::resolve_crypto_price(conn, &ticker) {
+                let price: f64 = resolved.original_price.parse().unwrap_or(0.0);
                 if price <= 0.0 {
                     continue;
                 }
-                let value_czk = convert_to_czk(qty * price, &currency);
+                let value_czk = resolved.price_czk * qty;
                 let id = Uuid::new_v4().to_string();
 
                 conn.execute(
@@ -400,7 +337,7 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
                         value_czk.to_string(),
                         qty.to_string(),
                         price.to_string(),
-                        currency,
+                        resolved.currency,
                     ],
                 )?;
             }
@@ -412,16 +349,7 @@ fn record_todays_ticker_values(db: &Database) -> Result<()> {
 
 /// Update today's portfolio snapshot (or create one if it doesn't exist)
 pub async fn update_todays_snapshot(db: &Database) -> Result<()> {
-    // We need to calculate metrics first.
-    // Since get_portfolio_metrics asks for State, we can't easily call it.
-    // We'll reimplement specific parts or refactor get_portfolio_metrics to take &Database.
-    // For now, let's look at get_portfolio_metrics implementation.
-    // It uses db.with_conn.
-
-    // Check if we can refactor get_portfolio_metrics to take &Database first.
-    // Actually, asking for State in arguments is for Tauri command handler.
-    // We should separate the logic.
-
+    // Calculate metrics using shared logic
     let metrics = calculate_portfolio_metrics(db, false)?;
     let now = chrono::Utc::now();
     let today_start = now

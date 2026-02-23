@@ -20,7 +20,7 @@ import {
 import { InsuranceFormDialog } from "@/components/insurance/InsuranceFormDialog";
 import { InsuranceDocuments } from "@/components/insurance/InsuranceDocuments";
 import type { InsurancePolicy, RealEstate } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { insuranceApi } from "@/lib/tauri-api";
 import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { useCurrency } from "@/lib/currency";
@@ -42,7 +42,6 @@ import { useLanguage } from "@/i18n/I18nProvider";
 export default function InsuranceDetail() {
     const [, params] = useRoute("/insurance/:id");
     const [, setLocation] = useLocation();
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const id = params?.id;
     const { formatCurrency } = useCurrency();
@@ -66,18 +65,11 @@ export default function InsuranceDetail() {
         mutationFn: () => insuranceApi.delete(id!),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["insurance"] });
-            toast({
-                title: tc('status.success'),
-                description: t('toast.deleted'),
-            });
+            toast(tc('status.success'), { description: t('toast.deleted') });
             setLocation("/insurance");
         },
         onError: (error) => {
-            toast({
-                title: tc('status.error'),
-                description: error.message,
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 

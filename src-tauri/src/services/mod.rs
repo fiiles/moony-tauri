@@ -13,3 +13,4 @@ pub mod currency;
 pub mod date_parser;
 pub mod investments;
 pub mod price_api;
+pub mod pricing;
