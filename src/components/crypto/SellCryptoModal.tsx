@@ -30,7 +30,7 @@ import {
 import { CURRENCIES } from "@shared/currencies";
 import type { CryptoHoldingData } from "@/components/crypto/CryptoTable";
 import { cryptoApi } from "@/lib/tauri-api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
 const formSchema = z.object({
@@ -50,7 +50,6 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
     const { t } = useTranslation('crypto');
     const { t: tc } = useTranslation('common');
     const queryClient = useQueryClient();
-    const { toast } = useToast();
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -85,15 +84,11 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             onOpenChange(false);
             form.reset();
-            toast({ title: tc('status.success'), description: t('toast.deleted') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
             console.error("Failed to sell crypto:", error);
-            toast({
-                title: tc('status.error'),
-                description: error.message,
-                variant: "destructive"
-            });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 

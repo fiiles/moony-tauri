@@ -4,13 +4,12 @@
  * The main investment features use investmentsApi from tauri-api.ts
  */
 import { useMutation } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { translateApiError } from "@/lib/translate-api-error";
 import type { InsertInstrument, InsertPurchase } from "@shared/schema";
 
 export function useInstrumentMutations() {
-  const { toast } = useToast();
   const { t } = useTranslation('common');
 
   const createMutation = useMutation({
@@ -19,11 +18,7 @@ export function useInstrumentMutations() {
       throw new Error("Instrument feature not implemented in Tauri version. Use Investments instead.");
     },
     onError: (error: Error) => {
-      toast({
-        title: t('status.error'),
-        description: translateApiError(error, t),
-        variant: "destructive",
-      });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -39,11 +34,7 @@ export function useInstrumentMutations() {
       throw new Error("Instrument feature not implemented in Tauri version. Use Investments instead.");
     },
     onError: (error: Error) => {
-      toast({
-        title: t('status.error'),
-        description: translateApiError(error, t),
-        variant: "destructive",
-      });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -52,11 +43,7 @@ export function useInstrumentMutations() {
       throw new Error("Instrument feature not implemented in Tauri version. Use Investments instead.");
     },
     onError: (error: Error) => {
-      toast({
-        title: t('status.error'),
-        description: translateApiError(error, t),
-        variant: "destructive",
-      });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 

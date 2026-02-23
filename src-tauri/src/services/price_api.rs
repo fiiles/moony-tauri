@@ -8,6 +8,15 @@ use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Get current Unix timestamp. Uses expect() because system clock
+/// being before Unix epoch indicates a fundamentally broken system.
+fn unix_timestamp_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("System clock is before Unix epoch")
+        .as_secs() as i64
+}
+
 // ============================================================================
 // CoinGecko API Types
 // ============================================================================
@@ -74,16 +83,13 @@ pub async fn refresh_stock_prices_yahoo(
 
     let mut updated_prices = Vec::new();
     let mut failed_tickers: Vec<(String, String)> = Vec::new();
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
+    let now = unix_timestamp_now();
 
-    println!(
+    log::info!(
         "[YAHOO FINANCE] Fetching prices for {} tickers",
         tickers.len()
     );
-    println!("[YAHOO FINANCE] Tickers: {:?}", tickers);
+    log::info!("[YAHOO FINANCE] Tickers: {:?}", tickers);
 
     // Create Yahoo connector (handles cookies and authentication)
     let provider = yahoo::YahooConnector::new()
@@ -112,9 +118,10 @@ pub async fn refresh_stock_prices_yahoo(
         })?;
 
         if !should_fetch {
-            println!(
+            log::info!(
                 "[YAHOO FINANCE] Skipping {} (cached within {} hours)",
-                ticker, PRICE_CACHE_HOURS
+                ticker,
+                PRICE_CACHE_HOURS
             );
             continue;
         }
@@ -171,19 +178,19 @@ pub async fn refresh_stock_prices_yahoo(
     }
 
     // Summary logging
-    println!("[YAHOO FINANCE] ========== SUMMARY ==========");
-    println!("[YAHOO FINANCE] Updated: {} tickers", updated_prices.len());
+    log::info!("[YAHOO FINANCE] ========== SUMMARY ==========");
+    log::info!("[YAHOO FINANCE] Updated: {} tickers", updated_prices.len());
     if !updated_prices.is_empty() {
         let updated_list: Vec<_> = updated_prices.iter().map(|p| p.ticker.as_str()).collect();
-        println!("[YAHOO FINANCE] Successfully updated: {:?}", updated_list);
+        log::info!("[YAHOO FINANCE] Successfully updated: {:?}", updated_list);
     }
     if !failed_tickers.is_empty() {
-        println!("[YAHOO FINANCE] Failed: {} tickers", failed_tickers.len());
+        log::warn!("[YAHOO FINANCE] Failed: {} tickers", failed_tickers.len());
         for (ticker, reason) in &failed_tickers {
-            println!("[YAHOO FINANCE]   - {}: {}", ticker, reason);
+            log::warn!("[YAHOO FINANCE]   - {}: {}", ticker, reason);
         }
     }
-    println!("[YAHOO FINANCE] ==============================");
+    log::info!("[YAHOO FINANCE] ==============================");
 
     Ok(StockPriceRefreshResult {
         updated: updated_prices,
@@ -271,10 +278,7 @@ pub async fn refresh_crypto_prices(
         .map_err(|e| AppError::ExternalApi(format!("CoinGecko parse error: {}", e)))?;
 
     let mut updated_prices = Vec::new();
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
+    let now = unix_timestamp_now();
 
     for (coingecko_id, prices) in price_data {
         if let Some(usd_price) = prices.get("usd") {
@@ -446,7 +450,7 @@ pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Ve
     let mut results = Vec::new();
     let mut failed_tickers: Vec<(String, String)> = Vec::new();
 
-    println!(
+    log::info!(
         "[YAHOO DIVIDENDS] Fetching dividends for {} tickers",
         tickers.len()
     );
@@ -488,7 +492,7 @@ pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Ve
             })?;
 
             if let Some((sum, currency)) = cached {
-                println!("[YAHOO DIVIDENDS] Using cached dividend for {}", ticker);
+                log::info!("[YAHOO DIVIDENDS] Using cached dividend for {}", ticker);
                 results.push(DividendResult {
                     ticker,
                     yearly_sum: sum.parse().unwrap_or(0.0),
@@ -500,10 +504,7 @@ pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Ve
 
         // Fetch dividend history from Yahoo Finance (last 1 year + 1 day to ensure we get all)
         // yahoo_finance_api uses time::OffsetDateTime, not chrono
-        let now_ts = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64;
+        let now_ts = unix_timestamp_now();
         let start_ts = now_ts - (366 * 24 * 60 * 60); // 366 days ago
 
         let start = time::OffsetDateTime::from_unix_timestamp(start_ts)
@@ -581,15 +582,15 @@ pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Ve
     }
 
     // Summary logging
-    println!("[YAHOO DIVIDENDS] ========== SUMMARY ==========");
-    println!("[YAHOO DIVIDENDS] Updated: {} tickers", results.len());
+    log::info!("[YAHOO DIVIDENDS] ========== SUMMARY ==========");
+    log::info!("[YAHOO DIVIDENDS] Updated: {} tickers", results.len());
     if !failed_tickers.is_empty() {
-        println!("[YAHOO DIVIDENDS] Failed: {} tickers", failed_tickers.len());
+        log::warn!("[YAHOO DIVIDENDS] Failed: {} tickers", failed_tickers.len());
         for (ticker, reason) in &failed_tickers {
-            println!("[YAHOO DIVIDENDS]   - {}: {}", ticker, reason);
+            log::warn!("[YAHOO DIVIDENDS]   - {}: {}", ticker, reason);
         }
     }
-    println!("[YAHOO DIVIDENDS] ==============================");
+    log::info!("[YAHOO DIVIDENDS] ==============================");
 
     Ok(results)
 }
@@ -630,7 +631,7 @@ pub async fn get_historical_stock_prices_yahoo(
 
     let mut results: HashMap<String, Vec<HistoricalPrice>> = HashMap::new();
 
-    println!(
+    log::info!(
         "[YAHOO HISTORICAL] Fetching historical prices for {} tickers from {} to {}",
         tickers.len(),
         start_timestamp,
@@ -641,7 +642,7 @@ pub async fn get_historical_stock_prices_yahoo(
     let provider = match yahoo::YahooConnector::new() {
         Ok(p) => p,
         Err(e) => {
-            println!(
+            log::warn!(
                 "[YAHOO HISTORICAL] Connector failed (offline?): {} - returning empty",
                 e
             );
@@ -678,7 +679,7 @@ pub async fn get_historical_stock_prices_yahoo(
                                 .collect();
 
                             if !prices.is_empty() {
-                                println!(
+                                log::info!(
                                     "[YAHOO HISTORICAL] {} - got {} historical prices",
                                     ticker,
                                     prices.len()
@@ -687,18 +688,18 @@ pub async fn get_historical_stock_prices_yahoo(
                             }
                         }
                         Err(e) => {
-                            println!("[YAHOO HISTORICAL] {} - no quotes: {}", ticker, e);
+                            log::warn!("[YAHOO HISTORICAL] {} - no quotes: {}", ticker, e);
                         }
                     }
                 }
                 Err(e) => {
-                    println!("[YAHOO HISTORICAL] {} - error: {}", ticker, e);
+                    log::warn!("[YAHOO HISTORICAL] {} - error: {}", ticker, e);
                 }
             }
         }
     }
 
-    println!(
+    log::info!(
         "[YAHOO HISTORICAL] Fetched historical data for {} tickers",
         results.len()
     );
@@ -773,11 +774,11 @@ pub async fn get_historical_crypto_prices_coingecko(
 
     let mut results: HashMap<String, Vec<HistoricalPrice>> = HashMap::new();
 
-    println!(
+    log::info!(
         "[COINGECKO HISTORICAL] Fetching historical prices for {} cryptos",
         id_to_ticker.len()
     );
-    println!(
+    log::info!(
         "[COINGECKO HISTORICAL] API key present: {}",
         api_key.map(|k| !k.is_empty()).unwrap_or(false)
     );
@@ -833,7 +834,7 @@ pub async fn get_historical_crypto_prices_coingecko(
                                 .collect();
 
                             if !historical.is_empty() {
-                                println!(
+                                log::info!(
                                     "[COINGECKO HISTORICAL] {} - got {} daily prices",
                                     ticker,
                                     historical.len()
@@ -846,19 +847,21 @@ pub async fn get_historical_crypto_prices_coingecko(
                     // Log the actual error response body
                     let status = response.status();
                     let error_body = response.text().await.unwrap_or_default();
-                    println!(
+                    log::warn!(
                         "[COINGECKO HISTORICAL] {} - HTTP error: {} - Body: {}",
-                        ticker, status, error_body
+                        ticker,
+                        status,
+                        error_body
                     );
                 }
             }
             Err(e) => {
-                println!("[COINGECKO HISTORICAL] {} - error: {}", ticker, e);
+                log::warn!("[COINGECKO HISTORICAL] {} - error: {}", ticker, e);
             }
         }
     }
 
-    println!(
+    log::info!(
         "[COINGECKO HISTORICAL] Fetched historical data for {} cryptos",
         results.len()
     );

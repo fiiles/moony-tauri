@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { budgetingApi, bankAccountsApi, type InsertBudgetGoal, type BudgetGoal } from "@/lib/tauri-api";
 import { BudgetingSummary } from "@/components/budgeting/BudgetingSummary";
 import { BudgetCategoryChart } from "@/components/budgeting/BudgetCategoryChart";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useCurrency } from "@/lib/currency";
 
 type Timeframe = "monthly" | "quarterly" | "yearly";
@@ -25,7 +25,6 @@ export default function Budgeting() {
   const { t, i18n } = useTranslation('budgeting');
   const { t: tc } = useTranslation('common');
   const { formatCurrency } = useCurrency();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // State
@@ -99,10 +98,10 @@ export default function Budgeting() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budgeting-report'] });
       queryClient.invalidateQueries({ queryKey: ['budget-goals'] });
-      toast({ title: t('goalSaved') });
+      toast(t('goalSaved'));
     },
     onError: (error: Error) => {
-      toast({ title: error.message, variant: "destructive" });
+      toast.error(error.message);
     },
   });
 
@@ -112,10 +111,10 @@ export default function Budgeting() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budgeting-report'] });
       queryClient.invalidateQueries({ queryKey: ['budget-goals'] });
-      toast({ title: t('goalDeleted') });
+      toast(t('goalDeleted'));
     },
     onError: (error: Error) => {
-      toast({ title: error.message, variant: "destructive" });
+      toast.error(error.message);
     },
   });
 

@@ -16,7 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { authApi, priceApi } from "@/lib/tauri-api";
 import { queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Eye, EyeOff, ExternalLink, Copy, Check, ShieldCheck, AlertTriangle, Activity, User, Lock, Key, Coins, Languages, Menu, LayoutDashboard, Trash2 } from "lucide-react";
@@ -55,8 +55,8 @@ interface PendingPasswordChange {
 }
 
 function ChangePasswordForm() {
-  const { toast } = useToast();
   const { t } = useTranslation('settings');
+  const { t: tc } = useTranslation('common');
   const [step, setStep] = useState<'form' | 'confirm'>('form');
   const [pendingData, setPendingData] = useState<PendingPasswordChange | null>(null);
   const [copied, setCopied] = useState(false);
@@ -87,7 +87,7 @@ function ChangePasswordForm() {
       setStep('confirm');
     },
     onError: (error: Error) => {
-      toast({ title: t('toast.verificationFailed'), description: translateApiError(error, t), variant: "destructive" });
+      toast.error(t('toast.verificationFailed'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -102,13 +102,13 @@ function ChangePasswordForm() {
       });
     },
     onSuccess: () => {
-      toast({ title: t('toast.passwordChanged'), description: t('toast.passwordChangedDesc') });
+      toast(t('toast.passwordChanged'));
       setStep('form');
       setPendingData(null);
       form.reset();
     },
     onError: (error: Error) => {
-      toast({ title: t('toast.updateFailed'), description: translateApiError(error, t), variant: "destructive" });
+      toast.error(t('toast.updateFailed'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -233,7 +233,7 @@ function ChangePasswordForm() {
 }
 
 
-function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] }) {
+function ApiKeysCard() {
   const { t } = useTranslation('settings');
   const [showCoingecko, setShowCoingecko] = useState(false);
   // Track user edits separately - undefined means user hasn't edited yet
@@ -255,10 +255,10 @@ function ApiKeysCard({ toast }: { toast: ReturnType<typeof useToast>["toast"] })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
-      toast({ title: t('apiKeys.saved'), description: t('apiKeys.savedDescription') });
+      toast(t('apiKeys.saved'));
     },
     onError: (error: Error) => {
-      toast({ title: t('toast.updateFailed'), description: error.message, variant: "destructive" });
+      toast.error(t('toast.updateFailed'), { description: error.message });
     },
   });
 
@@ -323,7 +323,6 @@ export default function SettingsPage() {
   const { language, setLanguage } = useLanguage();
   const { currencyCode, setCurrency } = useCurrency();
   const { user } = useAuth();
-  const { toast } = useToast();
   const [analyticsEnabled, setAnalyticsEnabled] = useState(getConsent() ?? false);
 
   const form = useForm<ProfileData>({
@@ -346,10 +345,10 @@ export default function SettingsPage() {
         queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
         queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
       }
-      toast({ title: t('toast.profileUpdated'), description: t('toast.profileUpdatedDesc') });
+      toast(t('toast.profileUpdated'));
     },
     onError: (error: Error) => {
-      toast({ title: t('toast.updateFailed'), description: translateApiError(error, tc), variant: "destructive" });
+      toast.error(t('toast.updateFailed'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -360,10 +359,10 @@ export default function SettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-      toast({ title: t('toast.preferencesUpdated'), description: t('toast.preferencesUpdatedDesc') });
+      toast(t('toast.preferencesUpdated'));
     },
     onError: (error: Error) => {
-      toast({ title: t('toast.updateFailed'), description: translateApiError(error, tc), variant: "destructive" });
+      toast.error(t('toast.updateFailed'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -375,7 +374,7 @@ export default function SettingsPage() {
       window.location.reload();
     },
     onError: (error: Error) => {
-      toast({ title: t('toast.deletionFailed'), description: translateApiError(error, tc), variant: "destructive" });
+      toast.error(t('toast.deletionFailed'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -476,7 +475,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* API Keys */}
-      <ApiKeysCard toast={toast} />
+      <ApiKeysCard />
 
       {/* Currency Settings */}
 

@@ -10,7 +10,7 @@ import { createContext, ReactNode, useContext, useState, useEffect } from "react
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { authApi, priceApi, categorizationApi } from "../lib/tauri-api";
 import { queryClient } from "../lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { translateApiError } from "@/lib/translate-api-error";
 import type { UserProfile } from "@shared/schema";
@@ -57,7 +57,6 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const { toast } = useToast();
     const { t } = useTranslation('auth');
     const { t: tc } = useTranslation('common');
     const [recoveryKey, setRecoveryKey] = useState<string | null>(null);
@@ -131,17 +130,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             // Show recovery key modal
             setRecoveryKey(result.recoveryKey);
-            toast({
-                title: t('toast.almostDone'),
-                description: t('toast.saveRecoveryKey'),
-            });
+            toast(t('toast.almostDone'), { description: t('toast.saveRecoveryKey') });
         },
         onError: (error: Error) => {
-            toast({
-                title: t('toast.setupFailed'),
-                description: translateApiError(error, tc),
-                variant: "destructive",
-            });
+            toast.error(t('toast.setupFailed'), { description: translateApiError(error, tc) });
         },
     });
 
@@ -166,17 +158,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Load custom categorization rules from database
             categorizationApi.loadCustomRulesFromDb().catch(console.error);
             // Recovery key will be cleared by auth-page when user dismisses modal
-            toast({
-                title: t('toast.setupComplete'),
-                description: t('toast.setupCompleteDesc'),
-            });
+            toast(t('toast.setupComplete'), { description: t('toast.setupCompleteDesc') });
         },
         onError: (error: Error) => {
-            toast({
-                title: t('toast.setupFailed'),
-                description: translateApiError(error, tc),
-                variant: "destructive",
-            });
+            toast.error(t('toast.setupFailed'), { description: translateApiError(error, tc) });
         },
     });
 
@@ -219,13 +204,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const isPasswordError = errorLower.includes("invalid password") ||
                                    errorLower.includes("corrupted") ||
                                    errorLower.includes("decryption failed");
-            toast({
-                title: t('toast.unlockFailed'),
-                description: isPasswordError
+            toast.error(t('toast.unlockFailed'), { description: isPasswordError
                     ? t('toast.wrongPassword')
-                    : translateApiError(error, tc),
-                variant: "destructive",
-            });
+                    : translateApiError(error, tc) });
         },
     });
 
@@ -239,11 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setAppStatus("locked");
         },
         onError: (error: Error) => {
-            toast({
-                title: t('toast.lockFailed'),
-                description: translateApiError(error, tc),
-                variant: "destructive",
-            });
+            toast.error(t('toast.lockFailed'), { description: translateApiError(error, tc) });
         },
     });
 
@@ -263,17 +240,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             // Show new recovery key modal
             setRecoveryKey(result.newRecoveryKey);
-            toast({
-                title: t('toast.recoveryKeyVerified'),
-                description: t('toast.saveNewRecoveryKey'),
-            });
+            toast(t('toast.recoveryKeyVerified'), { description: t('toast.saveNewRecoveryKey') });
         },
         onError: (error: Error) => {
-            toast({
-                title: t('toast.recoveryFailed'),
-                description: translateApiError(error, tc),
-                variant: "destructive",
-            });
+            toast.error(t('toast.recoveryFailed'), { description: translateApiError(error, tc) });
         },
     });
 
@@ -298,17 +268,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Load custom categorization rules from database
             categorizationApi.loadCustomRulesFromDb().catch(console.error);
             // Recovery key will be cleared by auth-page
-            toast({
-                title: t('toast.recoverySuccess'),
-                description: t('toast.newRecoveryKey'),
-            });
+            toast(t('toast.recoverySuccess'), { description: t('toast.newRecoveryKey') });
         },
         onError: (error: Error) => {
-            toast({
-                title: t('toast.recoveryFailed'),
-                description: translateApiError(error, tc),
-                variant: "destructive",
-            });
+            toast.error(t('toast.recoveryFailed'), { description: translateApiError(error, tc) });
         },
     });
 

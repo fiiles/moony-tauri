@@ -28,7 +28,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FileText, Upload } from "lucide-react";
@@ -52,7 +52,6 @@ interface AddRealEstateDocumentModalProps {
 export function AddRealEstateDocumentModal({ open: isOpen, onOpenChange, realEstateId }: AddRealEstateDocumentModalProps) {
     const { t } = useTranslation('realEstate');
     const { t: tc } = useTranslation('common');
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
 
@@ -79,17 +78,10 @@ export function AddRealEstateDocumentModal({ open: isOpen, onOpenChange, realEst
             onOpenChange(false);
             form.reset();
             setSelectedFileName(null);
-            toast({
-                title: tc('status.success'),
-                description: t('documents.added'),
-            });
+            toast(tc('status.success'), { description: t('documents.added') });
         },
         onError: (error: Error) => {
-            toast({
-                title: tc('status.error'),
-                description: error.message,
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -119,11 +111,7 @@ export function AddRealEstateDocumentModal({ open: isOpen, onOpenChange, realEst
                 }
             }
         } catch (error) {
-            toast({
-                title: tc('status.error'),
-                description: String(error),
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: String(error) });
         }
     };
 

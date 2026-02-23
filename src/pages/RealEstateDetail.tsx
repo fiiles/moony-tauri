@@ -31,7 +31,7 @@ import { OneTimeCostModal } from "@/components/real-estate/OneTimeCostModal";
 import { PhotoTimelineGallery } from "@/components/real-estate/PhotoTimelineGallery";
 import { RealEstateDocuments } from "@/components/real-estate/RealEstateDocuments";
 import type { RealEstate, RealEstateOneTimeCost, Loan, InsurancePolicy } from "@shared/schema";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { realEstateApi } from "@/lib/tauri-api";
 import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
 import { useCurrency } from "@/lib/currency";
@@ -52,7 +52,6 @@ import { useLanguage } from "@/i18n/I18nProvider";
 export default function RealEstateDetail() {
     const [, params] = useRoute("/real-estate/:id");
     const [, setLocation] = useLocation();
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const id = params?.id;
     const { currencyCode: userCurrency, formatCurrency } = useCurrency();
@@ -89,18 +88,11 @@ export default function RealEstateDetail() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["real-estate"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({
-                title: tc('status.success'),
-                description: t('toast.deleted'),
-            });
+            toast(tc('status.success'), { description: t('toast.deleted') });
             setLocation("/real-estate");
         },
         onError: (error) => {
-            toast({
-                title: tc('status.error'),
-                description: error.message,
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -108,10 +100,7 @@ export default function RealEstateDetail() {
         mutationFn: (costId: string) => realEstateApi.deleteCost(costId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["real-estate-costs", id] });
-            toast({
-                title: tc('status.success'),
-                description: t('toast.costDeleted'),
-            });
+            toast(tc('status.success'), { description: t('toast.costDeleted') });
         },
     });
 
@@ -120,10 +109,7 @@ export default function RealEstateDetail() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["real-estate-insurances", id] });
             queryClient.invalidateQueries({ queryKey: ["available-insurances"] });
-            toast({
-                title: tc('status.success'),
-                description: "Insurance unlinked successfully",
-            });
+            toast(tc('status.success'), { description: "Insurance unlinked successfully" });
         },
     });
 
@@ -132,10 +118,7 @@ export default function RealEstateDetail() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["real-estate-loans", id] });
             queryClient.invalidateQueries({ queryKey: ["available-loans"] });
-            toast({
-                title: tc('status.success'),
-                description: "Loan unlinked successfully",
-            });
+            toast(tc('status.success'), { description: "Loan unlinked successfully" });
         },
     });
 

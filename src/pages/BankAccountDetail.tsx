@@ -63,7 +63,7 @@ import { useTranslation } from 'react-i18next';
 import { useCurrency } from '@/lib/currency';
 import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
 import { useCategorization } from '@/hooks/useCategorization';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { isCzechIBAN, ibanToBBAN, formatAccountNumber } from '@/utils/iban-utils';
 
 export default function BankAccountDetail() {
@@ -82,7 +82,6 @@ export default function BankAccountDetail() {
   const [categorizationResults, setCategorizationResults] = useState<
     Map<string, CategorizationResult>
   >(new Map());
-  const { toast } = useToast();
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
@@ -420,8 +419,7 @@ export default function BankAccountDetail() {
     // Show toast notification
     const totalCategorized = matchCount + suggestionCount;
     if (totalCategorized > 0) {
-      toast({
-        title: t('categorization.categorizeComplete', 'Categorization complete'),
+      toast(t('categorization.categorizeComplete', 'Categorization complete'), {
         description: t('categorization.categorizeResult', {
           matches: matchCount,
           suggestions: suggestionCount,
@@ -430,15 +428,7 @@ export default function BankAccountDetail() {
         duration: 5000,
       });
     } else {
-      toast({
-        title: t('categorization.noMatches', 'No matches found'),
-        description: t(
-          'categorization.noMatchesDesc',
-          'Try adding more rules or training the ML model.'
-        ),
-        variant: 'destructive',
-        duration: 5000,
-      });
+      toast.error(t('categorization.noMatches'), { description: t('categorization.noMatchesDesc') });
     }
   };
 
@@ -484,12 +474,7 @@ export default function BankAccountDetail() {
       queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId] });
     } catch (error) {
       console.error('Failed to update category:', error);
-      toast({
-        title: t('messages.error', 'Error'),
-        description: String(error),
-        variant: 'destructive',
-        duration: 5000,
-      });
+      toast.error(t('messages.error'), { description: String(error) });
     }
   };
 

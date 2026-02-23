@@ -24,12 +24,11 @@ const MOCK_UPDATE_INFO = {
     date: new Date().toISOString(),
     body: '## What\'s New\n\n- 🎉 New feature: Portfolio projection\n- 🐛 Bug fixes and improvements\n- 🚀 Performance optimizations',
 };
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export function AboutModal() {
     const [isOpen, setIsOpen] = useState(false);
     const { t } = useTranslation("common");
-    const { toast } = useToast();
     const { isChecking: realIsChecking, updateAvailable: realUpdateAvailable, downloadAndInstall } = useUpdater();
 
     // Apply mock values if debugging
@@ -38,10 +37,7 @@ export function AboutModal() {
 
     const handleUpdate = () => {
         if (DEBUG_MOCK_UPDATE) {
-            toast({
-                title: "Debug Mode",
-                description: "This is a mock update. Set DEBUG_MOCK_UPDATE to false to test real updates.",
-            });
+            toast("Debug Mode", { description: "This is a mock update. Set DEBUG_MOCK_UPDATE to false to test real updates." });
             return;
         }
         downloadAndInstall();

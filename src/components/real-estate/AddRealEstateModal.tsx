@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, Loader2, Home, Coins, Receipt, Landmark, Shield, Info } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
     Select,
     SelectContent,
@@ -47,7 +47,6 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
     const { t } = useTranslation('realEstate');
     const { t: tc } = useTranslation('common');
     const [open, setOpen] = useState(false);
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const { currencyCode: userCurrency } = useCurrency();
 
@@ -230,17 +229,10 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                 setSelectedLoanIds([]);
                 setSelectedInsuranceIds([]);
             }
-            toast({
-                title: tc('status.success'),
-                description: realEstate ? t('toast.updated') : t('toast.added'),
-            });
+            toast(tc('status.success'), { description: realEstate ? t('toast.updated') : t('toast.added') });
         },
         onError: (error) => {
-            toast({
-                title: tc('status.error'),
-                description: error.message,
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 

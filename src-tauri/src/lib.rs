@@ -4,6 +4,7 @@
 
 pub mod bindings;
 pub mod commands;
+pub mod constants;
 pub mod db;
 pub mod error;
 pub mod models;

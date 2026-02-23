@@ -47,7 +47,7 @@ import { TrendingUp, TrendingDown, PieChart, Tag, Plus, Trash2, Settings2, Folde
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { StockTag, StockTagGroup, StockInvestmentWithTags, TagMetrics } from "@shared/schema";
 
@@ -68,7 +68,6 @@ export default function StocksAnalysis() {
     const { t: tc } = useTranslation('common');
     const { formatCurrency } = useCurrency();
     const formatPercent = (value: number) => `${value.toFixed(1)}%`;
-    const { toast } = useToast();
     const queryClient = useQueryClient();
 
     // State
@@ -121,10 +120,10 @@ export default function StocksAnalysis() {
             setNewTagName("");
             setNewTagGroupId("");
             setIsCreateTagDialogOpen(false);
-            toast({ title: tc('status.success') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: 'destructive' });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -135,10 +134,10 @@ export default function StocksAnalysis() {
             queryClient.invalidateQueries({ queryKey: ["stock-tags"] });
             setMoveTagId("");
             setMoveToGroupId("");
-            toast({ title: tc('status.success') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: 'destructive' });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -148,10 +147,10 @@ export default function StocksAnalysis() {
             queryClient.invalidateQueries({ queryKey: ["stock-tags"] });
             queryClient.invalidateQueries({ queryKey: ["stocks-analysis"] });
             queryClient.invalidateQueries({ queryKey: ["tag-metrics"] });
-            toast({ title: tc('status.success') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: 'destructive' });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -163,10 +162,10 @@ export default function StocksAnalysis() {
             queryClient.invalidateQueries({ queryKey: ["tag-metrics"] });
             setSelectedStockIds([]);
             setAssignTagIds([]);
-            toast({ title: tc('status.success') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: 'destructive' });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -178,10 +177,10 @@ export default function StocksAnalysis() {
             setNewGroupName("");
             setNewGroupDescription("");
             setIsCreateGroupDialogOpen(false);
-            toast({ title: tc('status.success') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: 'destructive' });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -190,10 +189,10 @@ export default function StocksAnalysis() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["stock-tag-groups"] });
             queryClient.invalidateQueries({ queryKey: ["stock-tags"] });
-            toast({ title: tc('status.success') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: 'destructive' });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 

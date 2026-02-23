@@ -40,7 +40,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
 const formSchema = z.object({
@@ -61,7 +61,6 @@ export function AddInvestmentModal() {
     const [showResultsDialog, setShowResultsDialog] = useState(false);
     const [searching, setSearching] = useState(false);
     const queryClient = useQueryClient();
-    const { toast } = useToast();
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -86,19 +85,12 @@ export function AddInvestmentModal() {
             const results = await priceApi.searchStockTickers(companyName);
 
             if (results.length === 0) {
-                toast({
-                    title: t('toast.noResults'),
-                    description: t('modal.add.noTickerFound'),
-                    variant: "destructive"
-                });
+                toast.error(t('toast.noResults'), { description: t('modal.add.noTickerFound') });
             } else if (results.length === 1) {
                 // Auto-select single result
                 form.setValue("ticker", results[0].symbol);
                 form.setValue("companyName", results[0].shortname || companyName);
-                toast({
-                    title: t('toast.tickerFound'),
-                    description: `${t('modal.add.selected')} ${results[0].symbol}`
-                });
+                toast(t('toast.tickerFound'), { description: `${results[0].symbol} – ${results[0].shortname}` });
             } else {
                 // Show selection dialog for multiple results
                 setSearchResults(results);
@@ -106,11 +98,7 @@ export function AddInvestmentModal() {
             }
         } catch (error: any) {
             console.error("Ticker search error:", error);
-            toast({
-                title: t('toast.searchFailed'),
-                description: error.message || t('modal.add.searchError'),
-                variant: "destructive"
-            });
+            toast.error(t('toast.searchFailed'), { description: error.message || t('modal.add.searchError') });
         } finally {
             setSearching(false);
         }

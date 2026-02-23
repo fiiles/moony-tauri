@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import {
     Select,
@@ -46,7 +46,6 @@ export function OneTimeCostModal({ realEstateId, cost, trigger }: OneTimeCostMod
     const { t } = useTranslation('realEstate');
     const { t: tc } = useTranslation('common');
     const [open, setOpen] = useState(false);
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const { currencyCode: userCurrency } = useCurrency();
     const isEditMode = !!cost;
@@ -91,17 +90,10 @@ export function OneTimeCostModal({ realEstateId, cost, trigger }: OneTimeCostMod
                     realEstateId,
                 });
             }
-            toast({
-                title: tc('status.success'),
-                description: isEditMode ? t('toast.costUpdated') : t('toast.costAdded'),
-            });
+            toast(tc('status.success'), { description: isEditMode ? t('toast.costUpdated') : t('toast.costAdded') });
         },
         onError: (error) => {
-            toast({
-                title: tc('status.error'),
-                description: error.message,
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 

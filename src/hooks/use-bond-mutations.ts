@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { bondsApi } from "@/lib/tauri-api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { translateApiError } from "@/lib/translate-api-error";
 import type { InsertBond } from "@shared/schema";
@@ -15,7 +15,6 @@ export interface UpdateBondData {
 }
 
 export function useBondMutations() {
-  const { toast } = useToast();
   const { t } = useTranslation('common');
 
   const createMutation = useMutation({
@@ -34,10 +33,10 @@ export function useBondMutations() {
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["projection"] });
       queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
-      toast({ title: t('status.success') });
+      toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast({ title: t('status.error'), description: translateApiError(error, t), variant: "destructive" });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -57,10 +56,10 @@ export function useBondMutations() {
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["projection"] });
       queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
-      toast({ title: t('status.success') });
+      toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast({ title: t('status.error'), description: translateApiError(error, t), variant: "destructive" });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 
@@ -71,10 +70,10 @@ export function useBondMutations() {
       queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["projection"] });
       queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
-      toast({ title: t('status.success') });
+      toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast({ title: t('status.error'), description: translateApiError(error, t), variant: "destructive" });
+      toast.error(t('status.error'), { description: translateApiError(error, tc) });
     },
   });
 

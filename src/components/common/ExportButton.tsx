@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useTranslation } from "react-i18next";
@@ -18,7 +18,6 @@ interface ExportButtonProps {
  */
 export function ExportButton({ exportFn, title }: ExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
-  const { toast } = useToast();
   const { t } = useTranslation('common');
 
   const handleExport = async () => {
@@ -29,10 +28,7 @@ export function ExportButton({ exportFn, title }: ExportButtonProps) {
       const result = await exportFn();
       
       if (result.count === 0) {
-        toast({
-          title: t('export.noData'),
-          description: t('export.noDataDescription'),
-        });
+        toast(t('export.noData'), { description: t('export.noDataDescription') });
         return;
       }
       
@@ -47,18 +43,11 @@ export function ExportButton({ exportFn, title }: ExportButtonProps) {
         const BOM = '\uFEFF';
         await writeTextFile(filePath, BOM + result.csv);
         
-        toast({
-          title: t('export.success'),
-          description: t('export.successDescription', { count: result.count }),
-        });
+        toast(t('export.success'), { description: t('export.successDescription') });
       }
     } catch (error) {
       console.error("Export failed:", error);
-      toast({
-        title: t('export.failed'),
-        description: String(error),
-        variant: "destructive",
-      });
+      toast.error(t('export.failed'), { description: String(error) });
     } finally {
       setIsExporting(false);
     }

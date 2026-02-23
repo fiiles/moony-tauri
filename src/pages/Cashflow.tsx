@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet, Plus } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -28,7 +28,6 @@ export default function Cashflow() {
     const { t } = useTranslation('reports');
     const { t: tc } = useTranslation('common');
     const { formatCurrency } = useCurrency();
-    const { toast } = useToast();
     const queryClient = useQueryClient();
 
     const [viewType, setViewType] = useState<CashflowViewType>('monthly');
@@ -53,10 +52,10 @@ export default function Cashflow() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
             setAddDialogOpen(false);
-            toast({ title: tc('status.success') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: 'destructive' });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -68,10 +67,10 @@ export default function Cashflow() {
             queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
             setEditItem(null);
             setEditCategory("");
-            toast({ title: tc('status.success') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: 'destructive' });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -81,10 +80,10 @@ export default function Cashflow() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
             setDeleteItem(null);
-            toast({ title: tc('status.success') });
+            toast(tc('status.success'));
         },
         onError: (error: Error) => {
-            toast({ title: tc('status.error'), description: error.message, variant: 'destructive' });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 

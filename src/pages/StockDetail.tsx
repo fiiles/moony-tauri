@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import type { InvestmentTransaction } from "@shared/schema";
 import type { StockInvestmentWithPrice } from "@shared/types/extended-types";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { investmentsApi, priceApi } from "@/lib/tauri-api";
 import { useCurrency } from "@/lib/currency";
 import { CurrencyCode, DisplayCurrencyCode, CURRENCIES } from "@shared/currencies";
@@ -67,7 +67,6 @@ import TickerValueTrendChart, { type TransactionMarker } from "@/components/comm
 export default function StockDetail() {
     const [, params] = useRoute("/stocks/:id");
     const [, setLocation] = useLocation();
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const id = params?.id;
     const { formatCurrency, formatCurrencyRaw, currencyCode, convert } = useCurrency();
@@ -137,18 +136,11 @@ export default function StockDetail() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["investments"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({
-                title: tc('status.success'),
-                description: t('detail.deleted'),
-            });
+            toast(tc('status.success'), { description: t('detail.deleted') });
             setLocation("/stocks");
         },
         onError: (error) => {
-            toast({
-                title: tc('status.error'),
-                description: String(error),
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: String(error) });
         },
     });
 
@@ -159,17 +151,10 @@ export default function StockDetail() {
             queryClient.invalidateQueries({ queryKey: ["investment", id] });
             queryClient.invalidateQueries({ queryKey: ["investments"] });
             setShowEditNameModal(false);
-            toast({
-                title: tc('status.success'),
-                description: t('detail.nameUpdated'),
-            });
+            toast(tc('status.success'), { description: t('detail.nameUpdated') });
         },
         onError: (error) => {
-            toast({
-                title: tc('status.error'),
-                description: String(error),
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: String(error) });
         },
     });
 
@@ -181,10 +166,7 @@ export default function StockDetail() {
             queryClient.invalidateQueries({ queryKey: ["investment-transactions", id] });
             queryClient.invalidateQueries({ queryKey: ["investments"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({
-                title: tc('status.success'),
-                description: t('detail.transactionDeleted'),
-            });
+            toast(tc('status.success'), { description: t('detail.transactionDeleted') });
         },
     });
 
@@ -195,16 +177,9 @@ export default function StockDetail() {
             await priceApi.refreshStockPrices();
             await queryClient.invalidateQueries({ queryKey: ["investment", id] });
             await queryClient.invalidateQueries({ queryKey: ["investments"] });
-            toast({
-                title: tc('status.success'),
-                description: t('detail.pricesRefreshed'),
-            });
+            toast(tc('status.success'), { description: t('detail.pricesRefreshed') });
         } catch (error) {
-            toast({
-                title: tc('status.error'),
-                description: String(error),
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: String(error) });
         } finally {
             setIsRefreshing(false);
         }

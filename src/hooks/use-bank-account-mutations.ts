@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { bankAccountsApi, portfolioApi, savingsApi } from "@/lib/tauri-api";
 import type { InsertBankAccount, InsertBankTransaction, InsertTransactionCategory, InsertTransactionRule } from "@shared/schema";
-import { useToast } from "./use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { translateApiError } from "@/lib/translate-api-error";
 
@@ -14,7 +14,6 @@ interface ZoneData {
 
 export function useBankAccountMutations() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { t } = useTranslation("bank_accounts");
   const { t: tc } = useTranslation("common");
 
@@ -44,17 +43,10 @@ export function useBankAccountMutations() {
       // Record new portfolio snapshot to update dashboard history
       await portfolioApi.recordSnapshot();
       queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
-      toast({
-        title: t("messages.accountCreated", "Account created"),
-        description: t("messages.accountCreatedDesc", "The bank account has been created successfully."),
-      });
+      toast(t("messages.accountCreated"), { description: t("messages.accountCreatedDesc") });
     },
     onError: (error: Error) => {
-      toast({
-        title: t("messages.error", "Error"),
-        description: translateApiError(error, tc),
-        variant: "destructive",
-      });
+      toast.error(t("messages.error"), { description: translateApiError(error, tc) });
     },
   });
 
@@ -98,17 +90,10 @@ export function useBankAccountMutations() {
       // Record new portfolio snapshot to update dashboard history
       await portfolioApi.recordSnapshot();
       queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
-      toast({
-        title: t("messages.accountUpdated", "Account updated"),
-        description: t("messages.accountUpdatedDesc", "The bank account has been updated successfully."),
-      });
+      toast(t("messages.accountUpdated"), { description: t("messages.accountUpdatedDesc") });
     },
     onError: (error: Error) => {
-      toast({
-        title: t("messages.error", "Error"),
-        description: translateApiError(error, tc),
-        variant: "destructive",
-      });
+      toast.error(t("messages.error"), { description: translateApiError(error, tc) });
     },
   });
 
@@ -121,17 +106,10 @@ export function useBankAccountMutations() {
       // Record new portfolio snapshot to update dashboard history
       await portfolioApi.recordSnapshot();
       queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
-      toast({
-        title: t("messages.accountDeleted", "Account deleted"),
-        description: t("messages.accountDeletedDesc", "The bank account has been deleted."),
-      });
+      toast(t("messages.accountDeleted"), { description: t("messages.accountDeletedDesc") });
     },
     onError: (error: Error) => {
-      toast({
-        title: t("messages.error", "Error"),
-        description: translateApiError(error, tc),
-        variant: "destructive",
-      });
+      toast.error(t("messages.error"), { description: translateApiError(error, tc) });
     },
   });
 
@@ -144,7 +122,6 @@ export function useBankAccountMutations() {
 
 export function useBankTransactionMutations(accountId?: string) {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { t } = useTranslation("bank_accounts");
   const { t: tc } = useTranslation("common");
 
@@ -152,16 +129,10 @@ export function useBankTransactionMutations(accountId?: string) {
     mutationFn: (data: InsertBankTransaction) => bankAccountsApi.createTransaction(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bank-transactions", accountId] });
-      toast({
-        title: t("messages.transactionCreated", "Transaction created"),
-      });
+      toast(t("messages.transactionCreated"));
     },
     onError: (error: Error) => {
-      toast({
-        title: t("messages.error", "Error"),
-        description: translateApiError(error, tc),
-        variant: "destructive",
-      });
+      toast.error(t("messages.error"), { description: translateApiError(error, tc) });
     },
   });
 
@@ -169,16 +140,10 @@ export function useBankTransactionMutations(accountId?: string) {
     mutationFn: (id: string) => bankAccountsApi.deleteTransaction(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bank-transactions", accountId] });
-      toast({
-        title: t("messages.transactionDeleted", "Transaction deleted"),
-      });
+      toast(t("messages.transactionDeleted"));
     },
     onError: (error: Error) => {
-      toast({
-        title: t("messages.error", "Error"),
-        description: translateApiError(error, tc),
-        variant: "destructive",
-      });
+      toast.error(t("messages.error"), { description: translateApiError(error, tc) });
     },
   });
 
@@ -190,7 +155,6 @@ export function useBankTransactionMutations(accountId?: string) {
 
 export function useCategoryMutations() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { t } = useTranslation("bank_accounts");
   const { t: tc } = useTranslation("common");
 
@@ -198,16 +162,10 @@ export function useCategoryMutations() {
     mutationFn: (data: InsertTransactionCategory) => bankAccountsApi.createCategory(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transaction-categories"] });
-      toast({
-        title: t("messages.categoryCreated", "Category created"),
-      });
+      toast(t("messages.categoryCreated"));
     },
     onError: (error: Error) => {
-      toast({
-        title: t("messages.error", "Error"),
-        description: translateApiError(error, tc),
-        variant: "destructive",
-      });
+      toast.error(t("messages.error"), { description: translateApiError(error, tc) });
     },
   });
 
@@ -215,16 +173,10 @@ export function useCategoryMutations() {
     mutationFn: (id: string) => bankAccountsApi.deleteCategory(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transaction-categories"] });
-      toast({
-        title: t("messages.categoryDeleted", "Category deleted"),
-      });
+      toast(t("messages.categoryDeleted"));
     },
     onError: (error: Error) => {
-      toast({
-        title: t("messages.error", "Error"),
-        description: translateApiError(error, tc),
-        variant: "destructive",
-      });
+      toast.error(t("messages.error"), { description: translateApiError(error, tc) });
     },
   });
 
@@ -236,7 +188,6 @@ export function useCategoryMutations() {
 
 export function useRuleMutations() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { t } = useTranslation("bank_accounts");
   const { t: tc } = useTranslation("common");
 
@@ -244,16 +195,10 @@ export function useRuleMutations() {
     mutationFn: (data: InsertTransactionRule) => bankAccountsApi.createRule(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transaction-rules"] });
-      toast({
-        title: t("messages.ruleCreated", "Rule created"),
-      });
+      toast(t("messages.ruleCreated"));
     },
     onError: (error: Error) => {
-      toast({
-        title: t("messages.error", "Error"),
-        description: translateApiError(error, tc),
-        variant: "destructive",
-      });
+      toast.error(t("messages.error"), { description: translateApiError(error, tc) });
     },
   });
 
@@ -261,16 +206,10 @@ export function useRuleMutations() {
     mutationFn: (id: string) => bankAccountsApi.deleteRule(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transaction-rules"] });
-      toast({
-        title: t("messages.ruleDeleted", "Rule deleted"),
-      });
+      toast(t("messages.ruleDeleted"));
     },
     onError: (error: Error) => {
-      toast({
-        title: t("messages.error", "Error"),
-        description: translateApiError(error, tc),
-        variant: "destructive",
-      });
+      toast.error(t("messages.error"), { description: translateApiError(error, tc) });
     },
   });
 

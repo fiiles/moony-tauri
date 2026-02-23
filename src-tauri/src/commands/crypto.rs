@@ -7,7 +7,6 @@ use crate::models::{
     InsertCryptoTransaction,
 };
 use crate::services::crypto_investments as crypto_service;
-use crate::services::currency::convert_to_czk;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
@@ -15,6 +14,8 @@ use uuid::Uuid;
 #[tauri::command]
 pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCryptoInvestment>> {
     db.with_conn(|conn| {
+        use crate::services::pricing;
+
         let mut stmt = conn.prepare(
             "SELECT id, ticker, coingecko_id, name, quantity, average_price, currency FROM crypto_investments"
         )?;
@@ -38,42 +39,12 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
 
         let mut enriched = Vec::new();
         for (inv, avg_price_currency) in investments {
-            // Get price override (manual price) - same pattern as stocks
-            let override_price: Option<(String, String, i64)> = conn
-                .query_row(
-                    "SELECT price, currency, updated_at FROM crypto_price_overrides WHERE symbol = ?1",
-                    [&inv.ticker],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-                )
-                .ok();
-
-            // Get global (API) price
-            let global_price: Option<(String, String, i64)> = conn
-                .query_row(
-                    "SELECT price, currency, fetched_at FROM crypto_prices WHERE symbol = ?1",
-                    [&inv.ticker],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-                )
-                .ok();
-
-            // Determine active price - prefer override if it exists (same as stocks)
+            // Determine active price using unified resolver
+            let resolved = pricing::resolve_crypto_price(conn, &inv.ticker);
             let (original_price, currency, current_price, fetched_at, is_manual) =
-                match (&override_price, &global_price) {
-                    (Some((op, oc, ou)), _) => (
-                        op.clone(),
-                        oc.clone(),
-                        convert_to_czk(op.parse().unwrap_or(0.0), oc),
-                        Some(*ou),
-                        true,
-                    ),
-                    (None, Some((gp, gc, gu))) => (
-                        gp.clone(),
-                        gc.clone(),
-                        convert_to_czk(gp.parse().unwrap_or(0.0), gc),
-                        Some(*gu),
-                        false,
-                    ),
-                    _ => ("0".to_string(), "USD".to_string(), 0.0, None, false),
+                match resolved {
+                    Some(rp) => (rp.original_price, rp.currency, rp.price_czk.to_string(), rp.fetched_at, rp.is_manual),
+                    None => ("0".to_string(), "USD".to_string(), "0".to_string(), None, false),
                 };
 
             enriched.push(EnrichedCryptoInvestment {
@@ -84,7 +55,7 @@ pub async fn get_all_crypto(db: State<'_, Database>) -> Result<Vec<EnrichedCrypt
                 quantity: inv.quantity,
                 average_price: inv.average_price,
                 average_price_currency: avg_price_currency,
-                current_price: current_price.to_string(),
+                current_price,
                 original_price,
                 currency,
                 fetched_at,

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Pencil, ImagePlus, X, ChevronLeft, ChevronRight, Upload, Download } from "lucide-react";
 import { realEstateApi } from "@/lib/tauri-api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
 import type { RealEstatePhotoBatch, RealEstatePhoto } from "@shared/schema";
@@ -49,7 +49,6 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
     const { t } = useTranslation('realEstate');
     const { t: tc } = useTranslation('common');
     const { formatDate } = useLanguage();
-    const { toast } = useToast();
     const queryClient = useQueryClient();
 
     const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -170,17 +169,13 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["real-estate-photo-batches", realEstateId] });
-            toast({ title: tc('status.success'), description: t('gallery.uploadSuccess') });
+            toast(tc('status.success'));
             setIsUploadOpen(false);
             resetUploadForm();
         },
         onError: (error: any) => {
             console.error("Upload error:", error);
-            toast({
-                title: tc('status.error'),
-                description: error.message || String(error),
-                variant: "destructive"
-            });
+            toast.error(tc('status.error'), { description: error.message || String(error) });
         },
     });
 
@@ -201,11 +196,11 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["real-estate-photo-batches", realEstateId] });
-            toast({ title: tc('status.success'), description: t('gallery.photosAdded') });
+            toast(tc('status.success'));
             setAddingToBatchId(null);
         },
         onError: (error: any) => {
-            toast({ title: tc('status.error'), description: error.message, variant: "destructive" });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -214,7 +209,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
             realEstateApi.updatePhotoBatch(batchId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["real-estate-photo-batches", realEstateId] });
-            toast({ title: tc('status.success'), description: t('gallery.batchUpdated') });
+            toast(tc('status.success'));
             setIsEditOpen(false);
             setEditingBatch(null);
         },
@@ -224,7 +219,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
         mutationFn: (batchId: string) => realEstateApi.deletePhotoBatch(batchId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["real-estate-photo-batches", realEstateId] });
-            toast({ title: tc('status.success'), description: t('gallery.batchDeleted') });
+            toast(tc('status.success'));
             setDeleteConfirmOpen(false);
             setDeletingBatchId(null);
         },
@@ -254,11 +249,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                 const { processed, errors } = await processFiles(fileList);
 
                 if (errors.length > 0) {
-                    toast({
-                        title: "Invalid files detected",
-                        description: errors.join('\n'),
-                        variant: "destructive",
-                    });
+                    toast.error("Invalid files detected", { description: errors.join('\n') });
                 }
 
                 setSelectedFiles(processed);
@@ -286,11 +277,11 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
 
             if (filePath) {
                 await copyFile(sourcePath, filePath);
-                toast({ title: tc('status.success'), description: "Photo downloaded successfully" });
+                toast(tc('status.success'));
             }
         } catch (error) {
             console.error(error);
-            toast({ title: tc('status.error'), variant: "destructive", description: "Failed to download photo" });
+            toast.error(tc('status.error'));
         }
     };
 
@@ -319,11 +310,11 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                     await copyFile(sourcePath, destPath);
                     count++;
                 }
-                toast({ title: tc('status.success'), description: `${count} photos downloaded successfully` });
+                toast(tc('status.success'), { description: `${count} photos saved` });
             }
         } catch (error) {
             console.error(error);
-            toast({ title: tc('status.error'), variant: "destructive", description: "Failed to download batch" });
+            toast.error(tc('status.error'));
         }
     };
 

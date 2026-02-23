@@ -32,14 +32,17 @@ fn strip_time_component(date_str: &str) -> &str {
     // Find the position where time component starts
     // Common separators: space, 'T' (ISO 8601)
     if let Some(space_pos) = trimmed.find(' ') {
-        // Check if what follows looks like a time (starts with digit)
+        // Check if what follows looks like a time (starts with digit AND contains ':')
+        // This prevents "14. 1. 2026" (Czech date with spaces) from being misidentified
+        // as a date+time string where " 1. 2026" is treated as the time component.
         let after_space = &trimmed[space_pos + 1..];
-        if after_space
+        let starts_with_digit = after_space
             .chars()
             .next()
             .map(|c| c.is_ascii_digit())
-            .unwrap_or(false)
-        {
+            .unwrap_or(false);
+        let contains_colon = after_space.contains(':');
+        if starts_with_digit && contains_colon {
             return &trimmed[..space_pos];
         }
     }
@@ -306,6 +309,10 @@ mod tests {
 
         // With whitespace
         assert_eq!(strip_time_component("  2024-01-15  "), "2024-01-15");
+
+        // Czech date format with spaces after dots — must NOT be stripped
+        assert_eq!(strip_time_component("14. 1. 2026"), "14. 1. 2026");
+        assert_eq!(strip_time_component("1. 12. 2025"), "1. 12. 2025");
     }
 
     #[test]
@@ -398,6 +405,13 @@ mod tests {
         // European dash
         let result = parse_date("15-01-2024", None);
         assert_eq!(result, Some(NaiveDate::from_ymd_opt(2024, 1, 15).unwrap()));
+
+        // Czech format with spaces after dots: "14. 1. 2026"
+        let result = parse_date("14. 1. 2026", None);
+        assert_eq!(result, Some(NaiveDate::from_ymd_opt(2026, 1, 14).unwrap()));
+
+        let result = parse_date("1. 12. 2025", None);
+        assert_eq!(result, Some(NaiveDate::from_ymd_opt(2025, 12, 1).unwrap()));
     }
 
     #[test]

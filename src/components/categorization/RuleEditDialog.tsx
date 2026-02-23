@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 import { categorizationApi, type CustomRule, type CustomRuleInput } from '@/lib/tauri-api';
 import { CategoryIcon } from '@/components/common/CategoryIcon';
 import type { TransactionCategory } from '@shared/schema';
@@ -56,7 +56,6 @@ export default function RuleEditDialog({
 }: RuleEditDialogProps) {
   const { t } = useTranslation('categorization');
   const { t: tCommon } = useTranslation('common');
-  const { toast } = useToast();
 
   // Determine initial mode: if rule has IBAN pattern but no text pattern, it's IBAN-based
   const getInitialMode = (r: CustomRule | null): RuleMode => {
@@ -112,11 +111,11 @@ export default function RuleEditDialog({
   const createMutation = useMutation({
     mutationFn: (data: CustomRuleInput) => categorizationApi.createCustomRule(data),
     onSuccess: () => {
-      toast({ title: t('customRules.createSuccess') });
+      toast(t('customRules.createSuccess'));
       onOpenChange(false);
     },
     onError: () => {
-      toast({ title: t('errors.createFailed'), variant: 'destructive' });
+      toast.error(t('errors.createFailed'));
     },
   });
 
@@ -124,11 +123,11 @@ export default function RuleEditDialog({
     mutationFn: ({ id, data }: { id: string; data: CustomRuleInput }) =>
       categorizationApi.updateCustomRule(id, data),
     onSuccess: () => {
-      toast({ title: t('customRules.updateSuccess') });
+      toast(t('customRules.updateSuccess'));
       onOpenChange(false);
     },
     onError: () => {
-      toast({ title: t('errors.updateFailed'), variant: 'destructive' });
+      toast.error(t('errors.updateFailed'));
     },
   });
 

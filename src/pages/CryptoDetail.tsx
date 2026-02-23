@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import type { CryptoTransaction } from "@shared/schema";
 import type { CryptoInvestmentWithPrice } from "@shared/types/extended-types";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cryptoApi, priceApi } from "@/lib/tauri-api";
 import { useCurrency } from "@/lib/currency";
 import { CurrencyCode, DisplayCurrencyCode, CURRENCIES } from "@shared/currencies";
@@ -54,7 +54,6 @@ import TickerValueTrendChart, { type TransactionMarker } from "@/components/comm
 export default function CryptoDetail() {
     const [, params] = useRoute("/crypto/:id");
     const [, setLocation] = useLocation();
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const id = params?.id;
     const { formatCurrencyRaw, formatPrice, currencyCode, convert } = useCurrency();
@@ -124,18 +123,11 @@ export default function CryptoDetail() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["crypto"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({
-                title: tc('status.success'),
-                description: t('detail.deleted'),
-            });
+            toast(tc('status.success'), { description: t('detail.deleted') });
             setLocation("/crypto");
         },
         onError: (error) => {
-            toast({
-                title: tc('status.error'),
-                description: String(error),
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: String(error) });
         },
     });
 
@@ -147,10 +139,7 @@ export default function CryptoDetail() {
             queryClient.invalidateQueries({ queryKey: ["crypto-transactions", id] });
             queryClient.invalidateQueries({ queryKey: ["crypto"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast({
-                title: tc('status.success'),
-                description: t('detail.transactionDeleted'),
-            });
+            toast(tc('status.success'), { description: t('detail.transactionDeleted') });
         },
     });
 
@@ -161,16 +150,9 @@ export default function CryptoDetail() {
             await priceApi.refreshCryptoPrices();
             await queryClient.invalidateQueries({ queryKey: ["crypto-detail", id] });
             await queryClient.invalidateQueries({ queryKey: ["crypto"] });
-            toast({
-                title: tc('status.success'),
-                description: t('detail.pricesRefreshed'),
-            });
+            toast(tc('status.success'), { description: t('detail.pricesRefreshed') });
         } catch (error) {
-            toast({
-                title: tc('status.error'),
-                description: String(error),
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: String(error) });
         } finally {
             setIsRefreshing(false);
         }

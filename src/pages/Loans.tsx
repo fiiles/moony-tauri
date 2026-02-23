@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useLoans } from "@/hooks/use-loans";
 import { useLoanMutations } from "@/hooks/use-loan-mutations";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { LoanFormDialog } from "@/components/loans/LoanFormDialog";
 import { DeleteLoanDialog } from "@/components/loans/DeleteLoanDialog";
 import { LoansSummary } from "@/components/loans/LoansSummary";
@@ -19,7 +19,6 @@ export default function Loans() {
   const { loans, metrics, isLoading } = useLoans();
   const { createMutation, updateMutation, deleteMutation } = useLoanMutations();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -57,10 +56,7 @@ export default function Loans() {
         queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
         queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
         queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
-        toast({
-          title: "Success",
-          description: "Loan updated successfully",
-        });
+        toast("Success", { description: "Loan updated successfully" });
       },
     });
   };

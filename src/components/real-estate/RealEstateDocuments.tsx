@@ -4,7 +4,7 @@ import { realEstateApi } from "@/lib/tauri-api";
 import type { RealEstateDocument } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
     Plus,
@@ -55,7 +55,6 @@ const formatFileSize = (bytes: number | null) => {
 export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) {
     const { t } = useTranslation('realEstate');
     const { t: tc } = useTranslation('common');
-    const { toast } = useToast();
     const queryClient = useQueryClient();
     const [addModalOpen, setAddModalOpen] = useState(false);
     const [deletingDocument, setDeletingDocument] = useState<RealEstateDocument | null>(null);
@@ -70,17 +69,10 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["real-estate-documents", realEstateId] });
             setDeletingDocument(null);
-            toast({
-                title: tc('status.success'),
-                description: t('documents.deleted'),
-            });
+            toast(tc('status.success'), { description: t('documents.deleted') });
         },
         onError: (error) => {
-            toast({
-                title: tc('status.error'),
-                description: error.message,
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: error.message });
         },
     });
 
@@ -88,11 +80,7 @@ export function RealEstateDocuments({ realEstateId }: RealEstateDocumentsProps) 
         try {
             await realEstateApi.openDocument(documentId);
         } catch (error) {
-            toast({
-                title: tc('status.error'),
-                description: String(error),
-                variant: "destructive",
-            });
+            toast.error(tc('status.error'), { description: String(error) });
         }
     };
 
