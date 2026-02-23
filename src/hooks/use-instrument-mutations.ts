@@ -18,7 +18,7 @@ export function useInstrumentMutations() {
       throw new Error("Instrument feature not implemented in Tauri version. Use Investments instead.");
     },
     onError: (error: Error) => {
-      toast.error(t('status.error'), { description: translateApiError(error, tc) });
+      toast.error(t('status.error'), { description: translateApiError(error, t) });
     },
   });
 
@@ -34,7 +34,7 @@ export function useInstrumentMutations() {
       throw new Error("Instrument feature not implemented in Tauri version. Use Investments instead.");
     },
     onError: (error: Error) => {
-      toast.error(t('status.error'), { description: translateApiError(error, tc) });
+      toast.error(t('status.error'), { description: translateApiError(error, t) });
     },
   });
 
@@ -43,7 +43,7 @@ export function useInstrumentMutations() {
       throw new Error("Instrument feature not implemented in Tauri version. Use Investments instead.");
     },
     onError: (error: Error) => {
-      toast.error(t('status.error'), { description: translateApiError(error, tc) });
+      toast.error(t('status.error'), { description: translateApiError(error, t) });
     },
   });
 

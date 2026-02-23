@@ -82,13 +82,14 @@ export function useUpdater(): UseUpdaterReturn {
           case 'Started':
             contentLength = event.data.contentLength ?? null;
             break;
-          case 'Progress':
+          case 'Progress': {
             downloaded += event.data.chunkLength;
             const percentage = contentLength 
               ? Math.round((downloaded / contentLength) * 100) 
               : 0;
             setProgress({ downloaded, contentLength, percentage });
             break;
+          }
           case 'Finished':
             setProgress({ downloaded, contentLength, percentage: 100 });
             break;

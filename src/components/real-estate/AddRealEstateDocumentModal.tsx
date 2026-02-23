@@ -138,7 +138,7 @@ export function AddRealEstateDocumentModal({ open: isOpen, onOpenChange, realEst
                         <FormField
                             control={form.control}
                             name="filePath"
-                            render={({ field }) => (
+                            render={() => (
                                 <FormItem>
                                     <FormLabel>{t('documents.file')}</FormLabel>
                                     <FormControl>

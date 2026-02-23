@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +93,7 @@ export function SavingsAccountFormDialog({
       if (account.hasZoneDesignation) {
         savingsApi.getZones(account.id)
           .then(data => {
-            const formattedZones = data.map((zone: any) => ({
+            const formattedZones = data.map((zone: { id: string; fromAmount: string; toAmount?: string | null; interestRate: string }) => ({
               id: zone.id,
               fromAmount: zone.fromAmount,
               toAmount: zone.toAmount || "",
