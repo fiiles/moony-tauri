@@ -92,7 +92,7 @@ export default function Crypto() {
         mutationFn: async () => {
             return priceApi.refreshCryptoPrices();
         },
-        onSuccess: (results) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["crypto"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             toast(t('toast.pricesRefreshed'), { description: t('toast.pricesRefreshed') });

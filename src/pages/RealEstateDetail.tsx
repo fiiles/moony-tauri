@@ -33,7 +33,7 @@ import { RealEstateDocuments } from "@/components/real-estate/RealEstateDocument
 import type { RealEstate, RealEstateOneTimeCost, Loan, InsurancePolicy } from "@shared/schema";
 import { toast } from "sonner";
 import { realEstateApi } from "@/lib/tauri-api";
-import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
+import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { useCurrency } from "@/lib/currency";
 import {
     AlertDialog,
@@ -54,7 +54,7 @@ export default function RealEstateDetail() {
     const [, setLocation] = useLocation();
     const queryClient = useQueryClient();
     const id = params?.id;
-    const { currencyCode: userCurrency, formatCurrency } = useCurrency();
+    const { formatCurrency } = useCurrency();
     const { t } = useTranslation('realEstate');
     const { t: tc } = useTranslation('common');
     const { formatDate } = useLanguage();
@@ -137,18 +137,16 @@ export default function RealEstateDetail() {
 
     const totalLoansInCzk = linkedLoans?.reduce((sum, loan) => {
         const principal = Number(loan.principal);
-        const currency = (loan as any).currency || "CZK";
+        const currency = (loan as unknown as { currency?: string }).currency || "CZK";
         return sum + convertToCzK(principal, currency as CurrencyCode);
     }, 0) || 0;
-    const totalLoans = convertFromCzK(totalLoansInCzk, userCurrency as CurrencyCode);
 
     const marketPriceNum = Number(realEstate.marketPrice);
-    const marketCurrency = (realEstate as any).marketPriceCurrency || "CZK";
+    const marketCurrency = (realEstate as unknown as { marketPriceCurrency?: string }).marketPriceCurrency || "CZK";
     const marketPriceInCzk = convertToCzK(marketPriceNum, marketCurrency as CurrencyCode);
-    const marketPriceConverted = convertFromCzK(marketPriceInCzk, userCurrency as CurrencyCode);
     const equityInCzk = marketPriceInCzk - totalLoansInCzk;
 
-    const totalRecurringCostsInCzk = (realEstate.recurringCosts as any[])?.reduce((sum, cost) => {
+    const totalRecurringCostsInCzk = (realEstate.recurringCosts as unknown as { amount: string | number, frequency: string, currency?: string, name: string }[])?.reduce((sum, cost) => {
         let yearlyAmount = Number(cost.amount);
         if (cost.frequency === 'monthly') yearlyAmount *= 12;
         if (cost.frequency === 'quarterly') yearlyAmount *= 4;
@@ -157,12 +155,12 @@ export default function RealEstateDetail() {
     }, 0) || 0;
 
     const monthlyRent = realEstate.monthlyRent ? Number(realEstate.monthlyRent) : 0;
-    const rentCurrency = (realEstate as any).monthlyRentCurrency || "CZK";
+    const rentCurrency = (realEstate as unknown as { monthlyRentCurrency?: string }).monthlyRentCurrency || "CZK";
     const rentInCzk = convertToCzK(monthlyRent * 12, rentCurrency as CurrencyCode);
 
     const yearlyLoanPaymentsInCzk = linkedLoans?.reduce((sum, loan) => {
         const monthlyPayment = Number(loan.monthlyPayment);
-        const currency = (loan as any).currency || "CZK";
+        const currency = (loan as unknown as { currency?: string }).currency || "CZK";
         return sum + convertToCzK(monthlyPayment * 12, currency as CurrencyCode);
     }, 0) || 0;
 
@@ -177,7 +175,6 @@ export default function RealEstateDetail() {
     }, 0) || 0;
 
     const netCashflowInCzk = rentInCzk - totalRecurringCostsInCzk - yearlyLoanPaymentsInCzk - yearlyInsurancePaymentsInCzk;
-    const _netCashflow = convertFromCzK(netCashflowInCzk, userCurrency as CurrencyCode);
 
     return (
         <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto">
@@ -238,7 +235,7 @@ export default function RealEstateDetail() {
                     <CardContent>
                         <div className="text-2xl font-bold">{formatCurrency(marketPriceInCzk)}</div>
                         <p className="text-xs text-muted-foreground">
-                            {t('detail.purchase')}: {formatCurrency(convertToCzK(Number(realEstate.purchasePrice), (realEstate as any).purchasePriceCurrency as CurrencyCode || "CZK"))}
+                            {t('detail.purchase')}: {formatCurrency(convertToCzK(Number(realEstate.purchasePrice), (realEstate as unknown as { purchasePriceCurrency?: string }).purchasePriceCurrency as CurrencyCode || "CZK"))}
                         </p>
                     </CardContent>
                 </Card>
@@ -314,7 +311,7 @@ export default function RealEstateDetail() {
                                             <TableRow key={loan.id}>
                                                 <TableCell>{loan.name}</TableCell>
                                                 <TableCell className="text-right">
-                                                    {formatCurrency(convertToCzK(Number(loan.principal), (loan as any).currency as CurrencyCode || "CZK"))}
+                                                    {formatCurrency(convertToCzK(Number(loan.principal), (loan as unknown as { currency?: string }).currency as CurrencyCode || "CZK"))}
                                                 </TableCell>
                                                 <TableCell className="text-right">{loan.interestRate}%</TableCell>
                                                 <TableCell>
@@ -400,7 +397,7 @@ export default function RealEstateDetail() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {(realEstate.recurringCosts as any[])?.map((cost, i) => (
+                                    {(realEstate.recurringCosts as unknown as { amount: string | number, frequency: string, currency?: string, name: string }[])?.map((cost, i) => (
                                         <TableRow key={i}>
                                             <TableCell>{cost.name}</TableCell>
                                             <TableCell className="capitalize">{t('modal.add.' + cost.frequency)}</TableCell>
@@ -409,7 +406,7 @@ export default function RealEstateDetail() {
                                             </TableCell>
                                         </TableRow>
                                     ))}
-                                    {(!realEstate.recurringCosts || (realEstate.recurringCosts as any[]).length === 0) && (
+                                    {(!realEstate.recurringCosts || (realEstate.recurringCosts as unknown as unknown[]).length === 0) && (
                                         <TableRow>
                                             <TableCell colSpan={3} className="text-center text-muted-foreground">{t('detail.noRecurringCosts')}</TableCell>
                                         </TableRow>
@@ -447,7 +444,7 @@ export default function RealEstateDetail() {
                                             <TableCell className="font-medium">{cost.name}</TableCell>
                                             <TableCell>{cost.description}</TableCell>
                                             <TableCell className="text-right">
-                                                {formatCurrency(convertToCzK(Number(cost.amount), (cost as any).currency as CurrencyCode || "CZK"))}
+                                                {formatCurrency(convertToCzK(Number(cost.amount), (cost as unknown as { currency?: string }).currency as CurrencyCode || "CZK"))}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex justify-end gap-1">

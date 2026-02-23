@@ -1,10 +1,10 @@
-import { useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
-import { bondsApi } from "@/lib/tauri-api";
-import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
-import { translateApiError } from "@/lib/translate-api-error";
-import type { InsertBond } from "@shared/schema";
+import { useMutation } from '@tanstack/react-query';
+import { queryClient } from '@/lib/queryClient';
+import { bondsApi } from '@/lib/tauri-api';
+import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import { translateApiError } from '@/lib/translate-api-error';
+import type { InsertBond } from '@shared/schema';
 
 export interface UpdateBondData {
   name?: string;
@@ -22,21 +22,22 @@ export function useBondMutations() {
       // Convert Date to timestamp if needed
       const payload = {
         ...data,
-        maturityDate: data.maturityDate instanceof Date
-          ? Math.floor(data.maturityDate.getTime() / 1000)
-          : data.maturityDate,
+        maturityDate:
+          data.maturityDate instanceof Date
+            ? Math.floor(data.maturityDate.getTime() / 1000)
+            : data.maturityDate,
       };
       return bondsApi.create(payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bonds"] });
-      queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["projection"] });
-      queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
+      queryClient.invalidateQueries({ queryKey: ['bonds'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['projection'] });
+      queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
       toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast.error(t('status.error'), { description: translateApiError(error, tc) });
+      toast.error(t('status.error'), { description: translateApiError(error, t) });
     },
   });
 
@@ -45,35 +46,36 @@ export function useBondMutations() {
       // Convert Date to timestamp if needed
       const payload = {
         ...data,
-        maturityDate: data.maturityDate instanceof Date
-          ? Math.floor(data.maturityDate.getTime() / 1000)
-          : data.maturityDate,
+        maturityDate:
+          data.maturityDate instanceof Date
+            ? Math.floor(data.maturityDate.getTime() / 1000)
+            : data.maturityDate,
       };
       return bondsApi.update(id, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bonds"] });
-      queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["projection"] });
-      queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
+      queryClient.invalidateQueries({ queryKey: ['bonds'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['projection'] });
+      queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
       toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast.error(t('status.error'), { description: translateApiError(error, tc) });
+      toast.error(t('status.error'), { description: translateApiError(error, t) });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => bondsApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bonds"] });
-      queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["projection"] });
-      queryClient.invalidateQueries({ queryKey: ["cashflow-report"] });
+      queryClient.invalidateQueries({ queryKey: ['bonds'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['projection'] });
+      queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
       toast(t('status.success'));
     },
     onError: (error: Error) => {
-      toast.error(t('status.error'), { description: translateApiError(error, tc) });
+      toast.error(t('status.error'), { description: translateApiError(error, t) });
     },
   });
 

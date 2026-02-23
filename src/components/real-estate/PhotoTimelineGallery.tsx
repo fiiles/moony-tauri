@@ -59,7 +59,6 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
     const [lightboxIndex, setLightboxIndex] = useState(0);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null);
-    const [addingToBatchId, setAddingToBatchId] = useState<string | null>(null);
     const [appDataPath, setAppDataPath] = useState<string>("");
     const [isConverting, setIsConverting] = useState(false);
 
@@ -173,7 +172,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
             setIsUploadOpen(false);
             resetUploadForm();
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             console.error("Upload error:", error);
             toast.error(tc('status.error'), { description: error.message || String(error) });
         },
@@ -197,9 +196,8 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["real-estate-photo-batches", realEstateId] });
             toast(tc('status.success'));
-            setAddingToBatchId(null);
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             toast.error(tc('status.error'), { description: error.message });
         },
     });
@@ -265,7 +263,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
         if (!appDataPath) return;
         try {
             const { save } = await import("@tauri-apps/plugin-dialog");
-            const { copyFile, BaseDirectory } = await import("@tauri-apps/plugin-fs");
+            const { copyFile } = await import("@tauri-apps/plugin-fs");
             const { join } = await import("@tauri-apps/api/path");
 
             const sourcePath = await join(appDataPath, photo.filePath);
@@ -318,23 +316,6 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
         }
     };
 
-    const handleAddPhotosFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (files && files.length > 0 && addingToBatchId) {
-            // Process files first (await it) before mutating
-            // We can't await inside the event handler easily and pass to mutate directly if mutate expects raw args
-            // But addPhotosMutation expects files array.
-            // We should process here and then mutate.
-
-            // Show toast or loading if needed, or rely on mutation loading state?
-            // Mutation loading state handles UI but processFiles is generic async.
-
-            const fileList = Array.from(files);
-            // We pass raw files to mutation and let mutation handle processing as defined above
-            addPhotosMutation.mutate({ batchId: addingToBatchId, files: fileList });
-        }
-    };
-
     const handleUpload = () => {
         if (selectedFiles.length === 0) return;
         const date = Math.floor(new Date(uploadDate).getTime() / 1000);
@@ -343,13 +324,6 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
             description: uploadDescription || undefined,
             files: selectedFiles,
         });
-    };
-
-    // Helper to convert file path to asset URL with proper encoding
-    const filePathToAssetUrl = (filePath: string) => {
-        // Encode only special characters like spaces, but preserve slashes
-        const encodedPath = filePath.split('/').map(segment => encodeURIComponent(segment)).join('/');
-        return `asset://localhost${encodedPath}`;
     };
 
     const getPhotoUrl = (photo: RealEstatePhoto) => {

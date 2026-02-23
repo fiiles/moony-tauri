@@ -17,7 +17,7 @@ export function useLoanMutations() {
             toast(t('status.success'));
         },
         onError: (error: Error) => {
-            toast.error(t('status.error'), { description: translateApiError(error, tc) });
+            toast.error(t('status.error'), { description: translateApiError(error, t) });
         },
     });
 
@@ -31,7 +31,7 @@ export function useLoanMutations() {
             toast(t('status.success'));
         },
         onError: (error: Error) => {
-            toast.error(t('status.error'), { description: translateApiError(error, tc) });
+            toast.error(t('status.error'), { description: translateApiError(error, t) });
         },
     });
 
@@ -43,7 +43,7 @@ export function useLoanMutations() {
             toast(t('status.success'));
         },
         onError: (error: Error) => {
-            toast.error(t('status.error'), { description: translateApiError(error, tc) });
+            toast.error(t('status.error'), { description: translateApiError(error, t) });
         },
     });
 

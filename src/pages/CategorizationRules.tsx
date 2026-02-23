@@ -148,7 +148,7 @@ export default function CategorizationRules() {
 
   const bulkDeleteMutation = useMutation({
     mutationFn: (ids: string[]) => categorizationApi.deleteLearnedPayeesBulk(ids),
-    onSuccess: (_, ids) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['learnedPayees'] });
       setSelectedIds(new Set());
       toast(t('learnedRules.bulkDeleteSuccess'));

@@ -130,7 +130,6 @@ export function CategorySelector({
     if (payee || iban) {
       try {
         await categorizationApi.learn(payee, iban, categoryId);
-        const category = getCategoryDisplay(categoryId, categories);
         const learnKey = payee || iban || 'unknown';
         toast(t('categorization.learned'), { description: `"${learnKey}"` });
       } catch (e) {
