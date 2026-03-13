@@ -33,7 +33,7 @@ struct SessionFile {
     version: u32,
 }
 
-fn write_session(data_dir: &PathBuf, port: u16, token: &str) -> std::io::Result<()> {
+fn write_session(data_dir: &std::path::Path, port: u16, token: &str) -> std::io::Result<()> {
     let session = SessionFile {
         port,
         token: token.to_string(),
@@ -50,7 +50,7 @@ fn write_session(data_dir: &PathBuf, port: u16, token: &str) -> std::io::Result<
     Ok(())
 }
 
-fn delete_session(data_dir: &PathBuf) {
+fn delete_session(data_dir: &std::path::Path) {
     let _ = std::fs::remove_file(data_dir.join("session.json"));
 }
 
@@ -174,10 +174,7 @@ struct TagMetricsParams {
 // Endpoints
 // ============================================================================
 
-async fn health(
-    AxumState(state): AxumState<Arc<ApiState>>,
-    headers: HeaderMap,
-) -> ApiResult {
+async fn health(AxumState(state): AxumState<Arc<ApiState>>, headers: HeaderMap) -> ApiResult {
     auth!(headers, state);
     Ok(Json(serde_json::json!({
         "status": "ok",
@@ -192,161 +189,211 @@ async fn portfolio_metrics(
 ) -> ApiResult {
     auth!(headers, state);
     let exclude = params.exclude_personal_real_estate.unwrap_or(false);
-    state.db.with_conn(|conn| {
-        // Exchange rates
-        let rates: Vec<(String, f64)> = {
-            let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
-            let result = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?)))?
-                .filter_map(|r| r.ok())
-                .collect();
+    state
+        .db
+        .with_conn(|conn| {
+            // Exchange rates
+            let rates: Vec<(String, f64)> = {
+                let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
+                let result = stmt
+                    .query_map([], |row| {
+                        Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect();
                 result
-        };
-        let czk_rate = |currency: &str, amount: f64| -> f64 {
-            if currency == "CZK" { return amount; }
-            let rate = rates.iter().find(|(c, _)| c == currency).map(|(_, r)| *r).unwrap_or(1.0);
-            amount * rate
-        };
+            };
+            let czk_rate = |currency: &str, amount: f64| -> f64 {
+                if currency == "CZK" {
+                    return amount;
+                }
+                let rate = rates
+                    .iter()
+                    .find(|(c, _)| c == currency)
+                    .map(|(_, r)| *r)
+                    .unwrap_or(1.0);
+                amount * rate
+            };
 
-        // Bank accounts (savings)
-        let savings: f64 = {
-            let mut stmt = conn.prepare(
-                "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0"
-            )?;
-            let result = stmt.query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(bal, cur)| czk_rate(&cur, bal.parse::<f64>().unwrap_or(0.0)))
-            .sum();
-            result
-        };
+            // Bank accounts (savings)
+            let savings: f64 = {
+                let mut stmt = conn.prepare(
+                    "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
+                )?;
+                let result = stmt
+                    .query_map([], |row| {
+                        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .map(|(bal, cur)| czk_rate(&cur, bal.parse::<f64>().unwrap_or(0.0)))
+                    .sum();
+                result
+            };
 
-        // Loans
-        let loans: f64 = {
-            let mut stmt = conn.prepare("SELECT principal, currency FROM loans")?;
-            let result = stmt.query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(p, c)| czk_rate(&c, p.parse::<f64>().unwrap_or(0.0)))
-            .sum();
-            result
-        };
+            // Loans
+            let loans: f64 = {
+                let mut stmt = conn.prepare("SELECT principal, currency FROM loans")?;
+                let result = stmt
+                    .query_map([], |row| {
+                        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .map(|(p, c)| czk_rate(&c, p.parse::<f64>().unwrap_or(0.0)))
+                    .sum();
+                result
+            };
 
-        // Stocks
-        let investments: f64 = {
-            let mut stmt = conn.prepare(
-                "SELECT si.quantity, COALESCE(spo.price, sd.original_price, '0') AS cp,
+            // Stocks
+            let investments: f64 = {
+                let mut stmt = conn.prepare(
+                    "SELECT si.quantity, COALESCE(spo.price, sd.original_price, '0') AS cp,
                         COALESCE(spo.currency, sd.currency, 'USD') AS cc
                  FROM stock_investments si
                  LEFT JOIN stock_data sd ON si.ticker = sd.ticker
-                 LEFT JOIN stock_price_overrides spo ON si.ticker = spo.ticker"
-            )?;
-            let result = stmt.query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(q, cp, cc)| {
-                let val = q.parse::<f64>().unwrap_or(0.0) * cp.parse::<f64>().unwrap_or(0.0);
-                czk_rate(&cc, val)
-            })
-            .sum();
-            result
-        };
+                 LEFT JOIN stock_price_overrides spo ON si.ticker = spo.ticker",
+                )?;
+                let result = stmt
+                    .query_map([], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                        ))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .map(|(q, cp, cc)| {
+                        let val =
+                            q.parse::<f64>().unwrap_or(0.0) * cp.parse::<f64>().unwrap_or(0.0);
+                        czk_rate(&cc, val)
+                    })
+                    .sum();
+                result
+            };
 
-        // Crypto
-        let crypto: f64 = {
-            let mut stmt = conn.prepare(
-                "SELECT ci.quantity, COALESCE(cpo.price, cp.price, '0') AS cp,
+            // Crypto
+            let crypto: f64 = {
+                let mut stmt = conn.prepare(
+                    "SELECT ci.quantity, COALESCE(cpo.price, cp.price, '0') AS cp,
                         COALESCE(cpo.currency, cp.currency, 'USD') AS cc
                  FROM crypto_investments ci
                  LEFT JOIN crypto_prices cp ON ci.ticker = cp.symbol
-                 LEFT JOIN crypto_price_overrides cpo ON ci.ticker = cpo.symbol"
-            )?;
-            let result = stmt.query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(q, cp, cc)| {
-                let val = q.parse::<f64>().unwrap_or(0.0) * cp.parse::<f64>().unwrap_or(0.0);
-                czk_rate(&cc, val)
-            })
-            .sum();
-            result
-        };
+                 LEFT JOIN crypto_price_overrides cpo ON ci.ticker = cpo.symbol",
+                )?;
+                let result = stmt
+                    .query_map([], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                        ))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .map(|(q, cp, cc)| {
+                        let val =
+                            q.parse::<f64>().unwrap_or(0.0) * cp.parse::<f64>().unwrap_or(0.0);
+                        czk_rate(&cc, val)
+                    })
+                    .sum();
+                result
+            };
 
-        // Bonds
-        let bonds: f64 = {
-            let mut stmt = conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
-            let result = stmt.query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(cv, q, c)| {
-                let val = cv.parse::<f64>().unwrap_or(0.0) * q.parse::<f64>().unwrap_or(0.0);
-                czk_rate(&c, val)
-            })
-            .sum();
-            result
-        };
+            // Bonds
+            let bonds: f64 = {
+                let mut stmt =
+                    conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
+                let result = stmt
+                    .query_map([], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                        ))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .map(|(cv, q, c)| {
+                        let val =
+                            cv.parse::<f64>().unwrap_or(0.0) * q.parse::<f64>().unwrap_or(0.0);
+                        czk_rate(&c, val)
+                    })
+                    .sum();
+                result
+            };
 
-        // Real estate
-        let (re_personal, re_investment): (f64, f64) = {
-            let mut stmt = conn.prepare(
-                "SELECT market_price, market_price_currency, type FROM real_estate"
-            )?;
-            let rows: Vec<(String, String, String)> = stmt.query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
+            // Real estate
+            let (re_personal, re_investment): (f64, f64) = {
+                let mut stmt = conn
+                    .prepare("SELECT market_price, market_price_currency, type FROM real_estate")?;
+                let rows: Vec<(String, String, String)> = stmt
+                    .query_map([], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                        ))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect();
 
-            let mut personal = 0.0_f64;
-            let mut investment = 0.0_f64;
-            for (price, cur, typ) in rows {
-                let val = czk_rate(&cur, price.parse::<f64>().unwrap_or(0.0));
-                if typ == "personal" { personal += val; } else { investment += val; }
-            }
-            (personal, investment)
-        };
+                let mut personal = 0.0_f64;
+                let mut investment = 0.0_f64;
+                for (price, cur, typ) in rows {
+                    let val = czk_rate(&cur, price.parse::<f64>().unwrap_or(0.0));
+                    if typ == "personal" {
+                        personal += val;
+                    } else {
+                        investment += val;
+                    }
+                }
+                (personal, investment)
+            };
 
-        let re_personal_final = if exclude { 0.0 } else { re_personal };
+            let re_personal_final = if exclude { 0.0 } else { re_personal };
 
-        // Other assets
-        let other: f64 = {
-            let mut stmt = conn.prepare("SELECT quantity, market_price, currency FROM other_assets")?;
-            let result = stmt.query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
-            })?
-            .filter_map(|r| r.ok())
-            .map(|(q, mp, c)| {
-                let val = q.parse::<f64>().unwrap_or(0.0) * mp.parse::<f64>().unwrap_or(0.0);
-                czk_rate(&c, val)
-            })
-            .sum();
-            result
-        };
+            // Other assets
+            let other: f64 = {
+                let mut stmt =
+                    conn.prepare("SELECT quantity, market_price, currency FROM other_assets")?;
+                let result = stmt
+                    .query_map([], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                        ))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .map(|(q, mp, c)| {
+                        let val =
+                            q.parse::<f64>().unwrap_or(0.0) * mp.parse::<f64>().unwrap_or(0.0);
+                        czk_rate(&c, val)
+                    })
+                    .sum();
+                result
+            };
 
-        let total_assets = savings + investments + crypto + bonds + re_personal_final + re_investment + other;
-        let net_worth = total_assets - loans;
+            let total_assets =
+                savings + investments + crypto + bonds + re_personal_final + re_investment + other;
+            let net_worth = total_assets - loans;
 
-        Ok(serde_json::json!({
-            "net_worth_czk": format!("{:.2}", net_worth),
-            "total_assets_czk": format!("{:.2}", total_assets),
-            "total_liabilities_czk": format!("{:.2}", loans),
-            "breakdown": {
-                "savings_czk": format!("{:.2}", savings),
-                "investments_czk": format!("{:.2}", investments),
-                "crypto_czk": format!("{:.2}", crypto),
-                "bonds_czk": format!("{:.2}", bonds),
-                "real_estate_personal_czk": format!("{:.2}", re_personal_final),
-                "real_estate_investment_czk": format!("{:.2}", re_investment),
-                "other_assets_czk": format!("{:.2}", other),
-                "loans_czk": format!("{:.2}", loans),
-            },
-            "note": "All values in CZK."
-        }))
-    }).map(Json).map_err(db_err)
+            Ok(serde_json::json!({
+                "net_worth_czk": format!("{:.2}", net_worth),
+                "total_assets_czk": format!("{:.2}", total_assets),
+                "total_liabilities_czk": format!("{:.2}", loans),
+                "breakdown": {
+                    "savings_czk": format!("{:.2}", savings),
+                    "investments_czk": format!("{:.2}", investments),
+                    "crypto_czk": format!("{:.2}", crypto),
+                    "bonds_czk": format!("{:.2}", bonds),
+                    "real_estate_personal_czk": format!("{:.2}", re_personal_final),
+                    "real_estate_investment_czk": format!("{:.2}", re_investment),
+                    "other_assets_czk": format!("{:.2}", other),
+                    "loans_czk": format!("{:.2}", loans),
+                },
+                "note": "All values in CZK."
+            }))
+        })
+        .map(Json)
+        .map_err(db_err)
 }
 
 async fn portfolio_history(
@@ -356,38 +403,55 @@ async fn portfolio_history(
 ) -> ApiResult {
     auth!(headers, state);
     let limit = params.limit.unwrap_or(365);
-    state.db.with_conn(|conn| {
-        let mut conditions = Vec::new();
-        let mut p: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-        if let Some(s) = params.start_date { conditions.push("recorded_at >= ?"); p.push(Box::new(s)); }
-        if let Some(e) = params.end_date { conditions.push("recorded_at <= ?"); p.push(Box::new(e)); }
-        let where_clause = if conditions.is_empty() { String::new() } else { format!("WHERE {}", conditions.join(" AND ")) };
-        let sql = format!(
-            "SELECT id, total_savings, total_loans_principal, total_investments,
+    state
+        .db
+        .with_conn(|conn| {
+            let mut conditions = Vec::new();
+            let mut p: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+            if let Some(s) = params.start_date {
+                conditions.push("recorded_at >= ?");
+                p.push(Box::new(s));
+            }
+            if let Some(e) = params.end_date {
+                conditions.push("recorded_at <= ?");
+                p.push(Box::new(e));
+            }
+            let where_clause = if conditions.is_empty() {
+                String::new()
+            } else {
+                format!("WHERE {}", conditions.join(" AND "))
+            };
+            let sql = format!(
+                "SELECT id, total_savings, total_loans_principal, total_investments,
                     total_crypto, total_bonds, total_real_estate_personal,
                     total_real_estate_investment, total_other_assets, recorded_at
              FROM portfolio_metrics_history {} ORDER BY recorded_at DESC LIMIT ?",
-            where_clause
-        );
-        p.push(Box::new(limit));
-        let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|x| x.as_ref()).collect();
-        let mut stmt = conn.prepare(&sql)?;
-        let rows: Vec<Value> = stmt.query_map(refs.as_slice(), |row| {
-            Ok(serde_json::json!({
-                "id": row.get::<_, String>(0)?,
-                "totalSavings": row.get::<_, String>(1)?,
-                "totalLoansPrincipal": row.get::<_, String>(2)?,
-                "totalInvestments": row.get::<_, String>(3)?,
-                "totalCrypto": row.get::<_, String>(4)?,
-                "totalBonds": row.get::<_, String>(5)?,
-                "totalRealEstatePersonal": row.get::<_, String>(6)?,
-                "totalRealEstateInvestment": row.get::<_, String>(7)?,
-                "totalOtherAssets": row.get::<_, String>(8)?,
-                "recordedAt": row.get::<_, i64>(9)?,
-            }))
-        })?.filter_map(|r| r.ok()).collect();
-        Ok(Value::Array(rows))
-    }).map(Json).map_err(db_err)
+                where_clause
+            );
+            p.push(Box::new(limit));
+            let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|x| x.as_ref()).collect();
+            let mut stmt = conn.prepare(&sql)?;
+            let rows: Vec<Value> = stmt
+                .query_map(refs.as_slice(), |row| {
+                    Ok(serde_json::json!({
+                        "id": row.get::<_, String>(0)?,
+                        "totalSavings": row.get::<_, String>(1)?,
+                        "totalLoansPrincipal": row.get::<_, String>(2)?,
+                        "totalInvestments": row.get::<_, String>(3)?,
+                        "totalCrypto": row.get::<_, String>(4)?,
+                        "totalBonds": row.get::<_, String>(5)?,
+                        "totalRealEstatePersonal": row.get::<_, String>(6)?,
+                        "totalRealEstateInvestment": row.get::<_, String>(7)?,
+                        "totalOtherAssets": row.get::<_, String>(8)?,
+                        "recordedAt": row.get::<_, i64>(9)?,
+                    }))
+                })?
+                .filter_map(|r| r.ok())
+                .collect();
+            Ok(Value::Array(rows))
+        })
+        .map(Json)
+        .map_err(db_err)
 }
 
 async fn investments_list(
@@ -501,49 +565,63 @@ async fn investment_transactions(
 ) -> ApiResult {
     auth!(headers, state);
     let limit = params.limit.unwrap_or(200);
-    state.db.with_conn(|conn| {
-        let sql = if params.ticker.is_some() {
-            "SELECT id, investment_id, type, ticker, company_name, quantity,
+    state
+        .db
+        .with_conn(|conn| {
+            let sql = if params.ticker.is_some() {
+                "SELECT id, investment_id, type, ticker, company_name, quantity,
                     price_per_unit, currency, transaction_date, created_at
              FROM investment_transactions WHERE ticker = ? ORDER BY transaction_date DESC LIMIT ?"
-        } else {
-            "SELECT id, investment_id, type, ticker, company_name, quantity,
+            } else {
+                "SELECT id, investment_id, type, ticker, company_name, quantity,
                     price_per_unit, currency, transaction_date, created_at
              FROM investment_transactions ORDER BY transaction_date DESC LIMIT ?"
-        };
-        let rows: Vec<Value> = if let Some(ref t) = params.ticker {
-            let mut stmt = conn.prepare(sql)?;
-            let result = stmt.query_map(rusqlite::params![t, limit], |row| Ok(serde_json::json!({
-                "id": row.get::<_, String>(0)?,
-                "investmentId": row.get::<_, String>(1)?,
-                "type": row.get::<_, String>(2)?,
-                "ticker": row.get::<_, String>(3)?,
-                "companyName": row.get::<_, String>(4)?,
-                "quantity": row.get::<_, String>(5)?,
-                "pricePerUnit": row.get::<_, String>(6)?,
-                "currency": row.get::<_, String>(7)?,
-                "transactionDate": row.get::<_, i64>(8)?,
-                "createdAt": row.get::<_, i64>(9)?,
-            })))?.filter_map(|r| r.ok()).collect();
-            result
-        } else {
-            let mut stmt = conn.prepare(sql)?;
-            let result = stmt.query_map(rusqlite::params![limit], |row| Ok(serde_json::json!({
-                "id": row.get::<_, String>(0)?,
-                "investmentId": row.get::<_, String>(1)?,
-                "type": row.get::<_, String>(2)?,
-                "ticker": row.get::<_, String>(3)?,
-                "companyName": row.get::<_, String>(4)?,
-                "quantity": row.get::<_, String>(5)?,
-                "pricePerUnit": row.get::<_, String>(6)?,
-                "currency": row.get::<_, String>(7)?,
-                "transactionDate": row.get::<_, i64>(8)?,
-                "createdAt": row.get::<_, i64>(9)?,
-            })))?.filter_map(|r| r.ok()).collect();
-            result
-        };
-        Ok(Value::Array(rows))
-    }).map(Json).map_err(db_err)
+            };
+            let rows: Vec<Value> = if let Some(ref t) = params.ticker {
+                let mut stmt = conn.prepare(sql)?;
+                let result = stmt
+                    .query_map(rusqlite::params![t, limit], |row| {
+                        Ok(serde_json::json!({
+                            "id": row.get::<_, String>(0)?,
+                            "investmentId": row.get::<_, String>(1)?,
+                            "type": row.get::<_, String>(2)?,
+                            "ticker": row.get::<_, String>(3)?,
+                            "companyName": row.get::<_, String>(4)?,
+                            "quantity": row.get::<_, String>(5)?,
+                            "pricePerUnit": row.get::<_, String>(6)?,
+                            "currency": row.get::<_, String>(7)?,
+                            "transactionDate": row.get::<_, i64>(8)?,
+                            "createdAt": row.get::<_, i64>(9)?,
+                        }))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect();
+                result
+            } else {
+                let mut stmt = conn.prepare(sql)?;
+                let result = stmt
+                    .query_map(rusqlite::params![limit], |row| {
+                        Ok(serde_json::json!({
+                            "id": row.get::<_, String>(0)?,
+                            "investmentId": row.get::<_, String>(1)?,
+                            "type": row.get::<_, String>(2)?,
+                            "ticker": row.get::<_, String>(3)?,
+                            "companyName": row.get::<_, String>(4)?,
+                            "quantity": row.get::<_, String>(5)?,
+                            "pricePerUnit": row.get::<_, String>(6)?,
+                            "currency": row.get::<_, String>(7)?,
+                            "transactionDate": row.get::<_, i64>(8)?,
+                            "createdAt": row.get::<_, i64>(9)?,
+                        }))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect();
+                result
+            };
+            Ok(Value::Array(rows))
+        })
+        .map(Json)
+        .map_err(db_err)
 }
 
 async fn stock_value_history(
@@ -578,10 +656,7 @@ async fn stock_value_history(
     }).map(Json).map_err(db_err)
 }
 
-async fn crypto_list(
-    AxumState(state): AxumState<Arc<ApiState>>,
-    headers: HeaderMap,
-) -> ApiResult {
+async fn crypto_list(AxumState(state): AxumState<Arc<ApiState>>, headers: HeaderMap) -> ApiResult {
     auth!(headers, state);
     state.db.with_conn(|conn| {
         let mut stmt = conn.prepare(
@@ -618,48 +693,62 @@ async fn crypto_transactions(
 ) -> ApiResult {
     auth!(headers, state);
     let limit = params.limit.unwrap_or(200);
-    state.db.with_conn(|conn| {
-        let rows: Vec<Value> = if let Some(ref t) = params.ticker {
-            let mut stmt = conn.prepare(
-                "SELECT id, investment_id, type, ticker, name, quantity,
+    state
+        .db
+        .with_conn(|conn| {
+            let rows: Vec<Value> = if let Some(ref t) = params.ticker {
+                let mut stmt = conn.prepare(
+                    "SELECT id, investment_id, type, ticker, name, quantity,
                         price_per_unit, currency, transaction_date, created_at
-                 FROM crypto_transactions WHERE ticker = ? ORDER BY transaction_date DESC LIMIT ?"
-            )?;
-            let result = stmt.query_map(rusqlite::params![t, limit], |row| Ok(serde_json::json!({
-                "id": row.get::<_, String>(0)?,
-                "investmentId": row.get::<_, String>(1)?,
-                "type": row.get::<_, String>(2)?,
-                "ticker": row.get::<_, String>(3)?,
-                "name": row.get::<_, String>(4)?,
-                "quantity": row.get::<_, String>(5)?,
-                "pricePerUnit": row.get::<_, String>(6)?,
-                "currency": row.get::<_, String>(7)?,
-                "transactionDate": row.get::<_, i64>(8)?,
-                "createdAt": row.get::<_, i64>(9)?,
-            })))?.filter_map(|r| r.ok()).collect();
-            result
-        } else {
-            let mut stmt = conn.prepare(
-                "SELECT id, investment_id, type, ticker, name, quantity,
+                 FROM crypto_transactions WHERE ticker = ? ORDER BY transaction_date DESC LIMIT ?",
+                )?;
+                let result = stmt
+                    .query_map(rusqlite::params![t, limit], |row| {
+                        Ok(serde_json::json!({
+                            "id": row.get::<_, String>(0)?,
+                            "investmentId": row.get::<_, String>(1)?,
+                            "type": row.get::<_, String>(2)?,
+                            "ticker": row.get::<_, String>(3)?,
+                            "name": row.get::<_, String>(4)?,
+                            "quantity": row.get::<_, String>(5)?,
+                            "pricePerUnit": row.get::<_, String>(6)?,
+                            "currency": row.get::<_, String>(7)?,
+                            "transactionDate": row.get::<_, i64>(8)?,
+                            "createdAt": row.get::<_, i64>(9)?,
+                        }))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect();
+                result
+            } else {
+                let mut stmt = conn.prepare(
+                    "SELECT id, investment_id, type, ticker, name, quantity,
                         price_per_unit, currency, transaction_date, created_at
-                 FROM crypto_transactions ORDER BY transaction_date DESC LIMIT ?"
-            )?;
-            let result = stmt.query_map(rusqlite::params![limit], |row| Ok(serde_json::json!({
-                "id": row.get::<_, String>(0)?,
-                "investmentId": row.get::<_, String>(1)?,
-                "type": row.get::<_, String>(2)?,
-                "ticker": row.get::<_, String>(3)?,
-                "name": row.get::<_, String>(4)?,
-                "quantity": row.get::<_, String>(5)?,
-                "pricePerUnit": row.get::<_, String>(6)?,
-                "currency": row.get::<_, String>(7)?,
-                "transactionDate": row.get::<_, i64>(8)?,
-                "createdAt": row.get::<_, i64>(9)?,
-            })))?.filter_map(|r| r.ok()).collect();
-            result
-        };
-        Ok(Value::Array(rows))
-    }).map(Json).map_err(db_err)
+                 FROM crypto_transactions ORDER BY transaction_date DESC LIMIT ?",
+                )?;
+                let result = stmt
+                    .query_map(rusqlite::params![limit], |row| {
+                        Ok(serde_json::json!({
+                            "id": row.get::<_, String>(0)?,
+                            "investmentId": row.get::<_, String>(1)?,
+                            "type": row.get::<_, String>(2)?,
+                            "ticker": row.get::<_, String>(3)?,
+                            "name": row.get::<_, String>(4)?,
+                            "quantity": row.get::<_, String>(5)?,
+                            "pricePerUnit": row.get::<_, String>(6)?,
+                            "currency": row.get::<_, String>(7)?,
+                            "transactionDate": row.get::<_, i64>(8)?,
+                            "createdAt": row.get::<_, i64>(9)?,
+                        }))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect();
+                result
+            };
+            Ok(Value::Array(rows))
+        })
+        .map(Json)
+        .map_err(db_err)
 }
 
 async fn crypto_value_history(
@@ -821,10 +910,7 @@ async fn bank_categories(
     }).map(Json).map_err(db_err)
 }
 
-async fn bonds_list(
-    AxumState(state): AxumState<Arc<ApiState>>,
-    headers: HeaderMap,
-) -> ApiResult {
+async fn bonds_list(AxumState(state): AxumState<Arc<ApiState>>, headers: HeaderMap) -> ApiResult {
     auth!(headers, state);
     state.db.with_conn(|conn| {
         let mut stmt = conn.prepare(
@@ -848,10 +934,7 @@ async fn bonds_list(
     }).map(Json).map_err(db_err)
 }
 
-async fn loans_list(
-    AxumState(state): AxumState<Arc<ApiState>>,
-    headers: HeaderMap,
-) -> ApiResult {
+async fn loans_list(AxumState(state): AxumState<Arc<ApiState>>, headers: HeaderMap) -> ApiResult {
     auth!(headers, state);
     state.db.with_conn(|conn| {
         let mut stmt = conn.prepare(
@@ -875,10 +958,7 @@ async fn loans_list(
     }).map(Json).map_err(db_err)
 }
 
-async fn savings_list(
-    AxumState(state): AxumState<Arc<ApiState>>,
-    headers: HeaderMap,
-) -> ApiResult {
+async fn savings_list(AxumState(state): AxumState<Arc<ApiState>>, headers: HeaderMap) -> ApiResult {
     auth!(headers, state);
     state.db.with_conn(|conn| {
         let mut stmt = conn.prepare(
@@ -1115,25 +1195,34 @@ async fn other_assets_transactions(
     Path(asset_id): Path<String>,
 ) -> ApiResult {
     auth!(headers, state);
-    state.db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT id, asset_id, type, quantity, price_per_unit, currency,
+    state
+        .db
+        .with_conn(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT id, asset_id, type, quantity, price_per_unit, currency,
                     transaction_date, created_at
              FROM other_asset_transactions WHERE asset_id = ?
-             ORDER BY transaction_date DESC"
-        )?;
-        let rows: Vec<Value> = stmt.query_map([&asset_id], |row| Ok(serde_json::json!({
-            "id": row.get::<_, String>(0)?,
-            "assetId": row.get::<_, String>(1)?,
-            "type": row.get::<_, String>(2)?,
-            "quantity": row.get::<_, String>(3)?,
-            "pricePerUnit": row.get::<_, String>(4)?,
-            "currency": row.get::<_, String>(5)?,
-            "transactionDate": row.get::<_, i64>(6)?,
-            "createdAt": row.get::<_, i64>(7)?,
-        })))?.filter_map(|r| r.ok()).collect();
-        Ok(Value::Array(rows))
-    }).map(Json).map_err(db_err)
+             ORDER BY transaction_date DESC",
+            )?;
+            let rows: Vec<Value> = stmt
+                .query_map([&asset_id], |row| {
+                    Ok(serde_json::json!({
+                        "id": row.get::<_, String>(0)?,
+                        "assetId": row.get::<_, String>(1)?,
+                        "type": row.get::<_, String>(2)?,
+                        "quantity": row.get::<_, String>(3)?,
+                        "pricePerUnit": row.get::<_, String>(4)?,
+                        "currency": row.get::<_, String>(5)?,
+                        "transactionDate": row.get::<_, i64>(6)?,
+                        "createdAt": row.get::<_, i64>(7)?,
+                    }))
+                })?
+                .filter_map(|r| r.ok())
+                .collect();
+            Ok(Value::Array(rows))
+        })
+        .map(Json)
+        .map_err(db_err)
 }
 
 async fn exchange_rates(
@@ -1141,19 +1230,30 @@ async fn exchange_rates(
     headers: HeaderMap,
 ) -> ApiResult {
     auth!(headers, state);
-    state.db.with_conn(|conn| {
-        let mut stmt = conn.prepare("SELECT currency, rate, fetched_at FROM exchange_rates ORDER BY currency")?;
-        let rows: Vec<Value> = stmt.query_map([], |row| Ok(serde_json::json!({
-            "currency": row.get::<_, String>(0)?,
-            "rate": row.get::<_, f64>(1)?,
-            "fetchedAt": row.get::<_, i64>(2)?,
-        })))?.filter_map(|r| r.ok()).collect();
-        Ok(serde_json::json!({
-            "baseCurrency": "CZK",
-            "rates": rows,
-            "note": "Multiply amount in currency by rate to get CZK equivalent."
-        }))
-    }).map(Json).map_err(db_err)
+    state
+        .db
+        .with_conn(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT currency, rate, fetched_at FROM exchange_rates ORDER BY currency",
+            )?;
+            let rows: Vec<Value> = stmt
+                .query_map([], |row| {
+                    Ok(serde_json::json!({
+                        "currency": row.get::<_, String>(0)?,
+                        "rate": row.get::<_, f64>(1)?,
+                        "fetchedAt": row.get::<_, i64>(2)?,
+                    }))
+                })?
+                .filter_map(|r| r.ok())
+                .collect();
+            Ok(serde_json::json!({
+                "baseCurrency": "CZK",
+                "rates": rows,
+                "note": "Multiply amount in currency by rate to get CZK equivalent."
+            }))
+        })
+        .map(Json)
+        .map_err(db_err)
 }
 
 async fn cashflow_report(
@@ -1425,38 +1525,58 @@ async fn tag_metrics(
     Query(params): Query<TagMetricsParams>,
 ) -> ApiResult {
     auth!(headers, state);
-    state.db.with_conn(|conn| {
-        let rates: std::collections::HashMap<String, f64> = {
-            let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
-            let result = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?)))?
-                .filter_map(|r| r.ok()).collect();
+    state
+        .db
+        .with_conn(|conn| {
+            let rates: std::collections::HashMap<String, f64> = {
+                let mut stmt = conn.prepare("SELECT currency, rate FROM exchange_rates")?;
+                let result = stmt
+                    .query_map([], |row| {
+                        Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+                    })?
+                    .filter_map(|r| r.ok())
+                    .collect();
                 result
-        };
-        let czk = |currency: &str, amount: f64| -> f64 {
-            if currency == "CZK" { return amount; }
-            amount * rates.get(currency).copied().unwrap_or(1.0)
-        };
+            };
+            let czk = |currency: &str, amount: f64| -> f64 {
+                if currency == "CZK" {
+                    return amount;
+                }
+                amount * rates.get(currency).copied().unwrap_or(1.0)
+            };
 
-        let tags: Vec<(String, String)> = if let Some(ref ids_str) = params.tag_ids {
-            let ids: Vec<&str> = ids_str.split(',').collect();
-            let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            let sql = format!("SELECT id, name FROM stock_tags WHERE id IN ({}) ORDER BY name", placeholders);
-            let mut stmt = conn.prepare(&sql)?;
-            let p: Vec<Box<dyn rusqlite::ToSql>> = ids.iter().map(|id| Box::new(id.to_string()) as Box<dyn rusqlite::ToSql>).collect();
-            let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|x| x.as_ref()).collect();
-            let result = stmt.query_map(refs.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?
-                .filter_map(|r| r.ok()).collect();
+            let tags: Vec<(String, String)> = if let Some(ref ids_str) = params.tag_ids {
+                let ids: Vec<&str> = ids_str.split(',').collect();
+                let placeholders = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+                let sql = format!(
+                    "SELECT id, name FROM stock_tags WHERE id IN ({}) ORDER BY name",
+                    placeholders
+                );
+                let mut stmt = conn.prepare(&sql)?;
+                let p: Vec<Box<dyn rusqlite::ToSql>> = ids
+                    .iter()
+                    .map(|id| Box::new(id.to_string()) as Box<dyn rusqlite::ToSql>)
+                    .collect();
+                let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|x| x.as_ref()).collect();
+                let result = stmt
+                    .query_map(refs.as_slice(), |row| Ok((row.get(0)?, row.get(1)?)))?
+                    .filter_map(|r| r.ok())
+                    .collect();
                 result
-        } else {
-            let mut stmt = conn.prepare("SELECT id, name FROM stock_tags ORDER BY name")?;
-            let result = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
-                .filter_map(|r| r.ok()).collect();
+            } else {
+                let mut stmt = conn.prepare("SELECT id, name FROM stock_tags ORDER BY name")?;
+                let result = stmt
+                    .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+                    .filter_map(|r| r.ok())
+                    .collect();
                 result
-        };
+            };
 
-        let result: Vec<Value> = tags.iter().map(|(tag_id, tag_name)| {
-            let stocks: Vec<(f64, f64, String, f64, String, f64, String)> = {
-                let mut s = conn.prepare(
+            let result: Vec<Value> = tags
+                .iter()
+                .filter_map(|(tag_id, tag_name)| {
+                    let stocks: Vec<(f64, f64, String, f64, String, f64, String)> = {
+                        let mut s = conn.prepare(
                     "SELECT si.quantity, COALESCE(spo.price, sd.original_price, '0') AS cp,
                             COALESCE(spo.currency, sd.currency, 'USD') AS cc,
                             si.average_price, si.currency,
@@ -1470,47 +1590,58 @@ async fn tag_metrics(
                      LEFT JOIN dividend_overrides do2 ON si.ticker = do2.ticker
                      WHERE sit.tag_id = ?"
                 ).ok()?;
-                let result = s.query_map([tag_id], |row| {
-                    Ok((
-                        row.get::<_, String>(0)?.parse::<f64>().unwrap_or(0.0),
-                        row.get::<_, String>(1)?.parse::<f64>().unwrap_or(0.0),
-                        row.get::<_, String>(2)?,
-                        row.get::<_, String>(3)?.parse::<f64>().unwrap_or(0.0),
-                        row.get::<_, String>(4)?,
-                        row.get::<_, String>(5)?.parse::<f64>().unwrap_or(0.0),
-                        row.get::<_, String>(6)?,
-                    ))
-                }).ok()?.filter_map(|r| r.ok()).collect();
-                result
-            };
+                        let result = s
+                            .query_map([tag_id], |row| {
+                                Ok((
+                                    row.get::<_, String>(0)?.parse::<f64>().unwrap_or(0.0),
+                                    row.get::<_, String>(1)?.parse::<f64>().unwrap_or(0.0),
+                                    row.get::<_, String>(2)?,
+                                    row.get::<_, String>(3)?.parse::<f64>().unwrap_or(0.0),
+                                    row.get::<_, String>(4)?,
+                                    row.get::<_, String>(5)?.parse::<f64>().unwrap_or(0.0),
+                                    row.get::<_, String>(6)?,
+                                ))
+                            })
+                            .ok()?
+                            .filter_map(|r| r.ok())
+                            .collect();
+                        result
+                    };
 
-            let mut val = 0.0_f64;
-            let mut cost = 0.0_f64;
-            let mut div = 0.0_f64;
-            for (qty, cp, cc, avg, currency, yd, dc) in &stocks {
-                val += czk(cc, qty * cp);
-                cost += czk(currency, qty * avg);
-                div += czk(dc, qty * yd);
-            }
-            let gain = val - cost;
-            let gain_pct = if cost > 0.0 { (gain / cost) * 100.0 } else { 0.0 };
-            let div_yield = if val > 0.0 { (div / val) * 100.0 } else { 0.0 };
+                    let mut val = 0.0_f64;
+                    let mut cost = 0.0_f64;
+                    let mut div = 0.0_f64;
+                    for (qty, cp, cc, avg, currency, yd, dc) in &stocks {
+                        val += czk(cc, qty * cp);
+                        cost += czk(currency, qty * avg);
+                        div += czk(dc, qty * yd);
+                    }
+                    let gain = val - cost;
+                    let gain_pct = if cost > 0.0 {
+                        (gain / cost) * 100.0
+                    } else {
+                        0.0
+                    };
+                    let div_yield = if val > 0.0 { (div / val) * 100.0 } else { 0.0 };
 
-            Some(serde_json::json!({
-                "tagId": tag_id,
-                "tagName": tag_name,
-                "stockCount": stocks.len(),
-                "totalValueCzk": format!("{:.2}", val),
-                "costBasisCzk": format!("{:.2}", cost),
-                "gainLossCzk": format!("{:.2}", gain),
-                "gainLossPct": format!("{:.2}", gain_pct),
-                "annualDividendCzk": format!("{:.2}", div),
-                "dividendYieldPct": format!("{:.2}", div_yield),
-            }))
-        }).flatten().collect();
+                    Some(serde_json::json!({
+                        "tagId": tag_id,
+                        "tagName": tag_name,
+                        "stockCount": stocks.len(),
+                        "totalValueCzk": format!("{:.2}", val),
+                        "costBasisCzk": format!("{:.2}", cost),
+                        "gainLossCzk": format!("{:.2}", gain),
+                        "gainLossPct": format!("{:.2}", gain_pct),
+                        "annualDividendCzk": format!("{:.2}", div),
+                        "dividendYieldPct": format!("{:.2}", div_yield),
+                    }))
+                })
+                .collect();
 
-        Ok(Value::Array(result))
-    }).map(Json).map_err(db_err)
+            Ok(Value::Array(result))
+        })
+        .map(Json)
+        .map_err(db_err)
 }
 
 // ============================================================================
@@ -1521,6 +1652,12 @@ pub struct LocalApiServer {
     handle: Mutex<Option<JoinHandle<()>>>,
     token: Mutex<Option<String>>,
     port: Mutex<Option<u16>>,
+}
+
+impl Default for LocalApiServer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LocalApiServer {
@@ -1552,20 +1689,28 @@ impl LocalApiServer {
         // Generate token and find free port
         let token = uuid::Uuid::new_v4().to_string();
         // Bind directly with tokio (async-safe, no blocking socket conversion)
-        let tokio_listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.map_err(|e| {
-            crate::error::AppError::Internal(format!("Failed to bind local API server: {}", e))
-        })?;
-        let port = tokio_listener.local_addr().map_err(|e| {
-            crate::error::AppError::Internal(format!("Failed to get local address: {}", e))
-        })?.port();
+        let tokio_listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .map_err(|e| {
+                crate::error::AppError::Internal(format!("Failed to bind local API server: {}", e))
+            })?;
+        let port = tokio_listener
+            .local_addr()
+            .map_err(|e| {
+                crate::error::AppError::Internal(format!("Failed to get local address: {}", e))
+            })?
+            .port();
 
         // Write session file
-        write_session(&data_dir, port, &token).map_err(|e| {
+        write_session(data_dir.as_path(), port, &token).map_err(|e| {
             crate::error::AppError::Internal(format!("Failed to write session.json: {}", e))
         })?;
 
         // Build router
-        let state = Arc::new(ApiState { db, token: token.clone() });
+        let state = Arc::new(ApiState {
+            db,
+            token: token.clone(),
+        });
         let app = Router::new()
             .route("/health", get(health))
             .route("/portfolio/metrics", get(portfolio_metrics))
@@ -1588,7 +1733,10 @@ impl LocalApiServer {
             .route("/insurance", get(insurance_list))
             .route("/insurance/{id}", get(insurance_detail))
             .route("/other-assets", get(other_assets_list))
-            .route("/other-assets/{id}/transactions", get(other_assets_transactions))
+            .route(
+                "/other-assets/{id}/transactions",
+                get(other_assets_transactions),
+            )
             .route("/analytics/cashflow", get(cashflow_report))
             .route("/analytics/budgeting", get(budgeting_report))
             .route("/analytics/stocks", get(stocks_analysis))
@@ -1616,7 +1764,7 @@ impl LocalApiServer {
         }
         *self.token.lock().unwrap() = None;
         *self.port.lock().unwrap() = None;
-        delete_session(&data_dir);
+        delete_session(data_dir.as_path());
         println!("[local-api] Stopped");
     }
 }

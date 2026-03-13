@@ -4,7 +4,6 @@
 
 pub mod auth;
 pub mod bank_accounts;
-pub mod local_api;
 pub mod budgeting;
 pub mod categorization;
 pub mod crypto;
@@ -13,5 +12,6 @@ pub mod csv_import;
 pub mod currency;
 pub mod date_parser;
 pub mod investments;
+pub mod local_api;
 pub mod price_api;
 pub mod pricing;

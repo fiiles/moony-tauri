@@ -405,9 +405,7 @@ pub async fn get_mcp_server_status(
     app: AppHandle,
     local_api: State<'_, LocalApiServer>,
 ) -> Result<McpServerStatus> {
-    let data_dir = get_data_dir(&app)
-        .to_string_lossy()
-        .to_string();
+    let data_dir = get_data_dir(&app).to_string_lossy().to_string();
     Ok(McpServerStatus {
         running: local_api.is_running(),
         port: local_api.get_port(),

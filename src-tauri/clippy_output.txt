@@ -1,0 +1,117 @@
+    Checking moony v1.1.0 (/Users/filipkral/Documents/Programování/FinanceApp/Moony-tauri/src-tauri)
+error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
+  --> src/services/local_api.rs:36:28
+   |
+36 | fn write_session(data_dir: &PathBuf, port: u16, token: &str) -> std::io::Result<()> {
+   |                            ^^^^^^^^ help: change this to: `&Path`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#ptr_arg
+   = note: `-D clippy::ptr-arg` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_arg)]`
+
+error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
+  --> src/services/local_api.rs:53:29
+   |
+53 | fn delete_session(data_dir: &PathBuf) {
+   |                             ^^^^^^^^ help: change this to: `&Path`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#ptr_arg
+
+error: called `map(..).flatten()` on `Iterator`
+    --> src/services/local_api.rs:1457:46
+     |
+1457 |           let result: Vec<Value> = tags.iter().map(|(tag_id, tag_name)| {
+     |  ______________________________________________^
+1458 | |             let stocks: Vec<(f64, f64, String, f64, String, f64, String)> = {
+1459 | |                 let mut s = conn.prepare(
+1460 | |                     "SELECT si.quantity, COALESCE(spo.price, sd.original_price, '0') AS cp,
+...    |
+1509 | |             }))
+1510 | |         }).flatten().collect();
+     | |____________________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#map_flatten
+     = note: `-D clippy::map-flatten` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::map_flatten)]`
+help: try replacing `map` with `filter_map` and remove the `.flatten()`
+     |
+1457 ~         let result: Vec<Value> = tags.iter().filter_map(|(tag_id, tag_name)| {
+1458 +             let stocks: Vec<(f64, f64, String, f64, String, f64, String)> = {
+1459 +                 let mut s = conn.prepare(
+1460 +                     "SELECT si.quantity, COALESCE(spo.price, sd.original_price, '0') AS cp,
+1461 +                             COALESCE(spo.currency, sd.currency, 'USD') AS cc,
+1462 +                             si.average_price, si.currency,
+1463 +                             COALESCE(do2.yearly_dividend_sum, dd.yearly_dividend_sum, '0') AS yd,
+1464 +                             COALESCE(do2.currency, dd.currency, 'USD') AS dc
+1465 +                      FROM stock_investments si
+1466 +                      JOIN stock_investment_tags sit ON si.id = sit.investment_id
+1467 +                      LEFT JOIN stock_data sd ON si.ticker = sd.ticker
+1468 +                      LEFT JOIN stock_price_overrides spo ON si.ticker = spo.ticker
+1469 +                      LEFT JOIN dividend_data dd ON si.ticker = dd.ticker
+1470 +                      LEFT JOIN dividend_overrides do2 ON si.ticker = do2.ticker
+1471 +                      WHERE sit.tag_id = ?"
+1472 +                 ).ok()?;
+1473 +                 let result = s.query_map([tag_id], |row| {
+1474 +                     Ok((
+1475 +                         row.get::<_, String>(0)?.parse::<f64>().unwrap_or(0.0),
+1476 +                         row.get::<_, String>(1)?.parse::<f64>().unwrap_or(0.0),
+1477 +                         row.get::<_, String>(2)?,
+1478 +                         row.get::<_, String>(3)?.parse::<f64>().unwrap_or(0.0),
+1479 +                         row.get::<_, String>(4)?,
+1480 +                         row.get::<_, String>(5)?.parse::<f64>().unwrap_or(0.0),
+1481 +                         row.get::<_, String>(6)?,
+1482 +                     ))
+1483 +                 }).ok()?.filter_map(|r| r.ok()).collect();
+1484 +                 result
+1485 +             };
+1486 + 
+1487 +             let mut val = 0.0_f64;
+1488 +             let mut cost = 0.0_f64;
+1489 +             let mut div = 0.0_f64;
+1490 +             for (qty, cp, cc, avg, currency, yd, dc) in &stocks {
+1491 +                 val += czk(cc, qty * cp);
+1492 +                 cost += czk(currency, qty * avg);
+1493 +                 div += czk(dc, qty * yd);
+1494 +             }
+1495 +             let gain = val - cost;
+1496 +             let gain_pct = if cost > 0.0 { (gain / cost) * 100.0 } else { 0.0 };
+1497 +             let div_yield = if val > 0.0 { (div / val) * 100.0 } else { 0.0 };
+1498 + 
+1499 +             Some(serde_json::json!({
+1500 +                 "tagId": tag_id,
+1501 +                 "tagName": tag_name,
+1502 +                 "stockCount": stocks.len(),
+1503 +                 "totalValueCzk": format!("{:.2}", val),
+1504 +                 "costBasisCzk": format!("{:.2}", cost),
+1505 +                 "gainLossCzk": format!("{:.2}", gain),
+1506 +                 "gainLossPct": format!("{:.2}", gain_pct),
+1507 +                 "annualDividendCzk": format!("{:.2}", div),
+1508 +                 "dividendYieldPct": format!("{:.2}", div_yield),
+1509 +             }))
+1510 ~         }).collect();
+     |
+
+error: you should consider adding a `Default` implementation for `LocalApiServer`
+    --> src/services/local_api.rs:1527:5
+     |
+1527 | /     pub fn new() -> Self {
+1528 | |         Self {
+1529 | |             handle: Mutex::new(None),
+1530 | |             token: Mutex::new(None),
+...    |
+1533 | |     }
+     | |_____^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.92.0/index.html#new_without_default
+     = note: `-D clippy::new-without-default` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::new_without_default)]`
+help: try adding this
+     |
+1526 + impl Default for LocalApiServer {
+1527 +     fn default() -> Self {
+1528 +         Self::new()
+1529 +     }
+1530 + }
+     |
+
+error: could not compile `moony` (lib) due to 4 previous errors
