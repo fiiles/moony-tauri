@@ -64,6 +64,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         ("033_add_coingecko_modal_dismissed", MIGRATION_033),
         ("034_add_exchange_rates_table", MIGRATION_034),
         ("035_add_stale_data_columns", MIGRATION_035),
+        ("036_add_mcp_server_enabled", MIGRATION_036),
     ];
 
     for (name, sql) in migrations {
@@ -1159,4 +1160,10 @@ ALTER TABLE stock_value_history ADD COLUMN is_stale INTEGER NOT NULL DEFAULT 0;
 
 -- Add is_stale to crypto value history
 ALTER TABLE crypto_value_history ADD COLUMN is_stale INTEGER NOT NULL DEFAULT 0;
+"#;
+
+/// Migration 036: Add mcp_server_enabled to user_profile
+/// Controls whether the local HTTP API server starts on unlock
+const MIGRATION_036: &str = r#"
+ALTER TABLE user_profile ADD COLUMN mcp_server_enabled INTEGER NOT NULL DEFAULT 0;
 "#;

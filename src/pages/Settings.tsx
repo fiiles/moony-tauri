@@ -19,9 +19,9 @@ import { queryClient } from "@/lib/queryClient";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, EyeOff, ExternalLink, Copy, Check, ShieldCheck, AlertTriangle, Activity, User, Lock, Key, Coins, Languages, Menu, LayoutDashboard, Trash2 } from "lucide-react";
+import { Eye, EyeOff, ExternalLink, Copy, Check, ShieldCheck, AlertTriangle, Activity, User, Lock, Key, Coins, Languages, Menu, LayoutDashboard, Trash2, Bot } from "lucide-react";
 import { getConsent, setConsent } from "@/lib/analytics";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
 import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type SupportedLanguage } from "@/i18n/index";
 import { translateApiError } from "@/lib/translate-api-error";
@@ -312,6 +312,89 @@ function ApiKeysCard() {
         >
           {saveApiKeysMutation.isPending ? t('apiKeys.saving') : t('apiKeys.save')}
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function McpServerCard({ profile }: { profile: ReturnType<typeof useAuth>['user'] }) {
+  const { t } = useTranslation('settings');
+  const setMcpMutation = useMutation({
+    mutationFn: (enabled: boolean) => authApi.setMcpServerEnabled(enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["mcp-status"] });
+    },
+    onError: (error: Error) => {
+      toast.error(t('mcpServer.updateFailed'), { description: error.message });
+    },
+  });
+
+  const { data: mcpStatus } = useQuery({
+    queryKey: ["mcp-status"],
+    queryFn: () => authApi.getMcpServerStatus(),
+    refetchInterval: 5000,
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bot className="h-5 w-5" />
+          {t('mcpServer.title')}
+        </CardTitle>
+        <CardDescription>
+          {t('mcpServer.description')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between p-2 border rounded">
+          <div>
+            <span className="text-sm font-medium">{t('mcpServer.enable')}</span>
+            <p className="text-xs text-muted-foreground">{t('mcpServer.enableHint')}</p>
+          </div>
+          <Switch
+            checked={profile?.mcpServerEnabled ?? false}
+            onCheckedChange={(enabled) => setMcpMutation.mutate(enabled)}
+            disabled={setMcpMutation.isPending}
+          />
+        </div>
+
+        {mcpStatus?.running && (
+          <div className="rounded-md bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-3 text-sm text-green-800 dark:text-green-200">
+            {t('mcpServer.runningOnPort', { port: mcpStatus.port })}
+          </div>
+        )}
+
+        {profile?.mcpServerEnabled && (
+          <div className="rounded-md bg-muted p-3 text-sm space-y-2">
+            <p className="font-medium text-sm">{t('mcpServer.setupInstructions')}</p>
+            <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
+              <li>
+                <Trans i18nKey="mcpServer.setupStep1" t={t}>
+                  Download the MCP server from <a href="https://github.com/fiiles/moony-mcp" target="_blank" rel="noopener noreferrer" className="underline text-foreground hover:text-primary">github.com/fiiles/moony-mcp</a> and run <code>npm install && npm run build</code>.
+                </Trans>
+              </li>
+              <li><Trans i18nKey="mcpServer.setupStep2" t={t}>Add the following to your Claude Desktop config (replace paths with <strong>absolute</strong> paths to your actual directories):</Trans></li>
+            </ol>
+            <pre className="text-xs overflow-auto whitespace-pre-wrap bg-background p-2 border rounded">
+{`{
+  "mcpServers": {
+    "moony-finance": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/moony-mcp/dist/index.js"],
+      "env": {
+        "MOONY_DATA_DIR": "${mcpStatus?.dataDir ?? '/ABSOLUTE/PATH/TO/Moony/data/directory'}"
+      }
+    }
+  }
+}`}
+            </pre>
+            <p className="text-xs text-muted-foreground italic mt-2">
+              {t('mcpServer.setupNote')}
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -623,6 +706,9 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* MCP Server */}
+      <McpServerCard profile={user} />
 
       {/* Danger Zone */}
       <Card className="border-destructive/50">

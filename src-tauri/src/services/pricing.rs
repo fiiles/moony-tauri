@@ -89,16 +89,23 @@ pub fn resolve_crypto_price(conn: &rusqlite::Connection, symbol: &str) -> Option
         )
         .ok();
 
-    // 3. Resolve: prefer override always, then global
+    // 3. Resolve: prefer override if newer than API price, otherwise use API price
     match (&override_price, &global_price) {
-        (Some((op, oc, ou)), _) => Some(ResolvedPrice {
+        (Some((op, oc, ou)), Some((_, _, gu))) if *ou > *gu => Some(ResolvedPrice {
             original_price: op.clone(),
             currency: oc.clone(),
             price_czk: convert_to_czk(op.parse().unwrap_or(0.0), oc),
             fetched_at: Some(*ou),
             is_manual: true,
         }),
-        (None, Some((gp, gc, gu))) => Some(ResolvedPrice {
+        (Some((op, oc, ou)), None) => Some(ResolvedPrice {
+            original_price: op.clone(),
+            currency: oc.clone(),
+            price_czk: convert_to_czk(op.parse().unwrap_or(0.0), oc),
+            fetched_at: Some(*ou),
+            is_manual: true,
+        }),
+        (_, Some((gp, gc, gu))) => Some(ResolvedPrice {
             original_price: gp.clone(),
             currency: gc.clone(),
             price_czk: convert_to_czk(gp.parse().unwrap_or(0.0), gc),

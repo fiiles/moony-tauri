@@ -30,7 +30,7 @@ import { useEffect } from "react";
 import { format } from "date-fns";
 import { useCurrency, currencies } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
-import { FileText, Coins } from "lucide-react";
+
 
 interface LoanFormDialogProps {
     open: boolean;
@@ -140,13 +140,8 @@ export function LoanFormDialog({
                 <Form {...form}>
                     <form
                         onSubmit={form.handleSubmit(handleSubmit)}
-                        className="grid gap-6 py-4"
+                        className="space-y-4"
                     >
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <FileText />
-                                {t('modal.basicInfo')}
-                            </h3>
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -160,13 +155,7 @@ export function LoanFormDialog({
                                     </FormItem>
                                 )}
                             />
-                        </div>
 
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Coins />
-                                {t('modal.financialDetails')}
-                            </h3>
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
@@ -316,7 +305,6 @@ export function LoanFormDialog({
 
                                 </div>
                             </div>
-                        </div>
 
                         <DialogFooter>
                             <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>

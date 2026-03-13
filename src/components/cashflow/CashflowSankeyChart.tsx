@@ -247,7 +247,7 @@ export default function CashflowSankeyChart({ report }: CashflowSankeyChartProps
     }
 
     return (
-        <Card className="overflow-hidden min-w-0">
+        <Card className="overflow-hidden min-w-0 card-hover">
             <CardHeader>
                 <CardTitle className="text-xl">{t('summary.overallCashflow', 'Overall Cashflow')}</CardTitle>
             </CardHeader>

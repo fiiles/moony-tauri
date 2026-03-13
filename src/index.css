@@ -423,23 +423,13 @@
   }
 
   .card-hover:hover {
-    @apply shadow-lg;
-    transform: translateY(-2px);
-  }
-
-  /* Premium card lift effect */
-  .card-lift {
-    @apply transition-all duration-200 ease-out;
-  }
-
-  .card-lift:hover {
     transform: translateY(-3px);
     box-shadow:
       0 10px 25px -5px rgba(0, 0, 0, 0.1),
       0 8px 10px -6px rgba(0, 0, 0, 0.1);
   }
 
-  .dark .card-lift:hover {
+  .dark .card-hover:hover {
     box-shadow:
       0 10px 25px -5px rgba(0, 0, 0, 0.3),
       0 8px 10px -6px rgba(0, 0, 0, 0.3);
@@ -499,92 +489,6 @@
   .icon-container {
     @apply flex items-center justify-center rounded-lg p-2 bg-muted/50;
   }
-
-  /* ========================================
-   * PROFESSIONAL FORM STYLING
-   * Scoped to dialog/modal forms only
-   * ======================================== */
-
-  /* Form section with card-like appearance - white blocks on grey dialog */
-  .form-section {
-    @apply relative rounded-lg border border-border/60 bg-card p-4 shadow-sm;
-  }
-
-  /* Form section header - styled like a fieldset legend */
-  .form-section-header {
-    @apply text-sm font-semibold text-foreground mb-4 pb-2 border-b border-border/50;
-  }
-
-  /* Alternative: Form section with subtle left accent */
-  .form-section-accent {
-    @apply relative rounded-lg border border-border/50 bg-card p-4 pl-5;
-    border-left: 3px solid hsl(var(--primary) / 0.6);
-  }
-
-  /* Enhanced input styling for forms */
-  .form-input-enhanced {
-    @apply bg-background border-border/80 shadow-sm;
-    @apply focus:border-primary/50 focus:shadow-md;
-    @apply transition-all duration-150;
-  }
-
-  /* Grid layout helpers for forms */
-  .form-grid {
-    @apply grid gap-4;
-  }
-
-  .form-grid-2 {
-    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
-  }
-
-  .form-grid-3 {
-    @apply grid grid-cols-1 md:grid-cols-3 gap-4;
-  }
-
-  /* ========================================
-   * COLORED FORM SECTIONS
-   * Reduces grey monotony with accent colors
-   * ======================================== */
-
-  /* Form section header with icon - flex layout for icon + text */
-  .form-section-header-icon {
-    @apply flex items-center gap-2 text-sm font-semibold text-foreground mb-4 pb-2 border-b border-border/50;
-  }
-
-  .form-section-header-icon svg {
-    @apply h-4 w-4 text-primary/70;
-  }
-
-  /* Toggle/checkbox section with subtle accent tint */
-  .form-toggle-section {
-    @apply flex items-center justify-between p-4 rounded-lg border;
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.03), hsl(var(--primary) / 0.06));
-    border-color: hsl(var(--primary) / 0.15);
-  }
-
-  .dark .form-toggle-section {
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.08), hsl(var(--primary) / 0.12));
-    border-color: hsl(var(--primary) / 0.25);
-  }
-
-  /* Checkbox section inside forms - similar tinting */
-  .form-checkbox-section {
-    @apply flex items-start space-x-3 p-4 rounded-lg border;
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.02), hsl(var(--primary) / 0.05));
-    border-color: hsl(var(--primary) / 0.12);
-  }
-
-  .dark .form-checkbox-section {
-    background: linear-gradient(135deg, hsl(var(--primary) / 0.06), hsl(var(--primary) / 0.1));
-    border-color: hsl(var(--primary) / 0.2);
-  }
-
-  /* Better input field contrast in dark mode */
-  .dark [role='dialog'] input,
-  .dark [role='dialog'] select,
-  .dark [role='dialog'] [role='combobox'] {
-    background-color: hsl(var(--card));
-  }
 }
 
 /* Style the calendar icon */
@@ -609,10 +513,7 @@ input[type='date']::-moz-placeholder {
   border-bottom-color: hsl(var(--border) / 0.5);
 }
 
-/* Dialog background - grey to match main app */
-[role='dialog'] > div {
-  background-color: hsl(var(--background));
-}
+
 
 /* Force date input text to be grey, not blue - more aggressive fix */
 input[type='date'] {

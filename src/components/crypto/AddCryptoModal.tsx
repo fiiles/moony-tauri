@@ -31,7 +31,7 @@ import {
 import { cryptoApi, priceApi, type CoinGeckoSearchResult } from "@/lib/tauri-api";
 import { CURRENCIES } from "@shared/currencies";
 import { useState } from "react";
-import { Plus, Search, Loader2, Bitcoin, Coins } from "lucide-react";
+import { Plus, Search, Loader2 } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -168,12 +168,7 @@ export function AddCryptoModal() {
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Bitcoin />
-                                {t('modal.add.cryptoDetails')}
-                            </h3>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <div className="grid gap-4">
                                 <FormField
                                     control={form.control}
@@ -220,13 +215,7 @@ export function AddCryptoModal() {
                                     {/* Coingecko ID is hidden */}
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Coins />
-                                {t('modal.add.purchaseDetails')}
-                            </h3>
                             <div className="grid gap-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
@@ -310,7 +299,6 @@ export function AddCryptoModal() {
                                     />
                                 </div>
                             </div>
-                        </div>
 
                         <Button type="submit" className="w-full" disabled={createInvestment.isPending}>
                             {createInvestment.isPending ? tc('status.adding') : t('addCrypto')}

@@ -67,5 +67,11 @@ coverage
 *.temp
 .cache
 
+# MCP config (contains API tokens)
+.mcp.json
+
+# MCP server (lives in its own repository: github.com/fiiles/moony-mcp)
+mcp-server/
+
 # Private documentation
 docs/updating

@@ -653,7 +653,7 @@ export default function BankAccountDetail() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className="card-hover">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {t('fields.balance')}
@@ -669,7 +669,7 @@ export default function BankAccountDetail() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-hover">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {t('fields.interestRate')}
@@ -700,7 +700,7 @@ export default function BankAccountDetail() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-hover">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {t('detail.yearlyInterest', 'Yearly Interest')}
@@ -721,7 +721,7 @@ export default function BankAccountDetail() {
 
       {/* Import History */}
       {importHistoryOpen && (
-        <Card>
+        <Card className="card-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>{t('importHistory.title', 'Import History')}</CardTitle>
             <div className="flex items-center gap-2">
@@ -806,7 +806,7 @@ export default function BankAccountDetail() {
 
       {/* Interest Zones */}
       {account.hasZoneDesignation && zones && zones.length > 0 && (
-        <Card>
+        <Card className="card-hover">
           <CardHeader>
             <CardTitle>{t('zones.title', 'Interest Rate Zones')}</CardTitle>
           </CardHeader>
@@ -852,7 +852,7 @@ export default function BankAccountDetail() {
       )}
 
       {/* Transactions */}
-      <Card>
+      <Card className="card-hover">
         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
           <CardTitle>{t('transactions')}</CardTitle>
           <Button

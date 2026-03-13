@@ -227,7 +227,7 @@ export default function RealEstateDetail() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-4 mb-8">
-                <Card>
+                <Card className="card-hover">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">{t('detail.marketValue')}</CardTitle>
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -239,7 +239,7 @@ export default function RealEstateDetail() {
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="card-hover">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">{t('detail.equity')}</CardTitle>
                         <Home className="h-4 w-4 text-muted-foreground" />
@@ -251,7 +251,7 @@ export default function RealEstateDetail() {
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="card-hover">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">{t('detail.rent')}</CardTitle>
                         <Wallet className="h-4 w-4 text-muted-foreground" />
@@ -263,7 +263,7 @@ export default function RealEstateDetail() {
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="card-hover">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">{t('detail.estNetCashflow')}</CardTitle>
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -291,7 +291,7 @@ export default function RealEstateDetail() {
 
                 <TabsContent value="financials" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
-                        <Card>
+                        <Card className="card-hover">
                             <CardHeader>
                                 <CardTitle>{t('detail.linkedLoans')}</CardTitle>
                                 <CardDescription>{t('detail.linkedLoansDesc')}</CardDescription>
@@ -336,7 +336,7 @@ export default function RealEstateDetail() {
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card className="card-hover">
                             <CardHeader>
                                 <CardTitle>{t('detail.linkedInsurances')}</CardTitle>
                                 <CardDescription>{t('detail.linkedInsurancesDesc')}</CardDescription>
@@ -382,7 +382,7 @@ export default function RealEstateDetail() {
                 </TabsContent>
 
                 <TabsContent value="costs" className="space-y-4">
-                    <Card>
+                    <Card className="card-hover">
                         <CardHeader>
                             <CardTitle>{t('detail.recurringCosts')}</CardTitle>
                             <CardDescription>{t('detail.recurringCostsDesc')}</CardDescription>
@@ -418,7 +418,7 @@ export default function RealEstateDetail() {
                 </TabsContent>
 
                 <TabsContent value="history">
-                    <Card>
+                    <Card className="card-hover">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div>
                                 <CardTitle>{t('detail.oneTimeCosts')}</CardTitle>
@@ -495,7 +495,7 @@ export default function RealEstateDetail() {
                 </TabsContent>
 
                 <TabsContent value="notes">
-                    <Card>
+                    <Card className="card-hover">
                         <CardHeader>
                             <CardTitle>{t('detail.notes')}</CardTitle>
                         </CardHeader>

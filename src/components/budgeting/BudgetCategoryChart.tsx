@@ -272,7 +272,7 @@ export function BudgetCategoryChart({
 
   if (!hasAnyData) {
     return (
-      <Card className="border shadow-sm">
+      <Card className="border shadow-sm card-hover">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-semibold">{t('expenses')}</CardTitle>
         </CardHeader>
@@ -288,7 +288,7 @@ export function BudgetCategoryChart({
   return (
     <div className="space-y-6">
       {/* Chart Card */}
-      <Card className={`border shadow-sm ${isLoading ? "opacity-50 animate-pulse" : ""}`}>
+      <Card className={`border shadow-sm card-hover ${isLoading ? "opacity-50 animate-pulse" : ""}`}>
         <CardHeader className="pb-4">
           <div className="flex flex-col gap-1">
             <div className="flex items-start justify-between gap-4">
@@ -460,7 +460,7 @@ export function BudgetCategoryChart({
 
       {/* Transactions Card - Separate block */}
       {selectedCategoryId && (
-        <Card className="border shadow-sm">
+        <Card className="border shadow-sm card-hover">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">

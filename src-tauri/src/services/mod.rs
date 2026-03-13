@@ -4,6 +4,7 @@
 
 pub mod auth;
 pub mod bank_accounts;
+pub mod local_api;
 pub mod budgeting;
 pub mod categorization;
 pub mod crypto;

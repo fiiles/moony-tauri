@@ -157,6 +157,12 @@ export const authApi = {
   }) => tauriInvoke<void>('confirm_change_password', { data }),
 
   deleteAccount: () => tauriInvoke<void>('delete_account'),
+
+  setMcpServerEnabled: (enabled: boolean) =>
+    tauriInvoke<UserProfile>('set_mcp_server_enabled', { enabled }),
+
+  getMcpServerStatus: () =>
+    tauriInvoke<{ running: boolean; port: number | null; dataDir: string }>('get_mcp_server_status'),
 };
 
 // ============================================================================

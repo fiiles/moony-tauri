@@ -21,7 +21,7 @@ export default function AssetAllocationDonut({ data, valueKey = 'value' }: Asset
   const { t } = useTranslation('dashboard');
 
   return (
-    <Card className="p-6 border h-full">
+    <Card className="p-6 border h-full card-hover">
       <h3 className="text-lg font-medium mb-4">{t('charts.assetAllocation')}</h3>
 
       <ResponsiveContainer width="100%" height={220}>

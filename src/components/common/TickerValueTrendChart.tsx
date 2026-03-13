@@ -349,7 +349,7 @@ export default function TickerValueTrendChart({
 
   return (
     <Card className={cn(
-      "p-6 border h-full flex flex-col transition-opacity duration-300",
+      "p-6 border h-full flex flex-col transition-opacity duration-300 card-hover",
       isRefreshing && "opacity-50 animate-pulse"
     )}>
       <div className="flex flex-wrap justify-between items-start gap-4 mb-4">

@@ -94,7 +94,7 @@ export function InsuranceList() {
     if (isLoading) return <div>{t('loading')}</div>;
 
     return (
-        <Card className="border">
+        <Card className="border card-hover">
             <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-semibold">{t('table.title')}</h2>

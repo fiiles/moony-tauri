@@ -6,6 +6,7 @@ import type { InsurancePolicy } from "@shared/schema";
 import {
     Dialog,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -28,9 +29,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { Plus, Trash2, Shield, Wallet, Info } from "lucide-react";
+import { Plus, Trash2, Loader2 } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
 import { currencies } from "@/lib/currency";
 import { insuranceApi } from "@/lib/tauri-api";
@@ -173,6 +175,9 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
         }
     };
 
+    const isEditMode = !!policy;
+    const mutation = isEditMode ? updateMutation : createMutation;
+
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
@@ -182,14 +187,10 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                 </DialogHeader>
 
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         {/* Basic Information Section */}
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Shield />
-                                {t('modal.basicInfo')}
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <h3 className="text-sm font-semibold">{t('modal.basicInfo')}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}
                                     name="type"
@@ -280,15 +281,11 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                     )}
                                 />
                             </div>
-                        </div>
 
+                        <Separator />
                         {/* Payment Details Section */}
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Wallet />
-                                {t('modal.paymentDetails')}
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <h3 className="text-sm font-semibold">{t('modal.paymentDetails')}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}
                                     name="paymentFrequency"
@@ -431,14 +428,10 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                     )}
                                 />
                             </div>
-                        </div>
 
+                        <Separator />
                         {/* Additional Information Section */}
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Info />
-                                {t('modal.additionalInfo')}
-                            </h3>
+                        <h3 className="text-sm font-semibold">{t('modal.additionalInfo')}</h3>
 
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
@@ -528,18 +521,17 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                     </FormItem>
                                 )}
                             />
-                        </div>
-
-                        <div className="flex justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => setIsOpen?.(false)}>
-                                {tc('buttons.cancel')}
-                            </Button>
-                            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                                {policy ? t('modal.updatePolicy') : t('modal.createPolicy')}
-                            </Button>
-                        </div>
                     </form>
                 </Form>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsOpen?.(false)}>
+                        {tc('buttons.cancel')}
+                    </Button>
+                    <Button type="submit" disabled={mutation.isPending}>
+                        {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isEditMode ? tc('buttons.saveChanges') : t('modal.createPolicy')}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

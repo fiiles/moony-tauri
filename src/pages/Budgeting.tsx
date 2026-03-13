@@ -262,7 +262,7 @@ export default function Budgeting() {
 
       {/* Budget Management Panel - inline collapsible */}
       {isManagementOpen && (
-        <Card className="border shadow-sm">
+        <Card className="border shadow-sm card-hover">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>

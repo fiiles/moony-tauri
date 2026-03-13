@@ -24,7 +24,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { EXCHANGE_RATES } from "@shared/currencies";
 import { z } from "zod";
 import { useTranslation } from "react-i18next";
-import { Package, TrendingUp } from "lucide-react";
+
 
 // Combined schema for form
 const formSchema = insertOtherAssetSchema.extend({
@@ -118,13 +118,7 @@ export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalPro
                 <DialogHeader>
                     <DialogTitle>{t('modal.add.title')}</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
-                    <div className="form-section-accent">
-                        <h3 className="form-section-header-icon">
-                            <Package />
-                            {t('modal.add.basicInfo')}
-                        </h3>
-                        <div className="grid gap-4">
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="name">{t('modal.add.assetName')}</Label>
                                 <Input id="name" {...form.register("name")} placeholder={t('modal.add.assetNamePlaceholder')} />
@@ -166,14 +160,7 @@ export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalPro
                                 </div>
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">{t('modal.add.initialPurchaseHint')}</p>
-                        </div>
-                    </div>
 
-                    <div className="form-section-accent">
-                        <h3 className="form-section-header-icon">
-                            <TrendingUp />
-                            {t('modal.add.yieldConfig')}
-                        </h3>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="yieldType">Type</Label>
@@ -199,7 +186,6 @@ export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalPro
                                 </div>
                             )}
                         </div>
-                    </div>
 
                     <DialogFooter>
                         <Button type="submit" disabled={mutation.isPending}>

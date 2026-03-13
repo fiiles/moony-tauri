@@ -18,6 +18,7 @@ export interface UserProfile {
     language?: string;
     excludePersonalRealEstate: boolean;
     coingeckoModalDismissed?: boolean;
+    mcpServerEnabled?: boolean;
     createdAt: number;
 }
 

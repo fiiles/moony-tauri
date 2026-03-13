@@ -75,6 +75,27 @@ A modern, privacy-focused personal finance management application built with Tau
 
 ---
 
+### 🤖 AI Assistant Integration (MCP)
+
+- **Local HTTP API** - When enabled, Moony starts a lightweight local API server on a random port
+- **Session-based auth** - Writes a `session.json` file with a per-session bearer token; no password stored anywhere
+- **Claude Desktop / Claude Code support** - Connect via **[moony-mcp](https://github.com/fiiles/moony-mcp)**, a standalone MCP bridge server
+- **Read-only access** - The API exposes only read endpoints; your data cannot be modified through it
+
+#### Setup
+
+See **[github.com/fiiles/moony-mcp](https://github.com/fiiles/moony-mcp)** for full installation and configuration instructions.
+
+In short:
+1. Clone and build [moony-mcp](https://github.com/fiiles/moony-mcp): `git clone https://github.com/fiiles/moony-mcp && cd moony-mcp && npm install && npm run build`
+2. Open Moony → **Settings** → enable **AI Assistant (MCP Server)**
+3. Add the config snippet shown in Moony's Settings to your Claude Desktop config (use absolute paths)
+4. Restart Claude Desktop
+
+Moony must be **running and unlocked** with MCP Server enabled for the integration to work.
+
+---
+
 ### ⚙️ Settings & Customization
 
 - **Multi-language Support** - Full i18n with English and Czech
@@ -241,7 +262,7 @@ moony-tauri/
 │   │   ├── commands/       # Tauri command handlers
 │   │   ├── db/             # Database migrations and setup
 │   │   ├── models/         # Data models
-│   │   └── services/       # Business logic
+│   │   └── services/       # Business logic (incl. local HTTP API for MCP)
 │   └── tauri.conf.json     # Tauri configuration
 ├── shared/                 # Shared types and utilities
 └── public/                 # Static assets

@@ -34,7 +34,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Upload, FileText, CheckCircle, Loader2, Eye, EyeOff, ChevronDown,
-  AlertCircle, Columns, Settings2, HelpCircle,
+  AlertCircle, HelpCircle,
 } from "lucide-react";
 import {
   Collapsible,
@@ -295,11 +295,10 @@ export function CsvImportDialog({
             </div>
 
             {/* Column Mapping */}
-            <div className="form-section-accent">
-              <h3 className="form-section-header-icon">
-                <Columns />
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">
                 {t("csvImport.requiredColumns", "Required Columns")}
-              </h3>
+              </h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>
@@ -337,11 +336,10 @@ export function CsvImportDialog({
               </div>
             </div>
 
-            <div className="form-section-accent">
-              <h3 className="form-section-header-icon">
-                <Settings2 />
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium">
                 {t("csvImport.optionalColumns", "Optional Columns")}
-              </h3>
+              </h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label className="flex items-center gap-1">

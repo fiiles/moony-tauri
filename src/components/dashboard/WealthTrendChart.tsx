@@ -15,7 +15,7 @@ export default function WealthTrendChart({ data }: WealthTrendChartProps) {
   const { formatCurrencyShort, formatCurrency } = useCurrency();
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 card-hover">
       <h3 className="text-lg font-semibold mb-4">Net Worth Trend</h3>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data}>

@@ -129,7 +129,7 @@ export default function AddCashflowItemDialog({
                                     onValueChange={setSelectedCategory}
                                     disabled={isEditing}
                                 >
-                                    <SelectTrigger id="category" className="form-input-enhanced">
+                                    <SelectTrigger id="category">
                                         <SelectValue placeholder={t('addItem.selectCategory')} />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -150,7 +150,7 @@ export default function AddCashflowItemDialog({
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder={t('addItem.namePlaceholder')}
-                                className="form-input-enhanced"
+
                                 required
                             />
                         </div>
@@ -166,7 +166,7 @@ export default function AddCashflowItemDialog({
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
                                     placeholder={t('addItem.amountPlaceholder')}
-                                    className="form-input-enhanced"
+
                                     required
                                 />
                             </div>
@@ -174,7 +174,7 @@ export default function AddCashflowItemDialog({
                             <div className="grid gap-2">
                                 <Label htmlFor="currency">{t('addItem.currency')}</Label>
                                 <Select value={currency} onValueChange={setCurrency}>
-                                    <SelectTrigger id="currency" className="form-input-enhanced">
+                                    <SelectTrigger id="currency">
                                         <SelectValue placeholder={tc('labels.selectCurrency')} />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -191,7 +191,7 @@ export default function AddCashflowItemDialog({
                         <div className="grid gap-2">
                             <Label htmlFor="frequency">{t('addItem.frequency')}</Label>
                             <Select value={frequency} onValueChange={(v) => setFrequency(v as 'monthly' | 'yearly')}>
-                                <SelectTrigger id="frequency" className="form-input-enhanced">
+                                <SelectTrigger id="frequency">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>

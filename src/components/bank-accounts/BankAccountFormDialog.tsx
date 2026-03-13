@@ -26,7 +26,7 @@ import { CurrencyCode } from "@shared/currencies";
 import { SavingsAccountZoneManager } from "@/components/savings/SavingsAccountZoneManager";
 import { InstitutionCombobox } from "@/components/bank-accounts/InstitutionCombobox";
 import { useTranslation } from "react-i18next";
-import { Building2, CreditCard, Percent } from "lucide-react";
+
 
 type UpdateBankAccountData = {
   id: string;
@@ -239,14 +239,7 @@ export function BankAccountFormDialog({
             {t("subtitle")}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-6 py-4">
-          {/* Basic Information Section */}
-          <div className="form-section-accent">
-            <h3 className="form-section-header-icon">
-              <Building2 />
-              {t("form.basicInfo")}
-            </h3>
-            <div className="grid gap-4">
+        <div className="space-y-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">{t("fields.name")} *</Label>
                 <Input
@@ -318,16 +311,7 @@ export function BankAccountFormDialog({
                   </Select>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Account Details Section */}
-          <div className="form-section-accent">
-            <h3 className="form-section-header-icon">
-              <CreditCard />
-              {t("form.accountDetails")}
-            </h3>
-            <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="bban">{t("fields.bban")}</Label>
@@ -348,18 +332,8 @@ export function BankAccountFormDialog({
                   />
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Interest Rate Section */}
-          <div className="form-section-accent">
-            <h3 className="form-section-header-icon">
-              <Percent />
-              {t("form.interestConfig")}
-            </h3>
-
-            <div className="space-y-4">
-              <div className="form-checkbox-section">
+              <div className="flex items-start space-x-3 p-3 rounded-lg border">
                 <Checkbox
                   id="hasZoneDesignation"
                   checked={hasZoneDesignation}
@@ -405,8 +379,6 @@ export function BankAccountFormDialog({
                   <SavingsAccountZoneManager zones={zones} onChange={setZones} />
                 </div>
               )}
-            </div>
-          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={handleClose}>

@@ -495,8 +495,8 @@ export default function Projection() {
                     </DialogHeader>
                     <div className="grid gap-6 py-4">
                         {/* Growth Rates Section */}
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-semibold">
                                 {t('projection.settings.growthRates')}
                             </h3>
                             <div className="grid gap-4">
@@ -513,7 +513,6 @@ export default function Projection() {
                                                     ...prev,
                                                     [cat.key]: { ...prev[cat.key], rate: e.target.value }
                                                 }))}
-                                                className="form-input-enhanced"
                                                 step="0.1"
                                             />
                                             <span className="text-sm text-muted-foreground whitespace-nowrap">% {t('projection.settings.perYear')}</span>
@@ -524,8 +523,8 @@ export default function Projection() {
                         </div>
 
                         {/* Monthly Contributions Section */}
-                        <div className="form-section">
-                            <h3 className="form-section-header">
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-semibold">
                                 {t('projection.settings.contributions')}
                             </h3>
                             <div className="grid gap-4">
@@ -542,7 +541,6 @@ export default function Projection() {
                                                     ...prev,
                                                     [cat.key]: { ...prev[cat.key], contribution: e.target.value }
                                                 }))}
-                                                className="form-input-enhanced"
                                                 step="100"
                                             />
                                             <span className="text-sm text-muted-foreground whitespace-nowrap">/{t('projection.settings.month')}</span>

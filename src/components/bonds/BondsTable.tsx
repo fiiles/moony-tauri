@@ -93,7 +93,7 @@ export function BondsTable({ bonds, onEdit, onDelete }: BondsTableProps) {
   }, [bonds, sortColumn, sortDirection]);
 
   return (
-    <Card className="border">
+    <Card className="border card-hover">
       <div className="p-6">
         <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>
 

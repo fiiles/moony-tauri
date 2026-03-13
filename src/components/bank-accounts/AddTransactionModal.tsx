@@ -6,6 +6,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -29,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { useBankTransactionMutations } from "@/hooks/use-bank-account-mutations";
 import { useState, useEffect } from "react";
-import { Plus, Loader2, Banknote, User } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CategorySelector } from "./CategorySelector";
 import { useQuery } from "@tanstack/react-query";
@@ -135,15 +136,7 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
-                        
-                        {/* Transaction Details Section */}
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Banknote className="h-4 w-4" />
-                                {t('transaction.details', 'Transaction Details')}
-                            </h3>
-                            <div className="grid gap-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
                                         control={form.control}
@@ -153,7 +146,7 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                                                 <FormLabel>{t('transaction.type')}</FormLabel>
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <FormControl>
-                                                        <SelectTrigger className="bg-card">
+                                                        <SelectTrigger>
                                                             <SelectValue placeholder="Select type" />
                                                         </SelectTrigger>
                                                     </FormControl>
@@ -173,7 +166,7 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                                             <FormItem>
                                                 <FormLabel>{tc('labels.date')}</FormLabel>
                                                 <FormControl>
-                                                    <Input type="date" className="bg-card" {...field} />
+                                                    <Input type="date" {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -189,7 +182,7 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                                             <FormItem>
                                                 <FormLabel>{t('transaction.amount')} *</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" step="0.01" className="bg-card" {...field} />
+                                                    <Input type="number" step="0.01" {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -203,7 +196,7 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                                                 <FormLabel>{tc('labels.currency')}</FormLabel>
                                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <FormControl>
-                                                        <SelectTrigger className="bg-card">
+                                                        <SelectTrigger>
                                                             <SelectValue placeholder={tc('labels.selectCurrency')} />
                                                         </SelectTrigger>
                                                     </FormControl>
@@ -228,7 +221,7 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                                         <FormItem>
                                             <FormLabel>{t('transaction.description')}</FormLabel>
                                             <FormControl>
-                                                <Input className="bg-card" placeholder="e.g. Grocery shopping" {...field} />
+                                                <Input placeholder="e.g. Grocery shopping" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -253,16 +246,6 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                                         </FormItem>
                                     )}
                                 />
-                            </div>
-                        </div>
-
-                        {/* Counterparty Section */}
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <User className="h-4 w-4" />
-                                {t('transaction.counterpartyInfo', 'Counterparty Info')}
-                            </h3>
-                            <div className="grid gap-4">
                                 <FormField
                                     control={form.control}
                                     name="counterpartyName"
@@ -270,7 +253,7 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                                         <FormItem>
                                             <FormLabel>{t('transaction.counterparty')}</FormLabel>
                                             <FormControl>
-                                                <Input className="bg-card" placeholder="e.g. Tesco" {...field} />
+                                                <Input placeholder="e.g. Tesco" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -284,7 +267,7 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                                             <FormItem>
                                                 <FormLabel>{t('transaction.counterpartyIban', 'Counterparty IBAN')}</FormLabel>
                                                 <FormControl>
-                                                    <Input className="bg-card" {...field} />
+                                                    <Input {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -297,24 +280,24 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                                             <FormItem>
                                                 <FormLabel>{t('transaction.variableSymbol', 'Variable Symbol')}</FormLabel>
                                                 <FormControl>
-                                                    <Input className="bg-card" {...field} />
+                                                    <Input {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                 </div>
-                            </div>
-                        </div>
 
-                        <Button type="submit" className="w-full" disabled={createTransaction.isPending}>
-                            {createTransaction.isPending ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Plus className="mr-2 h-4 w-4" />
-                            )}
-                            {createTransaction.isPending ? tc('status.adding') : t('transaction.add')}
-                        </Button>
+                        <DialogFooter>
+                            <Button type="submit" className="w-full" disabled={createTransaction.isPending}>
+                                {createTransaction.isPending ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Plus className="mr-2 h-4 w-4" />
+                                )}
+                                {createTransaction.isPending ? tc('status.adding') : t('transaction.add')}
+                            </Button>
+                        </DialogFooter>
                     </form>
                 </Form>
             </DialogContent>

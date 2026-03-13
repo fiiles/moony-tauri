@@ -26,7 +26,7 @@ export default function StockPortfolioCard({ holdings, onAdd }: StockPortfolioCa
   const totalGainLossPercent = calculateGainLossPercent(totalGainLoss, totalCost);
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 card-hover">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Stock Portfolio</h3>
         <Button

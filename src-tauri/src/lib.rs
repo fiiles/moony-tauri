@@ -15,6 +15,7 @@ use std::sync::Arc;
 use commands::categorization::CategorizationState;
 use db::Database;
 use services::categorization::CategorizationEngine;
+use services::local_api::LocalApiServer;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[tokio::main]
 pub async fn run() {
@@ -38,6 +39,7 @@ pub async fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(Database::new())
         .manage(CategorizationState(categorization_engine))
+        .manage(LocalApiServer::new())
         .invoke_handler(tauri::generate_handler![
             // Auth commands
             commands::auth::check_setup,
@@ -55,6 +57,8 @@ pub async fn run() {
             commands::auth::prepare_change_password,
             commands::auth::confirm_change_password,
             commands::auth::delete_account,
+            commands::auth::set_mcp_server_enabled,
+            commands::auth::get_mcp_server_status,
             // Savings commands
             commands::savings::get_all_savings_accounts,
             commands::savings::get_savings_account,

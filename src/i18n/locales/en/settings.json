@@ -63,6 +63,18 @@
         "excludeRealEstate": "Exclude personal real estate from overviews",
         "excludeRealEstateHint": "Personal properties won't be included in Net Worth and Total Assets calculations"
     },
+    "mcpServer": {
+        "title": "AI Assistant (MCP Server)",
+        "description": "Allow AI assistants like Claude to query your financial data when Moony is unlocked. No data leaves your device.",
+        "enable": "Enable MCP Server",
+        "enableHint": "Starts a local read-only HTTP API when you unlock Moony",
+        "runningOnPort": "MCP Server running on port {{port}}",
+        "setupInstructions": "Setup Instructions:",
+        "setupStep1": "Download the MCP server from <2>github.com/fiiles/moony-mcp</2> and run <1>npm install && npm run build</1>.",
+        "setupStep2": "Add the following to your Claude Desktop config (replace paths with <1>absolute</1> paths to your actual directories):",
+        "setupNote": "Note: Do not use the tilde (~) in JSON paths. Use the full absolute path.",
+        "updateFailed": "Failed to update MCP server setting"
+    },
     "dangerZone": {
         "title": "Danger Zone",
         "description": "Irreversible actions regarding your account.",
