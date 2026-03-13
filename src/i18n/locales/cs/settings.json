@@ -69,6 +69,18 @@
         "analytics": "Odesílat anonymní statistiky používání",
         "analyticsHint": "Pomáhá nám vylepšovat aplikaci. Zahrnuje zobrazení obrazovek a verzi aplikace. Žádné osobní ani finanční údaje."
     },
+    "mcpServer": {
+        "title": "AI Asistent (MCP Server)",
+        "description": "Umožňuje AI asistentům jako Claude dotazovat se na vaše finanční data, když je Moony odemčený. Žádná data neopouštějí vaše zařízení.",
+        "enable": "Povolit MCP Server",
+        "enableHint": "Spustí lokální HTTP API pouze pro čtení, když odemknete Moony",
+        "runningOnPort": "MCP Server běží na portu {{port}}",
+        "setupInstructions": "Instrukce k nastavení:",
+        "setupStep1": "Stáhněte MCP server z <2>github.com/fiiles/moony-mcp</2> a spusťte <1>npm install && npm run build</1>.",
+        "setupStep2": "Přidejte následující do vaší Claude Desktop konfigurace (nahraďte cesty <1>absolutními</1> cestami k vašim skutečným složkám):",
+        "setupNote": "Poznámka: Nepoužívejte v cestách JSON vlnovku (~). Použijte celou absolutní cestu.",
+        "updateFailed": "Nepodařilo se aktualizovat nastavení MCP serveru"
+    },
     "dangerZone": {
         "title": "Nebezpečná zóna",
         "description": "Nevratné akce týkající se vašeho účtu.",

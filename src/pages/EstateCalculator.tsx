@@ -199,7 +199,6 @@ export default function EstateCalculator() {
                                 value={purchasePrice}
                                 onChange={(e) => setPurchasePrice(e.target.value)}
                                 placeholder={t('estate.form.purchasePricePlaceholder')}
-                                className="form-input-enhanced"
                             />
                         </div>
 
@@ -214,7 +213,6 @@ export default function EstateCalculator() {
                                 value={loanAmount}
                                 onChange={(e) => setLoanAmount(e.target.value)}
                                 placeholder={t('estate.form.loanAmountPlaceholder')}
-                                className="form-input-enhanced"
                             />
                             <p className="text-xs text-muted-foreground">{t('estate.form.optional')}</p>
                         </div>
@@ -230,7 +228,6 @@ export default function EstateCalculator() {
                                     max="50"
                                     value={loanPeriodYears}
                                     onChange={(e) => setLoanPeriodYears(e.target.value)}
-                                    className="form-input-enhanced"
                                 />
                                 <span className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
                                     {t('estate.form.years')}
@@ -252,7 +249,6 @@ export default function EstateCalculator() {
                                     value={interestRate}
                                     onChange={(e) => setInterestRate(e.target.value)}
                                     placeholder={t('estate.form.interestRatePlaceholder')}
-                                    className="form-input-enhanced"
                                 />
                                 <span className="flex items-center text-sm text-muted-foreground">%</span>
                             </div>
@@ -307,7 +303,6 @@ export default function EstateCalculator() {
                                 value={expectedRental}
                                 onChange={(e) => setExpectedRental(e.target.value)}
                                 placeholder={t('estate.form.expectedRentalPlaceholder')}
-                                className="form-input-enhanced"
                             />
                             <p className="text-xs text-muted-foreground">{t('estate.form.perMonth')}</p>
                         </div>
@@ -323,7 +318,6 @@ export default function EstateCalculator() {
                                 value={monthlyExpenses}
                                 onChange={(e) => setMonthlyExpenses(e.target.value)}
                                 placeholder={t('estate.form.monthlyExpensesPlaceholder')}
-                                className="form-input-enhanced"
                             />
                             <p className="text-xs text-muted-foreground">{t('estate.form.monthlyExpensesDescription')}</p>
                         </div>
@@ -341,7 +335,6 @@ export default function EstateCalculator() {
                                     value={unoccupiedMonths}
                                     onChange={(e) => setUnoccupiedMonths(e.target.value)}
                                     placeholder="0.5"
-                                    className="form-input-enhanced"
                                 />
                                 <span className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
                                     {t('estate.form.monthsPerYear')}
@@ -418,7 +411,6 @@ export default function EstateCalculator() {
                                     step="0.1"
                                     value={rentalGrowth}
                                     onChange={(e) => setRentalGrowth(e.target.value)}
-                                    className="form-input-enhanced"
                                 />
                                 <span className="flex items-center text-sm text-muted-foreground">%</span>
                             </div>
@@ -436,7 +428,6 @@ export default function EstateCalculator() {
                                     step="0.1"
                                     value={costsGrowth}
                                     onChange={(e) => setCostsGrowth(e.target.value)}
-                                    className="form-input-enhanced"
                                 />
                                 <span className="flex items-center text-sm text-muted-foreground">%</span>
                             </div>
@@ -454,7 +445,6 @@ export default function EstateCalculator() {
                                     step="0.1"
                                     value={priceGrowth}
                                     onChange={(e) => setPriceGrowth(e.target.value)}
-                                    className="form-input-enhanced"
                                 />
                                 <span className="flex items-center text-sm text-muted-foreground">%</span>
                             </div>
@@ -472,7 +462,6 @@ export default function EstateCalculator() {
                                     step="1"
                                     value={investmentDuration}
                                     onChange={(e) => setInvestmentDuration(e.target.value)}
-                                    className="form-input-enhanced"
                                 />
                                 <span className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
                                     {t('estate.form.years')}
@@ -490,7 +479,6 @@ export default function EstateCalculator() {
                                 step="10000"
                                 value={oneTimeCostsTotal}
                                 onChange={(e) => setOneTimeCostsTotal(e.target.value)}
-                                className="form-input-enhanced"
                             />
                             <p className="text-xs text-muted-foreground">{t('estate.projection.oneTimeCostsDescription')}</p>
                         </div>

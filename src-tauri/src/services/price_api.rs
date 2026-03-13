@@ -785,10 +785,10 @@ pub async fn get_historical_crypto_prices_coingecko(
 
     let client = reqwest::Client::new();
 
-    // Process each crypto with a small delay to avoid rate limits
+    // Process each crypto with a delay to stay within CoinGecko free tier (~40 req/min)
     for (idx, (coingecko_id, ticker)) in id_to_ticker.iter().enumerate() {
         if idx > 0 {
-            tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
         }
 
         let url = format!(
@@ -806,6 +806,15 @@ pub async fn get_historical_crypto_prices_coingecko(
 
         match request.send().await {
             Ok(response) => {
+                if response.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
+                    log::warn!(
+                        "[COINGECKO HISTORICAL] Rate limit hit at {} ({}), stopping early with {} results",
+                        ticker,
+                        coingecko_id,
+                        results.len()
+                    );
+                    break;
+                }
                 if response.status().is_success() {
                     #[derive(Deserialize)]
                     struct RangeResponse {

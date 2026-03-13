@@ -17,7 +17,7 @@ export default function NetWorthSummary({
   const { formatCurrency } = useCurrency();
   
   return (
-    <Card className="p-6">
+    <Card className="p-6 card-hover">
       <div className="space-y-2">
         <h2 className="text-sm font-medium text-muted-foreground">Total Net Worth</h2>
         <div className="flex items-baseline justify-between gap-4">

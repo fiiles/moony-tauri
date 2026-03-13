@@ -86,7 +86,7 @@ export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps
   };
 
   return (
-    <Card className="p-6 border h-full flex flex-col">
+    <Card className="p-6 border h-full flex flex-col card-hover">
       <div className="flex flex-col gap-2 mb-4">
         <p className="text-lg font-medium">{t('charts.assetClassTrend')}</p>
       </div>
@@ -113,14 +113,36 @@ export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps
                 />
                 <YAxis hide />
                 <Tooltip
-                  formatter={(value, name) => [
-                    formatCurrency(value as number ?? 0, { minimumFractionDigits: 0, maximumFractionDigits: 0 }),
-                    t(`cards.${name}`)
-                  ]}
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload || payload.length === 0) return null;
+                    const total = payload.reduce((sum, entry) => sum + ((entry.value as number) ?? 0), 0);
+                    return (
+                      <div
+                        style={{
+                          backgroundColor: 'hsl(var(--popover))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          padding: '8px 12px',
+                        }}
+                      >
+                        <p className="text-sm font-medium mb-1" style={{ color: 'hsl(var(--foreground))' }}>{label}</p>
+                        {payload.map((entry) => (
+                          <div key={entry.dataKey} className="flex items-center justify-between gap-4 text-sm">
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                              <span style={{ color: 'hsl(var(--muted-foreground))' }}>{t(`cards.${entry.dataKey}`)}</span>
+                            </span>
+                            <span style={{ color: 'hsl(var(--foreground))' }}>
+                              {formatCurrency((entry.value as number) ?? 0, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                        ))}
+                        <div className="flex items-center justify-between gap-4 text-sm font-semibold mt-1 pt-1" style={{ borderTop: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}>
+                          <span>{t('common:total', 'Total')}</span>
+                          <span>{formatCurrency(total, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                        </div>
+                      </div>
+                    );
                   }}
                 />
                 {visibleSeries.savings && (

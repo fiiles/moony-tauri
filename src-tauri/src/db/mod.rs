@@ -9,22 +9,26 @@ mod migrations;
 use crate::error::{AppError, Result};
 use rusqlite::Connection;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 /// Database state managed by Tauri
+///
+/// Wraps its internals in Arc so it can be cheaply cloned and shared between
+/// Tauri commands and the local HTTP API server.
+#[derive(Clone)]
 pub struct Database {
     /// Mutex-protected connection (None when locked/closed)
-    conn: Mutex<Option<Connection>>,
+    conn: Arc<Mutex<Option<Connection>>>,
     /// Path to the database file
-    db_path: Mutex<Option<PathBuf>>,
+    db_path: Arc<Mutex<Option<PathBuf>>>,
 }
 
 impl Database {
     /// Create a new database instance (not yet connected)
     pub fn new() -> Self {
         Self {
-            conn: Mutex::new(None),
-            db_path: Mutex::new(None),
+            conn: Arc::new(Mutex::new(None)),
+            db_path: Arc::new(Mutex::new(None)),
         }
     }
 

@@ -7,6 +7,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Loader2, Home, Coins, Receipt, Landmark, Shield, Info } from "lucide-react";
+import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
     Select,
@@ -33,6 +34,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import { useCurrency } from "@/lib/currency";
 import { currencies } from "@/lib/currency";
 import { realEstateApi, loansApi, insuranceApi } from "@/lib/tauri-api";
@@ -267,11 +269,7 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
                         {/* Property Details Section */}
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Home />
-                                {t('modal.add.propertyDetails')}
-                            </h3>
+                        <h4 className="text-sm font-semibold">{t('modal.add.propertyDetails')}</h4>
                             <div className="grid gap-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
@@ -324,14 +322,10 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     )}
                                 />
                             </div>
-                        </div>
 
+                        <Separator />
                         {/* Financial Details Section */}
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Coins />
-                                {t('modal.add.financialDetails')}
-                            </h3>
+                        <h4 className="text-sm font-semibold">{t('modal.add.financialDetails')}</h4>
                             <div className="grid gap-4">
                                 <div className="grid grid-cols-3 gap-4">
                                     <FormField
@@ -455,12 +449,11 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     </div>
                                 )}
                             </div>
-                        </div>
 
+                        <Separator />
                         {/* Recurring Costs Section */}
-                        <div className="form-section-accent">
-                            <div className="form-section-header-icon flex items-center justify-between !border-b border-border/50 !pb-2 !mb-4">
-                                <span className="flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" />{t('modal.add.recurringCosts')}</span>
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold">{t('modal.add.recurringCosts')}</h4>
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -469,7 +462,7 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                 >
                                     <Plus className="h-4 w-4 mr-1" />{t('modal.add.addCost')}
                                 </Button>
-                            </div>
+                        </div>
 
                             <div className="space-y-2">
                                 {costFields.map((field, index) => (
@@ -558,14 +551,10 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     </p>
                                 )}
                             </div>
-                        </div>
 
+                        <Separator />
                         {/* Financing Section */}
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Landmark />
-                                {t('modal.add.financing')}
-                            </h3>
+                        <h4 className="text-sm font-semibold">{t('modal.add.financing')}</h4>
                             <div className="space-y-2">
                                 <FormLabel>{t('modal.add.associatedLoans')}</FormLabel>
                                 <ScrollArea className="h-32 border rounded-md p-2">
@@ -599,14 +588,10 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     {t('modal.add.loanRemark')}
                                 </p>
                             </div>
-                        </div>
 
+                        <Separator />
                         {/* Insurance Linking Section */}
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Shield />
-                                {t('modal.add.linkInsurances')}
-                            </h3>
+                        <h4 className="text-sm font-semibold">{t('modal.add.linkInsurances')}</h4>
                             <div className="space-y-2">
                                 <ScrollArea className="h-32 border rounded-md p-2">
                                     {/* Show available insurances and currently linked ones */}
@@ -639,14 +624,10 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     {t('modal.add.insuranceRemark')}
                                 </p>
                             </div>
-                        </div>
 
+                        <Separator />
                         {/* Additional Information Section */}
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Info />
-                                {t('modal.add.additionalInfo')}
-                            </h3>
+                        <h4 className="text-sm font-semibold">{t('modal.add.additionalInfo')}</h4>
                             <FormField
                                 control={form.control}
                                 name="notes"
@@ -660,12 +641,13 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     </FormItem>
                                 )}
                             />
-                        </div>
 
-                        <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                            {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {realEstate ? t('modal.add.updateProperty') : t('modal.add.createProperty')}
-                        </Button>
+                        <DialogFooter>
+                            <Button type="submit" className="w-full" disabled={mutation.isPending}>
+                                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {realEstate ? t('modal.add.updateProperty') : t('modal.add.createProperty')}
+                            </Button>
+                        </DialogFooter>
                     </form>
                 </Form>
             </DialogContent>

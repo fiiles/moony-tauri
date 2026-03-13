@@ -50,7 +50,7 @@ export default function AssetsLiabilitiesChart({
     }, [data]);
 
     return (
-        <Card className="p-6 border h-full flex flex-col">
+        <Card className="p-6 border h-full flex flex-col card-hover">
             <div className="flex flex-col gap-2 mb-4">
                 <p className="text-lg font-medium">{t('charts.assetsVsLiabilities')}</p>
                 <p className="text-4xl font-bold tracking-tight">

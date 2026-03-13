@@ -801,7 +801,7 @@ export default function StocksAnalysis() {
                 ];
 
                 return (
-                    <Card className="p-6">
+                    <Card className="p-6 card-hover">
                         <h3 className="text-lg font-semibold mb-4">{t('stocksAnalysis.metricsChart')}</h3>
                         <ResponsiveContainer width="100%" height={350}>
                             <BarChart
@@ -881,7 +881,7 @@ export default function StocksAnalysis() {
                     <h2 className="text-lg font-semibold">{t('stocksAnalysis.tagBreakdown')}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredMetrics.map(metric => (
-                            <Card key={metric.tag.id} className="overflow-hidden">
+                            <Card key={metric.tag.id} className="overflow-hidden card-hover">
                                 <div
                                     className="h-1"
                                     style={{ backgroundColor: metric.tag.color || 'hsl(var(--chart-8))' }}

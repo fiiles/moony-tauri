@@ -27,7 +27,7 @@ export default function RecentTransactions({ transactions, onViewAll }: RecentTr
   const { formatCurrency } = useCurrency();
 
   return (
-    <Card className="p-6 border">
+    <Card className="p-6 border card-hover">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium">Recent Transactions</h3>
         <button 

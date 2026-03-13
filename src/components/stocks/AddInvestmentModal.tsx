@@ -30,7 +30,7 @@ import {
 import { investmentsApi, priceApi } from "@/lib/tauri-api";
 import { CURRENCIES } from "@shared/currencies";
 import { useState } from "react";
-import { Plus, Search, Loader2, Building2, Coins } from "lucide-react";
+import { Plus, Search, Loader2 } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -74,31 +74,32 @@ export function AddInvestmentModal() {
         },
     });
 
-    const searchTicker = async () => {
-        const companyName = form.getValues("companyName");
-        if (!companyName) {
+    const searchTicker = async (query?: string) => {
+        const searchQuery = query || form.getValues("ticker") || form.getValues("companyName");
+        if (!searchQuery) {
             return;
         }
 
         setSearching(true);
         try {
-            const results = await priceApi.searchStockTickers(companyName);
+            const results = await priceApi.searchStockTickers(searchQuery);
 
             if (results.length === 0) {
                 toast.error(t('toast.noResults'), { description: t('modal.add.noTickerFound') });
             } else if (results.length === 1) {
                 // Auto-select single result
                 form.setValue("ticker", results[0].symbol);
-                form.setValue("companyName", results[0].shortname || companyName);
+                form.setValue("companyName", results[0].shortname || searchQuery);
                 toast(t('toast.tickerFound'), { description: `${results[0].symbol} – ${results[0].shortname}` });
             } else {
                 // Show selection dialog for multiple results
                 setSearchResults(results);
                 setShowResultsDialog(true);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Ticker search error:", error);
-            toast.error(t('toast.searchFailed'), { description: error.message || t('modal.add.searchError') });
+            const message = error instanceof Error ? error.message : t('modal.add.searchError');
+            toast.error(t('toast.searchFailed'), { description: message });
         } finally {
             setSearching(false);
         }
@@ -167,13 +168,7 @@ export function AddInvestmentModal() {
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Building2 />
-                                {t('modal.add.companyDetails')}
-                            </h3>
-                            <div className="grid gap-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                                 <FormField
                                     control={form.control}
                                     name="companyName"
@@ -188,7 +183,7 @@ export function AddInvestmentModal() {
                                                     type="button"
                                                     variant="outline"
                                                     size="icon"
-                                                    onClick={searchTicker}
+                                                    onClick={() => searchTicker(field.value)}
                                                     disabled={searching || !field.value}
                                                 >
                                                     {searching ? (
@@ -208,22 +203,29 @@ export function AddInvestmentModal() {
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>{t('modal.add.ticker')} *</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="AAPL" {...field} />
-                                            </FormControl>
+                                            <div className="flex gap-2">
+                                                <FormControl>
+                                                    <Input placeholder="AAPL" {...field} />
+                                                </FormControl>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    onClick={() => searchTicker(field.value)}
+                                                    disabled={searching || !field.value}
+                                                >
+                                                    {searching ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Search className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                            </div>
-                        </div>
 
-                        <div className="form-section-accent">
-                            <h3 className="form-section-header-icon">
-                                <Coins />
-                                {t('modal.add.financialDetails')}
-                            </h3>
-                            <div className="grid gap-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
                                         control={form.control}
@@ -305,8 +307,6 @@ export function AddInvestmentModal() {
                                         )}
                                     />
                                 </div>
-                            </div>
-                        </div>
 
                         <Button type="submit" className="w-full" disabled={createInvestment.isPending}>
                             {createInvestment.isPending ? tc('status.adding') : t('addInvestment')}

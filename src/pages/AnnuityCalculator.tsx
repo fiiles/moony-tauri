@@ -135,7 +135,6 @@ export default function AnnuityCalculator() {
                                 value={loanAmount}
                                 onChange={(e) => setLoanAmount(e.target.value)}
                                 placeholder={t('annuity.form.loanAmountPlaceholder')}
-                                className="form-input-enhanced"
                             />
                         </div>
 
@@ -150,7 +149,6 @@ export default function AnnuityCalculator() {
                                     max="50"
                                     value={periodYears}
                                     onChange={(e) => setPeriodYears(e.target.value)}
-                                    className="form-input-enhanced"
                                 />
                                 <span className="flex items-center text-sm text-muted-foreground whitespace-nowrap">
                                     {t('annuity.form.periodYears')}
@@ -171,7 +169,6 @@ export default function AnnuityCalculator() {
                                     value={interestRate}
                                     onChange={(e) => setInterestRate(e.target.value)}
                                     placeholder={t('annuity.form.interestRatePlaceholder')}
-                                    className="form-input-enhanced"
                                 />
                                 <span className="flex items-center text-sm text-muted-foreground">%</span>
                             </div>
@@ -181,7 +178,7 @@ export default function AnnuityCalculator() {
                         <div className="space-y-2">
                             <Label>{t('annuity.form.periodicity')}</Label>
                             <Select value={periodicity} onValueChange={(v) => setPeriodicity(v as PaymentPeriodicity)}>
-                                <SelectTrigger className="form-input-enhanced">
+                                <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>

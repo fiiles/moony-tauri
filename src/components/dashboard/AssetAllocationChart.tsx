@@ -17,7 +17,7 @@ export default function AssetAllocationChart({ data }: AssetAllocationChartProps
   const { formatCurrency } = useCurrency();
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 card-hover">
       <h3 className="text-lg font-semibold mb-4">Asset Allocation</h3>
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>

@@ -23,7 +23,7 @@ import { useCurrency } from "@/lib/currency";
 import { currencies } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
-import { FileText, Coins } from "lucide-react";
+
 
 type UpdateBondData = {
   id: string;
@@ -120,14 +120,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-6 py-4">
-          {/* Basic Information Section */}
-          <div className="form-section-accent">
-            <h3 className="form-section-header-icon">
-              <FileText />
-              {t('modal.basicInfo')}
-            </h3>
-            <div className="grid gap-4">
+        <div className="space-y-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">{t('form.name')} *</Label>
                 <Input
@@ -151,16 +144,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
                   {t('modal.isinHelp')}
                 </p>
               </div>
-            </div>
-          </div>
 
-          {/* Financial Details Section */}
-          <div className="form-section-accent">
-            <h3 className="form-section-header-icon">
-              <Coins />
-              {t('modal.financialDetails')}
-            </h3>
-            <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="couponValue">{t('modal.couponValue')} *</Label>
@@ -232,8 +216,6 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
                   {t('modal.apyHelp')}
                 </p>
               </div>
-            </div>
-          </div>
         </div>
 
         <DialogFooter>

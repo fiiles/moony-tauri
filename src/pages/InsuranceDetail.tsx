@@ -284,7 +284,7 @@ export default function InsuranceDetail() {
 
                         {/* Linked Real Estate - only show if linked */}
                         {linkedRealEstate && (
-                            <Card className="md:col-span-2">
+                            <Card className="md:col-span-2 card-hover">
                                 <CardHeader>
                                     <CardTitle>{t('detail.linkedRealEstate')}</CardTitle>
                                 </CardHeader>

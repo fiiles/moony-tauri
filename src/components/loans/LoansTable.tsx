@@ -88,7 +88,7 @@ export function LoansTable({ loans, onEdit, onDelete }: LoansTableProps) {
 
 
     return (
-        <Card className="border">
+        <Card className="border card-hover">
             <div className="p-6">
                 <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>
 

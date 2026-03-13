@@ -315,7 +315,7 @@ export default function StockDetail() {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card>
+                <Card className="card-hover">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">{t('detail.currentValue')}</CardTitle>
                     </CardHeader>
@@ -327,7 +327,7 @@ export default function StockDetail() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="card-hover">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">{t('detail.totalInvested')}</CardTitle>
                     </CardHeader>
@@ -352,7 +352,7 @@ export default function StockDetail() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="card-hover">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">{t('detail.unrealizedPnL')}</CardTitle>
                     </CardHeader>
@@ -367,7 +367,7 @@ export default function StockDetail() {
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="card-hover">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">{t('detail.dividendYield')}</CardTitle>
                     </CardHeader>
@@ -395,7 +395,7 @@ export default function StockDetail() {
             />
 
             {/* Position & Transactions Section (merged) */}
-            <Card>
+            <Card className="card-hover">
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle>{t('detail.position.title')}</CardTitle>

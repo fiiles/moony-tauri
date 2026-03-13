@@ -20,7 +20,7 @@ export default function SavingsAccountCard({ accounts, onAdd }: SavingsAccountCa
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 card-hover">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Banknote className="w-5 h-5 text-chart-1" />

@@ -4,6 +4,7 @@ use crate::db::Database;
 use crate::error::Result;
 use crate::models::{InsertUserProfile, SetupData, UpdateUserProfile, UserProfile};
 use crate::services::auth;
+use crate::services::local_api::LocalApiServer;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
@@ -131,6 +132,13 @@ fn get_db_path(app: &AppHandle) -> PathBuf {
     app_dir.join("moony.db")
 }
 
+/// Get the data directory (parent of the database file)
+fn get_data_dir(app: &AppHandle) -> PathBuf {
+    app.path()
+        .app_data_dir()
+        .expect("Failed to get app data dir")
+}
+
 /// Check if database exists (user has set up account)
 #[tauri::command]
 pub async fn check_setup(app: AppHandle) -> Result<bool> {
@@ -221,10 +229,16 @@ pub async fn confirm_setup(
 pub async fn unlock(
     app: AppHandle,
     db: State<'_, Database>,
+    local_api: State<'_, LocalApiServer>,
     password: String,
 ) -> Result<UserProfile> {
     let db_path = get_db_path(&app);
-    auth::unlock(&db, db_path, &password)
+    let profile = auth::unlock(&db, db_path, &password)?;
+    if profile.mcp_server_enabled && !local_api.is_running() {
+        let data_dir = get_data_dir(&app);
+        local_api.start((*db).clone(), data_dir).await?;
+    }
+    Ok(profile)
 }
 
 /// Recover account using recovery key (legacy - single step, kept for compatibility)
@@ -276,7 +290,13 @@ pub async fn confirm_recover(
 
 /// Lock account (logout)
 #[tauri::command]
-pub async fn logout(db: State<'_, Database>) -> Result<()> {
+pub async fn logout(
+    app: AppHandle,
+    db: State<'_, Database>,
+    local_api: State<'_, LocalApiServer>,
+) -> Result<()> {
+    let data_dir = get_data_dir(&app);
+    local_api.stop(data_dir).await;
     auth::logout(&db);
     Ok(())
 }
@@ -337,4 +357,60 @@ pub async fn confirm_change_password(
 pub async fn delete_account(app: AppHandle, db: State<'_, Database>) -> Result<()> {
     let db_path = get_db_path(&app);
     auth::delete_account(&db, &db_path)
+}
+
+// ============================================================================
+// MCP Server commands
+// ============================================================================
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServerStatus {
+    pub running: bool,
+    pub port: Option<u16>,
+    pub data_dir: String,
+}
+
+/// Enable or disable the local MCP HTTP server
+#[tauri::command]
+pub async fn set_mcp_server_enabled(
+    app: AppHandle,
+    db: State<'_, Database>,
+    local_api: State<'_, LocalApiServer>,
+    enabled: bool,
+) -> Result<UserProfile> {
+    let data_dir = get_data_dir(&app);
+    if enabled && !local_api.is_running() {
+        local_api.start((*db).clone(), data_dir.clone()).await?;
+    } else if !enabled && local_api.is_running() {
+        local_api.stop(data_dir).await;
+    }
+    let updates = UpdateUserProfile {
+        name: None,
+        surname: None,
+        email: None,
+        menu_preferences: None,
+        currency: None,
+        language: None,
+        exclude_personal_real_estate: None,
+        coingecko_modal_dismissed: None,
+        mcp_server_enabled: Some(enabled),
+    };
+    auth::update_user_profile(&db, updates)
+}
+
+/// Get current MCP server status (running, port, data_dir)
+#[tauri::command]
+pub async fn get_mcp_server_status(
+    app: AppHandle,
+    local_api: State<'_, LocalApiServer>,
+) -> Result<McpServerStatus> {
+    let data_dir = get_data_dir(&app)
+        .to_string_lossy()
+        .to_string();
+    Ok(McpServerStatus {
+        running: local_api.is_running(),
+        port: local_api.get_port(),
+        data_dir,
+    })
 }

@@ -42,7 +42,7 @@ export function SavingsAccountsTable({
   const [selectedAccountForZones, setSelectedAccountForZones] = useState<SavingsAccount | null>(null);
 
   return (
-    <Card className="border">
+    <Card className="border card-hover">
       <div className="p-6">
         <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>
 

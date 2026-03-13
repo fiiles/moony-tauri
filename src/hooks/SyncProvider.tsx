@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react';
-import { portfolioApi } from '@/lib/tauri-api';
+import { portfolioApi, priceApi } from '@/lib/tauri-api';
 import { useQueryClient } from '@tanstack/react-query';
 import { SyncContext } from './sync-context';
 
@@ -51,23 +51,49 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, [queryClient]);
 
-  // Auto-run backfill ONCE on mount (after login)
+  // Auto-run on mount (after login): refresh stale prices then backfill history
   useEffect(() => {
     if (hasRun.current) {
-      console.log('[Sync] Already ran, skipping auto-backfill');
+      console.log('[Sync] Already ran, skipping auto-sync');
       return;
     }
     hasRun.current = true;
 
-    console.log('[Sync] Scheduling auto-backfill in 15 seconds...');
+    const runStartupSync = async () => {
+      // Step 1: refresh any stale prices so charts and values are up to date
+      try {
+        console.log('[Sync] Checking price status...');
+        const status = await portfolioApi.getPriceStatus();
+        const needsRefresh = status.stocksStale || status.cryptoStale || status.exchangeRatesStale;
 
-    // Longer delay to ensure price refresh (which blocks the DB) completes first
-    const timer = setTimeout(() => {
-      startBackfill();
-    }, 15000);
+        if (needsRefresh) {
+          console.log('[Sync] Stale prices detected, auto-refreshing...');
+          await Promise.allSettled([
+            status.exchangeRatesStale ? portfolioApi.refreshExchangeRates() : Promise.resolve(),
+            status.stocksStale ? priceApi.refreshStockPrices() : Promise.resolve(),
+            status.cryptoStale ? priceApi.refreshCryptoPrices() : Promise.resolve(),
+          ]);
+          queryClient.invalidateQueries({ queryKey: ['investments'] });
+          queryClient.invalidateQueries({ queryKey: ['crypto'] });
+          queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+          queryClient.invalidateQueries({ queryKey: ['price-status'] });
+          console.log('[Sync] Auto price refresh complete');
+        } else {
+          console.log('[Sync] Prices are fresh, skipping auto-refresh');
+        }
+      } catch (error) {
+        console.error('[Sync] Auto price refresh failed:', error);
+      }
+
+      // Step 2: backfill missing historical snapshots (prices are now fresh)
+      await startBackfill();
+    };
+
+    console.log('[Sync] Scheduling startup sync in 5 seconds...');
+    const timer = setTimeout(runStartupSync, 5000);
 
     return () => clearTimeout(timer);
-  }, [startBackfill]);
+  }, [startBackfill, queryClient]);
 
   // Record today's snapshot (called after asset changes)
   const recordTodaySnapshot = useCallback(async () => {

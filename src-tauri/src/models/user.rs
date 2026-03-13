@@ -53,6 +53,8 @@ pub struct UserProfile {
     pub exclude_personal_real_estate: bool,
     #[serde(rename = "coingeckoModalDismissed", default)]
     pub coingecko_modal_dismissed: bool,
+    #[serde(rename = "mcpServerEnabled", default)]
+    pub mcp_server_enabled: bool,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
 }
@@ -85,6 +87,8 @@ pub struct UpdateUserProfile {
     pub exclude_personal_real_estate: Option<bool>,
     #[serde(rename = "coingeckoModalDismissed")]
     pub coingecko_modal_dismissed: Option<bool>,
+    #[serde(rename = "mcpServerEnabled")]
+    pub mcp_server_enabled: Option<bool>,
 }
 
 /// Setup data from frontend
