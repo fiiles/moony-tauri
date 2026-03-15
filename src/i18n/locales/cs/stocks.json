@@ -8,7 +8,11 @@
     "importCSV": "Importovat CSV",
     "summary": {
         "totalValue": "Celková hodnota",
-        "totalGainLoss": "Celkový zisk/ztráta",
+        "totalGainLoss": "Nerealizovaný zisk/ztráta",
+        "unrealizedGain": "Nerealizovaný zisk",
+        "unrealizedLoss": "Nerealizovaná ztráta",
+        "realizedGain": "Realizovaný zisk",
+        "realizedLoss": "Realizovaná ztráta",
         "estimatedDividend": "Odhad dividend",
         "topPerformer": "Nejvýkonnější",
         "basedOnLastYear": "Dle dividend z minulého roku",
@@ -22,10 +26,12 @@
         "avgCost": "Prům. cena",
         "marketPrice": "Tržní cena",
         "marketValue": "Tržní hodnota",
-        "totalGainLoss": "Celkový zisk/ztráta",
+        "totalGainLoss": "Nerealizovaný zisk/ztráta",
         "estDividend": "Odh. dividenda",
         "actions": "Akce",
-        "noHoldings": "Žádné pozice nenalezeny. Přidejte svou první investici."
+        "noHoldings": "Žádné pozice nenalezeny. Přidejte svou první investici.",
+        "showZeroPositions": "Zobrazit nulové",
+        "hideZeroPositions": "Skrýt nulové"
     },
     "actions": {
         "viewTransactions": "Zobrazit transakce",

@@ -64,6 +64,7 @@ export function ViewTransactionsModal({ investment, open, onOpenChange }: ViewTr
             queryClient.invalidateQueries({ queryKey: ["investments"] });
             queryClient.invalidateQueries({ queryKey: ["transactions", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            queryClient.invalidateQueries({ queryKey: ["all-stock-transactions"] });
             setDeleteDialogOpen(false);
             setSelectedTransaction(null);
         },

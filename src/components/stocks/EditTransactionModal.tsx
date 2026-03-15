@@ -90,6 +90,7 @@ export function EditTransactionModal({ transaction, investmentId, open, onOpenCh
             queryClient.invalidateQueries({ queryKey: ["investments"] });
             queryClient.invalidateQueries({ queryKey: ["transactions", investmentId] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            queryClient.invalidateQueries({ queryKey: ["all-stock-transactions"] });
             onOpenChange(false);
         },
     });

@@ -95,6 +95,7 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
             queryClient.invalidateQueries({ queryKey: ["investment", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["investment-transactions", investment?.id] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            queryClient.invalidateQueries({ queryKey: ["all-stock-transactions"] });
             onOpenChange(false);
             form.reset();
         },

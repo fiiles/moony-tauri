@@ -17,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Eye, EyeOff, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import type { HoldingData } from "@/utils/stocks";
 import { useCurrency } from "@/lib/currency";
 import { AssetLogo } from "@/components/common/AssetLogo";
@@ -38,6 +38,7 @@ export function InvestmentsTable({
   const { formatCurrency, formatCurrencyRaw, currencyCode } = useCurrency();
   const { t } = useTranslation('stocks');
   const [search, setSearch] = useState("");
+  const [hideZeroPositions, setHideZeroPositions] = useState(true);
 
   // Sorting state
   type SortColumn = 'name' | 'quantity' | 'avgCost' | 'currentPrice' | 'marketValue' | 'gainLoss' | 'dividend';
@@ -64,7 +65,7 @@ export function InvestmentsTable({
 
   const filteredHoldings = useMemo(() => {
     const term = search.trim().toLowerCase();
-    let filtered = holdings;
+    let filtered = hideZeroPositions ? holdings.filter((h) => h.quantity > 0) : holdings;
 
     if (term) {
       filtered = holdings.filter((h) => {
@@ -101,7 +102,7 @@ export function InvestmentsTable({
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [holdings, search, sortColumn, sortDirection]);
+  }, [holdings, search, hideZeroPositions, sortColumn, sortDirection]);
 
   return (
     <Card className={cn(
@@ -112,6 +113,15 @@ export function InvestmentsTable({
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setHideZeroPositions((prev) => !prev)}
+              className={cn("gap-1.5 text-xs", !hideZeroPositions && "border-primary text-primary")}
+            >
+              {hideZeroPositions ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {hideZeroPositions ? t('table.showZeroPositions') : t('table.hideZeroPositions')}
+            </Button>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input

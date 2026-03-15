@@ -7,7 +7,11 @@
     "refreshing": "Aktualizuji...",
     "summary": {
         "totalValue": "Celková hodnota",
-        "totalGainLoss": "Celkový zisk/ztráta",
+        "totalGainLoss": "Nerealizovaný zisk/ztráta",
+        "unrealizedGain": "Nerealizovaný zisk",
+        "unrealizedLoss": "Nerealizovaná ztráta",
+        "realizedGain": "Realizovaný zisk",
+        "realizedLoss": "Realizovaná ztráta",
         "cryptoCount": "Počet kryptoměn",
         "totalCrypto": "Celkem krypto",
         "totalCost": "Celkové náklady",
@@ -23,9 +27,11 @@
         "avgCost": "Prům. cena",
         "currentPrice": "Aktuální cena",
         "marketValue": "Tržní hodnota",
-        "totalGainLoss": "Celkový zisk/ztráta",
+        "totalGainLoss": "Nerealizovaný zisk/ztráta",
         "actions": "Akce",
-        "noHoldings": "Žádné pozice nenalezeny. Přidejte svou první kryptoměnu."
+        "noHoldings": "Žádné pozice nenalezeny. Přidejte svou první kryptoměnu.",
+        "showZeroPositions": "Zobrazit nulové",
+        "hideZeroPositions": "Skrýt nulové"
     },
     "actions": {
         "viewTransactions": "Zobrazit transakce",

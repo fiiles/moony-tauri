@@ -11,6 +11,7 @@ import { cryptoApi, priceApi, exportApi } from "@/lib/tauri-api";
 import {
     calculateCryptoPortfolioMetrics,
     mapCryptoInvestmentToHolding,
+    calculateRealizedGains,
 } from "@shared/calculations";
 import type { CryptoInvestmentWithPrice } from "@shared/types";
 import type { CryptoTransaction } from "@shared/schema";
@@ -86,6 +87,12 @@ export default function Crypto() {
             sellTickers: amounts.sellTickers,
         }));
     }, [allTransactions, convert]);
+
+    // Compute realized gains/losses from sell transactions (WAC method)
+    const realizedGain = useMemo(() => {
+        if (!allTransactions || allTransactions.length === 0) return 0;
+        return calculateRealizedGains(allTransactions, convert, currencyCode as CurrencyCode);
+    }, [allTransactions, convert, currencyCode]);
 
     // Refresh prices mutation - uses CoinGecko API
     const refreshPricesMutation = useMutation({
@@ -182,6 +189,7 @@ export default function Crypto() {
 
             <CryptoSummary
                 metrics={metrics}
+                realizedGain={realizedGain}
                 isLoading={refreshPricesMutation.isPending}
                 latestFetchedAt={holdings.reduce((latest, h) => {
                     if (!h.fetchedAt) return latest;

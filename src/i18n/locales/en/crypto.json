@@ -7,7 +7,11 @@
     "refreshing": "Refreshing...",
     "summary": {
         "totalValue": "Total Value",
-        "totalGainLoss": "Overall Gain/Loss",
+        "totalGainLoss": "Unrealized Gain/Loss",
+        "unrealizedGain": "Unrealized Gain",
+        "unrealizedLoss": "Unrealized Loss",
+        "realizedGain": "Realized Gain",
+        "realizedLoss": "Realized Loss",
         "cryptoCount": "Cryptocurrencies",
         "totalCrypto": "Total Crypto",
         "totalCost": "Total Cost",
@@ -23,9 +27,11 @@
         "avgCost": "Avg Cost",
         "currentPrice": "Current Price",
         "marketValue": "Market Value",
-        "totalGainLoss": "Total Gain/Loss",
+        "totalGainLoss": "Unrealized Gain/Loss",
         "actions": "Actions",
-        "noHoldings": "No holdings found. Add your first cryptocurrency to get started."
+        "noHoldings": "No holdings found. Add your first cryptocurrency to get started.",
+        "showZeroPositions": "Show zero",
+        "hideZeroPositions": "Hide zero"
     },
     "actions": {
         "viewTransactions": "View Transactions",
