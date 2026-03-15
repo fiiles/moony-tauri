@@ -42,6 +42,12 @@ export {
     type CryptoPortfolioMetrics,
 } from "./crypto-metrics";
 
+// Realized gains calculations
+export {
+    calculateRealizedGains,
+    type RealizedGainTransaction,
+} from "./realized-gains";
+
 // Change/percentage calculations
 export {
     calculatePercentageChange,

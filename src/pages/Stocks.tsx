@@ -9,6 +9,7 @@ import { investmentsApi, priceApi, exportApi } from "@/lib/tauri-api";
 import type { StockInvestmentWithPrice } from "@shared/types";
 import type { InvestmentTransaction } from "@shared/schema";
 import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from "@/utils/stocks";
+import { calculateRealizedGains } from "@shared/calculations";
 import PortfolioValueTrendChart, { type TransactionMarker } from "@/components/common/PortfolioValueTrendChart";
 import { ExportButton } from "@/components/common/ExportButton";
 import { ImportInvestmentsModal } from "@/components/stocks/ImportInvestmentsModal";
@@ -84,6 +85,12 @@ export default function Stocks() {
       sellTickers: amounts.sellTickers,
     }));
   }, [allTransactions, convert]);
+
+  // Compute realized gains/losses from sell transactions (WAC method)
+  const realizedGain = useMemo(() => {
+    if (!allTransactions || allTransactions.length === 0) return 0;
+    return calculateRealizedGains(allTransactions, convert, currencyCode as CurrencyCode);
+  }, [allTransactions, convert, currencyCode]);
 
   // Refresh prices and dividends mutation - uses Yahoo Finance API
   const refreshPricesMutation = useMutation({
@@ -210,6 +217,7 @@ export default function Stocks() {
 
       <InvestmentsSummary
         metrics={metrics}
+        realizedGain={realizedGain}
         isLoading={refreshPricesMutation.isPending}
         latestFetchedAt={holdings.reduce((latest, h) => {
           if (!h.fetchedAt) return latest;

@@ -8,7 +8,11 @@
     "importCSV": "Import CSV",
     "summary": {
         "totalValue": "Total Value",
-        "totalGainLoss": "Overall Gain/Loss",
+        "totalGainLoss": "Unrealized Gain/Loss",
+        "unrealizedGain": "Unrealized Gain",
+        "unrealizedLoss": "Unrealized Loss",
+        "realizedGain": "Realized Gain",
+        "realizedLoss": "Realized Loss",
         "estimatedDividend": "Est. Dividend Yield",
         "topPerformer": "Top Performer",
         "basedOnLastYear": "Based on last year dividends",
@@ -22,10 +26,12 @@
         "avgCost": "Avg Cost",
         "marketPrice": "Market Price",
         "marketValue": "Market Value",
-        "totalGainLoss": "Total Gain/Loss",
+        "totalGainLoss": "Unrealized Gain/Loss",
         "estDividend": "Est. Dividend",
         "actions": "Actions",
-        "noHoldings": "No holdings found. Add your first investment to get started."
+        "noHoldings": "No holdings found. Add your first investment to get started.",
+        "showZeroPositions": "Show zero",
+        "hideZeroPositions": "Hide zero"
     },
     "actions": {
         "viewTransactions": "View Transactions",

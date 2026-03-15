@@ -132,6 +132,7 @@ export function AddInvestmentModal() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["investments"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            queryClient.invalidateQueries({ queryKey: ["all-stock-transactions"] });
             setOpen(false);
             form.reset();
             

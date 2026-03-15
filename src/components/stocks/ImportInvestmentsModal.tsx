@@ -86,6 +86,7 @@ export function ImportInvestmentsModal() {
             queryClient.invalidateQueries({ queryKey: ["investments"] });
             queryClient.invalidateQueries({ queryKey: ["transactions"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            queryClient.invalidateQueries({ queryKey: ["all-stock-transactions"] });
             setSuccessCount(data.success);
             setImportErrors(data.errors || []);
             setImportedItems(data.imported || []);

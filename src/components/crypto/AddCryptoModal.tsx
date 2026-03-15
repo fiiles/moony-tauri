@@ -132,6 +132,7 @@ export function AddCryptoModal() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["crypto"] });
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            queryClient.invalidateQueries({ queryKey: ["all-crypto-transactions"] });
             setOpen(false);
             form.reset();
             toast(tc('status.success'));
