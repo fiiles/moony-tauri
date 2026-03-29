@@ -588,4 +588,87 @@ mod tests {
         assert_eq!(clean_and_parse_amount("abc"), 0.0); // Fail gracefully
         assert_eq!(clean_and_parse_amount("Kč 1 234,50"), 1234.5);
     }
+
+    #[test]
+    fn test_get_bank_presets_non_empty() {
+        let presets = get_bank_presets();
+        assert!(!presets.is_empty());
+    }
+
+    #[test]
+    fn test_get_bank_presets_contains_known_banks() {
+        let presets = get_bank_presets();
+        let ids: Vec<&str> = presets.iter().map(|p| p.institution_id.as_str()).collect();
+        assert!(ids.contains(&"inst_ceska_sporitelna"));
+        assert!(ids.contains(&"inst_revolut"));
+        assert!(ids.contains(&"inst_fio"));
+    }
+
+    #[test]
+    fn test_get_preset_by_institution_found() {
+        let preset = get_preset_by_institution("inst_revolut");
+        assert!(preset.is_some());
+        let p = preset.unwrap();
+        assert_eq!(p.bank_name, "Revolut");
+        assert_eq!(p.delimiter, ',');
+        assert_eq!(p.encoding, "UTF-8");
+    }
+
+    #[test]
+    fn test_get_preset_by_institution_not_found() {
+        let result = get_preset_by_institution("inst_nonexistent_bank");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_suggest_column_mappings_english_headers() {
+        let headers: Vec<String> = vec!["Date".into(), "Amount".into(), "Description".into()];
+        let mappings = suggest_column_mappings(&headers);
+        assert!(mappings.contains_key("date"), "should detect date column");
+        assert!(
+            mappings.contains_key("amount"),
+            "should detect amount column"
+        );
+        assert!(
+            mappings.contains_key("description"),
+            "should detect description column"
+        );
+    }
+
+    #[test]
+    fn test_suggest_column_mappings_czech_headers() {
+        let headers: Vec<String> = vec![
+            "Datum zaúčtování".into(),
+            "Částka".into(),
+            "Zpráva pro příjemce".into(),
+            "VS".into(),
+        ];
+        let mappings = suggest_column_mappings(&headers);
+        assert!(
+            mappings.contains_key("date"),
+            "should detect Czech date column"
+        );
+        assert!(
+            mappings.contains_key("amount"),
+            "should detect Czech amount column"
+        );
+    }
+
+    #[test]
+    fn test_suggest_column_mappings_empty_headers() {
+        let mappings = suggest_column_mappings(&[]);
+        assert!(mappings.is_empty());
+    }
+
+    #[test]
+    fn test_suggest_column_mappings_high_confidence_for_exact_match() {
+        let headers: Vec<String> = vec!["date".into()];
+        let mappings = suggest_column_mappings(&headers);
+        if let Some((_, confidence)) = mappings.get("date") {
+            assert!(
+                *confidence >= 0.9,
+                "exact 'date' match should have high confidence"
+            );
+        }
+    }
 }
