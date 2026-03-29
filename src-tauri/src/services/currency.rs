@@ -342,4 +342,35 @@ mod tests {
             "Currency conversion should be case insensitive"
         );
     }
+
+    #[test]
+    fn test_convert_between_same_currency() {
+        assert_eq!(convert_between(100.0, "EUR", "EUR"), 100.0);
+    }
+
+    #[test]
+    fn test_convert_between_via_czk() {
+        update_exchange_rates(
+            [("EUR".to_string(), 25.0), ("USD".to_string(), 23.0)]
+                .into_iter()
+                .collect(),
+        );
+        let result = convert_between(100.0, "EUR", "USD");
+        let expected = 100.0 * 25.0 / 23.0;
+        assert!((result - expected).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_convert_to_czk_unknown_currency_fallback() {
+        let result = convert_to_czk(42.0, "XYZ");
+        assert_eq!(result, 42.0);
+    }
+
+    #[test]
+    fn test_convert_to_czk_case_insensitive() {
+        update_exchange_rates([("EUR".to_string(), 25.0)].into_iter().collect());
+        let upper = convert_to_czk(10.0, "EUR");
+        let lower = convert_to_czk(10.0, "eur");
+        assert!((upper - lower).abs() < 0.001);
+    }
 }
