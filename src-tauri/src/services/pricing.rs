@@ -115,3 +115,94 @@ pub fn resolve_crypto_price(conn: &rusqlite::Connection, symbol: &str) -> Option
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_data (
+                ticker TEXT PRIMARY KEY,
+                original_price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                fetched_at INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE stock_price_overrides (
+                ticker TEXT PRIMARY KEY,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                updated_at INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE crypto_prices (
+                symbol TEXT PRIMARY KEY,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                fetched_at INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE crypto_price_overrides (
+                symbol TEXT PRIMARY KEY,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
+                updated_at INTEGER NOT NULL DEFAULT 0
+            );
+            "#,
+        )
+        .expect("schema");
+        conn
+    }
+
+    #[test]
+    fn test_resolve_stock_price_returns_none_when_no_data() {
+        let conn = setup_test_db();
+        let result = resolve_stock_price(&conn, "AAPL");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_resolve_stock_price_from_global_data() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO stock_data (ticker, original_price, currency, fetched_at) VALUES ('AAPL', '150.00', 'USD', 100)",
+            [],
+        )
+        .unwrap();
+
+        let result = resolve_stock_price(&conn, "AAPL").expect("price");
+        assert_eq!(result.original_price, "150.00");
+        assert_eq!(result.currency, "USD");
+        assert!(!result.is_manual);
+    }
+
+    #[test]
+    fn test_resolve_stock_price_prefers_newer_override() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO stock_data (ticker, original_price, currency, fetched_at) VALUES ('MSFT', '300.00', 'USD', 50)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO stock_price_overrides (ticker, price, currency, updated_at) VALUES ('MSFT', '350.00', 'USD', 100)",
+            [],
+        )
+        .unwrap();
+
+        let result = resolve_stock_price(&conn, "MSFT").expect("price");
+        assert_eq!(result.original_price, "350.00");
+        assert!(result.is_manual);
+    }
+
+    #[test]
+    fn test_resolve_crypto_price_returns_none_when_no_data() {
+        let conn = setup_test_db();
+        let result = resolve_crypto_price(&conn, "BTC");
+        assert!(result.is_none());
+    }
+}
