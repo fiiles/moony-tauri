@@ -531,6 +531,56 @@ pub fn update_user_profile(db: &Database, updates: UpdateUserProfile) -> Result<
     get_user_profile(db)?.ok_or_else(|| AppError::NotFound("User profile not found".into()))
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_database_exists_returns_false_when_no_files() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = dir.path().join("moony.db");
+        assert!(!database_exists(&db_path));
+    }
+
+    #[test]
+    fn test_database_exists_returns_false_when_only_db_file_present() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = dir.path().join("moony.db");
+        fs::write(&db_path, b"fake db").unwrap();
+        assert!(!database_exists(&db_path));
+    }
+
+    #[test]
+    fn test_database_exists_returns_false_when_only_some_key_files_present() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = dir.path().join("moony.db");
+        fs::write(&db_path, b"fake db").unwrap();
+        fs::write(dir.path().join("salt"), b"fake salt").unwrap();
+        // Missing key.enc and recovery.enc
+        assert!(!database_exists(&db_path));
+    }
+
+    #[test]
+    fn test_database_exists_returns_true_when_all_files_present() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = dir.path().join("moony.db");
+        fs::write(&db_path, b"fake db").unwrap();
+        fs::write(dir.path().join("salt"), b"fake salt").unwrap();
+        fs::write(dir.path().join("key.enc"), b"fake key").unwrap();
+        fs::write(dir.path().join("recovery.enc"), b"fake recovery").unwrap();
+        assert!(database_exists(&db_path));
+    }
+
+    #[test]
+    fn test_is_authenticated_can_be_reset() {
+        use std::sync::atomic::Ordering;
+        IS_AUTHENTICATED.store(false, Ordering::SeqCst);
+        assert!(!is_authenticated());
+    }
+}
+
 /// Delete entire account (database and key files)
 pub fn delete_account(db: &Database, db_path: &Path) -> Result<()> {
     set_authenticated(false);
