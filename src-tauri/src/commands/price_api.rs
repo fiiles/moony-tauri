@@ -25,7 +25,10 @@ pub async fn set_api_keys(db: State<'_, Database>, keys: ApiKeys) -> Result<()> 
 /// Batches all tickers into a single request (no rate limiting issues)
 /// No API key required
 #[tauri::command]
-pub async fn refresh_stock_prices(db: State<'_, Database>) -> Result<StockPriceRefreshResult> {
+pub async fn refresh_stock_prices(
+    db: State<'_, Database>,
+    force_refresh: Option<bool>,
+) -> Result<StockPriceRefreshResult> {
     // Get all tickers from investments
     let tickers: Vec<String> = db.with_conn(|conn| {
         let mut stmt = conn.prepare("SELECT DISTINCT si.ticker FROM stock_investments si")?;
@@ -45,7 +48,8 @@ pub async fn refresh_stock_prices(db: State<'_, Database>) -> Result<StockPriceR
     }
 
     // Fetch prices using Yahoo Finance (batched request, no API key needed)
-    let result = price_api::refresh_stock_prices_yahoo(&db, tickers).await?;
+    let result =
+        price_api::refresh_stock_prices_yahoo(&db, tickers, force_refresh.unwrap_or(false)).await?;
 
     // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db).await?;
