@@ -502,4 +502,162 @@ mod tests {
         let history = get_value_history(&conn, "AAPL", Some(2000), Some(2500)).unwrap();
         assert_eq!(history.len(), 1); // Only 2000
     }
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_investments (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                company_name TEXT NOT NULL,
+                quantity TEXT NOT NULL DEFAULT '0',
+                average_price TEXT NOT NULL DEFAULT '0',
+                currency TEXT NOT NULL DEFAULT 'CZK'
+            );
+
+            CREATE TABLE investment_transactions (
+                id TEXT PRIMARY KEY,
+                investment_id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                ticker TEXT NOT NULL,
+                company_name TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                price_per_unit TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                transaction_date INTEGER NOT NULL,
+                created_at INTEGER NOT NULL
+            );
+            "#,
+        )
+        .expect("schema");
+        conn
+    }
+
+    #[test]
+    fn test_get_or_create_investment_creates_new() {
+        let conn = setup_test_db();
+        let id = get_or_create_investment(&conn, "AAPL", "Apple Inc.", "USD", None, None)
+            .expect("create");
+        assert!(!id.is_empty());
+
+        // Second call returns same id
+        let id2 = get_or_create_investment(&conn, "AAPL", "Apple Inc.", "USD", None, None)
+            .expect("get existing");
+        assert_eq!(id, id2);
+    }
+
+    #[test]
+    fn test_get_or_create_investment_upcases_ticker() {
+        let conn = setup_test_db();
+        let id1 =
+            get_or_create_investment(&conn, "aapl", "Apple", "USD", None, None).expect("lowercase");
+        let id2 =
+            get_or_create_investment(&conn, "AAPL", "Apple", "USD", None, None).expect("uppercase");
+        assert_eq!(id1, id2);
+    }
+
+    #[test]
+    fn test_recalculate_metrics_buy_only() {
+        let conn = setup_test_db();
+        let investment_id = get_or_create_investment(&conn, "MSFT", "Microsoft", "USD", None, None)
+            .expect("create");
+
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx1', ?1, 'buy', 'MSFT', 'Microsoft', '10', '300', 'USD', 0, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx2', ?1, 'buy', 'MSFT', 'Microsoft', '5', '360', 'USD', 0, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+
+        recalculate_investment_metrics(&conn, &investment_id).expect("recalc");
+
+        let inv = get_investment_by_id(&conn, &investment_id).expect("get");
+        let qty: f64 = inv.quantity.parse().unwrap();
+        let avg: f64 = inv.average_price.parse().unwrap();
+        assert_eq!(qty, 15.0);
+        // avg = (10*300 + 5*360) / 15 = 4800/15 = 320
+        assert!((avg - 320.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_recalculate_metrics_buy_then_sell() {
+        let conn = setup_test_db();
+        let investment_id =
+            get_or_create_investment(&conn, "TSLA", "Tesla", "USD", None, None).expect("create");
+
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx1', ?1, 'buy', 'TSLA', 'Tesla', '20', '200', 'USD', 0, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx2', ?1, 'sell', 'TSLA', 'Tesla', '8', '250', 'USD', 1, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+
+        recalculate_investment_metrics(&conn, &investment_id).expect("recalc");
+
+        let inv = get_investment_by_id(&conn, &investment_id).expect("get");
+        let qty: f64 = inv.quantity.parse().unwrap();
+        assert_eq!(qty, 12.0);
+        let avg: f64 = inv.average_price.parse().unwrap();
+        assert!((avg - 200.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_import_single_transaction_invalid_type() {
+        let conn = setup_test_db();
+        let result =
+            import_single_transaction(&conn, "AAPL", "Apple", "hold", "10", "150", "USD", 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_import_single_transaction_sell_without_position() {
+        let conn = setup_test_db();
+        let result =
+            import_single_transaction(&conn, "GOOG", "Google", "sell", "5", "100", "USD", 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_import_single_transaction_buy_creates_investment() {
+        let conn = setup_test_db();
+        let result = import_single_transaction(
+            &conn,
+            "nvda",
+            "NVIDIA",
+            "buy",
+            "3",
+            "500",
+            "USD",
+            1_700_000_000,
+        );
+        assert!(result.is_ok());
+        let (desc, _date, ticker) = result.unwrap();
+        assert_eq!(ticker, "NVDA");
+        assert!(desc.contains("BUY"));
+    }
+
+    #[test]
+    fn test_import_single_transaction_currency_mismatch() {
+        let conn = setup_test_db();
+        import_single_transaction(&conn, "AMD", "AMD", "buy", "10", "100", "USD", 0).unwrap();
+        let result = import_single_transaction(&conn, "AMD", "AMD", "buy", "5", "90", "EUR", 1);
+        assert!(result.is_err());
+    }
 }
