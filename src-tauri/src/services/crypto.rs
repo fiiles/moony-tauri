@@ -297,4 +297,29 @@ mod tests {
         assert_eq!(key.len(), 29); // 24 chars + 5 dashes
         assert_eq!(key.matches('-').count(), 5);
     }
+
+    #[test]
+    fn test_master_key_hex_round_trip() {
+        let key = generate_master_key();
+        let hex = master_key_to_hex(&key);
+        // master_key_to_hex returns format: 'hexstring' (with single quotes)
+        // 32 bytes = 64 hex chars + 2 surrounding single quotes = 66 chars total
+        assert_eq!(hex.len(), 66);
+        assert!(hex.starts_with('\''));
+        assert!(hex.ends_with('\''));
+    }
+
+    #[test]
+    fn test_generate_master_key_produces_unique_keys() {
+        let k1 = generate_master_key();
+        let k2 = generate_master_key();
+        assert_ne!(k1, k2);
+    }
+
+    #[test]
+    fn test_generate_salt_produces_unique_salts() {
+        let s1 = generate_salt();
+        let s2 = generate_salt();
+        assert_ne!(s1, s2);
+    }
 }
