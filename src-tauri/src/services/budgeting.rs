@@ -624,4 +624,63 @@ mod tests {
         };
         assert!(invalid_amount.validate().is_err());
     }
+
+    #[test]
+    fn test_get_all_goals_multiple_categories() {
+        let conn = setup_test_db();
+
+        upsert_goal(
+            &conn,
+            InsertBudgetGoal {
+                category_id: "cat_groceries".to_string(),
+                timeframe: "monthly".to_string(),
+                amount: "3000".to_string(),
+                currency: Some("CZK".to_string()),
+            },
+        )
+        .unwrap();
+
+        upsert_goal(
+            &conn,
+            InsertBudgetGoal {
+                category_id: "cat_dining".to_string(),
+                timeframe: "monthly".to_string(),
+                amount: "1500".to_string(),
+                currency: Some("CZK".to_string()),
+            },
+        )
+        .unwrap();
+
+        let goals = get_all_goals(&conn).expect("get goals");
+        assert_eq!(goals.len(), 2);
+    }
+
+    #[test]
+    fn test_validate_budget_goal_zero_amount_invalid() {
+        let invalid = InsertBudgetGoal {
+            category_id: "cat_groceries".to_string(),
+            timeframe: "monthly".to_string(),
+            amount: "0".to_string(),
+            currency: None,
+        };
+        assert!(invalid.validate().is_err());
+    }
+
+    #[test]
+    fn test_get_report_only_income() {
+        let conn = setup_test_db();
+
+        conn.execute_batch(
+            r#"
+            INSERT INTO bank_transactions (id, bank_account_id, booking_date, amount, currency, category_id, tx_type) VALUES
+                ('tx1', 'acc1', 1704067200, '500.00', 'CZK', 'cat_income', 'credit');
+            "#,
+        )
+        .expect("insert");
+
+        let report = get_report(&conn, 0, i64::MAX, "monthly").expect("report");
+        assert_eq!(report.total_income, "500.00");
+        assert_eq!(report.total_expenses, "0.00");
+        assert_eq!(report.net_balance, "500.00");
+    }
 }
