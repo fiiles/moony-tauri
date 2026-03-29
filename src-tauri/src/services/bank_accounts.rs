@@ -172,3 +172,107 @@ pub fn delete_account(conn: &rusqlite::Connection, id: &str) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::InsertBankAccount;
+    use rusqlite::Connection;
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE bank_accounts (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                account_type TEXT NOT NULL DEFAULT 'checking',
+                iban TEXT,
+                bban TEXT,
+                currency TEXT NOT NULL DEFAULT 'CZK',
+                balance TEXT NOT NULL DEFAULT '0',
+                institution_id TEXT,
+                external_account_id TEXT,
+                data_source TEXT NOT NULL DEFAULT 'manual',
+                last_synced_at INTEGER,
+                interest_rate TEXT,
+                has_zone_designation INTEGER NOT NULL DEFAULT 0,
+                termination_date INTEGER,
+                created_at INTEGER NOT NULL DEFAULT 0,
+                updated_at INTEGER NOT NULL DEFAULT 0
+            );
+            "#,
+        )
+        .expect("schema");
+        conn
+    }
+
+    fn minimal_insert(name: &str) -> InsertBankAccount {
+        InsertBankAccount {
+            name: name.to_string(),
+            account_type: None,
+            iban: None,
+            bban: None,
+            currency: None,
+            balance: None,
+            institution_id: None,
+            interest_rate: None,
+            has_zone_designation: None,
+            termination_date: None,
+        }
+    }
+
+    #[test]
+    fn test_create_account_sets_defaults() {
+        let conn = setup_test_db();
+        let account = create_account(&conn, &minimal_insert("Main Account")).expect("create");
+        assert_eq!(account.name, "Main Account");
+        assert_eq!(account.account_type, "checking");
+        assert_eq!(account.currency, "CZK");
+        assert_eq!(account.balance, "0");
+        assert_eq!(account.data_source, "manual");
+        assert!(!account.id.is_empty());
+    }
+
+    #[test]
+    fn test_create_account_with_iban() {
+        let conn = setup_test_db();
+        let mut data = minimal_insert("Savings");
+        data.iban = Some("CZ6508000000192000145399".to_string());
+        data.currency = Some("CZK".to_string());
+        let account = create_account(&conn, &data).expect("create");
+        assert_eq!(account.iban.as_deref(), Some("CZ6508000000192000145399"));
+    }
+
+    #[test]
+    fn test_get_account_by_id_not_found() {
+        let conn = setup_test_db();
+        let result = get_account_by_id(&conn, "nonexistent-id");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_create_then_get_account() {
+        let conn = setup_test_db();
+        let created = create_account(&conn, &minimal_insert("Test Account")).expect("create");
+        let fetched = get_account_by_id(&conn, &created.id).expect("get");
+        assert_eq!(created.id, fetched.id);
+        assert_eq!(fetched.name, "Test Account");
+    }
+
+    #[test]
+    fn test_delete_account() {
+        let conn = setup_test_db();
+        let account = create_account(&conn, &minimal_insert("Delete Me")).expect("create");
+        delete_account(&conn, &account.id).expect("delete");
+        let result = get_account_by_id(&conn, &account.id);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_delete_nonexistent_account_returns_error() {
+        let conn = setup_test_db();
+        let result = delete_account(&conn, "does-not-exist");
+        assert!(result.is_err());
+    }
+}
