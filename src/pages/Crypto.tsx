@@ -119,13 +119,18 @@ export default function Crypto() {
         const quantity = parseFloat(String(inv.quantity));
         const avgPriceOriginal = parseFloat(String(inv.averagePrice));
         const currentPriceInCzk = parseFloat(String(inv.currentPrice)) || 0;
-        
+
         // Convert prices to preferred currency
         const preferredCurrency = currencyCode as CurrencyCode;
         // averagePrice is stored in native currency (from first transaction)
         const avgPriceCurrency = (inv.averagePriceCurrency || "USD") as CurrencyCode;
         const averagePrice = convert(avgPriceOriginal, avgPriceCurrency, preferredCurrency);
-        const currentPrice = convert(currentPriceInCzk, "CZK", preferredCurrency);
+        // Use originalPrice (native USD) directly to avoid CZK round-trip rate mismatch
+        const originalCurrentPrice = parseFloat(String(inv.originalPrice)) || 0;
+        const cryptoCurrency = (inv.currency || "USD") as CurrencyCode;
+        const currentPrice = originalCurrentPrice > 0
+            ? convert(originalCurrentPrice, cryptoCurrency, preferredCurrency)
+            : convert(currentPriceInCzk, "CZK", preferredCurrency);
 
         return mapCryptoInvestmentToHolding(
             inv.id,

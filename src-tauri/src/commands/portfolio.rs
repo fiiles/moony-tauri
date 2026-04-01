@@ -2365,32 +2365,44 @@ pub async fn update_portfolio_stocks_from_ticker_table(
 
     // Now aggregate from the populated stock_value_history table
     db.with_conn(|conn| {
-        // Get all distinct dates that have stock data in the range
+        // Iterate over portfolio_metrics_history days (not stock_value_history timestamps)
+        // to ensure non-trading days (weekends/holidays) use the most recent available price.
         let mut stmt = conn.prepare(
-            "SELECT DISTINCT recorded_at FROM stock_value_history 
-             WHERE recorded_at >= ?1 AND recorded_at <= ?2",
+            "SELECT DISTINCT (recorded_at / 86400) * 86400 FROM portfolio_metrics_history
+             WHERE (recorded_at / 86400) * 86400 >= ?1 AND (recorded_at / 86400) * 86400 <= ?2
+             ORDER BY recorded_at",
         )?;
-        let dates: Vec<i64> = stmt
+        let portfolio_days: Vec<i64> = stmt
             .query_map([from_day, today_start], |row| row.get(0))?
             .filter_map(|r| r.ok())
             .collect();
 
-        for day_timestamp in dates {
-            // Sum stock values for this day
+        for portfolio_day in portfolio_days {
+            // Use latest-per-ticker aggregation: for each ticker, find its most recent
+            // stock_value_history entry up to this portfolio day. This correctly handles
+            // non-trading days (weekends/holidays) by carrying forward Friday's price,
+            // rather than doing a partial sum of only the tickers recalculated for that day.
             let total_investments: f64 = conn
                 .query_row(
-                    "SELECT COALESCE(SUM(CAST(value_czk AS REAL)), 0) FROM stock_value_history WHERE recorded_at = ?1",
-                    [day_timestamp],
+                    "SELECT COALESCE(SUM(CAST(s.value_czk AS REAL)), 0)
+                     FROM stock_value_history s
+                     JOIN (
+                         SELECT ticker, MAX(recorded_at) AS max_ts
+                         FROM stock_value_history
+                         WHERE (recorded_at / 86400) * 86400 <= ?1
+                         GROUP BY ticker
+                     ) latest ON s.ticker = latest.ticker AND s.recorded_at = latest.max_ts",
+                    [portfolio_day],
                     |row| row.get(0),
                 )
                 .unwrap_or(0.0);
 
             // Update only total_investments column
             conn.execute(
-                "UPDATE portfolio_metrics_history 
-                 SET total_investments = ?2 
+                "UPDATE portfolio_metrics_history
+                 SET total_investments = ?2
                  WHERE (recorded_at / 86400) * 86400 = ?1",
-                rusqlite::params![day_timestamp, total_investments.to_string()],
+                rusqlite::params![portfolio_day, total_investments.to_string()],
             )?;
         }
         Ok(())
@@ -2441,32 +2453,42 @@ pub async fn update_portfolio_crypto_from_ticker_table(
 
     // Now aggregate from the populated crypto_value_history table
     db.with_conn(|conn| {
-        // Get all distinct dates that have crypto data in the range
+        // Iterate over portfolio_metrics_history days (not crypto_value_history timestamps)
+        // to ensure non-trading days use the most recent available price per ticker.
         let mut stmt = conn.prepare(
-            "SELECT DISTINCT recorded_at FROM crypto_value_history 
-             WHERE recorded_at >= ?1 AND recorded_at <= ?2",
+            "SELECT DISTINCT (recorded_at / 86400) * 86400 FROM portfolio_metrics_history
+             WHERE (recorded_at / 86400) * 86400 >= ?1 AND (recorded_at / 86400) * 86400 <= ?2
+             ORDER BY recorded_at",
         )?;
-        let dates: Vec<i64> = stmt
+        let portfolio_days: Vec<i64> = stmt
             .query_map([from_day, today_start], |row| row.get(0))?
             .filter_map(|r| r.ok())
             .collect();
 
-        for day_timestamp in dates {
-            // Sum crypto values for this day
+        for portfolio_day in portfolio_days {
+            // Use latest-per-ticker aggregation: for each crypto ticker, find its most recent
+            // crypto_value_history entry up to this portfolio day.
             let total_crypto: f64 = conn
                 .query_row(
-                    "SELECT COALESCE(SUM(CAST(value_czk AS REAL)), 0) FROM crypto_value_history WHERE recorded_at = ?1",
-                    [day_timestamp],
+                    "SELECT COALESCE(SUM(CAST(s.value_czk AS REAL)), 0)
+                     FROM crypto_value_history s
+                     JOIN (
+                         SELECT ticker, MAX(recorded_at) AS max_ts
+                         FROM crypto_value_history
+                         WHERE (recorded_at / 86400) * 86400 <= ?1
+                         GROUP BY ticker
+                     ) latest ON s.ticker = latest.ticker AND s.recorded_at = latest.max_ts",
+                    [portfolio_day],
                     |row| row.get(0),
                 )
                 .unwrap_or(0.0);
 
             // Update only total_crypto column
             conn.execute(
-                "UPDATE portfolio_metrics_history 
-                 SET total_crypto = ?2 
+                "UPDATE portfolio_metrics_history
+                 SET total_crypto = ?2
                  WHERE (recorded_at / 86400) * 86400 = ?1",
-                rusqlite::params![day_timestamp, total_crypto.to_string()],
+                rusqlite::params![portfolio_day, total_crypto.to_string()],
             )?;
         }
         Ok(())

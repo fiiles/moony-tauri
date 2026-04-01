@@ -36,7 +36,7 @@ import { useTranslation } from "react-i18next";
 const formSchema = z.object({
     quantity: z.coerce.number().positive("Quantity must be positive"),
     pricePerUnit: z.coerce.number().positive("Price must be positive"), // Investments usually valid > 0
-    currency: z.enum(["USD", "EUR", "CZK"]),
+    currency: z.enum(["USD", "EUR", "CZK", "GBP"]),
     date: z.string().optional(),
 });
 

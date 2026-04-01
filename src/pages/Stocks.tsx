@@ -96,7 +96,7 @@ export default function Stocks() {
   const refreshPricesMutation = useMutation({
     mutationFn: async () => {
       // First refresh stock prices
-      const pricesResult = await priceApi.refreshStockPrices();
+      const pricesResult = await priceApi.refreshStockPrices(true);
       // Then refresh dividends (runs in background, doesn't block)
       priceApi.refreshDividends().catch(console.error);
       return pricesResult;
@@ -110,7 +110,7 @@ export default function Stocks() {
       if (result.rate_limit_hit) {
         toast(t('toast.rateLimitReached'), { description: t('toast.rateLimitDescription') });
       } else {
-        toast(t('toast.pricesRefreshed'), { description: t('toast.pricesRefreshedDescription') });
+        toast(t('toast.pricesRefreshed', { count: result.updated.length }), { description: t('toast.pricesRefreshedDescription') });
       }
     },
     onError: (error: Error) => {
@@ -129,9 +129,12 @@ export default function Stocks() {
       const marketPriceCurrency = (inv.currency || "USD") as CurrencyCode;
       const avgCostCurrency = (inv.averagePriceCurrency || "USD") as CurrencyCode;
 
-      // holding.currentPrice is ALREADY in CZK (converted by Rust backend)
-      // Convert from CZK to preferred currency
-      const currentPriceConverted = convert(holding.currentPrice, "CZK", preferredCurrency);
+      // Convert originalPrice (native stock currency) directly to avoid the CZK round-trip
+      // (backend USD→CZK then frontend CZK→USD with different rate sets causes ~7% errors).
+      const originalCurrentPrice = parseFloat(String(inv.originalPrice)) || 0;
+      const currentPriceConverted = originalCurrentPrice > 0
+          ? convert(originalCurrentPrice, marketPriceCurrency, preferredCurrency)
+          : convert(holding.currentPrice, "CZK", preferredCurrency);
       const marketValue = holding.quantity * currentPriceConverted;
 
       // holding.avgCost is in avgCostCurrency, convert to preferred
@@ -140,9 +143,6 @@ export default function Stocks() {
 
       const gainLoss = marketValue - totalCostConverted;
       const gainLossPercent = totalCostConverted !== 0 ? (gainLoss / totalCostConverted) * 100 : 0;
-
-      // Original price from backend for display (in source currency)
-      const originalCurrentPrice = parseFloat(String(inv.originalPrice)) || 0;
 
       return {
         ...holding,

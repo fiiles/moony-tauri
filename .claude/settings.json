@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/filipkral/.cargo/registry/src/**)",
+      "Bash(cargo check)",
+      "Bash(grep -rn \"currentPrice\\\\|originalPrice\\\\|convert.*CZK\\\\|CZK.*convert\" /Users/filipkral/Documents/Programování/FinanceApp/Moony-tauri/src/pages/Crypto*.tsx)"
+    ]
+  }
+}
