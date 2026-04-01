@@ -146,7 +146,13 @@ pub async fn refresh_stock_prices_yahoo(
                     .ok()
                     .and_then(|m| m.regular_market_price)
                     .filter(|&p| p > 0.0)
-                    .or_else(|| response.last_quote().ok().map(|q| q.close).filter(|&p| p > 0.0));
+                    .or_else(|| {
+                        response
+                            .last_quote()
+                            .ok()
+                            .map(|q| q.close)
+                            .filter(|&p| p > 0.0)
+                    });
                 match price {
                     Some(price) => {
                         let currency = get_currency_from_ticker(ticker);
