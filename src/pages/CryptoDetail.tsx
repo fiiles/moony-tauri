@@ -186,12 +186,17 @@ export default function CryptoDetail() {
     const quantity = parseFloat(String(crypto.quantity)) || 0;
     const avgPriceOriginal = parseFloat(String(crypto.averagePrice)) || 0;
     const currentPriceInCzk = parseFloat(String(crypto.currentPrice)) || 0;
-    
+
     // Convert to preferred currency
     // averagePrice is stored in native currency (from first transaction)
     const avgPriceCurrency = (crypto.averagePriceCurrency || "USD") as CurrencyCode;
     const averagePrice = convert(avgPriceOriginal, avgPriceCurrency, currencyCode);
-    const currentPrice = convert(currentPriceInCzk, "CZK", currencyCode);
+    // Use originalPrice (native USD) directly to avoid CZK round-trip rate mismatch
+    const originalPriceNum = parseFloat(String(crypto.originalPrice)) || 0;
+    const cryptoCurrency = (crypto.currency || "USD") as CurrencyCode;
+    const currentPrice = originalPriceNum > 0
+        ? convert(originalPriceNum, cryptoCurrency, currencyCode)
+        : convert(currentPriceInCzk, "CZK", currencyCode);
 
     const holdingData = mapCryptoInvestmentToHolding(
         crypto.id,

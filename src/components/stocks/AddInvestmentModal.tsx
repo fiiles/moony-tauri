@@ -48,7 +48,7 @@ const formSchema = z.object({
     ticker: z.string().min(1, "validation.tickerRequired"),
     quantity: z.coerce.number().positive("validation.quantityPositive"),
     pricePerUnit: z.coerce.number().positive("validation.pricePositive"),
-    currency: z.enum(["USD", "EUR", "CZK"]),
+    currency: z.enum(["USD", "EUR", "CZK", "GBP"]),
     date: z.string().optional(), // Input type="date" returns string
 });
 

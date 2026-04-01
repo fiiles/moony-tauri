@@ -50,7 +50,7 @@ const formSchema = z.object({
     coingeckoId: z.string().optional(),
     quantity: z.coerce.number().positive("validation.quantityPositive"),
     pricePerUnit: z.coerce.number().min(0, "validation.pricePositive"),
-    currency: z.enum(["USD", "EUR", "CZK"]),
+    currency: z.enum(["USD", "EUR", "CZK", "GBP"]),
     date: z.string().optional(),
 });
 

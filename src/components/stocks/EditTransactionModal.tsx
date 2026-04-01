@@ -34,7 +34,7 @@ import { investmentsApi } from "@/lib/tauri-api";
 const formSchema = z.object({
     quantity: z.coerce.number().positive("Quantity must be positive"),
     pricePerUnit: z.coerce.number().positive("Price must be positive"),
-    currency: z.enum(["USD", "EUR", "CZK"]),
+    currency: z.enum(["USD", "EUR", "CZK", "GBP"]),
     date: z.string(),
 });
 

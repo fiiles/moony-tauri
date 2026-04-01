@@ -70,6 +70,7 @@ pub struct StockPriceRefreshResult {
 pub async fn refresh_stock_prices_yahoo(
     db: &Database,
     tickers: Vec<String>,
+    force_refresh: bool,
 ) -> Result<StockPriceRefreshResult> {
     use yahoo_finance_api as yahoo;
 
@@ -100,22 +101,27 @@ pub async fn refresh_stock_prices_yahoo(
         let ticker_upper = ticker.to_uppercase();
 
         // Check if we have a recent price (within PRICE_CACHE_HOURS)
-        let should_fetch = db.with_conn(|conn| {
-            let last_fetched: Option<i64> = conn
-                .query_row(
-                    "SELECT fetched_at FROM stock_data WHERE ticker = ?1",
-                    [&ticker_upper],
-                    |row| row.get(0),
-                )
-                .ok();
+        // Skip cache check if force_refresh is true
+        let should_fetch = if force_refresh {
+            true
+        } else {
+            db.with_conn(|conn| {
+                let last_fetched: Option<i64> = conn
+                    .query_row(
+                        "SELECT fetched_at FROM stock_data WHERE ticker = ?1",
+                        [&ticker_upper],
+                        |row| row.get(0),
+                    )
+                    .ok();
 
-            if let Some(fetched_at) = last_fetched {
-                let hours_since = (now - fetched_at) / 3600;
-                Ok(hours_since >= PRICE_CACHE_HOURS)
-            } else {
-                Ok(true) // No cached price, should fetch
-            }
-        })?;
+                if let Some(fetched_at) = last_fetched {
+                    let hours_since = (now - fetched_at) / 3600;
+                    Ok(hours_since >= PRICE_CACHE_HOURS)
+                } else {
+                    Ok(true) // No cached price, should fetch
+                }
+            })?
+        };
 
         if !should_fetch {
             log::info!(
@@ -126,48 +132,51 @@ pub async fn refresh_stock_prices_yahoo(
             continue;
         }
 
-        // Use get_latest_quotes for real-time price
+        // Use get_latest_quotes and read regular_market_price from the response metadata.
+        // This field is always populated by Yahoo Finance with the most recent market price
+        // regardless of market hours (open, pre-market, after-hours, weekends).
+        // last_quote().close only returns completed candle closes — during open market
+        // hours today's bar has close=null and it falls back to yesterday's close.
         match provider.get_latest_quotes(ticker, "1d").await {
             Ok(response) => {
-                match response.last_quote() {
-                    Ok(quote) => {
-                        let price = quote.close;
-                        if price > 0.0 {
-                            // Determine currency from ticker suffix
-                            let currency = get_currency_from_ticker(ticker);
-
-                            // Upsert into stock_data table
-                            if let Err(e) = db.with_conn(|conn| {
-                                conn.execute(
-                                    "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, fetched_at)
-                                     VALUES (?1, ?2, ?3, ?4, ?5, ?5)
-                                     ON CONFLICT(ticker) DO UPDATE SET
-                                       original_price = ?3, currency = ?4, price_date = ?5, fetched_at = ?5",
-                                    rusqlite::params![
-                                        uuid::Uuid::new_v4().to_string(),
-                                        &ticker_upper,
-                                        format!("{:.2}", price),
-                                        &currency,
-                                        now,
-                                    ],
-                                )?;
-                                Ok(())
-                            }) {
-                                failed_tickers.push((ticker.clone(), format!("DB error: {}", e)));
-                                continue;
-                            }
-
-                            updated_prices.push(StockPriceResult {
-                                ticker: ticker_upper,
-                                price,
-                                currency: currency.to_string(),
-                            });
-                        } else {
-                            failed_tickers.push((ticker.clone(), "price=0".to_string()));
+                // Prefer regular_market_price from metadata (reflects current price),
+                // fall back to last_quote().close if metadata price is unavailable.
+                let price = response
+                    .metadata()
+                    .ok()
+                    .and_then(|m| m.regular_market_price)
+                    .filter(|&p| p > 0.0)
+                    .or_else(|| response.last_quote().ok().map(|q| q.close).filter(|&p| p > 0.0));
+                match price {
+                    Some(price) => {
+                        let currency = get_currency_from_ticker(ticker);
+                        if let Err(e) = db.with_conn(|conn| {
+                            conn.execute(
+                                "INSERT INTO stock_data (id, ticker, original_price, currency, price_date, fetched_at)
+                                 VALUES (?1, ?2, ?3, ?4, ?5, ?5)
+                                 ON CONFLICT(ticker) DO UPDATE SET
+                                   original_price = ?3, currency = ?4, price_date = ?5, fetched_at = ?5",
+                                rusqlite::params![
+                                    uuid::Uuid::new_v4().to_string(),
+                                    &ticker_upper,
+                                    format!("{:.2}", price),
+                                    &currency,
+                                    now,
+                                ],
+                            )?;
+                            Ok(())
+                        }) {
+                            failed_tickers.push((ticker.clone(), format!("DB error: {}", e)));
+                            continue;
                         }
+                        updated_prices.push(StockPriceResult {
+                            ticker: ticker_upper,
+                            price,
+                            currency: currency.to_string(),
+                        });
                     }
-                    Err(e) => {
-                        failed_tickers.push((ticker.clone(), format!("no quote: {}", e)));
+                    None => {
+                        failed_tickers.push((ticker.clone(), "price unavailable".to_string()));
                     }
                 }
             }

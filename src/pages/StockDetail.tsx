@@ -224,12 +224,15 @@ export default function StockDetail() {
     const avgPriceOriginal = holdingData.avgCost; // Original avg price in avgCostCurrency
     const avgPrice = convert(avgPriceOriginal, avgCostCurrency, preferredCurrency);
     
-    // currentPrice from backend is ALREADY in CZK (converted by Rust backend)
-    // We need to convert from CZK to preferred currency
-    const currentPriceInCzk = holdingData.currentPrice;
-    const currentPrice = convert(currentPriceInCzk, "CZK", preferredCurrency);
-    // Original price for display (in its source currency)
-    const _currentPriceOriginal = parseFloat(String(investment.originalPrice)) || 0;
+    // Use originalPrice (native stock currency, e.g. USD) converted directly to the preferred
+    // currency. This avoids the backend CZK round-trip (currentPrice = backend USD→CZK using
+    // backend rates, then frontend CZK→USD using frontend ECB rates), which causes a visible
+    // discrepancy when the two rate sets diverge.
+    const originalPriceNum = parseFloat(String(investment.originalPrice)) || 0;
+    const stockCurrency = (investment.currency || "USD") as CurrencyCode;
+    const currentPrice = originalPriceNum > 0
+        ? convert(originalPriceNum, stockCurrency, preferredCurrency)
+        : convert(holdingData.currentPrice, "CZK", preferredCurrency);
     
     // Calculate metrics in preferred currency
     const totalInvested = quantity * avgPrice;

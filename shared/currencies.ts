@@ -1,5 +1,5 @@
 // Display currencies - shown in UI dropdowns
-export type DisplayCurrencyCode = "USD" | "EUR" | "CZK";
+export type DisplayCurrencyCode = "USD" | "EUR" | "CZK" | "GBP";
 
 // All supported currencies - for internal conversion
 export type CurrencyCode = "USD" | "EUR" | "CZK" | "GBP" | "CNY" | "JPY" | "CHF" | "HKD";
@@ -17,6 +17,7 @@ export const CURRENCIES: Record<DisplayCurrencyCode, CurrencyDef> = {
     USD: { code: "USD", symbol: "$", locale: "en-US", position: "before", label: "US Dollar (USD)" },
     EUR: { code: "EUR", symbol: "€", locale: "de-DE", position: "before", label: "Euro (EUR)" },
     CZK: { code: "CZK", symbol: "Kč", locale: "cs-CZ", position: "after", label: "Czech Crown (CZK)" },
+    GBP: { code: "GBP", symbol: "£", locale: "en-GB", position: "before", label: "British Pound (GBP)" },
 };
 
 // Base currency is CZK

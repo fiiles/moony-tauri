@@ -568,7 +568,7 @@ export const priceApi = {
 
   setApiKeys: (keys: ApiKeys) => tauriInvoke<void>('set_api_keys', { keys }),
 
-  refreshStockPrices: () => tauriInvoke<StockPriceRefreshResult>('refresh_stock_prices'),
+  refreshStockPrices: (forceRefresh?: boolean) => tauriInvoke<StockPriceRefreshResult>('refresh_stock_prices', { forceRefresh: forceRefresh ?? false }),
 
   refreshCryptoPrices: () => tauriInvoke<CryptoPriceResult[]>('refresh_crypto_prices'),
 

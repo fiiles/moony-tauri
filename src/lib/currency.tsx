@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { portfolioApi } from "@/lib/tauri-api";
 import { CURRENCIES, CurrencyCode, CurrencyDef, convertFromCzK, convertToCzK, updateExchangeRates } from "@shared/currencies";
 
@@ -22,6 +23,7 @@ const CurrencyContext = createContext<CurrencyContextValue | undefined>(undefine
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [ratesTimestamp, setRatesTimestamp] = useState(0);
 
   // Derive currencyCode from user profile - no need for separate state
@@ -37,13 +39,16 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         if (rates && typeof rates === 'object') {
           updateExchangeRates(rates);
           setRatesTimestamp(Date.now()); // Trigger update
+          // Invalidate backend-computed metrics so they re-run with the freshly
+          // updated Rust exchange rates, keeping Dashboard in sync with Stocks page.
+          queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
         }
       } catch (error) {
         console.warn("[CURRENCY] Failed to fetch ECB rates, using fallbacks:", error);
       }
     }
     fetchExchangeRates();
-  }, []);
+  }, [queryClient]);
 
   const currency = (CURRENCIES as Record<CurrencyCode, CurrencyDef | undefined>)[currencyCode] ?? CURRENCIES.CZK;
 
