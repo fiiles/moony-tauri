@@ -75,3 +75,6 @@ mcp-server/
 
 # Private documentation
 docs/updating
+
+# Git worktrees
+.worktrees/
