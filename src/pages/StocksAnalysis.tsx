@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { stockTagsApi } from "@/lib/tauri-api";
+import { stockTagsApi, investmentsApi } from "@/lib/tauri-api";
 import { SummaryCard } from "@/components/common/SummaryCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -44,12 +44,12 @@ import {
     CommandList,
 } from "@/components/ui/command";
 import { TrendingUp, TrendingDown, PieChart, Tag, Plus, Trash2, Settings2, FolderOpen, X, MoveRight, Check, ChevronsUpDown } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useCurrency } from "@/lib/currency";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { StockTag, StockTagGroup, StockInvestmentWithTags, TagMetrics } from "@shared/schema";
+import type { StockTag, StockTagGroup, StockInvestmentWithTags, TagMetrics, TwrSeries } from "@shared/schema";
 
 // Chart color tokens for tag palette
 const TAG_COLORS = [
@@ -89,6 +89,18 @@ export default function StocksAnalysis() {
     // Tag-to-group assignment state
     const [moveTagId, setMoveTagId] = useState<string>("");
     const [moveToGroupId, setMoveToGroupId] = useState<string>("");
+    // TWR chart state
+    const oneYearAgo = useMemo(() => {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() - 1);
+        return d.toISOString().slice(0, 10);
+    }, []);
+    const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+    const [twrFrom, setTwrFrom] = useState(oneYearAgo);
+    const [twrTo, setTwrTo] = useState(today);
+    const [twrTagIds, setTwrTagIds] = useState<string[]>([]);
+    const [twrShowPortfolio, setTwrShowPortfolio] = useState(true);
 
     // Queries
     const { data: tags = [], isLoading: tagsLoading } = useQuery<StockTag[]>({
@@ -110,6 +122,40 @@ export default function StocksAnalysis() {
         queryKey: ["tag-metrics", selectedTagIds],
         queryFn: () => stockTagsApi.getTagMetrics(selectedTagIds),
     });
+
+    const dateToTs = (dateStr: string) =>
+        Math.floor(new Date(dateStr + 'T00:00:00Z').getTime() / 1000);
+
+    const { data: twrSeries = [] } = useQuery<TwrSeries[]>({
+        queryKey: ['stock-twr', twrTagIds, twrShowPortfolio, twrFrom, twrTo],
+        queryFn: () =>
+            investmentsApi.getStockTwr(
+                twrTagIds,
+                twrShowPortfolio,
+                dateToTs(twrFrom),
+                dateToTs(twrTo),
+            ),
+        enabled: !!twrFrom && !!twrTo && twrFrom <= twrTo,
+    });
+
+    // Merge TwrSeries[] into a flat array keyed by seriesKey for Recharts
+    const twrChartData = useMemo(() => {
+        if (!twrSeries.length) return [];
+        const dateSet = new Set<string>();
+        twrSeries.forEach(s => s.data.forEach(d => dateSet.add(d.date)));
+        const dates = Array.from(dateSet).sort();
+        return dates.map(date => {
+            const point: Record<string, string | number | null> = { date };
+            twrSeries.forEach(s => {
+                const key = s.tag?.id ?? 'portfolio';
+                const dp = s.data.find(d => d.date === date);
+                point[key] = dp?.twr ?? null;
+            });
+            return point;
+        });
+    }, [twrSeries]);
+
+    const formatTwr = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 
     // Tag Mutations
     const createTagMutation = useMutation({
@@ -916,6 +962,163 @@ export default function StocksAnalysis() {
                     </div>
                 </div>
             )}
+
+            {/* TWR Performance Chart */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{t('stocksAnalysis.twrTitle', 'Portfolio Performance (TWR)')}</CardTitle>
+                        <CardDescription>
+                            {t('stocksAnalysis.twrDescription', 'Time-weighted return removes distortion caused by buy/sell transactions')}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {/* Controls row */}
+                        <div className="flex flex-wrap items-center gap-3 mb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                    {t('stocksAnalysis.twrFrom', 'From')}
+                                </span>
+                                <Input
+                                    type="date"
+                                    className="w-36"
+                                    value={twrFrom}
+                                    max={twrTo}
+                                    onChange={e => setTwrFrom(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                    {t('stocksAnalysis.twrTo', 'To')}
+                                </span>
+                                <Input
+                                    type="date"
+                                    className="w-36"
+                                    value={twrTo}
+                                    min={twrFrom}
+                                    onChange={e => setTwrTo(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 flex-1">
+                                <span className="text-sm text-muted-foreground">
+                                    {t('stocksAnalysis.twrLabels', 'Labels')}:
+                                </span>
+                                {tags.map(tag => (
+                                    <Badge
+                                        key={tag.id}
+                                        variant={twrTagIds.includes(tag.id) ? 'default' : 'secondary'}
+                                        className="cursor-pointer transition-all h-7 px-3"
+                                        style={{
+                                            backgroundColor: twrTagIds.includes(tag.id) ? tag.color || undefined : undefined,
+                                            borderColor: tag.color || undefined,
+                                        }}
+                                        onClick={() =>
+                                            setTwrTagIds(prev =>
+                                                prev.includes(tag.id)
+                                                    ? prev.filter(id => id !== tag.id)
+                                                    : [...prev, tag.id],
+                                            )
+                                        }
+                                    >
+                                        <span
+                                            className="w-2 h-2 rounded-full mr-1.5"
+                                            style={{
+                                                backgroundColor: twrTagIds.includes(tag.id)
+                                                    ? '#fff'
+                                                    : tag.color || 'hsl(var(--chart-8))',
+                                            }}
+                                        />
+                                        {tag.name}
+                                    </Badge>
+                                ))}
+                                {twrTagIds.length > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-xs h-7"
+                                        onClick={() => setTwrTagIds([])}
+                                    >
+                                        {tc('buttons.clearAll')}
+                                    </Button>
+                                )}
+                            </div>
+                            {twrTagIds.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <Checkbox
+                                        id="twr-portfolio"
+                                        checked={twrShowPortfolio}
+                                        onCheckedChange={checked => setTwrShowPortfolio(!!checked)}
+                                    />
+                                    <label htmlFor="twr-portfolio" className="text-sm cursor-pointer">
+                                        {t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio')}
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Chart */}
+                        <ResponsiveContainer width="100%" height={300}>
+                            <LineChart data={twrChartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis
+                                    dataKey="date"
+                                    stroke="hsl(var(--muted-foreground))"
+                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                                    tickFormatter={date => {
+                                        const d = new Date(date + 'T00:00:00Z');
+                                        const rangeDays = (dateToTs(twrTo) - dateToTs(twrFrom)) / 86400;
+                                        return rangeDays <= 90
+                                            ? d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })
+                                            : d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+                                    }}
+                                    interval="preserveStartEnd"
+                                />
+                                <YAxis
+                                    stroke="hsl(var(--muted-foreground))"
+                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                                    tickFormatter={v => formatTwr(v as number)}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: 'hsl(var(--popover))',
+                                        border: '1px solid hsl(var(--border))',
+                                        borderRadius: '6px',
+                                    }}
+                                    formatter={(value, name) => {
+                                        const series = twrSeries.find(
+                                            s => (s.tag?.id ?? 'portfolio') === name,
+                                        );
+                                        const label = series?.tag?.name ?? t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio');
+                                        return [formatTwr(value as number), label];
+                                    }}
+                                    labelFormatter={date => String(date)}
+                                />
+                                <Legend
+                                    formatter={name => {
+                                        const series = twrSeries.find(
+                                            s => (s.tag?.id ?? 'portfolio') === name,
+                                        );
+                                        return series?.tag?.name ?? t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio');
+                                    }}
+                                />
+                                {twrSeries.map((series, idx) => (
+                                    <Line
+                                        key={series.tag?.id ?? 'portfolio'}
+                                        type="monotone"
+                                        dataKey={series.tag?.id ?? 'portfolio'}
+                                        stroke={
+                                            series.tag
+                                                ? TAG_COLORS[idx % TAG_COLORS.length]
+                                                : 'hsl(var(--foreground))'
+                                        }
+                                        strokeWidth={2}
+                                        dot={false}
+                                        connectNulls
+                                    />
+                                ))}
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
 
             {/* Create Tag Dialog */}
             <Dialog open={isCreateTagDialogOpen} onOpenChange={setIsCreateTagDialogOpen}>
