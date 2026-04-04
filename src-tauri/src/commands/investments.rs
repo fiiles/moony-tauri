@@ -1086,7 +1086,7 @@ pub async fn get_stock_twr(
                     .prepare(
                         "SELECT si.ticker FROM stock_investments si \
                          JOIN stock_investment_tags sit ON sit.investment_id = si.id \
-                         WHERE sit.tag_id = ?1 ORDER BY si.ticker",
+                         WHERE sit.tag_id = ?1 AND CAST(si.quantity AS REAL) > 0 ORDER BY si.ticker",
                     )?
                     .query_map([tag_id], |row| row.get(0))?
                     .collect::<rusqlite::Result<_>>()?;
