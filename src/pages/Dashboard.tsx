@@ -14,11 +14,13 @@ import type { PortfolioMetricsHistory } from "@shared/schema";
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/i18n/I18nProvider";
+import { useCurrency } from "@/lib/currency";
 
 export default function Dashboard() {
   const { t } = useTranslation('dashboard');
   const { user } = useAuth();
   const { formatDate } = useLanguage();
+  const { ratesTimestamp } = useCurrency();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('30D');
 
   // Calculate date range based on selected period
@@ -55,8 +57,11 @@ export default function Dashboard() {
   });
 
   // Fetch portfolio metrics using Tauri API
+  // ratesTimestamp is included in the queryKey so this re-fetches whenever ECB exchange rates
+  // are refreshed. This ensures the dashboard uses the same rates as the stocks/crypto pages,
+  // which compute values directly in the frontend from originalPrice + frontend rates.
   const { data: portfolioMetrics } = useQuery({
-    queryKey: ["portfolio-metrics"],
+    queryKey: ["portfolio-metrics", ratesTimestamp],
     queryFn: async () => {
       return portfolioApi.getMetrics(user?.excludePersonalRealEstate || false);
     },

@@ -31,24 +31,44 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     return (user?.currency as CurrencyCode) ?? "CZK";
   }, [user?.currency]);
 
-  // Fetch ECB rates on mount using Tauri API
+  // Initialize and refresh exchange rates after unlock.
+  // IMPORTANT: must depend on user (not just queryClient) because:
+  //   - load_rates_from_db runs inside db.open_with_password (on unlock)
+  //   - save_rates_to_db (called by refreshExchangeRates) requires an open DB
+  //   - before unlock, both calls fail/return empty → frontend stays at hardcoded fallbacks
   useEffect(() => {
-    async function fetchExchangeRates() {
+    if (!user) return; // DB not open yet; wait for unlock
+
+    async function initRates() {
+      // Step 1: Immediately sync frontend with backend rates (fast IPC, no network).
+      // DB is now open, so Rust has already loaded rates from SQLite. This ensures
+      // the Stocks/Crypto pages use the same rates as portfolio-metrics from the
+      // very first render after unlock, before the ECB network call completes.
       try {
-        const rates = await portfolioApi.refreshExchangeRates();
-        if (rates && typeof rates === 'object') {
-          updateExchangeRates(rates);
-          setRatesTimestamp(Date.now()); // Trigger update
-          // Invalidate backend-computed metrics so they re-run with the freshly
-          // updated Rust exchange rates, keeping Dashboard in sync with Stocks page.
+        const backendRates = await portfolioApi.getExchangeRates();
+        if (backendRates && Object.keys(backendRates).length > 1) {
+          updateExchangeRates(backendRates);
+          setRatesTimestamp(Date.now());
+        }
+      } catch {
+        // ignore — will be corrected by the ECB fetch below
+      }
+
+      // Step 2: Refresh from ECB (slow, network). save_rates_to_db now succeeds
+      // because the DB is open. Updates both Rust in-memory rates and the frontend.
+      try {
+        const freshRates = await portfolioApi.refreshExchangeRates();
+        if (freshRates && typeof freshRates === 'object') {
+          updateExchangeRates(freshRates);
+          setRatesTimestamp(Date.now());
           queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
         }
       } catch (error) {
-        console.warn("[CURRENCY] Failed to fetch ECB rates, using fallbacks:", error);
+        console.warn("[CURRENCY] Failed to fetch ECB rates, using backend rates:", error);
       }
     }
-    fetchExchangeRates();
-  }, [queryClient]);
+    initRates();
+  }, [user?.id, queryClient]); // re-runs on unlock (user.id: null → string)
 
   const currency = (CURRENCIES as Record<CurrencyCode, CurrencyDef | undefined>)[currencyCode] ?? CURRENCIES.CZK;
 
