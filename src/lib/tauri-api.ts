@@ -63,6 +63,7 @@ import type {
   InsertStockTagGroup,
   StockInvestmentWithTags,
   TagMetrics,
+  TwrSeries,
 } from '../../shared/schema';
 import type {
   StockInvestmentWithPrice,
@@ -250,6 +251,14 @@ export const investmentsApi = {
 
   backfillHistory: (ticker: string) =>
     tauriInvoke<BackfillResult>('backfill_stock_ticker_history', { ticker }),
+
+  getStockTwr: (
+    tagIds: string[],
+    includePortfolio: boolean,
+    fromTs: number,
+    toTs: number,
+  ) =>
+    tauriInvoke<TwrSeries[]>('get_stock_twr', { tagIds, includePortfolio, fromTs, toTs }),
 };
 
 // ============================================================================

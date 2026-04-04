@@ -861,6 +861,19 @@ export interface InsertStockTag {
     groupId?: string | null;
 }
 
+export interface TwrDataPoint {
+    /** Calendar date as "YYYY-MM-DD" */
+    date: string;
+    /** Cumulative TWR in percent (0.0 at start of range) */
+    twr: number;
+}
+
+export interface TwrSeries {
+    /** Tag this series belongs to. null = whole portfolio. */
+    tag: StockTag | null;
+    data: TwrDataPoint[];
+}
+
 export interface StockInvestmentWithTags {
     id: string;
     ticker: string;
