@@ -964,161 +964,161 @@ export default function StocksAnalysis() {
             )}
 
             {/* TWR Performance Chart */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{t('stocksAnalysis.twrTitle', 'Portfolio Performance (TWR)')}</CardTitle>
-                        <CardDescription>
-                            {t('stocksAnalysis.twrDescription', 'Time-weighted return removes distortion caused by buy/sell transactions')}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {/* Controls row */}
-                        <div className="flex flex-wrap items-center gap-3 mb-4">
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                    {t('stocksAnalysis.twrFrom', 'From')}
-                                </span>
-                                <Input
-                                    type="date"
-                                    className="w-36"
-                                    value={twrFrom}
-                                    max={twrTo}
-                                    onChange={e => setTwrFrom(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                    {t('stocksAnalysis.twrTo', 'To')}
-                                </span>
-                                <Input
-                                    type="date"
-                                    className="w-36"
-                                    value={twrTo}
-                                    min={twrFrom}
-                                    onChange={e => setTwrTo(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 flex-1">
-                                <span className="text-sm text-muted-foreground">
-                                    {t('stocksAnalysis.twrLabels', 'Labels')}:
-                                </span>
-                                {tags.map(tag => (
-                                    <Badge
-                                        key={tag.id}
-                                        variant={twrTagIds.includes(tag.id) ? 'default' : 'secondary'}
-                                        className="cursor-pointer transition-all h-7 px-3"
+            <Card>
+                <CardHeader>
+                    <CardTitle>{t('stocksAnalysis.twrTitle', 'Portfolio Performance (TWR)')}</CardTitle>
+                    <CardDescription>
+                        {t('stocksAnalysis.twrDescription', 'Time-weighted return removes distortion caused by buy/sell transactions')}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {/* Controls row */}
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                {t('stocksAnalysis.twrFrom', 'From')}
+                            </span>
+                            <Input
+                                type="date"
+                                className="w-36"
+                                value={twrFrom}
+                                max={twrTo}
+                                onChange={e => setTwrFrom(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                {t('stocksAnalysis.twrTo', 'To')}
+                            </span>
+                            <Input
+                                type="date"
+                                className="w-36"
+                                value={twrTo}
+                                min={twrFrom}
+                                onChange={e => setTwrTo(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 flex-1">
+                            <span className="text-sm text-muted-foreground">
+                                {t('stocksAnalysis.twrLabels', 'Labels')}:
+                            </span>
+                            {tags.map(tag => (
+                                <Badge
+                                    key={tag.id}
+                                    variant={twrTagIds.includes(tag.id) ? 'default' : 'secondary'}
+                                    className="cursor-pointer transition-all h-7 px-3"
+                                    style={{
+                                        backgroundColor: twrTagIds.includes(tag.id) ? tag.color || undefined : undefined,
+                                        borderColor: tag.color || undefined,
+                                    }}
+                                    onClick={() =>
+                                        setTwrTagIds(prev =>
+                                            prev.includes(tag.id)
+                                                ? prev.filter(id => id !== tag.id)
+                                                : [...prev, tag.id],
+                                        )
+                                    }
+                                >
+                                    <span
+                                        className="w-2 h-2 rounded-full mr-1.5"
                                         style={{
-                                            backgroundColor: twrTagIds.includes(tag.id) ? tag.color || undefined : undefined,
-                                            borderColor: tag.color || undefined,
+                                            backgroundColor: twrTagIds.includes(tag.id)
+                                                ? '#fff'
+                                                : tag.color || 'hsl(var(--chart-8))',
                                         }}
-                                        onClick={() =>
-                                            setTwrTagIds(prev =>
-                                                prev.includes(tag.id)
-                                                    ? prev.filter(id => id !== tag.id)
-                                                    : [...prev, tag.id],
-                                            )
-                                        }
-                                    >
-                                        <span
-                                            className="w-2 h-2 rounded-full mr-1.5"
-                                            style={{
-                                                backgroundColor: twrTagIds.includes(tag.id)
-                                                    ? '#fff'
-                                                    : tag.color || 'hsl(var(--chart-8))',
-                                            }}
-                                        />
-                                        {tag.name}
-                                    </Badge>
-                                ))}
-                                {twrTagIds.length > 0 && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-xs h-7"
-                                        onClick={() => setTwrTagIds([])}
-                                    >
-                                        {tc('buttons.clearAll')}
-                                    </Button>
-                                )}
-                            </div>
-                            {twrTagIds.length > 0 && (
-                                <div className="flex items-center gap-2">
-                                    <Checkbox
-                                        id="twr-portfolio"
-                                        checked={twrShowPortfolio}
-                                        onCheckedChange={checked => setTwrShowPortfolio(!!checked)}
                                     />
-                                    <label htmlFor="twr-portfolio" className="text-sm cursor-pointer">
-                                        {t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio')}
-                                    </label>
-                                </div>
+                                    {tag.name}
+                                </Badge>
+                            ))}
+                            {twrTagIds.length > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs h-7"
+                                    onClick={() => setTwrTagIds([])}
+                                >
+                                    {tc('buttons.clearAll')}
+                                </Button>
                             )}
                         </div>
+                        {twrTagIds.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    id="twr-portfolio"
+                                    checked={twrShowPortfolio}
+                                    onCheckedChange={checked => setTwrShowPortfolio(!!checked)}
+                                />
+                                <label htmlFor="twr-portfolio" className="text-sm cursor-pointer">
+                                    {t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio')}
+                                </label>
+                            </div>
+                        )}
+                    </div>
 
-                        {/* Chart */}
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={twrChartData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                <XAxis
-                                    dataKey="date"
-                                    stroke="hsl(var(--muted-foreground))"
-                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                                    tickFormatter={date => {
-                                        const d = new Date(date + 'T00:00:00Z');
-                                        const rangeDays = (dateToTs(twrTo) - dateToTs(twrFrom)) / 86400;
-                                        return rangeDays <= 90
-                                            ? d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })
-                                            : d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
-                                    }}
-                                    interval="preserveStartEnd"
+                    {/* Chart */}
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={twrChartData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis
+                                dataKey="date"
+                                stroke="hsl(var(--muted-foreground))"
+                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                                tickFormatter={date => {
+                                    const d = new Date(date + 'T00:00:00Z');
+                                    const rangeDays = (dateToTs(twrTo) - dateToTs(twrFrom)) / 86400;
+                                    return rangeDays <= 90
+                                        ? d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })
+                                        : d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+                                }}
+                                interval="preserveStartEnd"
+                            />
+                            <YAxis
+                                stroke="hsl(var(--muted-foreground))"
+                                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                                tickFormatter={v => formatTwr(v as number)}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'hsl(var(--popover))',
+                                    border: '1px solid hsl(var(--border))',
+                                    borderRadius: '6px',
+                                }}
+                                formatter={(value, name) => {
+                                    const series = twrSeries.find(
+                                        s => (s.tag?.id ?? 'portfolio') === name,
+                                    );
+                                    const label = series?.tag?.name ?? t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio');
+                                    return [formatTwr(value as number), label];
+                                }}
+                                labelFormatter={date => String(date)}
+                            />
+                            <Legend
+                                formatter={name => {
+                                    const series = twrSeries.find(
+                                        s => (s.tag?.id ?? 'portfolio') === name,
+                                    );
+                                    return series?.tag?.name ?? t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio');
+                                }}
+                            />
+                            {twrSeries.map((series, idx) => (
+                                <Line
+                                    key={series.tag?.id ?? 'portfolio'}
+                                    type="monotone"
+                                    dataKey={series.tag?.id ?? 'portfolio'}
+                                    stroke={
+                                        series.tag
+                                            ? TAG_COLORS[idx % TAG_COLORS.length]
+                                            : 'hsl(var(--foreground))'
+                                    }
+                                    strokeWidth={2}
+                                    dot={false}
+                                    connectNulls
                                 />
-                                <YAxis
-                                    stroke="hsl(var(--muted-foreground))"
-                                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-                                    tickFormatter={v => formatTwr(v as number)}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: 'hsl(var(--popover))',
-                                        border: '1px solid hsl(var(--border))',
-                                        borderRadius: '6px',
-                                    }}
-                                    formatter={(value, name) => {
-                                        const series = twrSeries.find(
-                                            s => (s.tag?.id ?? 'portfolio') === name,
-                                        );
-                                        const label = series?.tag?.name ?? t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio');
-                                        return [formatTwr(value as number), label];
-                                    }}
-                                    labelFormatter={date => String(date)}
-                                />
-                                <Legend
-                                    formatter={name => {
-                                        const series = twrSeries.find(
-                                            s => (s.tag?.id ?? 'portfolio') === name,
-                                        );
-                                        return series?.tag?.name ?? t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio');
-                                    }}
-                                />
-                                {twrSeries.map((series, idx) => (
-                                    <Line
-                                        key={series.tag?.id ?? 'portfolio'}
-                                        type="monotone"
-                                        dataKey={series.tag?.id ?? 'portfolio'}
-                                        stroke={
-                                            series.tag
-                                                ? TAG_COLORS[idx % TAG_COLORS.length]
-                                                : 'hsl(var(--foreground))'
-                                        }
-                                        strokeWidth={2}
-                                        dot={false}
-                                        connectNulls
-                                    />
-                                ))}
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+                            ))}
+                        </LineChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
 
             {/* Create Tag Dialog */}
             <Dialog open={isCreateTagDialogOpen} onOpenChange={setIsCreateTagDialogOpen}>
