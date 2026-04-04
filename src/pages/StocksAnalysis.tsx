@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { stockTagsApi, investmentsApi } from "@/lib/tauri-api";
 import { SummaryCard } from "@/components/common/SummaryCard";
@@ -123,8 +123,10 @@ export default function StocksAnalysis() {
         queryFn: () => stockTagsApi.getTagMetrics(selectedTagIds),
     });
 
-    const dateToTs = (dateStr: string) =>
-        Math.floor(new Date(dateStr + 'T00:00:00Z').getTime() / 1000);
+    const dateToTs = useCallback(
+        (dateStr: string) => Math.floor(new Date(dateStr + 'T00:00:00Z').getTime() / 1000),
+        [],
+    );
 
     const { data: twrSeries = [] } = useQuery<TwrSeries[]>({
         queryKey: ['stock-twr', twrTagIds, twrShowPortfolio, twrFrom, twrTo],
@@ -1108,7 +1110,7 @@ export default function StocksAnalysis() {
                                     stroke={
                                         series.tag
                                             ? TAG_COLORS[idx % TAG_COLORS.length]
-                                            : 'hsl(var(--foreground))'
+                                            : 'hsl(var(--chart-5))'
                                     }
                                     strokeWidth={2}
                                     dot={false}

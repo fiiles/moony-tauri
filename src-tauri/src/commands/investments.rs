@@ -1051,7 +1051,7 @@ pub async fn get_stock_twr(
 
         // Fetch all stock tickers
         let all_tickers: Vec<String> = conn
-            .prepare("SELECT ticker FROM stock_investments ORDER BY ticker")?
+            .prepare("SELECT ticker FROM stock_investments WHERE CAST(quantity AS REAL) > 0 ORDER BY ticker")?
             .query_map([], |row| row.get(0))?
             .collect::<rusqlite::Result<_>>()?;
 
