@@ -6,6 +6,10 @@
 
 use crate::error::{AppError, Result};
 use crate::models::{InsertInvestmentTransaction, InvestmentTransaction, StockInvestment};
+use chrono::DateTime;
+use rusqlite::params_from_iter;
+use rusqlite::types::Value;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Recalculate investment quantity and average price from transactions
@@ -446,6 +450,131 @@ pub fn get_value_history(
     Ok(histories)
 }
 
+/// Convert a Unix timestamp to a "YYYY-MM-DD" date string (UTC).
+fn ts_to_date_str(ts: i64) -> String {
+    DateTime::from_timestamp(ts, 0)
+        .map(|dt| dt.format("%Y-%m-%d").to_string())
+        .unwrap_or_default()
+}
+
+/// Find the most recent (value_czk, quantity) for a ticker at or before target_ts.
+fn lookup_ticker_at(
+    history: &HashMap<String, Vec<(i64, f64, f64)>>,
+    ticker: &str,
+    target_ts: i64,
+) -> (f64, f64) {
+    history
+        .get(ticker)
+        .and_then(|entries| {
+            entries
+                .iter()
+                .rev()
+                .find(|(ts, _, _)| *ts <= target_ts)
+                .map(|(_, val, qty)| (*val, *qty))
+        })
+        .unwrap_or((0.0, 0.0))
+}
+
+/// Compute daily chain-linked time-weighted return for a group of tickers.
+///
+/// Returns one `TwrDataPoint` per calendar day from `from_ts` to `to_ts` inclusive.
+/// The first point is always `{ date: from_ts, twr: 0.0 }`.
+/// Cash flows are estimated from quantity changes in `stock_value_history`.
+///
+/// `from_ts` and `to_ts` must be Unix timestamps (seconds, midnight UTC).
+pub fn compute_twr_for_tickers(
+    conn: &rusqlite::Connection,
+    tickers: &[String],
+    from_ts: i64,
+    to_ts: i64,
+) -> Result<Vec<crate::models::TwrDataPoint>> {
+    if tickers.is_empty() {
+        return Ok(vec![crate::models::TwrDataPoint {
+            date: ts_to_date_str(from_ts),
+            twr: 0.0,
+        }]);
+    }
+
+    // Build SQL: ?1 = to_ts, ?2..?N = tickers
+    let placeholders: Vec<String> = (2..=tickers.len() + 1).map(|i| format!("?{i}")).collect();
+    let sql = format!(
+        "SELECT ticker, recorded_at, CAST(value_czk AS REAL), CAST(quantity AS REAL) \
+         FROM stock_value_history \
+         WHERE ticker IN ({}) AND recorded_at <= ?1 \
+         ORDER BY ticker, recorded_at ASC",
+        placeholders.join(", ")
+    );
+
+    let params: Vec<Value> = std::iter::once(Value::Integer(to_ts))
+        .chain(tickers.iter().map(|t| Value::Text(t.clone())))
+        .collect();
+
+    let mut history: HashMap<String, Vec<(i64, f64, f64)>> = HashMap::new();
+    {
+        let mut stmt = conn.prepare(&sql)?;
+        let rows = stmt.query_map(params_from_iter(params), |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, f64>(2)?,
+                row.get::<_, f64>(3)?,
+            ))
+        })?;
+        for row in rows {
+            let (ticker, ts, val, qty) = row?;
+            history.entry(ticker).or_default().push((ts, val, qty));
+        }
+    }
+
+    let mut result = vec![crate::models::TwrDataPoint {
+        date: ts_to_date_str(from_ts),
+        twr: 0.0,
+    }];
+    let mut twr_factor = 1.0f64;
+    let mut day = from_ts + 86400;
+
+    while day <= to_ts {
+        let prev_day = day - 86400;
+        let mut v_curr = 0.0f64;
+        let mut v_prev = 0.0f64;
+        let mut cf = 0.0f64;
+
+        for ticker in tickers {
+            let (val_curr, qty_curr) = lookup_ticker_at(&history, ticker, day);
+            let (val_prev, qty_prev) = lookup_ticker_at(&history, ticker, prev_day);
+            v_curr += val_curr;
+            v_prev += val_prev;
+
+            let delta_qty = qty_curr - qty_prev;
+            if delta_qty.abs() > 1e-9 {
+                let price_czk = if qty_curr > 1e-9 {
+                    val_curr / qty_curr
+                } else if qty_prev > 1e-9 {
+                    val_prev / qty_prev
+                } else {
+                    0.0
+                };
+                cf += delta_qty * price_czk;
+            }
+        }
+
+        let denominator = v_prev + cf;
+        if denominator > 1e-9 {
+            let daily_r = (v_curr - v_prev - cf) / denominator;
+            twr_factor *= 1.0 + daily_r;
+        }
+
+        result.push(crate::models::TwrDataPoint {
+            date: ts_to_date_str(day),
+            twr: (twr_factor - 1.0) * 100.0,
+        });
+
+        day += 86400;
+    }
+
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -659,5 +788,88 @@ mod tests {
         import_single_transaction(&conn, "AMD", "AMD", "buy", "10", "100", "USD", 0).unwrap();
         let result = import_single_transaction(&conn, "AMD", "AMD", "buy", "5", "90", "EUR", 1);
         assert!(result.is_err());
+    }
+
+    fn setup_twr_db() -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE stock_value_history (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                recorded_at INTEGER NOT NULL,
+                value_czk TEXT NOT NULL,
+                quantity TEXT NOT NULL,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                UNIQUE(ticker, recorded_at)
+            );",
+        )
+        .unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_twr_buy_does_not_inflate_return() {
+        // Day 0: 10 AAPL @ 100 CZK = 1000 CZK
+        // Day 1: buy 10 more @ 100 CZK → 20 @ 100 = 2000 (CF = 1000, pure cash-in, no price gain)
+        // Day 2: price rises to 110 → 20 @ 110 = 2200 (no transaction, pure gain = 10%)
+        // Expected TWR: day0=0%, day1=0%, day2=10%
+        let conn = setup_twr_db();
+        let day0: i64 = 1_700_000_000 / 86400 * 86400;
+        let day1 = day0 + 86400;
+        let day2 = day0 + 2 * 86400;
+        conn.execute_batch(&format!(
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency) VALUES
+             ('a', 'AAPL', {day0}, '1000.0', '10.0', '100.0', 'USD'),
+             ('b', 'AAPL', {day1}, '2000.0', '20.0', '100.0', 'USD'),
+             ('c', 'AAPL', {day2}, '2200.0', '20.0', '110.0', 'USD');"
+        ))
+        .unwrap();
+
+        let result = compute_twr_for_tickers(&conn, &["AAPL".to_string()], day0, day2).unwrap();
+        assert_eq!(result.len(), 3);
+        assert!((result[0].twr - 0.0).abs() < 0.01, "day0 should be 0%");
+        assert!(
+            (result[1].twr - 0.0).abs() < 0.01,
+            "buy should not inflate TWR"
+        );
+        assert!(
+            (result[2].twr - 10.0).abs() < 0.1,
+            "price gain should be ~10%"
+        );
+    }
+
+    #[test]
+    fn test_twr_pure_price_appreciation() {
+        // No transactions: daily chain TWR equals simple cumulative return
+        let conn = setup_twr_db();
+        let day0: i64 = 1_700_200_000 / 86400 * 86400;
+        let day1 = day0 + 86400;
+        let day2 = day0 + 2 * 86400;
+        conn.execute_batch(&format!(
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency) VALUES
+             ('a', 'AAPL', {day0}, '1000.0', '10.0', '100.0', 'USD'),
+             ('b', 'AAPL', {day1}, '1050.0', '10.0', '105.0', 'USD'),
+             ('c', 'AAPL', {day2}, '1100.0', '10.0', '110.0', 'USD');"
+        ))
+        .unwrap();
+
+        let result = compute_twr_for_tickers(&conn, &["AAPL".to_string()], day0, day2).unwrap();
+        assert_eq!(result.len(), 3);
+        assert!((result[0].twr - 0.0).abs() < 0.01);
+        // day1: (1050-1000)/1000 = 5%
+        assert!((result[1].twr - 5.0).abs() < 0.1);
+        // day2: 1.05 * (1100/1050) - 1 ≈ 10%
+        assert!((result[2].twr - 10.0).abs() < 0.5);
+    }
+
+    #[test]
+    fn test_twr_empty_tickers_returns_single_zero_point() {
+        let conn = setup_twr_db();
+        let day0: i64 = 1_700_400_000 / 86400 * 86400;
+        let day1 = day0 + 86400;
+        let result = compute_twr_for_tickers(&conn, &[], day0, day1).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].twr, 0.0);
     }
 }
