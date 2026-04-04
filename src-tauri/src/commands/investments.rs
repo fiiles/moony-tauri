@@ -5,10 +5,11 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
     DividendOverride, EnrichedStockInvestment, InsertInvestmentTransaction, InsertStockInvestment,
-    InvestmentTransaction, StockInvestment, StockPriceOverride, StockTag,
+    InvestmentTransaction, StockInvestment, StockPriceOverride, StockTag, TwrSeries,
 };
 use crate::services::currency::convert_to_czk;
 use crate::services::investments as investment_service;
+use rusqlite::OptionalExtension;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
@@ -1028,4 +1029,77 @@ pub async fn get_stock_value_history(
     end_date: Option<i64>,
 ) -> Result<Vec<crate::models::TickerValueHistory>> {
     db.with_conn(|conn| investment_service::get_value_history(conn, &ticker, start_date, end_date))
+}
+
+/// Get time-weighted return series for a set of stock tags and/or the whole portfolio.
+///
+/// `tag_ids`: IDs of tags to compute separate series for.
+/// `include_portfolio`: if true, also include a whole-portfolio series.
+/// `from_ts` / `to_ts`: Unix timestamps (seconds, midnight UTC) for the date range.
+///
+/// When `tag_ids` is empty, only the portfolio series is returned regardless of `include_portfolio`.
+#[tauri::command]
+pub async fn get_stock_twr(
+    db: State<'_, Database>,
+    tag_ids: Vec<String>,
+    include_portfolio: bool,
+    from_ts: i64,
+    to_ts: i64,
+) -> Result<Vec<TwrSeries>> {
+    db.with_conn(move |conn| {
+        let mut series: Vec<TwrSeries> = Vec::new();
+
+        // Fetch all stock tickers
+        let all_tickers: Vec<String> = conn
+            .prepare("SELECT ticker FROM stock_investments ORDER BY ticker")?
+            .query_map([], |row| row.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+
+        // Whole portfolio series (always when no tag filter, optional when tags selected)
+        if tag_ids.is_empty() || include_portfolio {
+            let data =
+                investment_service::compute_twr_for_tickers(conn, &all_tickers, from_ts, to_ts)?;
+            series.push(TwrSeries { tag: None, data });
+        }
+
+        // Per-tag series
+        for tag_id in &tag_ids {
+            let tag: Option<StockTag> = conn
+                .query_row(
+                    "SELECT id, name, color, group_id, created_at \
+                     FROM stock_tags WHERE id = ?1",
+                    [tag_id],
+                    |row| {
+                        Ok(StockTag {
+                            id: row.get(0)?,
+                            name: row.get(1)?,
+                            color: row.get(2)?,
+                            group_id: row.get(3)?,
+                            created_at: row.get(4)?,
+                        })
+                    },
+                )
+                .optional()?;
+
+            if let Some(tag) = tag {
+                let tickers: Vec<String> = conn
+                    .prepare(
+                        "SELECT si.ticker FROM stock_investments si \
+                         JOIN stock_investment_tags sit ON sit.investment_id = si.id \
+                         WHERE sit.tag_id = ?1 ORDER BY si.ticker",
+                    )?
+                    .query_map([tag_id], |row| row.get(0))?
+                    .collect::<rusqlite::Result<_>>()?;
+
+                let data =
+                    investment_service::compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?;
+                series.push(TwrSeries {
+                    tag: Some(tag),
+                    data,
+                });
+            }
+        }
+
+        Ok(series)
+    })
 }
