@@ -457,7 +457,11 @@ fn ts_to_date_str(ts: i64) -> String {
         .unwrap_or_default()
 }
 
-/// Find the most recent (value_czk, quantity) for a ticker at or before target_ts.
+/// Find the most recent (value_czk, quantity) for a ticker at or before `target_ts`.
+///
+/// # Precondition
+/// The entries in `history` must be sorted by timestamp ascending (as returned
+/// by the SQL `ORDER BY ticker, recorded_at ASC` query in `compute_twr_for_tickers`).
 fn lookup_ticker_at(
     history: &HashMap<String, Vec<(i64, f64, f64)>>,
     ticker: &str,
@@ -495,18 +499,32 @@ pub fn compute_twr_for_tickers(
         }]);
     }
 
-    // Build SQL: ?1 = to_ts, ?2..?N = tickers
-    let placeholders: Vec<String> = (2..=tickers.len() + 1).map(|i| format!("?{i}")).collect();
+    // Build SQL with two IN clause copies (tickers appear twice: once for main range, once for pre-range lookup)
+    // params: ?1=from_ts, ?2=to_ts, ?3..?(n+2)=tickers (main range), ?(n+3)..?(2n+2)=tickers (pre-range)
+    let n = tickers.len();
+    let main_placeholders: Vec<String> = (3..=n + 2).map(|i| format!("?{i}")).collect();
+    let pre_placeholders: Vec<String> = (n + 3..=2 * n + 2).map(|i| format!("?{i}")).collect();
     let sql = format!(
         "SELECT ticker, recorded_at, CAST(value_czk AS REAL), CAST(quantity AS REAL) \
          FROM stock_value_history \
-         WHERE ticker IN ({}) AND recorded_at <= ?1 \
+         WHERE ticker IN ({main}) AND recorded_at >= ?1 AND recorded_at <= ?2 \
+         UNION ALL \
+         SELECT s.ticker, s.recorded_at, CAST(s.value_czk AS REAL), CAST(s.quantity AS REAL) \
+         FROM stock_value_history s \
+         WHERE s.ticker IN ({pre}) \
+           AND s.recorded_at = ( \
+               SELECT MAX(recorded_at) FROM stock_value_history \
+               WHERE ticker = s.ticker AND recorded_at < ?1 \
+           ) \
          ORDER BY ticker, recorded_at ASC",
-        placeholders.join(", ")
+        main = main_placeholders.join(", "),
+        pre = pre_placeholders.join(", "),
     );
 
-    let params: Vec<Value> = std::iter::once(Value::Integer(to_ts))
-        .chain(tickers.iter().map(|t| Value::Text(t.clone())))
+    let params: Vec<Value> = std::iter::once(Value::Integer(from_ts))
+        .chain(std::iter::once(Value::Integer(to_ts)))
+        .chain(tickers.iter().map(|t| Value::Text(t.clone()))) // main range
+        .chain(tickers.iter().map(|t| Value::Text(t.clone()))) // pre-range
         .collect();
 
     let mut history: HashMap<String, Vec<(i64, f64, f64)>> = HashMap::new();
