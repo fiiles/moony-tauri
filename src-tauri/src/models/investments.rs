@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+use super::stock_tags::StockTag;
+
 /// Stock investment holding
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StockInvestment {
@@ -301,4 +303,21 @@ impl InsertInvestmentTransaction {
 
         Ok(())
     }
+}
+
+/// A single data point in a TWR time series.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct TwrDataPoint {
+    /// Calendar date as "YYYY-MM-DD"
+    pub date: String,
+    /// Cumulative time-weighted return in percent (0.0 at start of range)
+    pub twr: f64,
+}
+
+/// A complete TWR series for one tag or the whole portfolio.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct TwrSeries {
+    /// The tag this series belongs to. None = whole portfolio.
+    pub tag: Option<StockTag>,
+    pub data: Vec<TwrDataPoint>,
 }

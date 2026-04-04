@@ -29,6 +29,8 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::StockPriceOverride>();
     types.register::<crate::models::DividendOverride>();
     types.register::<crate::models::TickerValueHistory>();
+    types.register::<crate::models::TwrDataPoint>();
+    types.register::<crate::models::TwrSeries>();
 
     // Crypto models
     types.register::<crate::models::CryptoInvestment>();
