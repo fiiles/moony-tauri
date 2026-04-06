@@ -869,8 +869,10 @@ export interface TwrDataPoint {
 }
 
 export interface TwrSeries {
-    /** Tag this series belongs to. null = whole portfolio. */
+    /** Tag this series belongs to. null = whole portfolio or untagged. */
     tag: StockTag | null;
+    /** True when this series represents stocks with no tags assigned. */
+    isUntagged: boolean;
     data: TwrDataPoint[];
 }
 

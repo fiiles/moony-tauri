@@ -255,10 +255,11 @@ export const investmentsApi = {
   getStockTwr: (
     tagIds: string[],
     includePortfolio: boolean,
+    includeUntagged: boolean,
     fromTs: number,
     toTs: number,
   ) =>
-    tauriInvoke<TwrSeries[]>('get_stock_twr', { tagIds, includePortfolio, fromTs, toTs }),
+    tauriInvoke<TwrSeries[]>('get_stock_twr', { tagIds, includePortfolio, includeUntagged, fromTs, toTs }),
 };
 
 // ============================================================================

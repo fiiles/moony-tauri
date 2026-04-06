@@ -459,9 +459,8 @@ fn ts_to_date_str(ts: i64) -> String {
 
 /// Find the most recent (value_czk, quantity) for a ticker at or before `target_ts`.
 ///
-/// # Precondition
-/// The entries in `history` must be sorted by timestamp ascending (as returned
-/// by the SQL `ORDER BY ticker, recorded_at ASC` query in `compute_twr_for_tickers`).
+/// Uses binary search — O(log N) — so entries must be sorted ascending by timestamp
+/// (as guaranteed by the SQL `ORDER BY ticker, recorded_at ASC` in `compute_twr_for_tickers`).
 fn lookup_ticker_at(
     history: &HashMap<String, Vec<(i64, f64, f64)>>,
     ticker: &str,
@@ -470,11 +469,15 @@ fn lookup_ticker_at(
     history
         .get(ticker)
         .and_then(|entries| {
-            entries
-                .iter()
-                .rev()
-                .find(|(ts, _, _)| *ts <= target_ts)
-                .map(|(_, val, qty)| (*val, *qty))
+            // partition_point returns the index of the first element where ts > target_ts,
+            // so the last element at or before target_ts is at idx-1 (if idx > 0).
+            let idx = entries.partition_point(|(ts, _, _)| *ts <= target_ts);
+            if idx > 0 {
+                let (_, val, qty) = entries[idx - 1];
+                Some((val, qty))
+            } else {
+                None
+            }
         })
         .unwrap_or((0.0, 0.0))
 }
@@ -544,14 +547,22 @@ pub fn compute_twr_for_tickers(
         }
     }
 
+    // Determine emit interval so we never return more than MAX_POINTS data points.
+    // Chain-linking still runs every day for accuracy; we just skip emitting most points.
+    const MAX_POINTS: i64 = 300;
+    let total_days = (to_ts - from_ts) / 86400;
+    let emit_every = ((total_days + MAX_POINTS - 1) / MAX_POINTS).max(1);
+
     let mut result = vec![crate::models::TwrDataPoint {
         date: ts_to_date_str(from_ts),
         twr: 0.0,
     }];
     let mut twr_factor = 1.0f64;
     let mut day = from_ts + 86400;
+    let mut day_index: i64 = 0;
 
     while day <= to_ts {
+        day_index += 1;
         let prev_day = day - 86400;
         let mut v_curr = 0.0f64;
         let mut v_prev = 0.0f64;
@@ -582,10 +593,13 @@ pub fn compute_twr_for_tickers(
             twr_factor *= 1.0 + daily_r;
         }
 
-        result.push(crate::models::TwrDataPoint {
-            date: ts_to_date_str(day),
-            twr: (twr_factor - 1.0) * 100.0,
-        });
+        // Emit this point if it falls on the sampling interval or is the last day.
+        if day_index % emit_every == 0 || day == to_ts {
+            result.push(crate::models::TwrDataPoint {
+                date: ts_to_date_str(day),
+                twr: (twr_factor - 1.0) * 100.0,
+            });
+        }
 
         day += 86400;
     }
