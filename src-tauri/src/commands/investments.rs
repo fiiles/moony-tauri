@@ -1035,31 +1035,33 @@ pub async fn get_stock_value_history(
 ///
 /// `tag_ids`: IDs of tags to compute separate series for.
 /// `include_portfolio`: if true, also include a whole-portfolio series.
+/// `include_untagged`: if true, include a series for stocks with no tags assigned.
 /// `from_ts` / `to_ts`: Unix timestamps (seconds, midnight UTC) for the date range.
 ///
-/// When `tag_ids` is empty, only the portfolio series is returned regardless of `include_portfolio`.
+/// When `tag_ids` is empty and `include_untagged` is false, only the portfolio series is returned.
 #[tauri::command]
 pub async fn get_stock_twr(
     db: State<'_, Database>,
     tag_ids: Vec<String>,
     include_portfolio: bool,
+    include_untagged: bool,
     from_ts: i64,
     to_ts: i64,
 ) -> Result<Vec<TwrSeries>> {
     db.with_conn(move |conn| {
         let mut series: Vec<TwrSeries> = Vec::new();
 
-        // Fetch all stock tickers
-        let all_tickers: Vec<String> = conn
-            .prepare("SELECT ticker FROM stock_investments WHERE CAST(quantity AS REAL) > 0 ORDER BY ticker")?
-            .query_map([], |row| row.get(0))?
-            .collect::<rusqlite::Result<_>>()?;
+        let any_filter = !tag_ids.is_empty() || include_untagged;
 
-        // Whole portfolio series (always when no tag filter, optional when tags selected)
-        if tag_ids.is_empty() || include_portfolio {
+        // Whole portfolio series (always when no filter, optional when filters selected)
+        if !any_filter || include_portfolio {
+            let all_tickers: Vec<String> = conn
+                .prepare("SELECT ticker FROM stock_investments WHERE CAST(quantity AS REAL) > 0 ORDER BY ticker")?
+                .query_map([], |row| row.get(0))?
+                .collect::<rusqlite::Result<_>>()?;
             let data =
                 investment_service::compute_twr_for_tickers(conn, &all_tickers, from_ts, to_ts)?;
-            series.push(TwrSeries { tag: None, data });
+            series.push(TwrSeries { tag: None, is_untagged: false, data });
         }
 
         // Per-tag series
@@ -1095,9 +1097,27 @@ pub async fn get_stock_twr(
                     investment_service::compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?;
                 series.push(TwrSeries {
                     tag: Some(tag),
+                    is_untagged: false,
                     data,
                 });
             }
+        }
+
+        // Untagged series: stocks that have no tag assignments
+        if include_untagged {
+            let tickers: Vec<String> = conn
+                .prepare(
+                    "SELECT si.ticker FROM stock_investments si \
+                     WHERE CAST(si.quantity AS REAL) > 0 \
+                     AND NOT EXISTS (SELECT 1 FROM stock_investment_tags sit WHERE sit.investment_id = si.id) \
+                     ORDER BY si.ticker",
+                )?
+                .query_map([], |row| row.get(0))?
+                .collect::<rusqlite::Result<_>>()?;
+
+            let data =
+                investment_service::compute_twr_for_tickers(conn, &tickers, from_ts, to_ts)?;
+            series.push(TwrSeries { tag: None, is_untagged: true, data });
         }
 
         Ok(series)

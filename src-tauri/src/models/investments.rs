@@ -314,10 +314,12 @@ pub struct TwrDataPoint {
     pub twr: f64,
 }
 
-/// A complete TWR series for one tag or the whole portfolio.
+/// A complete TWR series for one tag, untagged stocks, or the whole portfolio.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TwrSeries {
-    /// The tag this series belongs to. None = whole portfolio.
+    /// The tag this series belongs to. None = whole portfolio or untagged.
     pub tag: Option<StockTag>,
+    /// True when this series represents stocks with no tags assigned.
+    pub is_untagged: bool,
     pub data: Vec<TwrDataPoint>,
 }

@@ -101,6 +101,7 @@ export default function StocksAnalysis() {
     const [twrTo, setTwrTo] = useState(today);
     const [twrTagIds, setTwrTagIds] = useState<string[]>([]);
     const [twrShowPortfolio, setTwrShowPortfolio] = useState(true);
+    const [twrShowUntagged, setTwrShowUntagged] = useState(false);
 
     // Queries
     const { data: tags = [], isLoading: tagsLoading } = useQuery<StockTag[]>({
@@ -129,16 +130,19 @@ export default function StocksAnalysis() {
     );
 
     const { data: twrSeries = [] } = useQuery<TwrSeries[]>({
-        queryKey: ['stock-twr', twrTagIds, twrShowPortfolio, twrFrom, twrTo],
+        queryKey: ['stock-twr', twrTagIds, twrShowPortfolio, twrShowUntagged, twrFrom, twrTo],
         queryFn: () =>
             investmentsApi.getStockTwr(
                 twrTagIds,
                 twrShowPortfolio,
+                twrShowUntagged,
                 dateToTs(twrFrom),
                 dateToTs(twrTo),
             ),
         enabled: !!twrFrom && !!twrTo && twrFrom <= twrTo,
     });
+
+    const twrSeriesKey = (s: TwrSeries) => s.tag?.id ?? (s.isUntagged ? '__untagged__' : 'portfolio');
 
     // Merge TwrSeries[] into a flat array keyed by seriesKey for Recharts
     const twrChartData = useMemo(() => {
@@ -149,7 +153,7 @@ export default function StocksAnalysis() {
         return dates.map(date => {
             const point: Record<string, string | number | null> = { date };
             twrSeries.forEach(s => {
-                const key = s.tag?.id ?? 'portfolio';
+                const key = twrSeriesKey(s);
                 const dp = s.data.find(d => d.date === date);
                 point[key] = dp?.twr ?? null;
             });
@@ -1032,18 +1036,33 @@ export default function StocksAnalysis() {
                                     {tag.name}
                                 </Badge>
                             ))}
-                            {twrTagIds.length > 0 && (
+                            <Badge
+                                variant={twrShowUntagged ? 'default' : 'secondary'}
+                                className="cursor-pointer transition-all h-7 px-3"
+                                onClick={() => setTwrShowUntagged(prev => !prev)}
+                            >
+                                <span
+                                    className="w-2 h-2 rounded-full mr-1.5"
+                                    style={{
+                                        backgroundColor: twrShowUntagged
+                                            ? '#fff'
+                                            : 'hsl(var(--muted-foreground))',
+                                    }}
+                                />
+                                {t('stocksAnalysis.twrUntagged', 'Uncategorized')}
+                            </Badge>
+                            {(twrTagIds.length > 0 || twrShowUntagged) && (
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     className="text-xs h-7"
-                                    onClick={() => setTwrTagIds([])}
+                                    onClick={() => { setTwrTagIds([]); setTwrShowUntagged(false); }}
                                 >
                                     {tc('buttons.clearAll')}
                                 </Button>
                             )}
                         </div>
-                        {twrTagIds.length > 0 && (
+                        {(twrTagIds.length > 0 || twrShowUntagged) && (
                             <div className="flex items-center gap-2">
                                 <Checkbox
                                     id="twr-portfolio"
@@ -1086,29 +1105,31 @@ export default function StocksAnalysis() {
                                     borderRadius: '6px',
                                 }}
                                 formatter={(value, name) => {
-                                    const series = twrSeries.find(
-                                        s => (s.tag?.id ?? 'portfolio') === name,
-                                    );
-                                    const label = series?.tag?.name ?? t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio');
+                                    const series = twrSeries.find(s => twrSeriesKey(s) === name);
+                                    const label = series?.tag?.name
+                                        ?? (series?.isUntagged
+                                            ? t('stocksAnalysis.twrUntagged', 'Uncategorized')
+                                            : t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio'));
                                     return [formatTwr(value as number), label];
                                 }}
                                 labelFormatter={date => String(date)}
                             />
                             <Legend
                                 formatter={name => {
-                                    const series = twrSeries.find(
-                                        s => (s.tag?.id ?? 'portfolio') === name,
-                                    );
-                                    return series?.tag?.name ?? t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio');
+                                    const series = twrSeries.find(s => twrSeriesKey(s) === name);
+                                    return series?.tag?.name
+                                        ?? (series?.isUntagged
+                                            ? t('stocksAnalysis.twrUntagged', 'Uncategorized')
+                                            : t('stocksAnalysis.twrWholePortfolio', 'Whole portfolio'));
                                 }}
                             />
                             {twrSeries.map((series, idx) => (
                                 <Line
-                                    key={series.tag?.id ?? 'portfolio'}
+                                    key={twrSeriesKey(series)}
                                     type="monotone"
-                                    dataKey={series.tag?.id ?? 'portfolio'}
+                                    dataKey={twrSeriesKey(series)}
                                     stroke={
-                                        series.tag
+                                        series.tag || series.isUntagged
                                             ? TAG_COLORS[idx % TAG_COLORS.length]
                                             : 'hsl(var(--chart-5))'
                                     }
