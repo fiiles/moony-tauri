@@ -371,6 +371,11 @@ function McpServerCard({ profile }: { profile: ReturnType<typeof useAuth>['user'
             <p className="font-medium text-sm">{t('mcpServer.setupInstructions')}</p>
             <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
               <li>
+                <Trans i18nKey="mcpServer.setupStep0" t={t}>
+                  Make sure you have <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer" className="underline text-foreground hover:text-primary">Node.js 18+</a> installed.
+                </Trans>
+              </li>
+              <li>
                 <Trans i18nKey="mcpServer.setupStep1" t={t}>
                   Download the MCP server from <a href="https://github.com/fiiles/moony-mcp" target="_blank" rel="noopener noreferrer" className="underline text-foreground hover:text-primary">github.com/fiiles/moony-mcp</a> and run <code>npm install && npm run build</code>.
                 </Trans>
