@@ -7,6 +7,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -108,7 +109,7 @@ export function BuyOtherAssetModal({ asset, open, onOpenChange }: BuyOtherAssetM
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form id="buy-asset-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
                             control={form.control}
                             name="quantity"
@@ -177,11 +178,16 @@ export function BuyOtherAssetModal({ asset, open, onOpenChange }: BuyOtherAssetM
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit" className="w-full" disabled={buyMutation.isPending}>
-                            {buyMutation.isPending ? tc('status.adding') : t('modal.buy.submit')}
-                        </Button>
                     </form>
                 </Form>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        {tc('buttons.cancel')}
+                    </Button>
+                    <Button type="submit" form="buy-asset-form" disabled={buyMutation.isPending}>
+                        {buyMutation.isPending ? tc('status.adding') : t('modal.buy.submit')}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

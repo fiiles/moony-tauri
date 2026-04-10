@@ -7,6 +7,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -107,7 +108,7 @@ export function SellOtherAssetModal({ asset, open, onOpenChange }: SellOtherAsse
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form id="sell-asset-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField
                             control={form.control}
                             name="quantity"
@@ -176,11 +177,16 @@ export function SellOtherAssetModal({ asset, open, onOpenChange }: SellOtherAsse
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit" className="w-full" disabled={sellMutation.isPending}>
-                            {sellMutation.isPending ? tc('status.selling') : t('modal.sell.submit')}
-                        </Button>
                     </form>
                 </Form>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        {tc('buttons.cancel')}
+                    </Button>
+                    <Button type="submit" form="sell-asset-form" disabled={sellMutation.isPending}>
+                        {sellMutation.isPending ? tc('status.selling') : t('modal.sell.submit')}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
