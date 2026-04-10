@@ -2,6 +2,10 @@
     "title": "Pojištění",
     "subtitle": "Spravujte své pojistné smlouvy.",
     "loading": "Načítání vašich pojistných smluv...",
+    "empty": {
+        "title": "Zatím žádné pojistky",
+        "description": "Přidejte svou první pojistku a začněte sledovat své pojistné smlouvy."
+    },
     "addPolicy": "Přidat novou pojistku",
     "summary": {
         "totalPremium": "Roční pojistné",

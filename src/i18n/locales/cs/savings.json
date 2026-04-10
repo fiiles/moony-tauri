@@ -2,6 +2,10 @@
     "title": "Spoření a vklady",
     "subtitle": "Spravujte své spořicí a výnosové účty.",
     "loading": "Načítání vašich spořicích účtů...",
+    "empty": {
+        "title": "Zatím žádné spořicí účty",
+        "description": "Přidejte svůj první spořicí účet a začněte sledovat své vklady."
+    },
     "addAccount": "Přidat nový účet",
     "summary": {
         "totalBalance": "Celkový zůstatek",

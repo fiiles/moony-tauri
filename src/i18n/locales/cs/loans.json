@@ -2,6 +2,10 @@
     "title": "Úvěry",
     "subtitle": "Sledujte a spravujte své úvěry a hypotéky.",
     "loading": "Načítání vašich úvěrů...",
+    "empty": {
+        "title": "Zatím žádné půjčky",
+        "description": "Přidejte svou první půjčku a začněte sledovat své závazky."
+    },
     "addLoan": "Přidat nový úvěr",
     "summary": {
         "totalOutstanding": "Celkový nesplacený zůstatek",

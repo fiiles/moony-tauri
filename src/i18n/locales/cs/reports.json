@@ -156,6 +156,13 @@
         "selectTags": "Vyberte štítky",
         "searchTags": "Hledat štítky...",
         "noTagsFound": "Štítky nenalezeny",
-        "assignTags": "Přiřadit štítky"
+        "assignTags": "Přiřadit štítky",
+        "twrTitle": "Výkonnost portfolia (TWR)",
+        "twrDescription": "Výnos vážený časem odstraňuje zkreslení způsobené nákupními a prodejními transakcemi",
+        "twrFrom": "Od",
+        "twrTo": "Do",
+        "twrLabels": "Štítky",
+        "twrUntagged": "Bez kategorie",
+        "twrWholePortfolio": "Celé portfolio"
     }
 }

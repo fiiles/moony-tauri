@@ -2,6 +2,10 @@
     "title": "Nemovitosti",
     "subtitle": "Spravujte své portfolio nemovitostí.",
     "loading": "Načítání vašich nemovitostí...",
+    "empty": {
+        "title": "Zatím žádné nemovitosti",
+        "description": "Přidejte svou první nemovitost a začněte sledovat svůj realitní majetek."
+    },
     "addProperty": "Přidat novou nemovitost",
     "summary": {
         "totalValue": "Celková hodnota",
