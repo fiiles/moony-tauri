@@ -1,7 +1,8 @@
 
 import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { Bitcoin, RefreshCw } from "lucide-react";
+import { EmptyState } from "@/components/common/EmptyState";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddCryptoModal } from "@/components/crypto/AddCryptoModal";
 import { CoinGeckoApiKeyModal } from "@/components/crypto/CoinGeckoApiKeyModal";
@@ -217,10 +218,19 @@ export default function Crypto() {
                 transactionMarkers={transactionMarkers}
             />
 
-            <CryptoTable
+            {holdings.length === 0 ? (
+              <EmptyState
+                icon={<Bitcoin className="h-12 w-12" />}
+                title={t('empty.title')}
+                description={t('empty.description')}
+                action={<AddCryptoModal />}
+              />
+            ) : (
+              <CryptoTable
                 holdings={holdings}
                 isLoading={refreshPricesMutation.isPending}
-            />
+              />
+            )}
 
         </div>
         </>
