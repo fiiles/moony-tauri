@@ -2,6 +2,10 @@
     "title": "Kryptoměny",
     "subtitle": "Sledujte a spravujte své krypto portfolio.",
     "loading": "Načítání vašeho krypto portfolia...",
+    "empty": {
+        "title": "Zatím žádné kryptoměny",
+        "description": "Přidejte svou první kryptoměnu a začněte sledovat své pozice."
+    },
     "addCrypto": "Přidat kryptoměnu",
     "refreshPrices": "Aktualizovat ceny",
     "refreshing": "Aktualizuji...",

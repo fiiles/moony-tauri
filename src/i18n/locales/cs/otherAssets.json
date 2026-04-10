@@ -2,6 +2,10 @@
     "title": "Ostatní aktiva",
     "subtitle": "Sledujte sběratelské předměty, drahé kovy a další cennosti.",
     "loading": "Načítání vašich ostatních aktiv...",
+    "empty": {
+        "title": "Zatím žádná aktiva",
+        "description": "Přidejte své první aktivum a začněte sledovat ostatní cennosti."
+    },
     "addAsset": "Přidat nové aktivum",
     "summary": {
         "totalValue": "Celková hodnota",

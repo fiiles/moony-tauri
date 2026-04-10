@@ -2,6 +2,10 @@
     "title": "Dluhopisy",
     "subtitle": "Sledujte své dluhopisy a investice s pevným výnosem.",
     "loading": "Načítání vašich dluhopisů...",
+    "empty": {
+        "title": "Zatím žádné dluhopisy",
+        "description": "Přidejte svůj první dluhopis a začněte sledovat investice s fixním výnosem."
+    },
     "addBond": "Přidat nový dluhopis",
     "summary": {
         "totalValue": "Celková hodnota",
