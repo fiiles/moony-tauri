@@ -1,10 +1,11 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, TrendingUp } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddInvestmentModal } from "@/components/stocks/AddInvestmentModal";
 import { InvestmentsSummary } from "@/components/stocks/InvestmentsSummary";
 import { InvestmentsTable } from "@/components/stocks/InvestmentsTable";
+import { EmptyState } from "@/components/common/EmptyState";
 import { investmentsApi, priceApi, exportApi } from "@/lib/tauri-api";
 import type { StockInvestmentWithPrice } from "@shared/types";
 import type { InvestmentTransaction } from "@shared/schema";
@@ -240,11 +241,20 @@ export default function Stocks() {
         transactionMarkers={transactionMarkers}
       />
 
-      <InvestmentsTable
-        holdings={holdings}
-        isLoading={refreshPricesMutation.isPending}
-        onViewDetail={handleViewDetailClick}
-      />
+      {holdings.length === 0 ? (
+        <EmptyState
+          icon={<TrendingUp className="h-12 w-12" />}
+          title={t('empty.title')}
+          description={t('empty.description')}
+          action={<AddInvestmentModal />}
+        />
+      ) : (
+        <InvestmentsTable
+          holdings={holdings}
+          isLoading={refreshPricesMutation.isPending}
+          onViewDetail={handleViewDetailClick}
+        />
+      )}
     </div>
   );
 }
