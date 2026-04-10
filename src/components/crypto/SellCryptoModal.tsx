@@ -7,6 +7,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -32,6 +33,7 @@ import type { CryptoHoldingData } from "@/components/crypto/CryptoTable";
 import { cryptoApi } from "@/lib/tauri-api";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { FormSection } from "@/components/ui/form-section";
 
 const formSchema = z.object({
     quantity: z.coerce.number().positive("Quantity must be positive"),
@@ -109,11 +111,8 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
-                                {t('modal.sell.transactionDetails')}
-                            </h3>
+                    <form id="sell-crypto-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <FormSection title={t('modal.sell.transactionDetails')} first>
                             <div className="grid gap-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
@@ -197,13 +196,17 @@ export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoMo
                                     />
                                 </div>
                             </div>
-                        </div>
-
-                        <Button type="submit" className="w-full" disabled={sellInvestment.isPending}>
-                            {sellInvestment.isPending ? tc('status.selling') : t('modal.sell.sellCrypto')}
-                        </Button>
+                        </FormSection>
                     </form>
                 </Form>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        {tc('buttons.cancel')}
+                    </Button>
+                    <Button type="submit" form="sell-crypto-form" disabled={sellInvestment.isPending}>
+                        {sellInvestment.isPending ? tc('status.selling') : t('modal.sell.sellCrypto')}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
