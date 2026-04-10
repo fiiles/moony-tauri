@@ -2,6 +2,10 @@
     "title": "Stocks",
     "subtitle": "Track your stocks and commodities portfolio",
     "loading": "Loading your investment portfolio...",
+    "empty": {
+        "title": "No investments yet",
+        "description": "Add your first stock or ETF to start tracking your portfolio."
+    },
     "addInvestment": "Add Investment",
     "refreshPrices": "Refresh Prices",
     "refreshing": "Refreshing...",

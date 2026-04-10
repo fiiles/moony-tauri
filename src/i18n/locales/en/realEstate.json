@@ -2,6 +2,10 @@
     "title": "Real Estate",
     "subtitle": "Manage your real estate portfolio.",
     "loading": "Loading your properties...",
+    "empty": {
+        "title": "No properties yet",
+        "description": "Add your first property to start tracking your real estate."
+    },
     "addProperty": "Add New Property",
     "summary": {
         "totalValue": "Total Value",

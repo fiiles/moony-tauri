@@ -2,6 +2,10 @@
     "title": "Savings and Deposits",
     "subtitle": "Manage your savings and high-yield accounts.",
     "loading": "Loading your savings accounts...",
+    "empty": {
+        "title": "No savings accounts yet",
+        "description": "Add your first savings account to start tracking your deposits."
+    },
     "addAccount": "Add New Account",
     "summary": {
         "totalBalance": "Total Balance",

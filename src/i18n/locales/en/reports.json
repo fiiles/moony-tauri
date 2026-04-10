@@ -156,6 +156,13 @@
         "selectTags": "Select tags",
         "searchTags": "Search tags...",
         "noTagsFound": "No tags found",
-        "assignTags": "Assign Tags"
+        "assignTags": "Assign Tags",
+        "twrTitle": "Portfolio Performance (TWR)",
+        "twrDescription": "Time-weighted return removes distortion caused by buy/sell transactions",
+        "twrFrom": "From",
+        "twrTo": "To",
+        "twrLabels": "Labels",
+        "twrUntagged": "Uncategorized",
+        "twrWholePortfolio": "Whole portfolio"
     }
 }

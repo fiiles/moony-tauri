@@ -2,6 +2,10 @@
     "title": "Cryptocurrencies",
     "subtitle": "Track and manage your crypto portfolio.",
     "loading": "Loading your crypto portfolio...",
+    "empty": {
+        "title": "No crypto holdings yet",
+        "description": "Add your first cryptocurrency to start tracking your holdings."
+    },
     "addCrypto": "Add Crypto",
     "refreshPrices": "Refresh Prices",
     "refreshing": "Refreshing...",
