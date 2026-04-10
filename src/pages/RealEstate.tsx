@@ -16,6 +16,7 @@ import { useLocation } from "wouter";
 import { realEstateApi, exportApi } from "@/lib/tauri-api";
 import type { RealEstate } from "@shared/schema";
 import { SummaryCard } from "@/components/common/SummaryCard";
+import { EmptyState } from "@/components/common/EmptyState";
 
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
@@ -149,72 +150,74 @@ export default function RealEstatePage() {
         />
       </div>
 
-      <Card className="border shadow-sm card-hover">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>
-          </div>
+      {!realEstates || realEstates.length === 0 ? (
+        <EmptyState
+          icon={<Home className="h-12 w-12" />}
+          title={t('empty.title')}
+          description={t('empty.description')}
+          action={<AddRealEstateModal />}
+        />
+      ) : (
+        <Card className="border shadow-sm card-hover">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>
+            </div>
 
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader className="[&_th]:bg-muted/50">
-                <TableRow>
-                  <TableHead className="text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('name')}>
-                    <span className="flex items-center">{t('table.name')}<SortIcon column="name" /></span>
-                  </TableHead>
-                  <TableHead className="text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('address')}>
-                    <span className="flex items-center">{t('table.address')}<SortIcon column="address" /></span>
-                  </TableHead>
-                  <TableHead className="text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('type')}>
-                    <span className="flex items-center">{t('table.type')}<SortIcon column="type" /></span>
-                  </TableHead>
-                  <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('purchasePrice')}>
-                    <span className="flex items-center justify-end">{t('table.purchasePrice')}<SortIcon column="purchasePrice" /></span>
-                  </TableHead>
-                  <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('marketValue')}>
-                    <span className="flex items-center justify-end">{t('table.value')}<SortIcon column="marketValue" /></span>
-                  </TableHead>
-                  <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground">{t('table.actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedRealEstates?.map((re) => (
-                  <TableRow
-                    key={re.id}
-                    className="cursor-pointer row-interactive"
-                    onClick={() => setLocation(`/real-estate/${re.id}`)}
-                  >
-                    <TableCell className="font-medium">{re.name}</TableCell>
-                    <TableCell>{re.address}</TableCell>
-                    <TableCell className="capitalize">{t(`types.${re.type}`)}</TableCell>
-                    <TableCell className="text-right data-value">
-                      {formatCurrency(convertToCzK(Number(re.purchasePrice), re.purchasePriceCurrency as CurrencyCode))}
-                    </TableCell>
-                    <TableCell className="text-right data-value">
-                      {formatCurrency(convertToCzK(Number(re.marketPrice), re.marketPriceCurrency as CurrencyCode))}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={(e) => {
-                        e.stopPropagation();
-                        setLocation(`/real-estate/${re.id}`);
-                      }}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {(!sortedRealEstates || sortedRealEstates.length === 0) && (
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader className="[&_th]:bg-muted/50">
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      {t('table.noProperties')}
-                    </TableCell>
+                    <TableHead className="text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('name')}>
+                      <span className="flex items-center">{t('table.name')}<SortIcon column="name" /></span>
+                    </TableHead>
+                    <TableHead className="text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('address')}>
+                      <span className="flex items-center">{t('table.address')}<SortIcon column="address" /></span>
+                    </TableHead>
+                    <TableHead className="text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('type')}>
+                      <span className="flex items-center">{t('table.type')}<SortIcon column="type" /></span>
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('purchasePrice')}>
+                      <span className="flex items-center justify-end">{t('table.purchasePrice')}<SortIcon column="purchasePrice" /></span>
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('marketValue')}>
+                      <span className="flex items-center justify-end">{t('table.value')}<SortIcon column="marketValue" /></span>
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground">{t('table.actions')}</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {sortedRealEstates?.map((re) => (
+                    <TableRow
+                      key={re.id}
+                      className="cursor-pointer row-interactive"
+                      onClick={() => setLocation(`/real-estate/${re.id}`)}
+                    >
+                      <TableCell className="font-medium">{re.name}</TableCell>
+                      <TableCell>{re.address}</TableCell>
+                      <TableCell className="capitalize">{t(`types.${re.type}`)}</TableCell>
+                      <TableCell className="text-right data-value">
+                        {formatCurrency(convertToCzK(Number(re.purchasePrice), re.purchasePriceCurrency as CurrencyCode))}
+                      </TableCell>
+                      <TableCell className="text-right data-value">
+                        {formatCurrency(convertToCzK(Number(re.marketPrice), re.marketPriceCurrency as CurrencyCode))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={(e) => {
+                          e.stopPropagation();
+                          setLocation(`/real-estate/${re.id}`);
+                        }}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }
