@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Banknote } from "lucide-react";
 import { useBonds } from "@/hooks/use-bonds";
 import { BondsSummary } from "@/components/bonds/BondsSummary";
 import { BondsTable } from "@/components/bonds/BondsTable";
@@ -10,6 +10,7 @@ import { useBondMutations } from "@/hooks/use-bond-mutations";
 import type { Bond, InsertBond } from "@shared/schema";
 import { useTranslation } from "react-i18next";
 import { ExportButton } from "@/components/common/ExportButton";
+import { EmptyState } from "@/components/common/EmptyState";
 import { exportApi } from "@/lib/tauri-api";
 
 export default function Bonds() {
@@ -78,7 +79,21 @@ export default function Bonds() {
 
       <BondsSummary metrics={metrics} />
 
-      <BondsTable bonds={bonds} onEdit={handleEditClick} onDelete={handleDeleteClick} />
+      {bonds.length === 0 ? (
+        <EmptyState
+          icon={<Banknote className="h-12 w-12" />}
+          title={t('empty.title')}
+          description={t('empty.description')}
+          action={
+            <Button onClick={handleAddClick} className="transition-all duration-200">
+              <Plus className="mr-2 h-4 w-4" />
+              {t('addBond')}
+            </Button>
+          }
+        />
+      ) : (
+        <BondsTable bonds={bonds} onEdit={handleEditClick} onDelete={handleDeleteClick} />
+      )}
 
       <BondsFormDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} onSubmit={handleAddSubmit} isLoading={createMutation.isPending} />
 
