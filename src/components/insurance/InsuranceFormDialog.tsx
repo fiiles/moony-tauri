@@ -6,6 +6,7 @@ import type { InsurancePolicy } from "@shared/schema";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -29,7 +30,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
+import { FormSection } from "@/components/ui/form-section";
 import { toast } from "sonner";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { Plus, Trash2, Loader2 } from "lucide-react";
@@ -184,12 +185,15 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>{policy ? t('form.editTitle') : t('form.addTitle')}</DialogTitle>
+                    <DialogDescription>
+                        {policy ? "Edit insurance policy details." : "Add a new insurance policy."}
+                    </DialogDescription>
                 </DialogHeader>
 
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form id="insurance-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         {/* Basic Information Section */}
-                        <h3 className="text-sm font-semibold">{t('modal.basicInfo')}</h3>
+                        <FormSection title={t('modal.basicInfo')} first>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}
@@ -281,10 +285,10 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                     )}
                                 />
                             </div>
+                        </FormSection>
 
-                        <Separator />
                         {/* Payment Details Section */}
-                        <h3 className="text-sm font-semibold">{t('modal.paymentDetails')}</h3>
+                        <FormSection title={t('modal.paymentDetails')}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}
@@ -428,11 +432,10 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                     )}
                                 />
                             </div>
+                        </FormSection>
 
-                        <Separator />
                         {/* Additional Information Section */}
-                        <h3 className="text-sm font-semibold">{t('modal.additionalInfo')}</h3>
-
+                        <FormSection title={t('modal.additionalInfo')}>
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
                                     <FormLabel>{t('modal.coverageLimits')}</FormLabel>
@@ -521,13 +524,14 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                     </FormItem>
                                 )}
                             />
+                        </FormSection>
                     </form>
                 </Form>
                 <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsOpen?.(false)}>
                         {tc('buttons.cancel')}
                     </Button>
-                    <Button type="submit" disabled={mutation.isPending}>
+                    <Button type="submit" form="insurance-form" disabled={mutation.isPending}>
                         {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isEditMode ? tc('buttons.saveChanges') : t('modal.createPolicy')}
                     </Button>
