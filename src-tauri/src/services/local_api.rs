@@ -7,9 +7,8 @@
 use axum::{
     extract::{Path, Query, State as AxumState},
     http::{HeaderMap, StatusCode},
-    response::Json,
     routing::get,
-    Router,
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -20,6 +19,7 @@ use std::{
 use tokio::task::JoinHandle;
 
 use crate::db::Database;
+use crate::models::InsertInsurancePolicy;
 
 // ============================================================================
 // Session file
@@ -1162,6 +1162,86 @@ async fn insurance_detail(
     }).map(Json).map_err(db_err)
 }
 
+async fn insurance_create(
+    AxumState(state): AxumState<Arc<ApiState>>,
+    headers: HeaderMap,
+    Json(body): Json<InsertInsurancePolicy>,
+) -> ApiResult {
+    auth!(headers, state);
+
+    body.validate()
+        .map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let now = chrono::Utc::now().timestamp();
+    let limits_json = serde_json::to_string(&body.limits.clone().unwrap_or_default())
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    state
+        .db
+        .with_conn(|conn| {
+            conn.execute(
+                "INSERT INTO insurance_policies
+                 (id, type, provider, policy_name, policy_number, start_date, end_date,
+                  payment_frequency, one_time_payment, one_time_payment_currency,
+                  regular_payment, regular_payment_currency, limits, notes, status,
+                  created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?16)",
+                rusqlite::params![
+                    id,
+                    body.policy_type,
+                    body.provider,
+                    body.policy_name,
+                    body.policy_number,
+                    body.start_date,
+                    body.end_date,
+                    body.payment_frequency,
+                    body.one_time_payment,
+                    body.one_time_payment_currency,
+                    body.regular_payment.unwrap_or_else(|| "0".to_string()),
+                    body.regular_payment_currency.unwrap_or_else(|| "CZK".to_string()),
+                    limits_json,
+                    body.notes,
+                    body.status.unwrap_or_else(|| "active".to_string()),
+                    now
+                ],
+            )?;
+
+            Ok(conn.query_row(
+                "SELECT id, type, provider, policy_name, policy_number,
+                        start_date, end_date, payment_frequency,
+                        one_time_payment, one_time_payment_currency,
+                        regular_payment, regular_payment_currency,
+                        limits, notes, status, created_at, updated_at
+                 FROM insurance_policies WHERE id = ?1",
+                [&id],
+                |row| {
+                    Ok(serde_json::json!({
+                        "id": row.get::<_, String>(0)?,
+                        "type": row.get::<_, String>(1)?,
+                        "provider": sql_to_json(row.get::<_, rusqlite::types::Value>(2).unwrap_or(rusqlite::types::Value::Null)),
+                        "policyName": row.get::<_, String>(3)?,
+                        "policyNumber": sql_to_json(row.get::<_, rusqlite::types::Value>(4).unwrap_or(rusqlite::types::Value::Null)),
+                        "startDate": row.get::<_, i64>(5)?,
+                        "endDate": sql_to_json(row.get::<_, rusqlite::types::Value>(6).unwrap_or(rusqlite::types::Value::Null)),
+                        "paymentFrequency": row.get::<_, String>(7)?,
+                        "oneTimePayment": sql_to_json(row.get::<_, rusqlite::types::Value>(8).unwrap_or(rusqlite::types::Value::Null)),
+                        "oneTimePaymentCurrency": sql_to_json(row.get::<_, rusqlite::types::Value>(9).unwrap_or(rusqlite::types::Value::Null)),
+                        "regularPayment": row.get::<_, String>(10)?,
+                        "regularPaymentCurrency": row.get::<_, String>(11)?,
+                        "limits": sql_to_json(row.get::<_, rusqlite::types::Value>(12).unwrap_or(rusqlite::types::Value::Null)),
+                        "notes": sql_to_json(row.get::<_, rusqlite::types::Value>(13).unwrap_or(rusqlite::types::Value::Null)),
+                        "status": row.get::<_, String>(14)?,
+                        "createdAt": row.get::<_, i64>(15)?,
+                        "updatedAt": row.get::<_, i64>(16)?,
+                    }))
+                },
+            )?)
+        })
+        .map(Json)
+        .map_err(db_err)
+}
+
 async fn other_assets_list(
     AxumState(state): AxumState<Arc<ApiState>>,
     headers: HeaderMap,
@@ -1730,7 +1810,7 @@ impl LocalApiServer {
             .route("/savings", get(savings_list))
             .route("/real-estate", get(real_estate_list))
             .route("/real-estate/{id}", get(real_estate_detail))
-            .route("/insurance", get(insurance_list))
+            .route("/insurance", get(insurance_list).post(insurance_create))
             .route("/insurance/{id}", get(insurance_detail))
             .route("/other-assets", get(other_assets_list))
             .route(
