@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -122,6 +123,9 @@ export function ManualPriceModal({
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>{t('modals.updatePrice.title')}</DialogTitle>
+                    <DialogDescription>
+                        Set a manual price override for this holding.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <Form {...form}>

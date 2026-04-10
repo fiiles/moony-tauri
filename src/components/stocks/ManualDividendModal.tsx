@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
@@ -121,6 +122,9 @@ export function ManualDividendModal({
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>{t('modals.updateDividend.title')}</DialogTitle>
+                    <DialogDescription>
+                        Set a manual annual dividend per share for this holding.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <Form {...form}>
