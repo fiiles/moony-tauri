@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, PiggyBank } from "lucide-react";
 import { useSavingsAccounts } from "@/hooks/use-savings-accounts";
 import { useSavingsAccountMutations } from "@/hooks/use-savings-account-mutations";
 import { SavingsAccountFormDialog } from "@/components/savings/SavingsAccountFormDialog";
 import { DeleteSavingsAccountDialog } from "@/components/savings/DeleteSavingsAccountDialog";
 import { SavingsAccountsSummary } from "@/components/savings/SavingsAccountsSummary";
 import { SavingsAccountsTable } from "@/components/savings/SavingsAccountsTable";
+import { EmptyState } from "@/components/common/EmptyState";
 import type { SavingsAccount, InsertSavingsAccount } from "@shared/schema";
 import { useTranslation } from "react-i18next";
 import { ExportButton } from "@/components/common/ExportButton";
@@ -103,11 +104,25 @@ export default function Accounts() {
 
       <SavingsAccountsSummary metrics={metrics} />
 
-      <SavingsAccountsTable
-        accounts={accounts}
-        onEdit={handleEditClick}
-        onDelete={handleDeleteClick}
-      />
+      {accounts.length === 0 ? (
+        <EmptyState
+          icon={<PiggyBank className="h-12 w-12" />}
+          title={t('empty.title')}
+          description={t('empty.description')}
+          action={
+            <Button onClick={handleAddClick} className="transition-all duration-200">
+              <Plus className="mr-2 h-4 w-4" />
+              {t('addAccount')}
+            </Button>
+          }
+        />
+      ) : (
+        <SavingsAccountsTable
+          accounts={accounts}
+          onEdit={handleEditClick}
+          onDelete={handleDeleteClick}
+        />
+      )}
 
       <SavingsAccountFormDialog
         open={addDialogOpen}
