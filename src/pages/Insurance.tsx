@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { insuranceApi, exportApi } from "@/lib/tauri-api";
 import { InsurancePolicy } from "@shared/schema";
 import { SummaryCard } from "@/components/common/SummaryCard";
+import { EmptyState } from "@/components/common/EmptyState";
 import { useCurrency } from "@/lib/currency";
 import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
@@ -93,7 +94,25 @@ export default function Insurance() {
         />
       </div>
 
-      <InsuranceList />
+      {!policies || policies.length === 0 ? (
+        <EmptyState
+          icon={<Shield className="h-12 w-12" />}
+          title={t('empty.title')}
+          description={t('empty.description')}
+          action={
+            <InsuranceFormDialog
+              trigger={
+                <Button className="transition-all duration-200">
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('addPolicy')}
+                </Button>
+              }
+            />
+          }
+        />
+      ) : (
+        <InsuranceList />
+      )}
     </div>
   );
 }
