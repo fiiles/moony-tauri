@@ -1,7 +1,7 @@
 import { InsuranceList } from "@/components/insurance/InsuranceList";
 import { InsuranceFormDialog } from "@/components/insurance/InsuranceFormDialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Shield } from "lucide-react";
+import { Plus, Shield, Bot, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { insuranceApi, exportApi } from "@/lib/tauri-api";
 import { InsurancePolicy } from "@shared/schema";
@@ -11,9 +11,21 @@ import { useCurrency } from "@/lib/currency";
 import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
 import { useTranslation } from "react-i18next";
 import { ExportButton } from "@/components/common/ExportButton";
+import { useState } from "react";
+import { useLocation } from "wouter";
 
 export default function Insurance() {
   const { t } = useTranslation('insurance');
+  const [, navigate] = useLocation();
+  const [bannerDismissed, setBannerDismissed] = useState(
+    () => localStorage.getItem('moony_insurance_mcp_hint_dismissed') === 'true'
+  );
+
+  function dismissBanner() {
+    localStorage.setItem('moony_insurance_mcp_hint_dismissed', 'true');
+    setBannerDismissed(true);
+  }
+
   const { formatCurrencyRaw, currencyCode: userCurrency } = useCurrency();
 
   const { data: policies, isLoading } = useQuery<InsurancePolicy[]>({
@@ -100,18 +112,52 @@ export default function Insurance() {
           title={t('empty.title')}
           description={t('empty.description')}
           action={
-            <InsuranceFormDialog
-              trigger={
-                <Button className="transition-all duration-200">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('addPolicy')}
-                </Button>
-              }
-            />
+            <div className="flex flex-col items-center gap-2">
+              <InsuranceFormDialog
+                trigger={
+                  <Button className="transition-all duration-200">
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('addPolicy')}
+                  </Button>
+                }
+              />
+              <Button
+                variant="outline"
+                className="transition-all duration-200"
+                onClick={() => navigate('/settings')}
+              >
+                <Bot className="mr-2 h-4 w-4" />
+                {t('mcp.addViaAi')}
+              </Button>
+            </div>
           }
         />
       ) : (
-        <InsuranceList />
+        <>
+          {!bannerDismissed && (
+            <div className="rounded-md border bg-muted p-4 flex items-start gap-3">
+              <Bot className="h-5 w-5 mt-0.5 shrink-0 text-muted-foreground" />
+              <div className="flex-1 space-y-1">
+                <p className="text-sm font-medium">{t('mcp.bannerTitle')}</p>
+                <p className="text-xs text-muted-foreground">{t('mcp.bannerBody')}</p>
+                <button
+                  onClick={() => navigate('/settings')}
+                  className="text-xs underline text-foreground hover:text-primary"
+                >
+                  {t('mcp.setupLink')}
+                </button>
+              </div>
+              <button
+                onClick={dismissBanner}
+                className="text-muted-foreground hover:text-foreground shrink-0"
+                aria-label="Dismiss"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+          <InsuranceList />
+        </>
       )}
     </div>
   );
