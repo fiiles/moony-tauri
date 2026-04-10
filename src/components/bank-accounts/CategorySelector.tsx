@@ -60,7 +60,6 @@ function getCategoryDisplay(categoryId: string | null, categories: TransactionCa
   if (!categoryId) return null;
   const category = categories.find(c => c.id === categoryId);
   if (!category) {
-    console.warn(`Category not found: "${categoryId}". Available IDs:`, categories.slice(0, 5).map(c => c.id)); // Debug
     return null;
   }
   return {

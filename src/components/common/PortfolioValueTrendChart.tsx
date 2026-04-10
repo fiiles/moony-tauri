@@ -148,7 +148,6 @@ export default function PortfolioValueTrendChart({
   // Listen for backend recalculation events
   useEffect(() => {
     const unlisten = listen('recalculation-complete', () => {
-      console.log('Recalculation complete, refreshing chart...');
       queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
     });
 

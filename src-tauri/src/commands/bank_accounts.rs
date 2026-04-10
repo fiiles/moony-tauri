@@ -476,7 +476,6 @@ pub async fn get_transaction_categories(
         let categories: Vec<TransactionCategory> = stmt
             .query_map([], |row| {
                 let id: String = row.get(0)?;
-                println!("[DEBUG] Category found: id={:?}", id); // Debug logging
                 Ok(TransactionCategory {
                     id,
                     name: row.get(1)?,

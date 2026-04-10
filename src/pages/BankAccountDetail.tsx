@@ -366,7 +366,6 @@ export default function BankAccountDetail() {
     if (uncategorized.length === 0) return;
 
     const results = await categorizeBatch(uncategorized);
-    console.log('Categorization results:', results.slice(0, 5)); // Debug: first 5 results
     const newResults = new Map(categorizationResults);
     let matchCount = 0;
     let suggestionCount = 0;
@@ -391,7 +390,6 @@ export default function BankAccountDetail() {
         }
       }
     });
-    console.log('Match count:', matchCount, 'Suggestion count:', suggestionCount); // Debug
     setCategorizationResults(newResults);
 
     // Persist all Match results to database in parallel
@@ -410,7 +408,6 @@ export default function BankAccountDetail() {
 
         // Invalidate query to reflect saved changes
         queryClient.invalidateQueries({ queryKey: ['bank-transactions', accountId] });
-        console.log(`Persisted ${matchesToPersist.length} categories to database`);
       } catch (error) {
         console.error('Failed to persist some categories:', error);
       }

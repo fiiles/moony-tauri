@@ -13,12 +13,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   const startBackfill = useCallback(async () => {
     // Use ref to prevent concurrent runs
-    if (isSyncingRef.current) {
-      console.log('[Sync] Already syncing, skipping');
-      return;
-    }
+    if (isSyncingRef.current) return;
 
-    console.log('[Sync] Starting backfill...');
     isSyncingRef.current = true;
 
     try {
@@ -27,19 +23,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
       const result = await portfolioApi.startBackfill();
 
-      console.log('[Sync] Backfill result:', result);
-
       setProgress({
         current: result.days_processed,
         total: result.total_days,
       });
       setLastResult(result);
 
-      console.log('[Sync] Backfill complete:', result.message);
-
       // If we processed any days, invalidate portfolio queries to refresh dashboard
       if (result.days_processed > 0) {
-        console.log('[Sync] Invalidating portfolio queries to refresh dashboard...');
         queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
         queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
       }
@@ -53,21 +44,16 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // Auto-run on mount (after login): refresh stale prices then backfill history
   useEffect(() => {
-    if (hasRun.current) {
-      console.log('[Sync] Already ran, skipping auto-sync');
-      return;
-    }
+    if (hasRun.current) return;
     hasRun.current = true;
 
     const runStartupSync = async () => {
       // Step 1: refresh any stale prices so charts and values are up to date
       try {
-        console.log('[Sync] Checking price status...');
         const status = await portfolioApi.getPriceStatus();
         const needsRefresh = status.stocksStale || status.cryptoStale || status.exchangeRatesStale;
 
         if (needsRefresh) {
-          console.log('[Sync] Stale prices detected, auto-refreshing...');
           await Promise.allSettled([
             status.exchangeRatesStale ? portfolioApi.refreshExchangeRates() : Promise.resolve(),
             status.stocksStale ? priceApi.refreshStockPrices() : Promise.resolve(),
@@ -77,9 +63,6 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           queryClient.invalidateQueries({ queryKey: ['crypto'] });
           queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
           queryClient.invalidateQueries({ queryKey: ['price-status'] });
-          console.log('[Sync] Auto price refresh complete');
-        } else {
-          console.log('[Sync] Prices are fresh, skipping auto-refresh');
         }
       } catch (error) {
         console.error('[Sync] Auto price refresh failed:', error);
@@ -89,7 +72,6 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       await startBackfill();
     };
 
-    console.log('[Sync] Scheduling startup sync in 5 seconds...');
     const timer = setTimeout(runStartupSync, 5000);
 
     return () => clearTimeout(timer);
@@ -97,10 +79,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // Record today's snapshot (called after asset changes)
   const recordTodaySnapshot = useCallback(async () => {
-    console.log('[Sync] Recording today snapshot...');
     try {
       await portfolioApi.recordSnapshot();
-      console.log('[Sync] Snapshot recorded, invalidating queries...');
       queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
       queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
     } catch (error) {

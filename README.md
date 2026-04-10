@@ -8,6 +8,10 @@ A modern, privacy-focused personal finance management application built with Tau
 
 </div>
 
+## Screenshots
+
+> Screenshots coming soon. Run `npm run tauri dev` to see the app in action.
+
 ## Features
 
 ### 📊 Dashboard & Overview
@@ -19,12 +23,12 @@ A modern, privacy-focused personal finance management application built with Tau
 
 ### 💰 Asset Management
 
-- **💵 Bank Accounts** - Track checking and savings accounts with full transaction history
+- **🏛️ Bank Accounts** - Track checking and savings accounts with full transaction history
   - CSV transaction import (FIO Bank format)
   - Smart auto-categorization with learned and custom rules
   - Transaction filtering and search
 - **📈 Stock Investments** - Track stocks with live price updates
-  - Price fetching via Yahoo Finance
+  - Price fetching via Yahoo Finance (no API key required); optional Finnhub or Marketstack keys for higher limits
   - Portfolio tagging system for organization
   - Performance analysis with gain/loss tracking
   - Dividend tracking
@@ -35,8 +39,8 @@ A modern, privacy-focused personal finance management application built with Tau
   - Photo galleries and document storage
   - Valuation tracking over time
   - Rental income monitoring
-- **📈 Bonds** - Monitor fixed-income investments
-- **📦 Other Assets** - Manage miscellaneous assets (art, collectibles, vehicles, etc.)
+- **📋 Bonds** - Monitor fixed-income investments
+- **💎 Other Assets** - Manage miscellaneous assets (art, collectibles, vehicles, etc.)
 
 ---
 
@@ -49,21 +53,21 @@ A modern, privacy-focused personal finance management application built with Tau
 
 ### 📊 Analytics & Reporting
 
-- **💰 Budgeting** - Category-based expense tracking with budget goals
+- **🐷 Budgeting** - Category-based expense tracking with budget goals
   - Visual spending analysis by category
   - Monthly, quarterly, and yearly views
   - Budget limit tracking with visual indicators
 - **📊 Expense Tracking** - Analyze spending patterns across bank accounts
-- **🔄 Cashflow Planning** - Plan and forecast personal and investment cashflows
+- **📊 Cashflow Planning** - Plan and forecast personal and investment cashflows
 - **📈 Portfolio Projection** - Project future net worth with customizable growth rates
-- **📊 Stock Analysis** - Detailed stock portfolio analysis with tagging and grouping
+- **🏷️ Stock Analysis** - Detailed stock portfolio analysis with tagging and grouping
 
 ---
 
 ### 🧮 Calculators
 
-- **💰 Annuity Calculator** - Calculate loan payments with amortization schedules
-- **🏠 Real Estate Calculator** - Evaluate property investments with ROI analysis
+- **🧮 Annuity Calculator** - Calculate loan payments with amortization schedules
+- **🏢 Real Estate Calculator** - Evaluate property investments with ROI analysis
 
 ---
 
@@ -233,18 +237,6 @@ For other Linux distributions, see [Tauri Linux Prerequisites](https://tauri.app
    ```bash
    npm run tauri build
    ```
-
-## Configuration
-
-### API Keys (Optional)
-
-For live crypto price updates, you can configure an API key in the Settings page:
-
-- **CoinGecko API** - For cryptocurrency prices ([Get API Key](https://www.coingecko.com/en/api))
-
-Stock prices are fetched via Yahoo Finance and do not require an API key.
-
-> **Note**: API keys are stored securely in the local encrypted database. They are never transmitted anywhere except to the respective API services.
 
 ## Project Structure
 
