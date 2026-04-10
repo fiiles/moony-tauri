@@ -1174,7 +1174,7 @@ async fn insurance_create(
 
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
-    let limits_json = serde_json::to_string(&body.limits.clone().unwrap_or_default())
+    let limits_json = serde_json::to_string(&body.limits.unwrap_or_default())
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     state
@@ -1227,8 +1227,8 @@ async fn insurance_create(
                         "paymentFrequency": row.get::<_, String>(7)?,
                         "oneTimePayment": sql_to_json(row.get::<_, rusqlite::types::Value>(8).unwrap_or(rusqlite::types::Value::Null)),
                         "oneTimePaymentCurrency": sql_to_json(row.get::<_, rusqlite::types::Value>(9).unwrap_or(rusqlite::types::Value::Null)),
-                        "regularPayment": row.get::<_, String>(10)?,
-                        "regularPaymentCurrency": row.get::<_, String>(11)?,
+                        "regularPayment": sql_to_json(row.get::<_, rusqlite::types::Value>(10).unwrap_or(rusqlite::types::Value::Null)),
+                        "regularPaymentCurrency": sql_to_json(row.get::<_, rusqlite::types::Value>(11).unwrap_or(rusqlite::types::Value::Null)),
                         "limits": sql_to_json(row.get::<_, rusqlite::types::Value>(12).unwrap_or(rusqlite::types::Value::Null)),
                         "notes": sql_to_json(row.get::<_, rusqlite::types::Value>(13).unwrap_or(rusqlite::types::Value::Null)),
                         "status": row.get::<_, String>(14)?,
