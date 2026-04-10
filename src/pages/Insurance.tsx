@@ -21,10 +21,10 @@ export default function Insurance() {
     () => localStorage.getItem('moony_insurance_mcp_hint_dismissed') === 'true'
   );
 
-  function dismissBanner() {
+  const dismissBanner = () => {
     localStorage.setItem('moony_insurance_mcp_hint_dismissed', 'true');
     setBannerDismissed(true);
-  }
+  };
 
   const { formatCurrencyRaw, currencyCode: userCurrency } = useCurrency();
 
@@ -141,6 +141,7 @@ export default function Insurance() {
                 <p className="text-sm font-medium">{t('mcp.bannerTitle')}</p>
                 <p className="text-xs text-muted-foreground">{t('mcp.bannerBody')}</p>
                 <button
+                  type="button"
                   onClick={() => navigate('/settings')}
                   className="text-xs underline text-foreground hover:text-primary"
                 >
@@ -148,6 +149,7 @@ export default function Insurance() {
                 </button>
               </div>
               <button
+                type="button"
                 onClick={dismissBanner}
                 className="text-muted-foreground hover:text-foreground shrink-0"
                 aria-label="Dismiss"
