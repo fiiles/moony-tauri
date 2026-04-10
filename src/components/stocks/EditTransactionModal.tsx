@@ -30,6 +30,7 @@ import { CURRENCIES } from "@shared/currencies";
 import type { InvestmentTransaction } from "@shared/schema";
 import { useEffect } from "react";
 import { investmentsApi } from "@/lib/tauri-api";
+import { FormSection } from "@/components/ui/form-section";
 
 const formSchema = z.object({
     quantity: z.coerce.number().positive("Quantity must be positive"),
@@ -111,11 +112,8 @@ export function EditTransactionModal({ transaction, investmentId, open, onOpenCh
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
-                                Transaction Details
-                            </h3>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <FormSection title="Transaction Details" first>
                             <div className="grid gap-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
@@ -188,7 +186,7 @@ export function EditTransactionModal({ transaction, investmentId, open, onOpenCh
                                     />
                                 </div>
                             </div>
-                        </div>
+                        </FormSection>
 
                         <Button type="submit" className="w-full" disabled={updateTransaction.isPending}>
                             {updateTransaction.isPending ? "Updating..." : "Update Transaction"}

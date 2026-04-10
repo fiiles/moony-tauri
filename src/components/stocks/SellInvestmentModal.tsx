@@ -31,6 +31,7 @@ import { CURRENCIES } from "@shared/currencies";
 import type { HoldingData } from "@/utils/stocks";
 import { investmentsApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
+import { FormSection } from "@/components/ui/form-section";
 
 const formSchema = z.object({
     quantity: z.coerce.number().positive("Quantity must be positive"),
@@ -111,11 +112,8 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
-                                {t('modal.sell.transactionDetails')}
-                            </h3>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <FormSection title={t('modal.sell.transactionDetails')} first>
                             <div className="grid gap-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
@@ -200,7 +198,7 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
                                     />
                                 </div>
                             </div>
-                        </div>
+                        </FormSection>
 
                         <Button type="submit" className="w-full" disabled={sellInvestment.isPending}>
                             {sellInvestment.isPending ? tc('status.selling') : t('modal.sell.sellInvestment')}
