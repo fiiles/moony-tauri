@@ -239,7 +239,7 @@ export function BankAccountFormDialog({
             {t("subtitle")}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <div className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">{t("fields.name")} *</Label>
                 <Input

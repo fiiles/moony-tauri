@@ -120,7 +120,7 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">{t('form.name')} *</Label>
                 <Input
