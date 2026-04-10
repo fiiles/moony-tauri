@@ -23,26 +23,21 @@ export function setConsent(granted: boolean) {
 
 export async function trackEvent(name: string, props?: Record<string, string | number | boolean>) {
   const consent = getConsent();
-  console.log(`[APTABASE] trackEvent called: ${name}`, { consent, props });
-  
+
   if (consent === true) {
     try {
       // Convert booleans to strings for Aptabase compatibility
-      const safeProps: Record<string, string | number> | undefined = props 
+      const safeProps: Record<string, string | number> | undefined = props
         ? Object.entries(props).reduce((acc, [key, value]) => {
             acc[key] = typeof value === 'boolean' ? String(value) : value;
             return acc;
           }, {} as Record<string, string | number>)
         : undefined;
 
-      console.log(`[APTABASE] Sending event: ${name}`, safeProps);
       await aptabaseTrack(name, safeProps);
-      console.log(`[APTABASE] Event sent successfully: ${name}`);
     } catch (error) {
       console.warn("[APTABASE] Failed to track event:", error);
     }
-  } else {
-    console.log(`[APTABASE] Event skipped (consent=${consent}): ${name}`);
   }
 }
 
@@ -99,8 +94,6 @@ export function useScreenTracking() {
         else if (location.startsWith('/real-estate/')) screen = 'real_estate_detail';
         else if (location.startsWith('/settings/')) screen = 'settings_subpage';
     }
-    
-    console.log(`[APTABASE] useScreenTracking - location: ${location}, screen: ${screen || 'NOT_MAPPED'}`);
     
     if (screen) {
       trackEvent('screen_view', { screen });

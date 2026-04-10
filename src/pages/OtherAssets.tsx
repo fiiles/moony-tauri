@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, TrendingUp, Folder, Archive } from "lucide-react";
+import { Plus, TrendingUp, Folder, Archive, Gem } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SummaryCard } from "@/components/common/SummaryCard";
@@ -149,7 +149,7 @@ export default function OtherAssets() {
 
             {items.length === 0 ? (
               <EmptyState
-                icon={<Archive className="h-12 w-12" />}
+                icon={<Gem className="h-12 w-12" />}
                 title={t('empty.title')}
                 description={t('empty.description')}
                 action={

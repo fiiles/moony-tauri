@@ -525,7 +525,7 @@ export const portfolioApi = {
 };
 
 // ============================================================================
-// Price API (Finnhub + MarketStack + CoinGecko)
+// Price API (Yahoo Finance / Finnhub / Marketstack for stocks, CoinGecko for crypto)
 // ============================================================================
 
 export interface ApiKeys {

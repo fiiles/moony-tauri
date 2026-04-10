@@ -130,7 +130,6 @@ export default function TickerValueTrendChart({
   // Listen for backend recalculation events
   useEffect(() => {
     const unlisten = listen('recalculation-complete', () => {
-      console.log('Recalculation complete, refreshing ticker chart...');
       queryClient.invalidateQueries({ queryKey: ['ticker-history', type, ticker] });
     });
 
@@ -144,16 +143,12 @@ export default function TickerValueTrendChart({
     const runBackfill = async () => {
       try {
         if (type === 'stock') {
-          console.log(`[Chart] Triggering on-demand backfill for stock ${ticker}...`);
           const result = await investmentsApi.backfillHistory(ticker);
-          console.log(`[Chart] Backfill result for ${ticker}:`, result);
           if (result.days_processed > 0) {
             queryClient.invalidateQueries({ queryKey: ['ticker-history', type, ticker] });
           }
         } else {
-          console.log(`[Chart] Triggering on-demand backfill for crypto ${ticker}...`);
           const result = await cryptoApi.backfillHistory(ticker);
-          console.log(`[Chart] Backfill result for ${ticker}:`, result);
           if (result.days_processed > 0) {
             queryClient.invalidateQueries({ queryKey: ['ticker-history', type, ticker] });
           }

@@ -74,7 +74,15 @@ coverage
 mcp-server/
 
 # Private documentation
-docs/updating
+docs/UPDATING.md
+
+# AI assistant configuration (internal development tooling)
+CLAUDE.md
+.agent/
+docs/superpowers/
+
+# Development artifacts
+src-tauri/clippy_output.txt
 
 # Git worktrees
 .worktrees/

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Banknote } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import { useBonds } from "@/hooks/use-bonds";
 import { BondsSummary } from "@/components/bonds/BondsSummary";
 import { BondsTable } from "@/components/bonds/BondsTable";
@@ -81,7 +81,7 @@ export default function Bonds() {
 
       {bonds.length === 0 ? (
         <EmptyState
-          icon={<Banknote className="h-12 w-12" />}
+          icon={<FileText className="h-12 w-12" />}
           title={t('empty.title')}
           description={t('empty.description')}
           action={
