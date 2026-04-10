@@ -2,6 +2,10 @@
     "title": "Other Assets",
     "subtitle": "Track collectibles, precious metals, and other valuables.",
     "loading": "Loading your other assets...",
+    "empty": {
+        "title": "No assets yet",
+        "description": "Add your first asset to start tracking other valuables."
+    },
     "addAsset": "Add New Asset",
     "summary": {
         "totalValue": "Total Value",

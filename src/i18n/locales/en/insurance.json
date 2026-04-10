@@ -2,6 +2,10 @@
     "title": "Insurance",
     "subtitle": "Manage your insurance policies.",
     "loading": "Loading your insurance policies...",
+    "empty": {
+        "title": "No insurance policies yet",
+        "description": "Add your first policy to start tracking your coverage."
+    },
     "addPolicy": "Add New Policy",
     "summary": {
         "totalPremium": "Annual Premium",

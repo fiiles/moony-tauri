@@ -2,6 +2,10 @@
     "title": "Bonds",
     "subtitle": "Track your bonds and fixed income investments.",
     "loading": "Loading your bonds...",
+    "empty": {
+        "title": "No bonds yet",
+        "description": "Add your first bond to start tracking your fixed-income investments."
+    },
     "addBond": "Add New Bond",
     "summary": {
         "totalValue": "Total Value",

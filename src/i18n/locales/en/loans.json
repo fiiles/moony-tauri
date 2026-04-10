@@ -2,6 +2,10 @@
     "title": "Loans",
     "subtitle": "Track and manage your loans and mortgages.",
     "loading": "Loading your loans...",
+    "empty": {
+        "title": "No loans yet",
+        "description": "Add your first loan to start tracking your liabilities."
+    },
     "addLoan": "Add New Loan",
     "summary": {
         "totalOutstanding": "Total Outstanding",
