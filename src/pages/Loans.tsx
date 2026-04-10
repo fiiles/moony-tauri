@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, CreditCard } from "lucide-react";
 import { useLoans } from "@/hooks/use-loans";
 import { useLoanMutations } from "@/hooks/use-loan-mutations";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { LoanFormDialog } from "@/components/loans/LoanFormDialog";
 import { DeleteLoanDialog } from "@/components/loans/DeleteLoanDialog";
 import { LoansSummary } from "@/components/loans/LoansSummary";
 import { LoansTable } from "@/components/loans/LoansTable";
+import { EmptyState } from "@/components/common/EmptyState";
 import type { Loan, InsertLoan } from "@shared/schema";
 import { useTranslation } from "react-i18next";
 import { ExportButton } from "@/components/common/ExportButton";
@@ -105,11 +106,25 @@ export default function Loans() {
 
       <LoansSummary metrics={metrics} />
 
-      <LoansTable
-        loans={loans}
-        onEdit={handleEditClick}
-        onDelete={handleDeleteClick}
-      />
+      {loans.length === 0 ? (
+        <EmptyState
+          icon={<CreditCard className="h-12 w-12" />}
+          title={t('empty.title')}
+          description={t('empty.description')}
+          action={
+            <Button onClick={handleAddClick} className="transition-all duration-200">
+              <Plus className="mr-2 h-4 w-4" />
+              {t('addLoan')}
+            </Button>
+          }
+        />
+      ) : (
+        <LoansTable
+          loans={loans}
+          onEdit={handleEditClick}
+          onDelete={handleDeleteClick}
+        />
+      )}
 
       <LoanFormDialog
         open={addDialogOpen}
