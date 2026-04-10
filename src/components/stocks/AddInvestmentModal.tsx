@@ -6,6 +6,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -169,7 +170,7 @@ export function AddInvestmentModal() {
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form id="add-investment-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                                 <FormField
                                     control={form.control}
                                     name="companyName"
@@ -309,11 +310,16 @@ export function AddInvestmentModal() {
                                     />
                                 </div>
 
-                        <Button type="submit" className="w-full" disabled={createInvestment.isPending}>
-                            {createInvestment.isPending ? tc('status.adding') : t('addInvestment')}
-                        </Button>
                     </form>
                 </Form>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                        {tc('buttons.cancel')}
+                    </Button>
+                    <Button type="submit" form="add-investment-form" disabled={createInvestment.isPending}>
+                        {createInvestment.isPending ? tc('status.adding') : t('addInvestment')}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
 
             <AlertDialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
