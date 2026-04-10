@@ -152,5 +152,11 @@
             "title": "Smazat dokument",
             "description": "Opravdu chcete smazat \"{{name}}\"? Soubor bude trvale odstraněn."
         }
+    },
+    "mcp": {
+        "bannerTitle": "Věděl/a jsi, že pojistky můžeš přidávat přes AI?",
+        "bannerBody": "Spusť MCP server, nahraj smlouvu, nabídku nebo shrnutí pojistky do Claude a požádej ho, ať pojistku přidá za tebe.",
+        "setupLink": "Nastavit MCP server",
+        "addViaAi": "Přidat přes AI (MCP)"
     }
 }
