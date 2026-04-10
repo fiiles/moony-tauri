@@ -5,6 +5,7 @@ import { Plus, TrendingUp, Folder, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SummaryCard } from "@/components/common/SummaryCard";
+import { EmptyState } from "@/components/common/EmptyState";
 import { OtherAssetsTable } from "@/components/other-assets/OtherAssetsTable";
 import { AddOtherAssetModal } from "@/components/other-assets/AddOtherAssetModal";
 import { BuyOtherAssetModal } from "@/components/other-assets/BuyOtherAssetModal";
@@ -146,22 +147,35 @@ export default function OtherAssets() {
                 />
             </div>
 
-            <Card className="border shadow-sm card-hover">
+            {items.length === 0 ? (
+              <EmptyState
+                icon={<Archive className="h-12 w-12" />}
+                title={t('empty.title')}
+                description={t('empty.description')}
+                action={
+                  <Button onClick={() => setIsAddModalOpen(true)} className="transition-all duration-200">
+                    <Plus className="mr-2 h-4 w-4" /> {t('addAsset')}
+                  </Button>
+                }
+              />
+            ) : (
+              <Card className="border shadow-sm card-hover">
                 <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-lg font-semibold tracking-tight">{t('table.title')}</h2>
-                    </div>
-                    <div className="rounded-lg border">
-                        <OtherAssetsTable
-                            assets={items}
-                            onBuy={handleBuy}
-                            onSell={handleSell}
-                            onViewTransactions={handleViewTransactions}
-                            onDelete={handleDelete}
-                        />
-                    </div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-lg font-semibold tracking-tight">{t('table.title')}</h2>
+                  </div>
+                  <div className="rounded-lg border">
+                    <OtherAssetsTable
+                      assets={items}
+                      onBuy={handleBuy}
+                      onSell={handleSell}
+                      onViewTransactions={handleViewTransactions}
+                      onDelete={handleDelete}
+                    />
+                  </div>
                 </div>
-            </Card>
+              </Card>
+            )}
 
             <AddOtherAssetModal open={isAddModalOpen} onOpenChange={setIsAddModalOpen} />
 
