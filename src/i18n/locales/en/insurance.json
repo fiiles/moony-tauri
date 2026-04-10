@@ -152,5 +152,11 @@
             "title": "Delete Document",
             "description": "Are you sure you want to delete \"{{name}}\"? The file will be permanently removed."
         }
+    },
+    "mcp": {
+        "bannerTitle": "Did you know you can add policies via AI?",
+        "bannerBody": "Run the MCP server, upload a contract, offer, or policy summary to Claude and ask it to add the policy for you.",
+        "setupLink": "Set up MCP server",
+        "addViaAi": "Add via AI (MCP)"
     }
 }
