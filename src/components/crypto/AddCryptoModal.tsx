@@ -7,6 +7,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -169,7 +170,7 @@ export function AddCryptoModal() {
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form id="add-crypto-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <div className="grid gap-4">
                                 <FormField
                                     control={form.control}
@@ -301,11 +302,16 @@ export function AddCryptoModal() {
                                 </div>
                             </div>
 
-                        <Button type="submit" className="w-full" disabled={createInvestment.isPending}>
-                            {createInvestment.isPending ? tc('status.adding') : t('addCrypto')}
-                        </Button>
                     </form>
                 </Form>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                        {tc('buttons.cancel')}
+                    </Button>
+                    <Button type="submit" form="add-crypto-form" disabled={createInvestment.isPending}>
+                        {createInvestment.isPending ? tc('status.adding') : t('addCrypto')}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
 
             <AlertDialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
