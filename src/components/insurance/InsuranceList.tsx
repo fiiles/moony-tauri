@@ -32,7 +32,7 @@ export function InsuranceList() {
     const [, setLocation] = useLocation();
 
     // Sorting state
-    type SortColumn = 'name' | 'type' | 'provider' | 'premium' | 'frequency' | 'status';
+    type SortColumn = 'name' | 'type' | 'provider' | 'premium' | 'frequency';
     const [sortColumn, setSortColumn] = useState<SortColumn>('name');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -83,9 +83,6 @@ export function InsuranceList() {
                 case 'frequency':
                     comparison = (a.paymentFrequency || '').localeCompare(b.paymentFrequency || '');
                     break;
-                case 'status':
-                    comparison = (a.status || '').localeCompare(b.status || '');
-                    break;
             }
             return sortDirection === 'asc' ? comparison : -comparison;
         });
@@ -135,16 +132,13 @@ export function InsuranceList() {
                                 <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('frequency')}>
                                     <span className="flex items-center">{t('modal.paymentFrequency')}<SortIcon column="frequency" /></span>
                                 </TableHead>
-                                <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('status')}>
-                                    <span className="flex items-center">{t('table.status')}<SortIcon column="status" /></span>
-                                </TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredAndSortedPolicies?.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center">
+                                    <TableCell colSpan={6} className="h-24 text-center">
                                         {t('table.noPolicies')}
                                     </TableCell>
                                 </TableRow>
@@ -167,14 +161,6 @@ export function InsuranceList() {
                                             {formatCurrency(convertToCzK(Number(policy.regularPayment), policy.regularPaymentCurrency as CurrencyCode))}
                                         </TableCell>
                                         <TableCell className="capitalize">{t(`modal.frequency.${policy.paymentFrequency}`)}</TableCell>
-                                        <TableCell>
-                                            <span className={`px-2 py-1 rounded-full text-xs ${policy.status === 'active'
-                                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                                : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
-                                                }`}>
-                                                {t(`modal.status.${policy.status}`)}
-                                            </span>
-                                        </TableCell>
                                         <TableCell>
                                             <Button
                                                 variant="ghost"

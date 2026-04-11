@@ -1,6 +1,5 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Shield, Plus } from "lucide-react";
 import { useCurrency } from "@/lib/currency";
 
@@ -10,7 +9,6 @@ interface InsurancePolicy {
   provider: string;
   coverageAmount: number;
   annualPremium: number;
-  status: string;
 }
 
 interface InsuranceCardProps {
@@ -22,19 +20,6 @@ export default function InsuranceCard({ policies, onAdd }: InsuranceCardProps) {
   const { formatCurrency, formatCurrencyShort } = useCurrency();
   const totalCoverage = policies.reduce((sum, policy) => sum + policy.coverageAmount, 0);
   const totalPremiums = policies.reduce((sum, policy) => sum + policy.annualPremium, 0);
-
-  const getStatusVariant = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-        return 'default';
-      case 'expiring soon':
-        return 'secondary';
-      case 'expired':
-        return 'destructive';
-      default:
-        return 'secondary';
-    }
-  };
 
   return (
     <Card className="p-6 card-hover">
@@ -73,9 +58,6 @@ export default function InsuranceCard({ policies, onAdd }: InsuranceCardProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <p className="font-medium text-sm">{policy.policyType}</p>
-                <Badge variant={getStatusVariant(policy.status)} className="text-xs">
-                  {policy.status}
-                </Badge>
               </div>
               <p className="text-xs text-muted-foreground">{policy.provider}</p>
             </div>

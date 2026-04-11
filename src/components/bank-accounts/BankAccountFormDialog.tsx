@@ -19,12 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import type { BankAccountWithInstitution, InsertBankAccount, AccountType, Institution } from "@shared/schema";
+import type { BankAccountWithInstitution, InsertBankAccount, AccountType } from "@shared/schema";
 import { useCurrency } from "@/lib/currency";
 import { currencies } from "@/lib/currency";
 import { CurrencyCode } from "@shared/currencies";
 import { SavingsAccountZoneManager } from "@/components/savings/SavingsAccountZoneManager";
-import { InstitutionCombobox } from "@/components/bank-accounts/InstitutionCombobox";
 import { useTranslation } from "react-i18next";
 
 
@@ -34,12 +33,10 @@ type UpdateBankAccountData = {
   balance?: string;
   currency?: string;
   accountType?: AccountType;
-  institutionId?: string | null;
   iban?: string;
   bban?: string;
   interestRate?: string;
   hasZoneDesignation?: boolean;
-
 };
 
 interface ZoneData {
@@ -54,7 +51,6 @@ interface BankAccountFormDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: InsertBankAccount | UpdateBankAccountData, zones?: ZoneData[]) => void;
   account?: BankAccountWithInstitution | null;
-  institutions: Institution[];
   isLoading?: boolean;
   initialZones?: ZoneData[];
 }
@@ -64,7 +60,6 @@ export function BankAccountFormDialog({
   onOpenChange,
   onSubmit,
   account,
-  institutions,
   isLoading = false,
   initialZones,
 }: BankAccountFormDialogProps) {
@@ -78,7 +73,6 @@ export function BankAccountFormDialog({
   const [balance, setBalance] = useState("0");
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(userCurrency);
   const [accountType, setAccountType] = useState<AccountType>("checking");
-  const [institutionId, setInstitutionId] = useState<string | null>(null);
   const [iban, setIban] = useState("");
   const [bban, setBban] = useState("");
   const [interestRate, setInterestRate] = useState("0");
@@ -167,7 +161,6 @@ export function BankAccountFormDialog({
         setBalance(account.balance.toString());
         setSelectedCurrency((account.currency || "CZK") as CurrencyCode);
         setAccountType(account.accountType as AccountType);
-        setInstitutionId(account.institutionId || null);
         setIban(account.iban || "");
         setBban(account.bban || "");
         setInterestRate(account.interestRate?.toString() || "0");
@@ -185,7 +178,6 @@ export function BankAccountFormDialog({
         setBalance("0");
         setSelectedCurrency(userCurrency);
         setAccountType("checking");
-        setInstitutionId(null);
         setIban("");
         setBban("");
         setInterestRate("0");
@@ -203,7 +195,6 @@ export function BankAccountFormDialog({
         balance,
         currency: selectedCurrency,
         accountType,
-        institutionId,
         iban: iban || undefined,
         bban: bban || undefined,
         interestRate: hasZoneDesignation ? "0" : interestRate,
@@ -215,7 +206,6 @@ export function BankAccountFormDialog({
         balance,
         currency: selectedCurrency,
         accountType,
-        institutionId,
         iban: iban || undefined,
         bban: bban || undefined,
         interestRate: hasZoneDesignation ? "0" : interestRate,
@@ -251,32 +241,22 @@ export function BankAccountFormDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="accountType">{t("fields.accountType")}</Label>
-                  <Select
-                    value={accountType}
-                    onValueChange={(v) => setAccountType(v as AccountType)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="checking">{t("accountTypes.checking")}</SelectItem>
-                      <SelectItem value="savings">{t("accountTypes.savings")}</SelectItem>
-                      <SelectItem value="credit_card">{t("accountTypes.credit_card")}</SelectItem>
-                      <SelectItem value="investment">{t("accountTypes.investment")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="institution">{t("fields.institution")}</Label>
-                  <InstitutionCombobox
-                    institutions={institutions}
-                    value={institutionId}
-                    onChange={(v) => setInstitutionId(v)}
-                  />
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="accountType">{t("fields.accountType")}</Label>
+                <Select
+                  value={accountType}
+                  onValueChange={(v) => setAccountType(v as AccountType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="checking">{t("accountTypes.checking")}</SelectItem>
+                    <SelectItem value="savings">{t("accountTypes.savings")}</SelectItem>
+                    <SelectItem value="credit_card">{t("accountTypes.credit_card")}</SelectItem>
+                    <SelectItem value="investment">{t("accountTypes.investment")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

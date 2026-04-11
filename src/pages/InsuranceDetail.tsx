@@ -118,12 +118,6 @@ export default function InsuranceDetail() {
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <h1 className="text-3xl font-black tracking-tight">{policy.policyName}</h1>
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${policy.status === 'active'
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
-                                }`}>
-                                {t(`modal.status.${policy.status}`)}
-                            </span>
                         </div>
                         <p className="text-sm text-muted-foreground flex items-center">
                             <Shield className="mr-1 h-4 w-4" /> {policy.provider} • {t(`types.${policy.type}`)}
@@ -250,10 +244,6 @@ export default function InsuranceDetail() {
                                     <div>
                                         <p className="text-sm text-muted-foreground">{t('form.type')}</p>
                                         <p className="font-medium capitalize">{t(`types.${policy.type}`)}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">{tc('labels.status')}</p>
-                                        <p className="font-medium capitalize">{t(`modal.status.${policy.status}`)}</p>
                                     </div>
                                 </div>
                             </CardContent>
