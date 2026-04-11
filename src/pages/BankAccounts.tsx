@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Landmark, TrendingUp, Percent, Eye, Check, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-import { useBankAccounts, useInstitutions } from "@/hooks/use-bank-accounts";
+import { useBankAccounts } from "@/hooks/use-bank-accounts";
 import { useBankAccountMutations } from "@/hooks/use-bank-account-mutations";
 import { Card, CardContent } from "@/components/ui/card";
 import { SummaryCard } from "@/components/common/SummaryCard";
@@ -28,7 +28,6 @@ export default function BankAccounts() {
   const { t: tCommon } = useTranslation("common");
   const [, setLocation] = useLocation();
   const { accounts, metrics, isLoading } = useBankAccounts();
-  const { institutions } = useInstitutions();
   const { createAccount } = useBankAccountMutations();
   const { formatCurrency } = useCurrency();
   const queryClient = useQueryClient();
@@ -36,7 +35,7 @@ export default function BankAccounts() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   // Sorting state
-  type SortColumn = 'name' | 'accountType' | 'institution' | 'balance' | 'interestRate';
+  type SortColumn = 'name' | 'accountType' | 'balance' | 'interestRate';
   const [sortColumn, setSortColumn] = useState<SortColumn>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -67,9 +66,6 @@ export default function BankAccounts() {
           break;
         case 'accountType':
           comparison = (a.accountType || '').localeCompare(b.accountType || '');
-          break;
-        case 'institution':
-          comparison = (a.institution?.name || '').localeCompare(b.institution?.name || '');
           break;
         case 'balance':
           comparison = parseFloat(a.balance) - parseFloat(b.balance);
@@ -180,9 +176,6 @@ export default function BankAccounts() {
                     <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('accountType')}>
                       <span className="flex items-center">{t("fields.accountType")}<SortIcon column="accountType" /></span>
                     </TableHead>
-                    <TableHead className="cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('institution')}>
-                      <span className="flex items-center">{t("fields.institution")}<SortIcon column="institution" /></span>
-                    </TableHead>
                     <TableHead className="text-right cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('balance')}>
                       <span className="flex items-center justify-end">{t("fields.balance")}<SortIcon column="balance" /></span>
                     </TableHead>
@@ -211,9 +204,6 @@ export default function BankAccounts() {
                           <Badge variant="secondary">
                             {t(`accountTypes.${item.accountType}`)}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {item.institution?.name || "—"}
                         </TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(convertToCzK(parseFloat(item.balance), (item.currency || "CZK") as CurrencyCode))}
@@ -284,7 +274,6 @@ export default function BankAccounts() {
             },
           });
         }}
-        institutions={institutions}
         isLoading={createAccount.isPending}
       />
     </div>

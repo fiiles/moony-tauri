@@ -59,7 +59,6 @@ const insuranceFormSchema = z.object({
         currency: z.string(),
     })).optional(),
     notes: z.string().optional(),
-    status: z.string().optional(),
 });
 
 type InsuranceFormData = z.infer<typeof insuranceFormSchema>;
@@ -98,7 +97,6 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
             regularPaymentCurrency: (policy as InsurancePolicy & { regularPaymentCurrency?: string })?.regularPaymentCurrency || userCurrency,
             limits: policy?.limits || [],
             notes: policy?.notes || "",
-            status: policy?.status || "active",
         },
     });
 
@@ -124,7 +122,6 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                 regularPaymentCurrency: (policy as InsurancePolicy & { regularPaymentCurrency?: string })?.regularPaymentCurrency || userCurrency,
                 limits: policy?.limits || [],
                 notes: policy?.notes || "",
-                status: policy?.status || "active",
             });
         }
     }, [isOpen, policy, form, userCurrency]);
@@ -214,28 +211,6 @@ export function InsuranceFormDialog({ policy, trigger, open, onOpenChange }: Ins
                                                     <SelectItem value="property">{t('types.property')}</SelectItem>
                                                     <SelectItem value="liability">{t('types.liability')}</SelectItem>
                                                     <SelectItem value="other">{t('types.other')}</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="status"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{tc('labels.status')}</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder={t('modal.selectStatus')} />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="active">{t('modal.status.active')}</SelectItem>
-                                                    <SelectItem value="inactive">{t('modal.status.inactive')}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />

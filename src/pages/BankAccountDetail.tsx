@@ -49,7 +49,7 @@ import {
 import { useLocation } from 'wouter';
 import { calculateZonedInterest } from '@/components/bank-accounts/ZonesInfoModal';
 import { convertToCzK, type CurrencyCode } from '@shared/currencies';
-import { useBankAccount, useInstitutions } from '@/hooks/use-bank-accounts';
+import { useBankAccount } from '@/hooks/use-bank-accounts';
 import {
   useBankTransactionMutations,
   useBankAccountMutations,
@@ -73,7 +73,6 @@ export default function BankAccountDetail() {
   const [, setLocation] = useLocation();
   const accountId = params?.id;
   const { account, isLoading } = useBankAccount(accountId);
-  const { institutions } = useInstitutions();
   const { deleteTransaction } = useBankTransactionMutations(accountId);
   const { updateAccount, deleteAccount } = useBankAccountMutations();
   const { formatCurrency } = useCurrency();
@@ -592,7 +591,6 @@ export default function BankAccountDetail() {
               {t(`accountTypes.${account.accountType}`)}
             </Badge>
           </div>
-          <p className="text-muted-foreground">{account.institution?.name || ''}</p>
           {(account.bban || account.iban) && (
             <div className="text-sm text-muted-foreground mt-1">
               {account.bban && <span>BBAN: {account.bban}</span>}
@@ -1165,7 +1163,6 @@ export default function BankAccountDetail() {
         onOpenChange={setEditDialogOpen}
         onSubmit={handleEditSubmit}
         account={account}
-        institutions={institutions}
         isLoading={updateAccount.isPending}
         initialZones={zones?.map((z) => ({
           id: z.id,
@@ -1180,7 +1177,6 @@ export default function BankAccountDetail() {
         open={csvImportOpen}
         onOpenChange={setCsvImportOpen}
         accountId={accountId || ''}
-        institutionId={account?.institutionId}
       />
     </div>
   );
