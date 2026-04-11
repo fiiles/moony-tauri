@@ -312,7 +312,112 @@ export function ImportInvestmentsModal() {
     const isMappingValid = !!(columnMap.date && columnMap.type && columnMap.ticker && columnMap.quantity && columnMap.price);
 
     // ── Ticker verification ────────────────────────────────────────────────────
-    // (Added in Task 4)
+
+    const startVerification = async (tickers: string[], currentMap: TickerMap) => {
+        for (let i = 0; i < tickers.length; i++) {
+            if (verifyAbortRef.current) break;
+            const origKey = tickers[i];
+            setTickerMap(prev => ({ ...prev, [origKey]: { ...prev[origKey], status: "searching" } }));
+            setVerifyProgress({ done: i, total: tickers.length });
+
+            try {
+                const searchQuery = currentMap[origKey]?.resolvedTicker || origKey;
+                const results = await priceApi.searchStockTickers(searchQuery);
+                if (results.length > 0) {
+                    const best = results.find(r => r.symbol.toUpperCase() === searchQuery.toUpperCase()) ?? results[0];
+                    setTickerMap(prev => ({
+                        ...prev,
+                        [origKey]: { ...prev[origKey], resolvedTicker: best.symbol, name: best.shortname || "", status: "found" },
+                    }));
+                } else {
+                    setTickerMap(prev => ({ ...prev, [origKey]: { ...prev[origKey], status: "not_found" } }));
+                }
+            } catch {
+                setTickerMap(prev => ({ ...prev, [origKey]: { ...prev[origKey], status: "failed" } }));
+            }
+
+            if (i < tickers.length - 1) await delay(300);
+        }
+        setVerifyProgress(prev => ({ ...prev, done: tickers.length }));
+    };
+
+    const enterTickerReview = () => {
+        const uniqueTickers = [...new Set(
+            rawRows.map(row => row[columnMap.ticker] || "").filter(Boolean)
+        )];
+        const initial: TickerMap = {};
+        uniqueTickers.forEach(ticker => {
+            initial[ticker] = { originalTicker: ticker, resolvedTicker: ticker, name: "", status: "pending" };
+        });
+        setTickerMap(initial);
+        setVerifyProgress({ done: 0, total: uniqueTickers.length });
+        verifyAbortRef.current = false;
+        setStep("ticker-review");
+        startVerification(uniqueTickers, initial);
+    };
+
+    const retryFailed = () => {
+        const failedKeys = Object.keys(tickerMap).filter(k => tickerMap[k].status === "failed");
+        if (failedKeys.length === 0) return;
+        verifyAbortRef.current = false;
+        setVerifyProgress({ done: 0, total: failedKeys.length });
+        startVerification(failedKeys, tickerMap);
+    };
+
+    const searchForTicker = async (originalKey: string) => {
+        const entry = tickerMap[originalKey];
+        if (!entry || entry.status === "searching") return;
+        setActiveSearchKey(originalKey);
+        setTickerMap(prev => ({ ...prev, [originalKey]: { ...prev[originalKey], status: "searching" } }));
+        try {
+            const results = await priceApi.searchStockTickers(entry.resolvedTicker);
+            if (results.length === 0) {
+                setTickerMap(prev => ({ ...prev, [originalKey]: { ...prev[originalKey], status: "not_found" } }));
+                setActiveSearchKey(null);
+            } else if (results.length === 1) {
+                setTickerMap(prev => ({
+                    ...prev,
+                    [originalKey]: { ...prev[originalKey], resolvedTicker: results[0].symbol, name: results[0].shortname || "", status: "found" },
+                }));
+                setActiveSearchKey(null);
+            } else {
+                setSearchResults(results);
+                setShowPickerDialog(true);
+                // status stays "searching" until user picks from dialog
+            }
+        } catch {
+            setTickerMap(prev => ({ ...prev, [originalKey]: { ...prev[originalKey], status: "failed" } }));
+            setActiveSearchKey(null);
+        }
+    };
+
+    const selectFromPicker = (result: SearchResult) => {
+        if (!activeSearchKey) return;
+        setTickerMap(prev => ({
+            ...prev,
+            [activeSearchKey]: { ...prev[activeSearchKey], resolvedTicker: result.symbol, name: result.shortname || "", status: "found" },
+        }));
+        setShowPickerDialog(false);
+        setSearchResults([]);
+        setActiveSearchKey(null);
+    };
+
+    const cancelPicker = () => {
+        if (activeSearchKey) {
+            setTickerMap(prev => ({ ...prev, [activeSearchKey]: { ...prev[activeSearchKey], status: "not_found" } }));
+        }
+        setShowPickerDialog(false);
+        setSearchResults([]);
+        setActiveSearchKey(null);
+    };
+
+    const isTickerReviewValid =
+        Object.values(tickerMap).length > 0 &&
+        Object.values(tickerMap).every(e =>
+            e.status !== "pending" &&
+            e.status !== "searching" &&
+            (e.status === "found" || e.name.trim().length > 0)
+        );
 
     // ── Row transform + import ─────────────────────────────────────────────────
     // (Added in Task 5)
@@ -569,9 +674,120 @@ export function ImportInvestmentsModal() {
                     </div>
                 )}
 
-                {/* Steps 3-5: added in Tasks 4-5 */}
+                {/* ── Step 3: Ticker Review ────────────────────────────────────────── */}
+                {step === "ticker-review" && (
+                    <div className="space-y-4">
+                        {/* Progress */}
+                        {verifyProgress.done < verifyProgress.total && (
+                            <div className="space-y-1">
+                                <p className="text-sm text-muted-foreground">
+                                    {t("import.tickerReview.verifying", { done: verifyProgress.done, total: verifyProgress.total })}
+                                </p>
+                                <div className="w-full bg-muted rounded-full h-2">
+                                    <div
+                                        className="bg-primary h-2 rounded-full transition-all"
+                                        style={{ width: `${verifyProgress.total > 0 ? (verifyProgress.done / verifyProgress.total) * 100 : 0}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        {verifyProgress.done > 0 && verifyProgress.done === verifyProgress.total && (
+                            <p className="text-sm text-muted-foreground">{t("import.tickerReview.allVerified")}</p>
+                        )}
 
-                {/* Picker dialog: added in Task 4 */}
+                        {/* Retry failed */}
+                        {Object.values(tickerMap).some(e => e.status === "failed") && (
+                            <Button variant="outline" size="sm" onClick={retryFailed}>
+                                {t("import.tickerReview.retryFailed")}
+                            </Button>
+                        )}
+
+                        {/* Ticker rows */}
+                        <div className="space-y-2">
+                            {Object.entries(tickerMap).map(([origKey, entry]) => (
+                                <div key={origKey} className="flex items-start gap-3 p-3 border rounded-lg">
+                                    {/* Status icon */}
+                                    <div className="mt-6 w-5 shrink-0">
+                                        {entry.status === "pending"    && <div className="h-4 w-4 rounded-full bg-muted" />}
+                                        {entry.status === "searching"  && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                                        {entry.status === "found"      && <CheckCircle className="h-4 w-4 text-green-500" />}
+                                        {entry.status === "not_found"  && <AlertCircle className="h-4 w-4 text-red-500" />}
+                                        {entry.status === "failed"     && <TriangleAlert className="h-4 w-4 text-yellow-500" />}
+                                    </div>
+
+                                    {/* Ticker input + search button */}
+                                    <div className="flex-1 space-y-1 min-w-0">
+                                        <p className="text-xs text-muted-foreground">{t("import.tickerReview.tickerLabel")}</p>
+                                        <div className="flex gap-1">
+                                            <Input
+                                                value={entry.resolvedTicker}
+                                                onChange={(e) => setTickerMap(prev => ({ ...prev, [origKey]: { ...prev[origKey], resolvedTicker: e.target.value } }))}
+                                                className="h-8 text-sm font-mono"
+                                            />
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-8 w-8 shrink-0"
+                                                onClick={() => searchForTicker(origKey)}
+                                                disabled={entry.status === "searching" || !entry.resolvedTicker.trim()}
+                                            >
+                                                {entry.status === "searching"
+                                                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                                                    : <Search className="h-3 w-3" />}
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Name input */}
+                                    <div className="flex-1 space-y-1 min-w-0">
+                                        <p className="text-xs text-muted-foreground">{t("import.tickerReview.nameLabel")}</p>
+                                        <Input
+                                            value={entry.name}
+                                            onChange={(e) => setTickerMap(prev => ({ ...prev, [origKey]: { ...prev[origKey], name: e.target.value } }))}
+                                            className={`h-8 text-sm ${
+                                                (entry.status === "not_found" || entry.status === "failed") && !entry.name.trim()
+                                                    ? entry.status === "not_found" ? "border-red-500" : "border-yellow-500"
+                                                    : ""
+                                            }`}
+                                            placeholder={
+                                                entry.status === "not_found" || entry.status === "failed"
+                                                    ? t("import.tickerReview.nameRequired")
+                                                    : ""
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Steps 4-5: added in Task 5 */}
+
+                {/* Ticker picker dialog */}
+                <AlertDialog open={showPickerDialog} onOpenChange={(v) => { if (!v) cancelPicker(); }}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>{t("modal.add.selectTicker")}</AlertDialogTitle>
+                            <AlertDialogDescription>{t("modal.add.multipleResults")}</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="max-h-60 overflow-y-auto space-y-2">
+                            {searchResults.map(result => (
+                                <button
+                                    key={result.symbol}
+                                    onClick={() => selectFromPicker(result)}
+                                    className="w-full text-left p-3 rounded border hover:bg-accent transition-colors"
+                                >
+                                    <div className="font-semibold">{result.symbol}</div>
+                                    <div className="text-sm text-muted-foreground">{result.shortname} • {result.exchange}</div>
+                                </button>
+                            ))}
+                        </div>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel onClick={cancelPicker}>{t("import.cancel")}</AlertDialogCancel>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
                 <DialogFooter>
                     {step === "select" && (
@@ -580,12 +796,22 @@ export function ImportInvestmentsModal() {
                     {step === "mapping" && (
                         <>
                             <Button variant="outline" onClick={() => setStep("select")}>{t("import.cancel")}</Button>
-                            <Button onClick={() => setStep("ticker-review")} disabled={!isMappingValid}>
+                            <Button onClick={enterTickerReview} disabled={!isMappingValid}>
                                 {t("import.mapping.next")}
                             </Button>
                         </>
                     )}
-                    {/* Footer buttons for steps 3-5: added in Tasks 4-5 */}
+                    {step === "ticker-review" && (
+                        <>
+                            <Button variant="outline" onClick={() => { verifyAbortRef.current = true; setStep("mapping"); }}>
+                                {t("import.cancel")}
+                            </Button>
+                            <Button onClick={() => { /* handleImport added in Task 5 */ }} disabled={!isTickerReviewValid}>
+                                {t("import.importRecords", { count: rawRows.length })}
+                            </Button>
+                        </>
+                    )}
+                    {/* Steps 4-5 footer buttons: added in Task 5 */}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
