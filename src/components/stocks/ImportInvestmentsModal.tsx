@@ -419,8 +419,57 @@ export function ImportInvestmentsModal() {
             (e.status === "found" || e.name.trim().length > 0)
         );
 
-    // ── Row transform + import ─────────────────────────────────────────────────
-    // (Added in Task 5)
+    // ── Row transform + import ────────────────────────────────────────────────
+
+    const transformRows = (): Record<string, string>[] =>
+        rawRows.map(row => {
+            const origTicker = row[columnMap.ticker] || "";
+            const entry = tickerMap[origTicker];
+            return {
+                Date:     row[columnMap.date]     || "",
+                Type:     row[columnMap.type]     || "",
+                Ticker:   entry?.resolvedTicker   || origTicker,
+                Name:     entry?.name             || "",
+                Quantity: row[columnMap.quantity] || "",
+                Price:    row[columnMap.price]    || "",
+                Currency: columnMap.currency
+                    ? (row[columnMap.currency] || defaultCurrency)
+                    : defaultCurrency,
+            };
+        });
+
+    const handleImport = async () => {
+        const transformed = transformRows();
+        setStep("importing");
+        try {
+            const result = await investmentsApi.importTransactions(transformed, defaultCurrency);
+            queryClient.invalidateQueries({ queryKey: ["investments"] });
+            queryClient.invalidateQueries({ queryKey: ["transactions"] });
+            queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+            queryClient.invalidateQueries({ queryKey: ["all-stock-transactions"] });
+            setImportResult({ success: result.success, errors: result.errors || [], imported: result.imported || [] });
+
+            priceApi.refreshStockPrices()
+                .then(() => {
+                    queryClient.invalidateQueries({ queryKey: ["investments"] });
+                    queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+                    return priceApi.refreshDividends();
+                })
+                .then(() => {
+                    queryClient.invalidateQueries({ queryKey: ["investments"] });
+                    queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
+                    setStep("done");
+                })
+                .catch((err: Error) => {
+                    console.error("Background refresh error:", err);
+                    setStep("done");
+                });
+        } catch (err: unknown) {
+            console.error("Import error:", err);
+            setImportResult({ success: 0, errors: [err instanceof Error ? err.message : "Import failed"], imported: [] });
+            setStep("done");
+        }
+    };
 
     // ═══════════════════════════════════════════════════════════════════════════
     //  RENDER
@@ -762,7 +811,61 @@ export function ImportInvestmentsModal() {
                     </div>
                 )}
 
-                {/* Steps 4-5: added in Task 5 */}
+                {/* ── Step 4: Importing ────────────────────────────────────────────── */}
+                {step === "importing" && (
+                    <div className="py-12 text-center">
+                        <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary mb-4" />
+                        <p className="text-lg font-medium">{t("import.status.processing")}</p>
+                        {showDelayedSubtitle && (
+                            <p className="text-sm text-muted-foreground mt-2">{t("import.status.loadingDetails")}</p>
+                        )}
+                    </div>
+                )}
+
+                {/* ── Step 5: Done ─────────────────────────────────────────────────── */}
+                {step === "done" && importResult && (
+                    <div className="py-8 space-y-6">
+                        <div className="text-center">
+                            <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
+                            <p className="text-2xl font-bold">{t("import.complete")}</p>
+                            <p className="text-muted-foreground mt-2">
+                                {t("import.processed", { count: importResult.success + importResult.errors.length })}
+                            </p>
+                        </div>
+                        <div className={`grid gap-4 ${importResult.imported.length > 0 && importResult.errors.length > 0 ? "md:grid-cols-2" : "grid-cols-1"}`}>
+                            {importResult.imported.length > 0 && (
+                                <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <CheckCircle className="h-5 w-5 text-green-600" />
+                                        <span className="font-medium text-green-800 dark:text-green-200">
+                                            {t("import.successful", { count: importResult.success })}
+                                        </span>
+                                    </div>
+                                    <ScrollArea className="max-h-40">
+                                        <ul className="list-disc pl-4 text-xs space-y-1 text-green-700 dark:text-green-300">
+                                            {importResult.imported.map((item, i) => <li key={i}>{item}</li>)}
+                                        </ul>
+                                    </ScrollArea>
+                                </div>
+                            )}
+                            {importResult.errors.length > 0 && (
+                                <div className="p-4 bg-red-50 dark:bg-red-950 rounded-lg">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <AlertCircle className="h-5 w-5 text-red-600" />
+                                        <span className="font-medium text-red-800 dark:text-red-200">
+                                            {t("import.skipped", { count: importResult.errors.length })}
+                                        </span>
+                                    </div>
+                                    <ScrollArea className="max-h-40">
+                                        <ul className="list-disc pl-4 text-xs space-y-1 text-red-700 dark:text-red-300">
+                                            {importResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+                                        </ul>
+                                    </ScrollArea>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Ticker picker dialog */}
                 <AlertDialog open={showPickerDialog} onOpenChange={(v) => { if (!v) cancelPicker(); }}>
@@ -806,12 +909,14 @@ export function ImportInvestmentsModal() {
                             <Button variant="outline" onClick={() => { verifyAbortRef.current = true; setStep("mapping"); }}>
                                 {t("import.cancel")}
                             </Button>
-                            <Button onClick={() => { /* handleImport added in Task 5 */ }} disabled={!isTickerReviewValid}>
+                            <Button onClick={handleImport} disabled={!isTickerReviewValid}>
                                 {t("import.importRecords", { count: rawRows.length })}
                             </Button>
                         </>
                     )}
-                    {/* Steps 4-5 footer buttons: added in Task 5 */}
+                    {step === "done" && (
+                        <Button onClick={handleClose}>{t("import.close")}</Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
