@@ -304,6 +304,7 @@ function ApiKeysCard() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">{t('apiKeys.coingecko.hint')}</p>
+          <p className="text-xs text-red-500">{t('apiKeys.coingecko.hint2')}</p>
         </div>
 
         <Button
