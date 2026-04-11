@@ -448,7 +448,9 @@ export function ImportInvestmentsModal() {
             queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
             queryClient.invalidateQueries({ queryKey: ["all-stock-transactions"] });
             setImportResult({ success: result.success, errors: result.errors || [], imported: result.imported || [] });
+            setStep("done");
 
+            // Background: refresh prices + dividends after import (fire-and-forget)
             priceApi.refreshStockPrices()
                 .then(() => {
                     queryClient.invalidateQueries({ queryKey: ["investments"] });
@@ -458,12 +460,8 @@ export function ImportInvestmentsModal() {
                 .then(() => {
                     queryClient.invalidateQueries({ queryKey: ["investments"] });
                     queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
-                    setStep("done");
                 })
-                .catch((err: Error) => {
-                    console.error("Background refresh error:", err);
-                    setStep("done");
-                });
+                .catch((err: Error) => { console.error("Background refresh error:", err); });
         } catch (err: unknown) {
             console.error("Import error:", err);
             setImportResult({ success: 0, errors: [err instanceof Error ? err.message : "Import failed"], imported: [] });
