@@ -136,7 +136,7 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form id="add-transaction-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
                                         control={form.control}
@@ -288,18 +288,21 @@ export function AddTransactionModal({ accountId, accountCurrency }: AddTransacti
                                     />
                                 </div>
 
-                        <DialogFooter>
-                            <Button type="submit" className="w-full" disabled={createTransaction.isPending}>
-                                {createTransaction.isPending ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Plus className="mr-2 h-4 w-4" />
-                                )}
-                                {createTransaction.isPending ? tc('status.adding') : t('transaction.add')}
-                            </Button>
-                        </DialogFooter>
                     </form>
                 </Form>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                        {tc('buttons.cancel')}
+                    </Button>
+                    <Button type="submit" form="add-transaction-form" disabled={createTransaction.isPending}>
+                        {createTransaction.isPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Plus className="mr-2 h-4 w-4" />
+                        )}
+                        {createTransaction.isPending ? tc('status.adding') : t('transaction.add')}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
