@@ -34,7 +34,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
+import { FormSection } from "@/components/ui/form-section";
 import { useCurrency } from "@/lib/currency";
 import { currencies } from "@/lib/currency";
 import { realEstateApi, loansApi, insuranceApi } from "@/lib/tauri-api";
@@ -267,9 +267,9 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
+                    <form id="add-real-estate-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         {/* Property Details Section */}
-                        <h4 className="text-sm font-semibold">{t('modal.add.propertyDetails')}</h4>
+                        <FormSection title={t('modal.add.propertyDetails')} first>
                             <div className="grid gap-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField
@@ -322,10 +322,10 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     )}
                                 />
                             </div>
+                        </FormSection>
 
-                        <Separator />
                         {/* Financial Details Section */}
-                        <h4 className="text-sm font-semibold">{t('modal.add.financialDetails')}</h4>
+                        <FormSection title={t('modal.add.financialDetails')}>
                             <div className="grid gap-4">
                                 <div className="grid grid-cols-3 gap-4">
                                     <FormField
@@ -449,11 +449,11 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     </div>
                                 )}
                             </div>
+                        </FormSection>
 
-                        <Separator />
                         {/* Recurring Costs Section */}
-                        <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-semibold">{t('modal.add.recurringCosts')}</h4>
+                        <FormSection title={t('modal.add.recurringCosts')}>
+                            <div className="flex justify-end">
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -462,8 +462,7 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                 >
                                     <Plus className="h-4 w-4 mr-1" />{t('modal.add.addCost')}
                                 </Button>
-                        </div>
-
+                            </div>
                             <div className="space-y-2">
                                 {costFields.map((field, index) => (
                                     <div key={field.id} className="flex gap-2 items-end">
@@ -551,10 +550,10 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     </p>
                                 )}
                             </div>
+                        </FormSection>
 
-                        <Separator />
                         {/* Financing Section */}
-                        <h4 className="text-sm font-semibold">{t('modal.add.financing')}</h4>
+                        <FormSection title={t('modal.add.financing')}>
                             <div className="space-y-2">
                                 <FormLabel>{t('modal.add.associatedLoans')}</FormLabel>
                                 <ScrollArea className="h-32 border rounded-md p-2">
@@ -588,10 +587,10 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     {t('modal.add.loanRemark')}
                                 </p>
                             </div>
+                        </FormSection>
 
-                        <Separator />
                         {/* Insurance Linking Section */}
-                        <h4 className="text-sm font-semibold">{t('modal.add.linkInsurances')}</h4>
+                        <FormSection title={t('modal.add.linkInsurances')}>
                             <div className="space-y-2">
                                 <ScrollArea className="h-32 border rounded-md p-2">
                                     {/* Show available insurances and currently linked ones */}
@@ -624,10 +623,10 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     {t('modal.add.insuranceRemark')}
                                 </p>
                             </div>
+                        </FormSection>
 
-                        <Separator />
                         {/* Additional Information Section */}
-                        <h4 className="text-sm font-semibold">{t('modal.add.additionalInfo')}</h4>
+                        <FormSection title={t('modal.add.additionalInfo')}>
                             <FormField
                                 control={form.control}
                                 name="notes"
@@ -641,15 +640,18 @@ export function AddRealEstateModal({ realEstate, trigger }: AddRealEstateModalPr
                                     </FormItem>
                                 )}
                             />
-
-                        <DialogFooter>
-                            <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                                {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {realEstate ? t('modal.add.updateProperty') : t('modal.add.createProperty')}
-                            </Button>
-                        </DialogFooter>
+                        </FormSection>
                     </form>
                 </Form>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                        {tc('buttons.cancel')}
+                    </Button>
+                    <Button type="submit" form="add-real-estate-form" disabled={mutation.isPending}>
+                        {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {realEstate ? t('modal.add.updateProperty') : t('modal.add.createProperty')}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog >
     );

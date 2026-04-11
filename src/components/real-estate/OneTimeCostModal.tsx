@@ -7,6 +7,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
@@ -22,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
+import { FormSection } from "@/components/ui/form-section";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -126,11 +128,8 @@ export function OneTimeCostModal({ realEstateId, cost, trigger }: OneTimeCostMod
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 py-4">
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
-                                {t('modal.cost.costDetails')}
-                            </h3>
+                    <form id="one-time-cost-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <FormSection title={t('modal.cost.costDetails')} first>
                             <div className="grid gap-4">
                                 <FormField
                                     control={form.control}
@@ -218,14 +217,18 @@ export function OneTimeCostModal({ realEstateId, cost, trigger }: OneTimeCostMod
                                     </FormItem>
                                 )}
                             />
-                        </div>
-
-                        <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                            {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isEditMode ? t('modal.cost.updateCost') : t('modal.cost.addCost')}
-                        </Button>
+                        </FormSection>
                     </form>
                 </Form>
+                <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                        {tc('buttons.cancel')}
+                    </Button>
+                    <Button type="submit" form="one-time-cost-form" disabled={createMutation.isPending}>
+                        {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isEditMode ? t('modal.cost.updateCost') : t('modal.cost.addCost')}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog >
     );
