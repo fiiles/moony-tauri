@@ -427,7 +427,149 @@ export function ImportInvestmentsModal() {
                     </div>
                 )}
 
-                {/* Steps 2-5: added in Tasks 3-5 */}
+                {/* ── Step 2: Column Mapping ───────────────────────────────────────── */}
+                {step === "mapping" && (
+                    <div className="space-y-6">
+                        {/* File info bar */}
+                        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                            <FileText className="h-5 w-5 shrink-0" />
+                            <span className="font-medium truncate">{file?.name}</span>
+                            <span className="text-muted-foreground shrink-0">({rawRows.length} {t("import.mapping.rows")})</span>
+                            <Button variant="ghost" size="sm" onClick={() => setStep("select")} className="ml-auto shrink-0">
+                                {t("import.mapping.changeFile")}
+                            </Button>
+                        </div>
+
+                        {/* Required columns */}
+                        <div className="space-y-3">
+                            <h4 className="text-sm font-medium">{t("import.mapping.requiredSection")}</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Date + format selector */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center text-sm font-medium">
+                                        {t("import.mapping.dateColumn")} *{getConfidenceBadge("date")}
+                                    </div>
+                                    <Select value={columnMap.date} onValueChange={(v) => setColumnMap(prev => ({ ...prev, date: v }))}>
+                                        <SelectTrigger><SelectValue placeholder={t("import.mapping.selectColumn")} /></SelectTrigger>
+                                        <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                    <Select value={dateFormat} onValueChange={setDateFormat}>
+                                        <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
+                                        <SelectContent>{DATE_FORMATS.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Type */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center text-sm font-medium">
+                                        {t("import.mapping.typeColumn")} *{getConfidenceBadge("type")}
+                                    </div>
+                                    <Select value={columnMap.type} onValueChange={(v) => setColumnMap(prev => ({ ...prev, type: v }))}>
+                                        <SelectTrigger><SelectValue placeholder={t("import.mapping.selectColumn")} /></SelectTrigger>
+                                        <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Ticker */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center text-sm font-medium">
+                                        {t("import.mapping.tickerColumn")} *{getConfidenceBadge("ticker")}
+                                    </div>
+                                    <Select value={columnMap.ticker} onValueChange={(v) => setColumnMap(prev => ({ ...prev, ticker: v }))}>
+                                        <SelectTrigger><SelectValue placeholder={t("import.mapping.selectColumn")} /></SelectTrigger>
+                                        <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Quantity */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center text-sm font-medium">
+                                        {t("import.mapping.quantityColumn")} *{getConfidenceBadge("quantity")}
+                                    </div>
+                                    <Select value={columnMap.quantity} onValueChange={(v) => setColumnMap(prev => ({ ...prev, quantity: v }))}>
+                                        <SelectTrigger><SelectValue placeholder={t("import.mapping.selectColumn")} /></SelectTrigger>
+                                        <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Price */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center text-sm font-medium">
+                                        {t("import.mapping.priceColumn")} *{getConfidenceBadge("price")}
+                                    </div>
+                                    <Select value={columnMap.price} onValueChange={(v) => setColumnMap(prev => ({ ...prev, price: v }))}>
+                                        <SelectTrigger><SelectValue placeholder={t("import.mapping.selectColumn")} /></SelectTrigger>
+                                        <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Optional columns */}
+                        <div className="space-y-3">
+                            <h4 className="text-sm font-medium">{t("import.mapping.optionalSection")}</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Currency */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center text-sm font-medium">
+                                        {t("import.mapping.currencyColumn")}{getConfidenceBadge("currency")}
+                                    </div>
+                                    <Select value={columnMap.currency || "__none__"} onValueChange={(v) => setColumnMap(prev => ({ ...prev, currency: v === "__none__" ? "" : v }))}>
+                                        <SelectTrigger><SelectValue placeholder={t("import.mapping.selectColumn")} /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="__none__">—</SelectItem>
+                                            {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Default currency — shown only when currency column not mapped */}
+                                {!columnMap.currency && (
+                                    <div className="space-y-2">
+                                        <div className="text-sm font-medium">{t("import.mapping.defaultCurrency")}</div>
+                                        <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {["USD", "EUR", "CZK", "GBP"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* CSV preview toggle */}
+                        <div className="border rounded-lg">
+                            <Button variant="ghost" className="w-full flex items-center justify-between p-3" onClick={() => setShowCsvPreview(p => !p)}>
+                                <span className="flex items-center gap-2">
+                                    {showCsvPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    {t("import.mapping.previewData")}
+                                </span>
+                                <span className="text-muted-foreground text-sm">
+                                    {headers.length} {t("import.mapping.columns")}, {rawRows.length} {t("import.mapping.rows")}
+                                </span>
+                            </Button>
+                            {showCsvPreview && (
+                                <div className="overflow-x-auto max-h-48 border-t">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>{headers.map(h => <TableHead key={h} className="whitespace-nowrap text-xs">{h}</TableHead>)}</TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {rawRows.slice(0, 5).map((row, i) => (
+                                                <TableRow key={i}>
+                                                    {headers.map(h => <TableCell key={h} className="whitespace-nowrap text-xs max-w-[150px] truncate">{row[h]}</TableCell>)}
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Steps 3-5: added in Tasks 4-5 */}
 
                 {/* Picker dialog: added in Task 4 */}
 
@@ -435,7 +577,15 @@ export function ImportInvestmentsModal() {
                     {step === "select" && (
                         <Button variant="outline" onClick={handleClose}>{t("import.cancel")}</Button>
                     )}
-                    {/* Footer buttons for steps 2-5: added in Tasks 3-5 */}
+                    {step === "mapping" && (
+                        <>
+                            <Button variant="outline" onClick={() => setStep("select")}>{t("import.cancel")}</Button>
+                            <Button onClick={() => setStep("ticker-review")} disabled={!isMappingValid}>
+                                {t("import.mapping.next")}
+                            </Button>
+                        </>
+                    )}
+                    {/* Footer buttons for steps 3-5: added in Tasks 4-5 */}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
