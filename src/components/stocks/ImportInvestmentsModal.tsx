@@ -421,8 +421,8 @@ export function ImportInvestmentsModal() {
 
     // ── Row transform + import ────────────────────────────────────────────────
 
-    const transformRows = (): Record<string, string>[] =>
-        rawRows.map(row => {
+    const transformRows = (): Record<string, string>[] => {
+        const mapped = rawRows.map(row => {
             const origTicker = row[columnMap.ticker] || "";
             const entry = tickerMap[origTicker];
             return {
@@ -437,6 +437,14 @@ export function ImportInvestmentsModal() {
                     : defaultCurrency,
             };
         });
+        // Buys before sells: the backend requires a position to exist before a sell can be recorded.
+        // A stable sort ensures sells that arrive before their buy in the CSV don't fail.
+        return mapped.sort((a, b) => {
+            const aIsBuy = a.Type.toLowerCase() === "buy" ? 0 : 1;
+            const bIsBuy = b.Type.toLowerCase() === "buy" ? 0 : 1;
+            return aIsBuy - bIsBuy;
+        });
+    };
 
     const handleImport = async () => {
         const transformed = transformRows();
