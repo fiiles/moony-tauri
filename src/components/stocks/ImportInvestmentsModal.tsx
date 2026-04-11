@@ -510,16 +510,16 @@ export function ImportInvestmentsModal() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="text-xs w-28">Column</TableHead>
-                                        <TableHead className="text-xs w-24">Required</TableHead>
-                                        <TableHead className="text-xs">Example values</TableHead>
+                                        <TableHead className="text-xs w-28">{t("import.csvColumnHeader")}</TableHead>
+                                        <TableHead className="text-xs w-24">{t("import.csvRequiredHeader")}</TableHead>
+                                        <TableHead className="text-xs">{t("import.csvExamplesHeader")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {CSV_COLUMNS.map(col => (
                                         <TableRow key={col.key}>
                                             <TableCell className="font-mono text-xs font-medium">{col.key}</TableCell>
-                                            <TableCell className="text-xs">{col.required ? "✓" : "optional"}</TableCell>
+                                            <TableCell className="text-xs">{col.required ? "✓" : t("import.csvOptional")}</TableCell>
                                             <TableCell className="text-xs text-muted-foreground">{col.examples}</TableCell>
                                         </TableRow>
                                     ))}
