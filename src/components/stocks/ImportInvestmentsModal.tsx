@@ -898,7 +898,7 @@ export function ImportInvestmentsModal() {
                     )}
                     {step === "mapping" && (
                         <>
-                            <Button variant="outline" onClick={() => setStep("select")}>{t("import.cancel")}</Button>
+                            <Button variant="outline" onClick={() => setStep("select")}>{t("import.back")}</Button>
                             <Button onClick={enterTickerReview} disabled={!isMappingValid}>
                                 {t("import.mapping.next")}
                             </Button>
@@ -907,7 +907,7 @@ export function ImportInvestmentsModal() {
                     {step === "ticker-review" && (
                         <>
                             <Button variant="outline" onClick={() => { verifyAbortRef.current = true; setStep("mapping"); }}>
-                                {t("import.cancel")}
+                                {t("import.back")}
                             </Button>
                             <Button onClick={handleImport} disabled={!isTickerReviewValid}>
                                 {t("import.importRecords", { count: rawRows.length })}

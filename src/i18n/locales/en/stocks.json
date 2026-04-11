@@ -221,6 +221,7 @@
         "clickToUpload": "Click here to select a CSV file",
         "dragAndDrop": "CSV files only",
         "cancel": "Cancel",
+        "back": "Back",
         "error": "Error",
         "mapping": {
             "description": "Map your CSV columns to the required fields",
