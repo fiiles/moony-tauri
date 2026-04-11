@@ -115,7 +115,7 @@ const CSV_COLUMNS = [
     { key: "Ticker",   required: true,  examples: "AAPL, EUNL.DE, EWG.L" },
     { key: "Quantity", required: true,  examples: "10, 0.5" },
     { key: "Price",    required: true,  examples: "180.50" },
-    { key: "Currency", required: false, examples: "USD, EUR, CZK, GBP" },
+    { key: "Currency", required: true,  examples: "USD, EUR, CZK, GBP" },
 ];
 
 const EMPTY_COLUMN_MAP: ColumnMap = { date: "", type: "", ticker: "", quantity: "", price: "", currency: "" };
@@ -309,7 +309,7 @@ export function ImportInvestmentsModal() {
         return null;
     };
 
-    const isMappingValid = !!(columnMap.date && columnMap.type && columnMap.ticker && columnMap.quantity && columnMap.price);
+    const isMappingValid = !!(columnMap.date && columnMap.type && columnMap.ticker && columnMap.quantity && columnMap.price && columnMap.currency);
 
     // ── Ticker verification ────────────────────────────────────────────────────
 
@@ -432,9 +432,7 @@ export function ImportInvestmentsModal() {
                 Name:     entry?.name             || "",
                 Quantity: row[columnMap.quantity] || "",
                 Price:    row[columnMap.price]    || "",
-                Currency: columnMap.currency
-                    ? (row[columnMap.currency] || defaultCurrency)
-                    : defaultCurrency,
+                Currency: row[columnMap.currency] || "",
             };
         });
         // Buys before sells: the backend requires a position to exist before a sell can be recorded.
@@ -662,39 +660,17 @@ export function ImportInvestmentsModal() {
                                         <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* Optional columns */}
-                        <div className="space-y-3">
-                            <h4 className="text-sm font-medium">{t("import.mapping.optionalSection")}</h4>
-                            <div className="grid grid-cols-2 gap-4">
                                 {/* Currency */}
                                 <div className="space-y-2">
                                     <div className="flex items-center text-sm font-medium">
-                                        {t("import.mapping.currencyColumn")}{getConfidenceBadge("currency")}
+                                        {t("import.mapping.currencyColumn")} *{getConfidenceBadge("currency")}
                                     </div>
-                                    <Select value={columnMap.currency || "__none__"} onValueChange={(v) => setColumnMap(prev => ({ ...prev, currency: v === "__none__" ? "" : v }))}>
+                                    <Select value={columnMap.currency} onValueChange={(v) => setColumnMap(prev => ({ ...prev, currency: v }))}>
                                         <SelectTrigger><SelectValue placeholder={t("import.mapping.selectColumn")} /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="__none__">—</SelectItem>
-                                            {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
-                                        </SelectContent>
+                                        <SelectContent>{headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
-
-                                {/* Default currency — shown only when currency column not mapped */}
-                                {!columnMap.currency && (
-                                    <div className="space-y-2">
-                                        <div className="text-sm font-medium">{t("import.mapping.defaultCurrency")}</div>
-                                        <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
-                                            <SelectTrigger><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                {["USD", "EUR", "CZK", "GBP"].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
                             </div>
                         </div>
 
