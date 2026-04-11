@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
     Dialog,
@@ -10,261 +10,319 @@ import {
     DialogTrigger,
     DialogFooter,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, FileText, AlertCircle, CheckCircle, Loader2, Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+    Upload,
+    FileText,
+    AlertCircle,
+    CheckCircle,
+    Loader2,
+    Download,
+    Search,
+    ChevronDown,
+    Eye,
+    EyeOff,
+    TriangleAlert,
+} from "lucide-react";
 import { investmentsApi, priceApi } from "@/lib/tauri-api";
 
-type Step = "select" | "preview" | "importing" | "done";
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Step = "select" | "mapping" | "ticker-review" | "importing" | "done";
+
+type ColumnMap = {
+    date: string;
+    type: string;
+    ticker: string;
+    quantity: string;
+    price: string;
+    currency: string; // empty string = not mapped, use defaultCurrency
+};
+
+type TickerStatus = "pending" | "searching" | "found" | "not_found" | "failed";
+
+type TickerEntry = {
+    originalTicker: string;
+    resolvedTicker: string;
+    name: string;
+    status: TickerStatus;
+};
+
+type TickerMap = Record<string, TickerEntry>;
+
+type SearchResult = { symbol: string; shortname: string; exchange: string };
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const YAHOO_EXCHANGE_SUFFIXES = [
+    { exchange: "US (NYSE / NASDAQ)", suffix: "—", example: "AAPL" },
+    { exchange: "Germany (XETRA)", suffix: ".DE", example: "EUNL.DE" },
+    { exchange: "London (LSE)", suffix: ".L", example: "EWG.L" },
+    { exchange: "Paris (Euronext)", suffix: ".PA", example: "AIR.PA" },
+    { exchange: "Amsterdam", suffix: ".AS", example: "ASML.AS" },
+    { exchange: "Milan", suffix: ".MI", example: "ENI.MI" },
+    { exchange: "Swiss Exchange", suffix: ".SW", example: "NESN.SW" },
+    { exchange: "Prague (PSE)", suffix: ".PR", example: "CEZ.PR" },
+    { exchange: "Hong Kong", suffix: ".HK", example: "0700.HK" },
+    { exchange: "Tokyo", suffix: ".T", example: "7203.T" },
+    { exchange: "Toronto", suffix: ".TO", example: "RY.TO" },
+    { exchange: "Australia (ASX)", suffix: ".AX", example: "CBA.AX" },
+];
+
+const DATE_FORMATS = [
+    { label: "YYYY-MM-DD  (e.g. 2024-01-15)", value: "%Y-%m-%d" },
+    { label: "DD.MM.YYYY  (e.g. 15.01.2024)", value: "%d.%m.%Y" },
+    { label: "DD/MM/YYYY  (e.g. 15/01/2024)", value: "%d/%m/%Y" },
+    { label: "MM/DD/YYYY  (e.g. 01/15/2024)", value: "%m/%d/%Y" },
+];
+
+const CSV_COLUMNS = [
+    { key: "Date",     required: true,  examples: "2024-01-15, 15.01.2024, 15/01/2024" },
+    { key: "Type",     required: true,  examples: "buy, sell" },
+    { key: "Ticker",   required: true,  examples: "AAPL, EUNL.DE, EWG.L" },
+    { key: "Quantity", required: true,  examples: "10, 0.5" },
+    { key: "Price",    required: true,  examples: "180.50" },
+    { key: "Currency", required: false, examples: "USD, EUR, CZK, GBP" },
+];
+
+const EMPTY_COLUMN_MAP: ColumnMap = { date: "", type: "", ticker: "", quantity: "", price: "", currency: "" };
+const ZERO_CONFIDENCE: Record<keyof ColumnMap, number> = { date: 0, type: 0, ticker: 0, quantity: 0, price: 0, currency: 0 };
+
+// ─── Pure helpers ─────────────────────────────────────────────────────────────
+
+function delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function splitCsvLine(line: string, delimiter: string): string[] {
+    const result: string[] = [];
+    let current = "";
+    let inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+            inQuote = !inQuote;
+        } else if (ch === delimiter && !inQuote) {
+            result.push(current.trim().replace(/^"|"$/g, ""));
+            current = "";
+        } else {
+            current += ch;
+        }
+    }
+    result.push(current.trim().replace(/^"|"$/g, ""));
+    return result;
+}
+
+function parseCSV(text: string): { headers: string[]; rows: Record<string, string>[] } {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length === 0) throw new Error("CSV file is empty");
+
+    const delimiter = lines[0].includes(";") ? ";" : ",";
+    const headers = splitCsvLine(lines[0], delimiter);
+
+    const rows: Record<string, string>[] = [];
+    for (let i = 1; i < lines.length; i++) {
+        const values = splitCsvLine(lines[i], delimiter);
+        if (values.length === 0) continue;
+        const row: Record<string, string> = {};
+        headers.forEach((h, idx) => { row[h] = idx < values.length ? values[idx] : ""; });
+        rows.push(row);
+    }
+
+    if (rows.length === 0) throw new Error("No data rows found");
+    return { headers, rows };
+}
+
+function suggestColumnMap(headers: string[]): {
+    map: ColumnMap;
+    confidence: Record<keyof ColumnMap, number>;
+} {
+    const lower = headers.map(h => h.toLowerCase().trim());
+
+    const findBest = (candidates: string[]): { col: string; conf: number } => {
+        for (const c of candidates) {
+            const idx = lower.findIndex(h => h === c);
+            if (idx !== -1) return { col: headers[idx], conf: 0.95 };
+        }
+        for (const c of candidates) {
+            const idx = lower.findIndex(h => h.includes(c) || c.includes(h));
+            if (idx !== -1) return { col: headers[idx], conf: 0.7 };
+        }
+        return { col: "", conf: 0 };
+    };
+
+    const date     = findBest(["date", "datum", "trade date", "transaction date", "settlement date"]);
+    const type     = findBest(["type", "typ", "transaction type", "action", "side", "operation"]);
+    const ticker   = findBest(["ticker", "symbol", "isin", "instrument"]);
+    const quantity = findBest(["quantity", "množství", "qty", "shares", "units", "počet", "amount"]);
+    const price    = findBest(["price", "cena", "unit price", "price per unit", "rate", "cost"]);
+    const currency = findBest(["currency", "měna", "mena", "cur", "ccy"]);
+
+    return {
+        map: { date: date.col, type: type.col, ticker: ticker.col, quantity: quantity.col, price: price.col, currency: currency.col },
+        confidence: { date: date.conf, type: type.conf, ticker: ticker.conf, quantity: quantity.conf, price: price.conf, currency: currency.conf },
+    };
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function ImportInvestmentsModal() {
     const { t } = useTranslation("stocks");
     const [open, setOpen] = useState(false);
     const [step, setStep] = useState<Step>("select");
+
+    // File + raw CSV
     const [file, setFile] = useState<File | null>(null);
-    const [parsedData, setParsedData] = useState<Record<string, string>[]>([]);
-    const [error, setError] = useState<string | null>(null);
-    const [successCount, setSuccessCount] = useState<number | null>(null);
-    const [importErrors, setImportErrors] = useState<string[]>([]);
-    const [importedItems, setImportedItems] = useState<string[]>([]);
+    const [headers, setHeaders] = useState<string[]>([]);
+    const [rawRows, setRawRows] = useState<Record<string, string>[]>([]);
+    const [parseError, setParseError] = useState<string | null>(null);
+
+    // Column mapping
+    const [columnMap, setColumnMap] = useState<ColumnMap>(EMPTY_COLUMN_MAP);
+    const [columnConfidence, setColumnConfidence] = useState<Record<keyof ColumnMap, number>>(ZERO_CONFIDENCE);
+    const [defaultCurrency, setDefaultCurrency] = useState("USD");
+    const [dateFormat, setDateFormat] = useState("%Y-%m-%d");
+    const [showCsvPreview, setShowCsvPreview] = useState(false);
+
+    // Ticker review
+    const [tickerMap, setTickerMap] = useState<TickerMap>({});
+    const [verifyProgress, setVerifyProgress] = useState({ done: 0, total: 0 });
+    const verifyAbortRef = useRef(false);
+    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+    const [showPickerDialog, setShowPickerDialog] = useState(false);
+    const [activeSearchKey, setActiveSearchKey] = useState<string | null>(null);
+
+    // Import result
+    const [importResult, setImportResult] = useState<{ success: number; errors: string[]; imported: string[] } | null>(null);
     const [showDelayedSubtitle, setShowDelayedSubtitle] = useState(false);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
 
-    // Show helpful subtitle after 5 seconds during import
+    // Delayed subtitle during importing
     useEffect(() => {
-        if (step !== "importing") {
-            setShowDelayedSubtitle(false);
-            return;
-        }
-        
-        const timer = setTimeout(() => {
-            setShowDelayedSubtitle(true);
-        }, 5000);
-        
+        if (step !== "importing") { setShowDelayedSubtitle(false); return; }
+        const timer = setTimeout(() => setShowDelayedSubtitle(true), 5000);
         return () => clearTimeout(timer);
     }, [step]);
 
-    const exampleCSVContent = `Date,Type,Ticker,Name,Quantity,Price,Currency
-2024-01-15,buy,AAPL,Apple Inc.,10,180.50,USD
-2024-02-20,buy,MSFT,Microsoft Corporation,5,395.00,USD
-2024-03-10,sell,AAPL,Apple Inc.,3,185.25,USD
-2024-04-05,buy,GOOGL,Alphabet Inc.,2,155.75,USD
-2024-05-15,buy,NVDA,NVIDIA Corporation,8,850.00,USD`;
+    // ── Example CSV download ───────────────────────────────────────────────────
+
+    const exampleCSVContent = `Date,Type,Ticker,Quantity,Price,Currency
+2024-01-15,buy,AAPL,10,180.50,USD
+2024-02-20,buy,MSFT,5,395.00,USD
+2024-03-10,sell,AAPL,3,185.25,USD
+2024-04-05,buy,EUNL.DE,2,95.50,EUR`;
 
     const downloadExampleCSV = async () => {
         try {
             const { save } = await import("@tauri-apps/plugin-dialog");
             const { writeTextFile } = await import("@tauri-apps/plugin-fs");
-
-            const filePath = await save({
-                defaultPath: "example-transactions.csv",
-                filters: [{ name: "CSV", extensions: ["csv"] }]
-            });
-
-            if (filePath) {
-                await writeTextFile(filePath, exampleCSVContent);
-            }
-        } catch (error) {
-            console.error("Failed to save CSV:", error);
-        }
+            const filePath = await save({ defaultPath: "example-transactions.csv", filters: [{ name: "CSV", extensions: ["csv"] }] });
+            if (filePath) await writeTextFile(filePath, exampleCSVContent);
+        } catch (err) { console.error("Failed to save CSV:", err); }
     };
 
-    const importMutation = useMutation({
-        mutationFn: async (transactions: Record<string, string>[]) => {
-            setStep("importing");
-            
-            // The backend will look up names, then process transactions
-            const result = await investmentsApi.importTransactions(transactions, "USD");
-            
-            return result;
-        },
-        onSuccess: (data) => {
-            queryClient.invalidateQueries({ queryKey: ["investments"] });
-            queryClient.invalidateQueries({ queryKey: ["transactions"] });
-            queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            queryClient.invalidateQueries({ queryKey: ["all-stock-transactions"] });
-            setSuccessCount(data.success);
-            setImportErrors(data.errors || []);
-            setImportedItems(data.imported || []);
-            setParsedData([]);
-            setFile(null);
-            
-            // Refresh prices and dividends for imported stocks (runs in background)
-            priceApi.refreshStockPrices().then(() => {
-                queryClient.invalidateQueries({ queryKey: ["investments"] });
-                queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-                return priceApi.refreshDividends();
-            }).then(() => {
-                queryClient.invalidateQueries({ queryKey: ["investments"] });
-                queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
-                setStep("done");
-            }).catch((err: Error) => {
-                console.error("Background refresh error:", err);
-                setStep("done");
-            });
-        },
-        onError: (err) => {
-            console.error("Import mutation error:", err);
-            setError(err.message);
-            setStep("preview");
-        }
-    });
+    // ── File parsing ───────────────────────────────────────────────────────────
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0];
-        if (selectedFile) {
-            setFile(selectedFile);
-            setError(null);
-            setSuccessCount(null);
-            setImportErrors([]);
-            parseCSV(selectedFile);
-        }
-    };
-
-    const parseCSV = (file: File) => {
+        const selected = e.target.files?.[0];
+        if (!selected) return;
+        setFile(selected);
+        setParseError(null);
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = (evt) => {
             try {
-                const text = e.target?.result as string;
-                const lines = text.split(/\r?\n/).filter(line => line.trim());
-                if (lines.length === 0) {
-                    throw new Error("CSV file is empty");
-                }
-
-                // Simple auto-detect delimiter
-                const firstLine = lines[0];
-                const delimiter = firstLine.includes(";") ? ";" : ",";
-
-                // Check if first line is a header
-                // Heuristic: check if it contains typical header names (english or czech)
-                const headerKeywords = ["ticker", "symbol", "date", "datum", "price", "cena", "quantity", "množství", "type", "typ", "currency", "měna"];
-                const hasHeader = headerKeywords.some(k => firstLine.toLowerCase().includes(k));
-
-                // Helper to split CSV line respecting quotes
-                const splitLine = (line: string, delim: string) => {
-                    const result = [];
-                    let current = '';
-                    let inQuote = false;
-                    for (let i = 0; i < line.length; i++) {
-                        const char = line[i];
-                        if (char === '"') {
-                            inQuote = !inQuote;
-                        }
-
-                        if (char === delim && !inQuote) {
-                            result.push(current);
-                            current = '';
-                        } else {
-                            current += char;
-                        }
-                    }
-                    result.push(current);
-                    return result;
-                };
-
-                let headers: string[] = [];
-                let startIndex = 0;
-
-                if (hasHeader) {
-                    const normalizeHeader = (h: string) => {
-                        h = h.toLowerCase();
-                        if (["date", "datum"].includes(h)) return "Date";
-                        if (["type", "typ"].includes(h)) return "Type";
-                        if (["ticker", "symbol"].includes(h)) return "Ticker";
-                        if (["name", "company_name", "company", "název", "nazev"].includes(h)) return "Name";
-                        if (["quantity", "množství", "pocet", "amount"].includes(h)) return "Quantity";
-                        if (["price", "cena", "price_per_unit", "cost"].includes(h)) return "Price";
-                        if (["currency", "měna", "mena"].includes(h)) return "Currency";
-                        return h.charAt(0).toUpperCase() + h.slice(1);
-                    };
-                    headers = splitLine(firstLine, delimiter).map(h => normalizeHeader(h.trim().replace(/^"|"$/g, '')));
-                    startIndex = 1;
-                } else {
-                    // Default schema if no header: Date, Type, Ticker, Quantity, Price, Currency
-                    headers = ["Date", "Type", "Ticker", "Quantity", "Price", "Currency"];
-                }
-
-                const data: Record<string, string>[] = [];
-                // Process lines
-                lines.slice(startIndex).forEach((line) => {
-                    if (!line.trim()) return; // Skip empty lines
-
-                    const values = splitLine(line, delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
-
-                    if (values.length === 0) return;
-
-                    // Fix for European number format (e.g. 109,45) splitting into two columns if delimiter is comma
-                    if (values.length === headers.length + 1 && delimiter === ',') {
-                        const priceIdx = headers.indexOf("Price");
-                        if (priceIdx !== -1 && values.length > priceIdx + 1) {
-                            const p1 = values[priceIdx];
-                            const p2 = values[priceIdx + 1];
-                            // Check if split looks like a number (digits split by comma)
-                            // e.g. p1="109", p2="45"
-                            if (/^\d+$/.test(p1) && /^\d+$/.test(p2)) {
-                                values.splice(priceIdx, 2, `${p1},${p2}`);
-                            }
-                        }
-                    }
-
-                    const transaction: Record<string, string> = {};
-                    headers.forEach((header, index) => {
-                        // Only set if we have a value and it matches header range
-                        if (index < values.length && values[index] !== undefined) {
-                            transaction[header] = values[index];
-                        }
-                    });
-                    data.push(transaction);
-                });
-
-                if (data.length === 0) {
-                    throw new Error("No valid data rows found");
-                }
-
-                setParsedData(data);
-                setStep("preview");
+                const { headers: h, rows } = parseCSV(evt.target?.result as string);
+                setHeaders(h);
+                setRawRows(rows);
+                const { map, confidence } = suggestColumnMap(h);
+                setColumnMap(map);
+                setColumnConfidence(confidence);
+                setStep("mapping");
             } catch (err: unknown) {
-                const message = err instanceof Error ? err.message : "Unknown error";
-                setError("Failed to parse CSV: " + message);
-                setParsedData([]);
+                setParseError("Failed to parse CSV: " + (err instanceof Error ? err.message : "Unknown error"));
             }
         };
-        reader.readAsText(file);
-    };
-
-    const handleImport = () => {
-        if (parsedData.length > 0) {
-            importMutation.mutate(parsedData);
-        }
+        reader.readAsText(selected);
     };
 
     const handleReset = () => {
+        verifyAbortRef.current = true;
         setFile(null);
-        setParsedData([]);
-        setError(null);
-        setSuccessCount(null);
-        setImportErrors([]);
-        setImportedItems([]);
+        setHeaders([]);
+        setRawRows([]);
+        setParseError(null);
+        setColumnMap(EMPTY_COLUMN_MAP);
+        setColumnConfidence(ZERO_CONFIDENCE);
+        setDefaultCurrency("USD");
+        setDateFormat("%Y-%m-%d");
+        setShowCsvPreview(false);
+        setTickerMap({});
+        setVerifyProgress({ done: 0, total: 0 });
+        setImportResult(null);
         setStep("select");
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
+        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
-    const handleClose = () => {
-        handleReset();
-        setOpen(false);
+    const handleClose = () => { handleReset(); setOpen(false); };
+
+    // ── Confidence badge ───────────────────────────────────────────────────────
+
+    const getConfidenceBadge = (field: keyof ColumnMap) => {
+        const conf = columnConfidence[field];
+        if (conf >= 0.9) return <Badge variant="default" className="ml-1 bg-green-600 text-xs px-1">✓ {Math.round(conf * 100)}%</Badge>;
+        if (conf >= 0.7) return <Badge variant="secondary" className="ml-1 text-xs px-1">~{Math.round(conf * 100)}%</Badge>;
+        return null;
     };
+
+    const isMappingValid = !!(columnMap.date && columnMap.type && columnMap.ticker && columnMap.quantity && columnMap.price);
+
+    // ── Ticker verification ────────────────────────────────────────────────────
+    // (Added in Task 4)
+
+    // ── Row transform + import ─────────────────────────────────────────────────
+    // (Added in Task 5)
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  RENDER
+    // ═══════════════════════════════════════════════════════════════════════════
 
     return (
-        <Dialog open={open} onOpenChange={(val) => {
-            setOpen(val);
-            if (!val) handleReset();
-        }}>
+        <Dialog open={open} onOpenChange={(val) => { setOpen(val); if (!val) handleReset(); }}>
             <DialogTrigger asChild>
                 <Button variant="outline" size="icon" title={t("importCSV")}>
                     <Upload className="h-4 w-4" />
@@ -277,188 +335,107 @@ export function ImportInvestmentsModal() {
                         {t("import.title")}
                     </DialogTitle>
                     <DialogDescription>
-                        {step === "select" && t("import.description")}
-                        {step === "preview" && t("import.requiredColumns")}
-                        {step === "importing" && t("import.status.processing")}
-                        {step === "done" && t("import.complete")}
+                        {step === "select"        && t("import.description")}
+                        {step === "mapping"       && t("import.mapping.description")}
+                        {step === "ticker-review" && t("import.tickerReview.description")}
+                        {step === "importing"     && t("import.status.processing")}
+                        {step === "done"          && t("import.complete")}
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Step 1: Select File */}
+                {/* ── Step 1: Select File ───────────────────────────────────── */}
                 {step === "select" && (
-                    <div className="py-8">
-                        <div className="space-y-4 mb-6 text-center">
-                            <code className="block text-xs bg-muted px-3 py-2 rounded">
-                                Date, Type, Ticker, Quantity, Price, Currency
-                            </code>
-                            <p className="text-xs text-muted-foreground">
-                                {t("import.optionalHint")}
-                            </p>
-                            <button
-                                type="button"
-                                onClick={downloadExampleCSV}
-                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                            >
-                                <Download className="h-3 w-3" />
-                                {t("import.downloadTemplate")}
-                            </button>
+                    <div className="space-y-4">
+                        {/* CSV format table */}
+                        <div className="border rounded-lg overflow-hidden">
+                            <div className="bg-muted px-3 py-2 text-sm font-medium">{t("import.csvFormatTitle")}</div>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="text-xs w-28">Column</TableHead>
+                                        <TableHead className="text-xs w-24">Required</TableHead>
+                                        <TableHead className="text-xs">Example values</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {CSV_COLUMNS.map(col => (
+                                        <TableRow key={col.key}>
+                                            <TableCell className="font-mono text-xs font-medium">{col.key}</TableCell>
+                                            <TableCell className="text-xs">{col.required ? "✓" : "optional"}</TableCell>
+                                            <TableCell className="text-xs text-muted-foreground">{col.examples}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         </div>
-                        <div
-                            className="border-2 border-dashed rounded-lg p-12 text-center cursor-pointer hover:border-primary transition-colors"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                            <p className="text-lg font-medium">{t("import.clickToUpload")}</p>
-                            <p className="text-sm text-muted-foreground mt-2">{t("import.dragAndDrop")}</p>
-                            <Input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".csv"
-                                className="hidden"
-                                onChange={handleFileChange}
-                            />
-                        </div>
-                    </div>
-                )}
+                        <p className="text-xs text-muted-foreground">{t("import.columnMappingHint")}</p>
+                        <p className="text-xs text-muted-foreground">{t("import.nameAutoLoaded")}</p>
 
-                {/* Step 2: Preview */}
-                {step === "preview" && file && (
-                    <div className="space-y-6">
-                        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                            <FileText className="h-5 w-5" />
-                            <span className="font-medium">{file.name}</span>
-                            <span className="text-muted-foreground">({(file.size / 1024).toFixed(1)} KB)</span>
-                            <Button variant="ghost" size="sm" onClick={handleReset} className="ml-auto">
-                                {t("import.change")}
-                            </Button>
-                        </div>
-
-                        {error && (
-                            <Alert variant="destructive">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertTitle>{t("import.error")}</AlertTitle>
-                                <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                        )}
-
-                        {parsedData.length > 0 && (
-                            <div className="border rounded-lg overflow-hidden">
-                                <div className="bg-muted p-3 text-sm font-medium border-b">
-                                    {t("import.previewLabel", { shown: Math.min(parsedData.length, 5), total: parsedData.length })}
-                                </div>
-                                <ScrollArea className="max-h-48">
+                        {/* Ticker format collapsible */}
+                        <Collapsible>
+                            <CollapsibleTrigger className="flex items-center gap-1 text-sm text-primary hover:underline">
+                                <ChevronDown className="h-3 w-3" />
+                                {t("import.tickerFormatHint")}
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2">
+                                <div className="border rounded-lg overflow-hidden">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                {Object.keys(parsedData[0]).slice(0, 6).map((h) => (
-                                                    <TableHead key={h} className="whitespace-nowrap">{h}</TableHead>
-                                                ))}
+                                                <TableHead className="text-xs">Exchange</TableHead>
+                                                <TableHead className="text-xs w-20">Suffix</TableHead>
+                                                <TableHead className="text-xs w-28">Example</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {parsedData.slice(0, 5).map((row, i) => (
-                                                <TableRow key={i}>
-                                                    {Object.values(row).slice(0, 6).map((v, j) => (
-                                                        <TableCell key={j} className="whitespace-nowrap max-w-[200px] truncate">{v}</TableCell>
-                                                    ))}
+                                            {YAHOO_EXCHANGE_SUFFIXES.map(row => (
+                                                <TableRow key={row.example}>
+                                                    <TableCell className="text-xs">{row.exchange}</TableCell>
+                                                    <TableCell className="font-mono text-xs">{row.suffix}</TableCell>
+                                                    <TableCell className="font-mono text-xs">{row.example}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
                                     </Table>
-                                </ScrollArea>
-                            </div>
-                        )}
-                    </div>
-                )}
+                                </div>
+                            </CollapsibleContent>
+                        </Collapsible>
 
-                {/* Step 3: Importing */}
-                {step === "importing" && (
-                    <div className="py-12 text-center">
-                        <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary mb-4" />
-                        <p className="text-lg font-medium">{t("import.status.processing")}</p>
-                        {showDelayedSubtitle && (
-                            <p className="text-sm text-muted-foreground mt-2">
-                                {t("import.status.loadingDetails")}
-                            </p>
+                        {parseError && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>{t("import.error")}</AlertTitle>
+                                <AlertDescription>{parseError}</AlertDescription>
+                            </Alert>
                         )}
-                    </div>
-                )}
 
-                {/* Step 4: Done */}
-                {step === "done" && successCount !== null && (
-                    <div className="py-8 space-y-6">
-                        <div className="text-center">
-                            <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
-                            <p className="text-2xl font-bold">{t("import.complete")}</p>
-                            <p className="text-muted-foreground mt-2">
-                                {t("import.processed", { count: successCount + importErrors.length })}
-                            </p>
+                        {/* Drop zone */}
+                        <div
+                            className="border-2 border-dashed rounded-lg p-10 text-center cursor-pointer hover:border-primary transition-colors"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                            <p className="text-base font-medium">{t("import.clickToUpload")}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{t("import.dragAndDrop")}</p>
+                            <Input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
                         </div>
 
-                        <div className={`grid gap-4 ${importedItems.length > 0 && importErrors.length > 0 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                            {importedItems.length > 0 && (
-                                <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <CheckCircle className="h-5 w-5 text-green-600" />
-                                        <span className="font-medium text-green-800 dark:text-green-200">
-                                            {t("import.successful", { count: successCount })}
-                                        </span>
-                                    </div>
-                                    <ScrollArea className="max-h-40">
-                                        <ul className="list-disc pl-4 text-xs space-y-1 text-green-700 dark:text-green-300">
-                                            {importedItems.map((item, i) => <li key={i}>{item}</li>)}
-                                        </ul>
-                                    </ScrollArea>
-                                </div>
-                            )}
-
-                            {importErrors.length > 0 && (
-                                <div className="p-4 bg-red-50 dark:bg-red-950 rounded-lg">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <AlertCircle className="h-5 w-5 text-red-600" />
-                                        <span className="font-medium text-red-800 dark:text-red-200">
-                                            {t("import.skipped", { count: importErrors.length })}
-                                        </span>
-                                    </div>
-                                    <ScrollArea className="max-h-40">
-                                        <ul className="list-disc pl-4 text-xs space-y-1 text-red-700 dark:text-red-300">
-                                            {importErrors.map((err, i) => <li key={i}>{err}</li>)}
-                                        </ul>
-                                    </ScrollArea>
-                                </div>
-                            )}
-                        </div>
+                        <button type="button" onClick={downloadExampleCSV} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                            <Download className="h-3 w-3" />
+                            {t("import.downloadTemplate")}
+                        </button>
                     </div>
                 )}
+
+                {/* Steps 2-5: added in Tasks 3-5 */}
+
+                {/* Picker dialog: added in Task 4 */}
 
                 <DialogFooter>
                     {step === "select" && (
-                        <Button variant="outline" onClick={handleClose}>
-                            {t("import.cancel")}
-                        </Button>
+                        <Button variant="outline" onClick={handleClose}>{t("import.cancel")}</Button>
                     )}
-                    {step === "preview" && (
-                        <>
-                            <Button variant="outline" onClick={handleReset}>
-                                {t("import.cancel")} 
-                            </Button>
-                            <Button onClick={handleImport} disabled={parsedData.length === 0 || importMutation.isPending}>
-                                {importMutation.isPending ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {t("import.status.processing")}
-                                    </>
-                                ) : (
-                                    t("import.importRecords", { count: parsedData.length })
-                                )}
-                            </Button>
-                        </>
-                    )}
-                    {step === "done" && (
-                        <Button onClick={handleClose}>
-                            {t("import.close")}
-                        </Button>
-                    )}
+                    {/* Footer buttons for steps 2-5: added in Tasks 3-5 */}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
