@@ -221,6 +221,7 @@
         "clickToUpload": "Klikněte sem pro výběr CSV souboru",
         "dragAndDrop": "Pouze soubory CSV",
         "cancel": "Zrušit",
+        "back": "Zpět",
         "error": "Chyba",
         "mapping": {
             "description": "Namapujte sloupce CSV na požadovaná pole",
