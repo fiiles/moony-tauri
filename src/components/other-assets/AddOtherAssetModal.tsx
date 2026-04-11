@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -117,6 +118,9 @@ export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalPro
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>{t('modal.add.title')}</DialogTitle>
+                    <DialogDescription>
+                        Add a new custom asset to your portfolio.
+                    </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <div className="grid gap-2">
@@ -188,6 +192,9 @@ export function AddOtherAssetModal({ open, onOpenChange }: AddOtherAssetModalPro
                         </div>
 
                     <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                            {tc('buttons.cancel')}
+                        </Button>
                         <Button type="submit" disabled={mutation.isPending}>
                             {mutation.isPending ? tc('status.adding') : t('modal.add.submit')}
                         </Button>
