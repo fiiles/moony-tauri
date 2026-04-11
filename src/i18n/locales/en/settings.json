@@ -37,7 +37,8 @@
             "label": "CoinGecko API Key (optional)",
             "getDemoKey": "Get demo key",
             "placeholder": "Optional - free tier works without key",
-            "hint": "Used for crypto prices and search (free tier has rate limits)"
+            "hint": "Used for crypto prices and search (free tier does not allow loading historical prices)",
+            "hint2": "Free tier does not allow loading historical prices"
         },
         "save": "Save API Keys",
         "saving": "Saving...",

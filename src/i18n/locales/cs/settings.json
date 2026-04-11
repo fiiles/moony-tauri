@@ -37,7 +37,8 @@
             "label": "CoinGecko API klíč (volitelné)",
             "getDemoKey": "Získat demo klíč",
             "placeholder": "Volitelné - bezplatná verze funguje bez klíče",
-            "hint": "Používá se pro ceny a vyhledávání kryptoměn (bezplatná verze má limity)"
+            "hint": "Používá se pro ceny a vyhledávání kryptoměn",
+            "hint2": "Bezplatná verze nedovoluje načítání historických cen"
         },
         "save": "Uložit API klíče",
         "saving": "Ukládám...",
