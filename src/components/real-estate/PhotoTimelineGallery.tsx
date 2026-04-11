@@ -378,24 +378,6 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="upload-date">{t('gallery.photoDate')}</Label>
-                                <Input
-                                    id="upload-date"
-                                    type="date"
-                                    value={uploadDate}
-                                    onChange={(e) => setUploadDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="upload-desc">{t('gallery.batchDescription')}</Label>
-                                <Textarea
-                                    id="upload-desc"
-                                    placeholder={t('gallery.descriptionPlaceholder')}
-                                    value={uploadDescription}
-                                    onChange={(e) => setUploadDescription(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
                                 <Label>{t('gallery.photos')}</Label>
                                 <p className="text-xs text-muted-foreground mb-2">
                                     Supported formats: JPG, PNG, GIF, WebP. HEIC files are automatically converted to JPG.
@@ -432,6 +414,24 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                                         ))}
                                     </div>
                                 )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="upload-date">{t('gallery.photoDate')}</Label>
+                                <Input
+                                    id="upload-date"
+                                    type="date"
+                                    value={uploadDate}
+                                    onChange={(e) => setUploadDate(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="upload-desc">{t('gallery.batchDescription')}</Label>
+                                <Textarea
+                                    id="upload-desc"
+                                    placeholder={t('gallery.descriptionPlaceholder')}
+                                    value={uploadDescription}
+                                    onChange={(e) => setUploadDescription(e.target.value)}
+                                />
                             </div>
                         </div>
                         <DialogFooter>
