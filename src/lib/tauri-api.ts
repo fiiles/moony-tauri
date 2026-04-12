@@ -516,6 +516,12 @@ export const portfolioApi = {
 
   getExchangeRates: () => tauriInvoke<Record<string, number>>('get_exchange_rates'),
 
+  getExchangeRatesForDate: (date: number) =>
+    tauriInvoke<Record<string, number>>('get_exchange_rates_for_date', { date }),
+
+  getExchangeRatesForDateRange: (startDate: number, endDate: number) =>
+    tauriInvoke<Record<number, Record<string, number>>>('get_exchange_rates_for_date_range', { startDate, endDate }),
+
   getPriceStatus: () => tauriInvoke<PriceStatus>('get_price_status'),
 
   startBackfill: () => tauriInvoke<BackfillResult>('start_snapshot_backfill'),

@@ -434,8 +434,11 @@ pub async fn refresh_exchange_rates(
 ) -> Result<std::collections::HashMap<String, f64>> {
     let rates = crate::services::currency::fetch_ecb_rates().await?;
 
-    // Persist to database for offline use
+    // Persist latest rates for offline use
     db.with_conn(|conn| crate::services::currency::save_rates_to_db(conn, &rates))?;
+
+    // Also persist to daily history for accurate historical chart rendering
+    db.with_conn(|conn| crate::services::currency::save_rates_to_history_db(conn, &rates))?;
 
     Ok(rates)
 }
@@ -444,6 +447,31 @@ pub async fn refresh_exchange_rates(
 #[tauri::command]
 pub fn get_exchange_rates() -> std::collections::HashMap<String, f64> {
     crate::services::currency::get_all_rates()
+}
+
+/// Get exchange rates (relative to CZK) for a specific date.
+/// Falls back to the nearest earlier date with a snapshot, then to today's rates.
+#[tauri::command]
+pub async fn get_exchange_rates_for_date(
+    db: State<'_, Database>,
+    date: i64,
+) -> Result<std::collections::HashMap<String, f64>> {
+    db.with_conn(|conn| Ok(crate::services::currency::get_rates_for_date(conn, date)))
+}
+
+/// Get exchange rates for all dates in a range that have history snapshots.
+/// Returns a map of date (midnight UTC unix timestamp) → rates.
+#[tauri::command]
+pub async fn get_exchange_rates_for_date_range(
+    db: State<'_, Database>,
+    start_date: i64,
+    end_date: i64,
+) -> Result<std::collections::HashMap<i64, std::collections::HashMap<String, f64>>> {
+    db.with_conn(|conn| {
+        Ok(crate::services::currency::get_rates_for_date_range(
+            conn, start_date, end_date,
+        ))
+    })
 }
 
 // ============================================================================
