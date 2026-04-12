@@ -10,30 +10,28 @@ use tauri::State;
 use uuid::Uuid;
 
 /// Current portfolio metrics
-#[derive(Debug, Clone, Serialize, Type)]
+#[derive(Debug, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
 pub struct PortfolioMetrics {
-    #[serde(rename = "totalSavings")]
     pub total_savings: f64,
-    #[serde(rename = "totalInvestments")]
     pub total_investments: f64,
-    #[serde(rename = "totalCrypto")]
     pub total_crypto: f64,
-    #[serde(rename = "totalBonds")]
     pub total_bonds: f64,
-    #[serde(rename = "totalRealEstatePersonal")]
     pub total_real_estate_personal: f64,
-    #[serde(rename = "totalRealEstateInvestment")]
     pub total_real_estate_investment: f64,
-    #[serde(rename = "totalRealEstate")]
     pub total_real_estate: f64,
-    #[serde(rename = "totalOtherAssets")]
     pub total_other_assets: f64,
-    #[serde(rename = "totalLiabilities")]
     pub total_liabilities: f64,
-    #[serde(rename = "totalAssets")]
     pub total_assets: f64,
-    #[serde(rename = "netWorth")]
     pub net_worth: f64,
+    // Native currency breakdowns
+    pub savings_by_currency: std::collections::HashMap<String, f64>,
+    pub investments_by_currency: std::collections::HashMap<String, f64>,
+    pub crypto_by_currency: std::collections::HashMap<String, f64>,
+    pub bonds_by_currency: std::collections::HashMap<String, f64>,
+    pub real_estate_by_currency: std::collections::HashMap<String, f64>,
+    pub loans_by_currency: std::collections::HashMap<String, f64>,
+    pub other_assets_by_currency: std::collections::HashMap<String, f64>,
 }
 
 /// Get current portfolio metrics
@@ -183,6 +181,13 @@ fn calculate_portfolio_metrics(
             total_liabilities,
             total_assets,
             net_worth,
+            savings_by_currency: std::collections::HashMap::new(),
+            investments_by_currency: std::collections::HashMap::new(),
+            crypto_by_currency: std::collections::HashMap::new(),
+            bonds_by_currency: std::collections::HashMap::new(),
+            real_estate_by_currency: std::collections::HashMap::new(),
+            loans_by_currency: std::collections::HashMap::new(),
+            other_assets_by_currency: std::collections::HashMap::new(),
         })
     })
 }
@@ -865,6 +870,13 @@ fn calculate_metrics_for_day(
             total_liabilities,
             total_assets,
             net_worth,
+            savings_by_currency: std::collections::HashMap::new(),
+            investments_by_currency: std::collections::HashMap::new(),
+            crypto_by_currency: std::collections::HashMap::new(),
+            bonds_by_currency: std::collections::HashMap::new(),
+            real_estate_by_currency: std::collections::HashMap::new(),
+            loans_by_currency: std::collections::HashMap::new(),
+            other_assets_by_currency: std::collections::HashMap::new(),
         })
     })
 }
@@ -1630,6 +1642,13 @@ fn calculate_metrics_for_day_historical(
             total_liabilities,
             total_assets,
             net_worth,
+            savings_by_currency: std::collections::HashMap::new(),
+            investments_by_currency: std::collections::HashMap::new(),
+            crypto_by_currency: std::collections::HashMap::new(),
+            bonds_by_currency: std::collections::HashMap::new(),
+            real_estate_by_currency: std::collections::HashMap::new(),
+            loans_by_currency: std::collections::HashMap::new(),
+            other_assets_by_currency: std::collections::HashMap::new(),
         })
     })
 }

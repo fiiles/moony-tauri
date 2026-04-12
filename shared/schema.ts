@@ -280,6 +280,14 @@ export interface PortfolioMetrics {
     totalLiabilities: number;
     totalAssets: number;
     netWorth: number;
+    // Native currency breakdowns
+    savingsByCurrency: Record<string, number>;
+    investmentsByCurrency: Record<string, number>;
+    cryptoByCurrency: Record<string, number>;
+    bondsByCurrency: Record<string, number>;
+    realEstateByCurrency: Record<string, number>;
+    loansByCurrency: Record<string, number>;
+    otherAssetsByCurrency: Record<string, number>;
 }
 
 export interface PortfolioMetricsHistory {
@@ -293,6 +301,14 @@ export interface PortfolioMetricsHistory {
     totalRealEstateInvestment: string;
     totalOtherAssets: string;
     recordedAt: number;
+    // Native currency breakdowns (JSON strings, '{}' when not yet populated)
+    investmentsByCurrency: string;
+    cryptoByCurrency: string;
+    savingsByCurrency: string;
+    bondsByCurrency: string;
+    realEstateByCurrency: string;
+    loansByCurrency: string;
+    otherAssetsByCurrency: string;
 }
 
 // Zod Schemas for form validation
