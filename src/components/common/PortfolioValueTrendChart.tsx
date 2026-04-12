@@ -200,6 +200,9 @@ export default function PortfolioValueTrendChart({
   }, [selectedPeriod, transactionMarkers]);
 
   // Fetch portfolio history
+  const startTs = dateRange.start ? Math.floor(dateRange.start.getTime() / 1000) : 0;
+  const endTs = Math.floor(dateRange.end.getTime() / 1000);
+
   const { data: portfolioHistory } = useQuery<PortfolioMetricsHistory[]>({
     queryKey: ["portfolio-history", dateRange.start?.toISOString(), dateRange.end.toISOString()],
     queryFn: async () => {
@@ -209,6 +212,14 @@ export default function PortfolioValueTrendChart({
     },
     staleTime: 0,
     refetchOnMount: 'always',
+  });
+
+  // Fetch historical exchange rates for the displayed date range (non-CZK display only)
+  const { data: historicalRates } = useQuery<Record<number, Record<string, number>>>({
+    queryKey: ['exchange-rates-range', startTs, endTs],
+    queryFn: () => portfolioApi.getExchangeRatesForDateRange(startTs, endTs),
+    enabled: !!portfolioHistory && currencyCode !== 'CZK',
+    staleTime: 60 * 60 * 1000,
   });
 
   // Create a map of transaction markers by day-start timestamp for quick lookup
@@ -238,18 +249,42 @@ export default function PortfolioValueTrendChart({
 
   // Extract value based on type and calculate chart data
   const { data, change } = useMemo(() => {
+    // Convert native breakdown using historical rates for this date,
+    // falling back to CZK total if breakdown is empty or rates unavailable.
+    function valueFromBreakdown(
+      breakdownJson: string,
+      czkFallback: number,
+      rates: Record<string, number> | undefined,
+    ): number {
+      let breakdown: Record<string, number> = {};
+      try { breakdown = JSON.parse(breakdownJson); } catch { /* ignore */ }
+
+      const hasBreakdown = Object.keys(breakdown).length > 0;
+      if (!hasBreakdown || !rates || currencyCode === 'CZK') {
+        return convert(czkFallback, 'CZK', currencyCode);
+      }
+
+      // Sum each native bucket converted to display currency via CZK pivot
+      return Object.entries(breakdown).reduce((sum, [cur, amount]) => {
+        const toCzk = (rates[cur] ?? 1) * amount;
+        const displayRate = rates[currencyCode] ?? 1;
+        return sum + toCzk / displayRate;
+      }, 0);
+    }
+
     // Reverse history to get chronological order (Oldest -> Newest)
     // portfolioHistory is DESC (Newest -> Oldest)
     const historyData: TrendData[] = [...(portfolioHistory || [])].reverse().map(h => {
-      let valueInCzk: number;
+      // Find the closest historical rate snapshot for this chart point
+      const dayKey = Math.floor(h.recordedAt / 86400) * 86400;
+      const ratesForDay = historicalRates?.[dayKey];
+
+      let value: number;
       if (type === 'investments') {
-        valueInCzk = Number(h.totalInvestments);
+        value = valueFromBreakdown(h.investmentsByCurrency, Number(h.totalInvestments), ratesForDay);
       } else {
-        valueInCzk = Number(h.totalCrypto || 0);
+        value = valueFromBreakdown(h.cryptoByCurrency, Number(h.totalCrypto || 0), ratesForDay);
       }
-      
-      // Convert historical value from CZK to display currency
-      const value = convert(valueInCzk, "CZK", currencyCode);
       
       // Include year in date format for multi-year periods
       const includeYear = selectedPeriod === '1Y' || selectedPeriod === '5Y' || selectedPeriod === 'All';
@@ -336,7 +371,7 @@ export default function PortfolioValueTrendChart({
       : 0;
 
     return { data: historyData, change: changePercent };
-  }, [portfolioHistory, currentValue, type, formatDate, markerMap, selectedPeriod, convert, currencyCode]);
+  }, [portfolioHistory, historicalRates, currentValue, type, formatDate, markerMap, selectedPeriod, convert, currencyCode]);
 
   const isPositive = change >= 0;
 
