@@ -32,7 +32,7 @@ import type { StockInvestmentWithPrice } from "@shared/types/extended-types";
 import { toast } from "sonner";
 import { investmentsApi, priceApi } from "@/lib/tauri-api";
 import { useCurrency } from "@/lib/currency";
-import { CurrencyCode, DisplayCurrencyCode, CURRENCIES } from "@shared/currencies";
+import { CurrencyCode, CURRENCIES } from "@shared/currencies";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -478,7 +478,7 @@ export default function StockDetail() {
                                                 const txPriceInBase = convert(txPrice, txCurrency, "CZK");
                                                 const txTotal = txQty * txPriceInBase;
                                                 // Format original price with its original currency symbol
-                                                const originalCurrencyDef = CURRENCIES[txCurrency as DisplayCurrencyCode] || CURRENCIES.CZK;
+                                                const originalCurrencyDef = CURRENCIES[txCurrency] || CURRENCIES.CZK;
                                                 const formattedOriginalPrice = originalCurrencyDef.position === "before" 
                                                     ? `${originalCurrencyDef.symbol}${txPrice.toLocaleString(originalCurrencyDef.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                     : `${txPrice.toLocaleString(originalCurrencyDef.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${originalCurrencyDef.symbol}`;
