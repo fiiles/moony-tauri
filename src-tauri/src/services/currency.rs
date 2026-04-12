@@ -10,11 +10,24 @@ use std::sync::RwLock;
 lazy_static! {
     /// Exchange rates relative to CZK (how many CZK = 1 unit of currency)
     /// These rates convert X CURRENCY to CZK via: amount * rate
-    /// Starts empty - will be populated from database on startup, then updated from ECB
+    /// Starts with fallback rates - will be updated from database on startup, then from ECB
     static ref EXCHANGE_RATES: RwLock<HashMap<String, f64>> = {
         let mut m = HashMap::new();
-        // Only CZK rate is hardcoded (1:1 conversion)
         m.insert("CZK".to_string(), 1.0);
+        m.insert("EUR".to_string(), 25.0);
+        m.insert("USD".to_string(), 23.0);
+        m.insert("GBP".to_string(), 29.0);
+        m.insert("JPY".to_string(), 0.15);
+        m.insert("AUD".to_string(), 14.5);
+        m.insert("CAD".to_string(), 17.0);
+        m.insert("CHF".to_string(), 26.0);
+        m.insert("HKD".to_string(), 3.0);
+        m.insert("CNY".to_string(), 3.2);
+        m.insert("SEK".to_string(), 2.2);
+        m.insert("NOK".to_string(), 2.1);
+        m.insert("DKK".to_string(), 3.4);
+        m.insert("SGD".to_string(), 17.5);
+        m.insert("NZD".to_string(), 13.5);
         RwLock::new(m)
     };
 
