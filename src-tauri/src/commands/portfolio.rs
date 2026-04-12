@@ -234,7 +234,10 @@ pub async fn get_portfolio_history(
         let mut query = String::from(
             "SELECT id, total_savings, total_loans_principal, total_investments, total_crypto,
                     total_bonds, total_real_estate_personal, total_real_estate_investment,
-                    total_other_assets, recorded_at
+                    total_other_assets, recorded_at,
+                    investments_by_currency, crypto_by_currency, savings_by_currency,
+                    bonds_by_currency, real_estate_by_currency, loans_by_currency,
+                    other_assets_by_currency
              FROM portfolio_metrics_history",
         );
 
@@ -270,6 +273,13 @@ pub async fn get_portfolio_history(
                     total_real_estate_investment: row.get(7)?,
                     total_other_assets: row.get(8).unwrap_or("0".to_string()),
                     recorded_at: row.get(9)?,
+                    investments_by_currency: row.get::<_, String>(10).unwrap_or("{}".to_string()),
+                    crypto_by_currency: row.get::<_, String>(11).unwrap_or("{}".to_string()),
+                    savings_by_currency: row.get::<_, String>(12).unwrap_or("{}".to_string()),
+                    bonds_by_currency: row.get::<_, String>(13).unwrap_or("{}".to_string()),
+                    real_estate_by_currency: row.get::<_, String>(14).unwrap_or("{}".to_string()),
+                    loans_by_currency: row.get::<_, String>(15).unwrap_or("{}".to_string()),
+                    other_assets_by_currency: row.get::<_, String>(16).unwrap_or("{}".to_string()),
                 })
             })?
             .filter_map(|r| r.ok())
@@ -396,14 +406,32 @@ pub async fn update_todays_snapshot(db: &Database) -> Result<()> {
         .timestamp();
     let now_ts = now.timestamp();
 
+    // Serialize breakdown maps to JSON
+    let inv_by_cur =
+        serde_json::to_string(&metrics.investments_by_currency).unwrap_or("{}".to_string());
+    let crypto_by_cur =
+        serde_json::to_string(&metrics.crypto_by_currency).unwrap_or("{}".to_string());
+    let savings_by_cur =
+        serde_json::to_string(&metrics.savings_by_currency).unwrap_or("{}".to_string());
+    let bonds_by_cur =
+        serde_json::to_string(&metrics.bonds_by_currency).unwrap_or("{}".to_string());
+    let re_by_cur =
+        serde_json::to_string(&metrics.real_estate_by_currency).unwrap_or("{}".to_string());
+    let loans_by_cur =
+        serde_json::to_string(&metrics.loans_by_currency).unwrap_or("{}".to_string());
+    let other_by_cur =
+        serde_json::to_string(&metrics.other_assets_by_currency).unwrap_or("{}".to_string());
+
     db.with_conn(move |conn| {
         // Check for existing snapshot for today
         // We look for any record created after today_start
-        let existing_id: Option<String> = conn.query_row(
-            "SELECT id FROM portfolio_metrics_history WHERE recorded_at >= ?1 LIMIT 1",
-            [today_start],
-            |row| row.get(0),
-        ).ok();
+        let existing_id: Option<String> = conn
+            .query_row(
+                "SELECT id FROM portfolio_metrics_history WHERE recorded_at >= ?1 LIMIT 1",
+                [today_start],
+                |row| row.get(0),
+            )
+            .ok();
 
         if let Some(id) = existing_id {
             // Update existing
@@ -411,7 +439,11 @@ pub async fn update_todays_snapshot(db: &Database) -> Result<()> {
                 "UPDATE portfolio_metrics_history
                  SET total_savings = ?2, total_loans_principal = ?3, total_investments = ?4,
                      total_crypto = ?5, total_bonds = ?6, total_real_estate_personal = ?7,
-                     total_real_estate_investment = ?8, total_other_assets = ?9, recorded_at = ?10
+                     total_real_estate_investment = ?8, total_other_assets = ?9, recorded_at = ?10,
+                     investments_by_currency = ?11, crypto_by_currency = ?12,
+                     savings_by_currency = ?13, bonds_by_currency = ?14,
+                     real_estate_by_currency = ?15, loans_by_currency = ?16,
+                     other_assets_by_currency = ?17
                  WHERE id = ?1",
                 rusqlite::params![
                     id,
@@ -424,6 +456,13 @@ pub async fn update_todays_snapshot(db: &Database) -> Result<()> {
                     metrics.total_real_estate_investment.to_string(),
                     metrics.total_other_assets.to_string(),
                     now_ts,
+                    inv_by_cur,
+                    crypto_by_cur,
+                    savings_by_cur,
+                    bonds_by_cur,
+                    re_by_cur,
+                    loans_by_cur,
+                    other_by_cur,
                 ],
             )?;
         } else {
@@ -432,8 +471,12 @@ pub async fn update_todays_snapshot(db: &Database) -> Result<()> {
             conn.execute(
                 "INSERT INTO portfolio_metrics_history
                  (id, total_savings, total_loans_principal, total_investments, total_crypto,
-                  total_bonds, total_real_estate_personal, total_real_estate_investment, total_other_assets, recorded_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                  total_bonds, total_real_estate_personal, total_real_estate_investment,
+                  total_other_assets, recorded_at,
+                  investments_by_currency, crypto_by_currency, savings_by_currency,
+                  bonds_by_currency, real_estate_by_currency, loans_by_currency,
+                  other_assets_by_currency)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
                 rusqlite::params![
                     id,
                     metrics.total_savings.to_string(),
@@ -445,6 +488,13 @@ pub async fn update_todays_snapshot(db: &Database) -> Result<()> {
                     metrics.total_real_estate_investment.to_string(),
                     metrics.total_other_assets.to_string(),
                     now_ts,
+                    inv_by_cur,
+                    crypto_by_cur,
+                    savings_by_cur,
+                    bonds_by_cur,
+                    re_by_cur,
+                    loans_by_cur,
+                    other_by_cur,
                 ],
             )?;
         }
@@ -938,8 +988,13 @@ fn insert_snapshot_for_day(
         conn.execute(
             "INSERT INTO portfolio_metrics_history
              (id, total_savings, total_loans_principal, total_investments, total_crypto,
-              total_bonds, total_real_estate_personal, total_real_estate_investment, total_other_assets, recorded_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+              total_bonds, total_real_estate_personal, total_real_estate_investment,
+              total_other_assets, recorded_at,
+              investments_by_currency, crypto_by_currency, savings_by_currency,
+              bonds_by_currency, real_estate_by_currency, loans_by_currency,
+              other_assets_by_currency)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10,
+                     '{}', '{}', '{}', '{}', '{}', '{}', '{}')",
             rusqlite::params![
                 id,
                 metrics.total_savings.to_string(),
@@ -1710,7 +1765,11 @@ fn update_or_insert_snapshot(
                 "UPDATE portfolio_metrics_history
                  SET total_savings = ?2, total_loans_principal = ?3, total_investments = ?4,
                      total_crypto = ?5, total_bonds = ?6, total_real_estate_personal = ?7,
-                     total_real_estate_investment = ?8, total_other_assets = ?9
+                     total_real_estate_investment = ?8, total_other_assets = ?9,
+                     investments_by_currency = '{}', crypto_by_currency = '{}',
+                     savings_by_currency = '{}', bonds_by_currency = '{}',
+                     real_estate_by_currency = '{}', loans_by_currency = '{}',
+                     other_assets_by_currency = '{}'
                  WHERE id = ?1",
                 rusqlite::params![
                     id,
@@ -1730,8 +1789,13 @@ fn update_or_insert_snapshot(
             conn.execute(
                 "INSERT INTO portfolio_metrics_history
                  (id, total_savings, total_loans_principal, total_investments, total_crypto,
-                  total_bonds, total_real_estate_personal, total_real_estate_investment, total_other_assets, recorded_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                  total_bonds, total_real_estate_personal, total_real_estate_investment,
+                  total_other_assets, recorded_at,
+                  investments_by_currency, crypto_by_currency, savings_by_currency,
+                  bonds_by_currency, real_estate_by_currency, loans_by_currency,
+                  other_assets_by_currency)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10,
+                         '{}', '{}', '{}', '{}', '{}', '{}', '{}')",
                 rusqlite::params![
                     id,
                     metrics.total_savings.to_string(),

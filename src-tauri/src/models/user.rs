@@ -137,4 +137,18 @@ pub struct PortfolioMetricsHistory {
     pub total_other_assets: String,
     #[serde(rename = "recordedAt")]
     pub recorded_at: i64,
+    #[serde(rename = "investmentsByCurrency")]
+    pub investments_by_currency: String,
+    #[serde(rename = "cryptoByCurrency")]
+    pub crypto_by_currency: String,
+    #[serde(rename = "savingsByCurrency")]
+    pub savings_by_currency: String,
+    #[serde(rename = "bondsByCurrency")]
+    pub bonds_by_currency: String,
+    #[serde(rename = "realEstateByCurrency")]
+    pub real_estate_by_currency: String,
+    #[serde(rename = "loansByCurrency")]
+    pub loans_by_currency: String,
+    #[serde(rename = "otherAssetsByCurrency")]
+    pub other_assets_by_currency: String,
 }
