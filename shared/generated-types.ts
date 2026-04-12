@@ -342,12 +342,38 @@ export type TransactionStatus = "booked" | "pending"
 export type TransactionType = "credit" | "debit"
 
 /**
+ * A single data point in a TWR time series.
+ */
+export type TwrDataPoint = { 
+/**
+ * Calendar date as "YYYY-MM-DD"
+ */
+date: string; 
+/**
+ * Cumulative time-weighted return in percent (0.0 at start of range)
+ */
+twr: number }
+
+/**
+ * A complete TWR series for one tag, untagged stocks, or the whole portfolio.
+ */
+export type TwrSeries = { 
+/**
+ * The tag this series belongs to. None = whole portfolio or untagged.
+ */
+tag: StockTag | null; 
+/**
+ * True when this series represents stocks with no tags assigned.
+ */
+is_untagged: boolean; data: TwrDataPoint[] }
+
+/**
  * Data for updating user profile (partial updates)
  */
-export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null; coingeckoModalDismissed: boolean | null }
+export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null; coingeckoModalDismissed: boolean | null; mcpServerEnabled: boolean | null }
 
 /**
  * User profile stored in database
  */
-export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; coingeckoModalDismissed?: boolean; createdAt: number }
+export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; coingeckoModalDismissed?: boolean; mcpServerEnabled?: boolean; createdAt: number }
 
