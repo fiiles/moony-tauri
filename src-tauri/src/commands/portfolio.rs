@@ -1520,6 +1520,122 @@ pub async fn backfill_crypto_ticker_history(
 }
 
 // ============================================================================
+// Currency Breakdown Backfill
+// ============================================================================
+
+/// Backfill native currency breakdowns for existing portfolio_metrics_history rows.
+///
+/// - Stocks/crypto: derived from stock_value_history / crypto_value_history per day.
+/// - Other asset classes: populated with {"CZK": <czk_total>} (no per-day history available).
+///
+/// Only processes rows where investments_by_currency = '{}' — safe to interrupt and resume.
+#[tauri::command]
+pub async fn backfill_currency_breakdowns(db: State<'_, Database>) -> Result<i32> {
+    db.with_conn(|conn| {
+        // Fetch all rows that need investment breakdown
+        let rows: Vec<(String, i64, f64, f64, f64, f64, f64)> = conn
+            .prepare(
+                "SELECT id, recorded_at,
+                        CAST(total_savings AS REAL),
+                        CAST(total_bonds AS REAL),
+                        CAST(total_real_estate_personal AS REAL) + CAST(total_real_estate_investment AS REAL),
+                        CAST(total_loans_principal AS REAL),
+                        CAST(total_other_assets AS REAL)
+                 FROM portfolio_metrics_history
+                 WHERE investments_by_currency = '{}'",
+            )?
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, f64>(2)?,
+                    row.get::<_, f64>(3)?,
+                    row.get::<_, f64>(4)?,
+                    row.get::<_, f64>(5)?,
+                    row.get::<_, f64>(6)?,
+                ))
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        let mut processed = 0i32;
+
+        for (id, recorded_at, total_savings, total_bonds, total_re, total_loans, total_other) in
+            rows
+        {
+            let day_start = (recorded_at / 86400) * 86400;
+            let day_end = day_start + 86400;
+
+            // Stock breakdown from stock_value_history
+            let inv_breakdown: HashMap<String, f64> = conn
+                .prepare(
+                    "SELECT currency, SUM(CAST(quantity AS REAL) * CAST(price AS REAL))
+                     FROM stock_value_history
+                     WHERE recorded_at >= ?1 AND recorded_at < ?2
+                     GROUP BY currency",
+                )?
+                .query_map(rusqlite::params![day_start, day_end], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+                })?
+                .filter_map(|r| r.ok())
+                .collect();
+
+            // Crypto breakdown from crypto_value_history
+            let crypto_breakdown: HashMap<String, f64> = conn
+                .prepare(
+                    "SELECT currency, SUM(CAST(quantity AS REAL) * CAST(price AS REAL))
+                     FROM crypto_value_history
+                     WHERE recorded_at >= ?1 AND recorded_at < ?2
+                     GROUP BY currency",
+                )?
+                .query_map(rusqlite::params![day_start, day_end], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+                })?
+                .filter_map(|r| r.ok())
+                .collect();
+
+            // Other asset classes: snapshot CZK total as {"CZK": value}
+            let savings_json = format!("{{\"CZK\":{}}}", total_savings);
+            let bonds_json = format!("{{\"CZK\":{}}}", total_bonds);
+            let re_json = format!("{{\"CZK\":{}}}", total_re);
+            let loans_json = format!("{{\"CZK\":{}}}", total_loans);
+            let other_json = format!("{{\"CZK\":{}}}", total_other);
+
+            let inv_json = serde_json::to_string(&inv_breakdown).unwrap_or("{}".to_string());
+            let crypto_json =
+                serde_json::to_string(&crypto_breakdown).unwrap_or("{}".to_string());
+
+            conn.execute(
+                "UPDATE portfolio_metrics_history
+                 SET investments_by_currency = ?2,
+                     crypto_by_currency = ?3,
+                     savings_by_currency = ?4,
+                     bonds_by_currency = ?5,
+                     real_estate_by_currency = ?6,
+                     loans_by_currency = ?7,
+                     other_assets_by_currency = ?8
+                 WHERE id = ?1",
+                rusqlite::params![
+                    id,
+                    inv_json,
+                    crypto_json,
+                    savings_json,
+                    bonds_json,
+                    re_json,
+                    loans_json,
+                    other_json,
+                ],
+            )?;
+
+            processed += 1;
+        }
+
+        println!("[BACKFILL] Currency breakdowns: processed {} rows", processed);
+        Ok(processed)
+    })
+}
+
+// ============================================================================
 // Historical Recalculation for Retrospective Transactions
 // ============================================================================
 

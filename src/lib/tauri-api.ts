@@ -528,6 +528,9 @@ export const portfolioApi = {
 
   recalculateAllHistory: () =>
     tauriInvoke<BackfillResult>('recalculate_all_portfolio_history'),
+
+  backfillCurrencyBreakdowns: () =>
+    tauriInvoke<number>('backfill_currency_breakdowns'),
 };
 
 // ============================================================================
