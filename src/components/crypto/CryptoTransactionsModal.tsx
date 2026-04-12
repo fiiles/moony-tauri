@@ -30,10 +30,18 @@ import {
 import { Trash2 } from "lucide-react";
 import type { CryptoTransaction } from "@shared/schema";
 import type { CryptoHoldingData } from "@/components/crypto/CryptoTable";
-import { useCurrency } from "@/lib/currency";
-import { convertToCzK, type CurrencyCode } from "@shared/currencies";
 import { cryptoApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
+
+function formatAmount(amount: number, currency: string): string {
+    // Use Intl to get correct decimal places for this currency (e.g. JPY=0, USD=2)
+    const fractionDigits = new Intl.NumberFormat('en', { style: 'currency', currency })
+        .resolvedOptions().maximumFractionDigits;
+    return new Intl.NumberFormat('en', {
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+    }).format(amount);
+}
 
 interface CryptoTransactionsModalProps {
     investment: CryptoHoldingData | null;
@@ -45,7 +53,6 @@ export function CryptoTransactionsModal({ investment, open, onOpenChange }: Cryp
     const { t } = useTranslation('crypto');
     const { t: tc } = useTranslation('common');
     const queryClient = useQueryClient();
-    const { formatCurrency } = useCurrency();
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<CryptoTransaction | null>(null);
 
@@ -119,9 +126,9 @@ export function CryptoTransactionsModal({ investment, open, onOpenChange }: Cryp
                                                 </span>
                                             </TableCell>
                                             <TableCell className="text-right">{parseFloat(tx.quantity).toFixed(8)}</TableCell>
-                                            <TableCell className="text-right">{parseFloat(tx.pricePerUnit).toFixed(2)} {tx.currency}</TableCell>
+                                            <TableCell className="text-right">{formatAmount(parseFloat(tx.pricePerUnit), tx.currency)} {tx.currency}</TableCell>
                                             <TableCell>{tx.currency}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(convertToCzK(parseFloat(tx.pricePerUnit) * parseFloat(tx.quantity), tx.currency as CurrencyCode))}</TableCell>
+                                            <TableCell className="text-right">{formatAmount(parseFloat(tx.pricePerUnit) * parseFloat(tx.quantity), tx.currency)} {tx.currency}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex gap-2 justify-end">
                                                     <Button

@@ -30,10 +30,18 @@ import { Pencil, Trash2 } from "lucide-react";
 import type { InvestmentTransaction } from "@shared/schema";
 import type { HoldingData } from "@/utils/stocks";
 import { EditTransactionModal } from "./EditTransactionModal";
-import { useCurrency } from "@/lib/currency";
-import { convertToCzK } from "@shared/currencies";
 import { investmentsApi } from "@/lib/tauri-api";
 import { useTranslation } from "react-i18next";
+
+function formatAmount(amount: number, currency: string): string {
+    // Use Intl to get correct decimal places for this currency (e.g. JPY=0, USD=2)
+    const fractionDigits = new Intl.NumberFormat('en', { style: 'currency', currency })
+        .resolvedOptions().maximumFractionDigits;
+    return new Intl.NumberFormat('en', {
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+    }).format(amount);
+}
 
 interface ViewTransactionsModalProps {
     investment: HoldingData | null;
@@ -45,7 +53,6 @@ export function ViewTransactionsModal({ investment, open, onOpenChange }: ViewTr
     const { t } = useTranslation('stocks');
     const { t: tc } = useTranslation('common');
     const queryClient = useQueryClient();
-    const { formatCurrency } = useCurrency();
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<InvestmentTransaction | null>(null);
@@ -126,9 +133,9 @@ export function ViewTransactionsModal({ investment, open, onOpenChange }: ViewTr
                                                 </span>
                                             </TableCell>
                                             <TableCell className="text-right">{parseFloat(tx.quantity as any).toFixed(4)}</TableCell>
-                                            <TableCell className="text-right">{parseFloat(tx.pricePerUnit as any).toFixed(2)} {tx.currency}</TableCell>
+                                            <TableCell className="text-right">{formatAmount(parseFloat(tx.pricePerUnit as any), tx.currency)} {tx.currency}</TableCell>
                                             <TableCell>{tx.currency}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(convertToCzK(parseFloat(tx.pricePerUnit as any) * parseFloat(tx.quantity as any), tx.currency as any))}</TableCell>
+                                            <TableCell className="text-right">{formatAmount(parseFloat(tx.pricePerUnit as any) * parseFloat(tx.quantity as any), tx.currency)} {tx.currency}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex gap-2 justify-end">
                                                     <Button
