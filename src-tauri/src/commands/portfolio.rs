@@ -48,41 +48,57 @@ fn calculate_portfolio_metrics(
     exclude_personal_real_estate: bool,
 ) -> Result<PortfolioMetrics> {
     db.with_conn(|conn| {
-        // Calculate total savings from bank_accounts
+        // --- Savings ---
+        let mut savings_by_currency: HashMap<String, f64> = HashMap::new();
         let mut bank_stmt = conn.prepare("SELECT balance, currency FROM bank_accounts")?;
         let total_savings: f64 = bank_stmt
             .query_map([], |row| {
                 let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
                 let currency: String = row.get(1)?;
-                Ok(convert_to_czk(balance, &currency))
+                Ok((balance, currency))
             })?
             .filter_map(|r| r.ok())
+            .map(|(balance, currency)| {
+                *savings_by_currency.entry(currency.clone()).or_insert(0.0) += balance;
+                convert_to_czk(balance, &currency)
+            })
             .sum();
 
-        // Calculate total bonds
+        // --- Bonds ---
+        let mut bonds_by_currency: HashMap<String, f64> = HashMap::new();
         let mut bonds_stmt = conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
         let total_bonds: f64 = bonds_stmt
             .query_map([], |row| {
                 let value: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
                 let quantity: f64 = row.get::<_, String>(1)?.parse().unwrap_or(1.0);
                 let currency: String = row.get(2)?;
-                Ok(convert_to_czk(value * quantity, &currency))
+                Ok((value, quantity, currency))
             })?
             .filter_map(|r| r.ok())
+            .map(|(value, quantity, currency)| {
+                *bonds_by_currency.entry(currency.clone()).or_insert(0.0) += value * quantity;
+                convert_to_czk(value * quantity, &currency)
+            })
             .sum();
 
-        // Calculate total loans (liabilities)
+        // --- Liabilities (loans) ---
+        let mut loans_by_currency: HashMap<String, f64> = HashMap::new();
         let mut loans_stmt = conn.prepare("SELECT principal, currency FROM loans")?;
         let total_liabilities: f64 = loans_stmt
             .query_map([], |row| {
                 let principal: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
                 let currency: String = row.get(1)?;
-                Ok(convert_to_czk(principal, &currency))
+                Ok((principal, currency))
             })?
             .filter_map(|r| r.ok())
+            .map(|(principal, currency)| {
+                *loans_by_currency.entry(currency.clone()).or_insert(0.0) += principal;
+                convert_to_czk(principal, &currency)
+            })
             .sum();
 
-        // Calculate real estate
+        // --- Real estate ---
+        let mut real_estate_by_currency: HashMap<String, f64> = HashMap::new();
         let mut stmt =
             conn.prepare("SELECT type, market_price, market_price_currency FROM real_estate")?;
         let mut total_re_personal = 0.0;
@@ -98,7 +114,9 @@ fn calculate_portfolio_metrics(
 
         for row in rows.filter_map(|r| r.ok()) {
             let price: f64 = row.1.parse().unwrap_or(0.0);
-            let price_czk = convert_to_czk(price, &row.2);
+            let currency = row.2.clone();
+            let price_czk = convert_to_czk(price, &currency);
+            *real_estate_by_currency.entry(currency).or_insert(0.0) += price;
             if row.0 == "personal" {
                 total_re_personal += price_czk;
             } else {
@@ -106,55 +124,68 @@ fn calculate_portfolio_metrics(
             }
         }
 
-        // Calculate investments value
+        // --- Investments (stocks) ---
+        let mut investments_by_currency: HashMap<String, f64> = HashMap::new();
         let mut total_investments = 0.0;
         let mut inv_stmt = conn.prepare("SELECT ticker, quantity FROM stock_investments")?;
-        let investments = inv_stmt.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        })?;
+        let investments: Vec<(String, String)> = inv_stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+            .filter_map(|r| r.ok())
+            .collect();
 
-        for inv in investments.filter_map(|r| r.ok()) {
+        for inv in investments {
             let qty: f64 = inv.1.parse().unwrap_or(0.0);
             if let Some(resolved) = crate::services::pricing::resolve_stock_price(conn, &inv.0) {
                 total_investments += resolved.price_czk * qty;
+                let native_price: f64 = resolved.original_price.parse().unwrap_or(0.0);
+                *investments_by_currency
+                    .entry(resolved.currency.clone())
+                    .or_insert(0.0) += native_price * qty;
             }
         }
 
-        // Calculate crypto value
+        // --- Crypto ---
+        let mut crypto_by_currency: HashMap<String, f64> = HashMap::new();
         let mut total_crypto = 0.0;
         let mut crypto_stmt = conn.prepare("SELECT ticker, quantity FROM crypto_investments")?;
-        let cryptos = crypto_stmt.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        })?;
+        let cryptos: Vec<(String, String)> = crypto_stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+            .filter_map(|r| r.ok())
+            .collect();
 
-        for crypto in cryptos.filter_map(|r| r.ok()) {
+        for crypto in cryptos {
             let qty: f64 = crypto.1.parse().unwrap_or(0.0);
             if let Some(resolved) = crate::services::pricing::resolve_crypto_price(conn, &crypto.0)
             {
                 total_crypto += resolved.price_czk * qty;
+                let native_price: f64 = resolved.original_price.parse().unwrap_or(0.0);
+                *crypto_by_currency
+                    .entry(resolved.currency.clone())
+                    .or_insert(0.0) += native_price * qty;
             }
         }
 
-        // Calculate details
+        // --- Other assets ---
+        let mut other_assets_by_currency: HashMap<String, f64> = HashMap::new();
         let mut total_other_assets = 0.0;
         let mut other_stmt =
             conn.prepare("SELECT quantity, market_price, currency FROM other_assets")?;
-        let other_assets = other_stmt.query_map([], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        })?;
+        let other_assets: Vec<(String, String, String)> = other_stmt
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
+            .filter_map(|r| r.ok())
+            .collect();
 
-        for asset in other_assets.filter_map(|r| r.ok()) {
+        for asset in other_assets {
             let qty: f64 = asset.0.parse().unwrap_or(0.0);
             let price: f64 = asset.1.parse().unwrap_or(0.0);
             let currency = asset.2;
+            *other_assets_by_currency
+                .entry(currency.clone())
+                .or_insert(0.0) += qty * price;
             total_other_assets += convert_to_czk(qty * price, &currency);
         }
 
-        // Calculate totals
+        // --- Totals ---
         let total_real_estate = if exclude_personal_real_estate {
             total_re_investment
         } else {
@@ -181,13 +212,13 @@ fn calculate_portfolio_metrics(
             total_liabilities,
             total_assets,
             net_worth,
-            savings_by_currency: std::collections::HashMap::new(),
-            investments_by_currency: std::collections::HashMap::new(),
-            crypto_by_currency: std::collections::HashMap::new(),
-            bonds_by_currency: std::collections::HashMap::new(),
-            real_estate_by_currency: std::collections::HashMap::new(),
-            loans_by_currency: std::collections::HashMap::new(),
-            other_assets_by_currency: std::collections::HashMap::new(),
+            savings_by_currency,
+            investments_by_currency,
+            crypto_by_currency,
+            bonds_by_currency,
+            real_estate_by_currency,
+            loans_by_currency,
+            other_assets_by_currency,
         })
     })
 }
@@ -2604,4 +2635,49 @@ pub async fn trigger_historical_recalculation_for_crypto_ticker(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_calculate_portfolio_metrics_investments_by_currency() {
+        let conn = rusqlite::Connection::open_in_memory().expect("db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_investments (id TEXT PRIMARY KEY, ticker TEXT, quantity TEXT, currency TEXT DEFAULT 'USD');
+            CREATE TABLE stock_data (ticker TEXT PRIMARY KEY, original_price TEXT, currency TEXT, fetched_at INTEGER);
+            CREATE TABLE stock_price_overrides (ticker TEXT PRIMARY KEY, price TEXT, currency TEXT, updated_at INTEGER);
+            CREATE TABLE crypto_investments (id TEXT PRIMARY KEY, ticker TEXT, quantity TEXT, currency TEXT DEFAULT 'USD');
+            CREATE TABLE crypto_data (ticker TEXT PRIMARY KEY, original_price TEXT, currency TEXT, fetched_at INTEGER);
+            CREATE TABLE crypto_price_overrides (ticker TEXT PRIMARY KEY, price TEXT, currency TEXT, updated_at INTEGER);
+            CREATE TABLE bank_accounts (id TEXT PRIMARY KEY, name TEXT, balance TEXT, currency TEXT DEFAULT 'CZK');
+            CREATE TABLE bonds (id TEXT PRIMARY KEY, coupon_value TEXT, quantity TEXT, currency TEXT DEFAULT 'CZK');
+            CREATE TABLE loans (id TEXT PRIMARY KEY, principal TEXT, currency TEXT DEFAULT 'CZK');
+            CREATE TABLE real_estate (id TEXT PRIMARY KEY, type TEXT, market_price TEXT, market_price_currency TEXT DEFAULT 'CZK');
+            CREATE TABLE other_assets (id TEXT PRIMARY KEY, quantity TEXT, market_price TEXT, currency TEXT DEFAULT 'CZK');
+
+            INSERT INTO stock_investments VALUES ('1', 'AAPL', '10', 'USD');
+            INSERT INTO stock_investments VALUES ('2', 'T7203', '5', 'JPY');
+            INSERT INTO stock_data (ticker, original_price, currency, fetched_at) VALUES ('AAPL', '150.0', 'USD', 0);
+            INSERT INTO stock_data (ticker, original_price, currency, fetched_at) VALUES ('T7203', '2000.0', 'JPY', 0);
+        "#,
+        )
+        .expect("schema");
+
+        crate::services::currency::update_exchange_rates(
+            [("USD".to_string(), 23.0), ("JPY".to_string(), 0.15)]
+                .into_iter()
+                .collect(),
+        );
+
+        let resolved_aapl =
+            crate::services::pricing::resolve_stock_price(&conn, "AAPL").expect("AAPL price");
+        assert_eq!(resolved_aapl.currency, "USD");
+        assert!((resolved_aapl.original_price.parse::<f64>().unwrap() - 150.0).abs() < 0.01);
+
+        let resolved_t7203 =
+            crate::services::pricing::resolve_stock_price(&conn, "T7203").expect("T7203 price");
+        assert_eq!(resolved_t7203.currency, "JPY");
+        assert!((resolved_t7203.original_price.parse::<f64>().unwrap() - 2000.0).abs() < 0.01);
+    }
 }
