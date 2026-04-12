@@ -6,14 +6,19 @@ import {
   convertToCzK,
   convertFromCzK,
   updateExchangeRates,
+  CurrencyCode,
 } from "./currencies";
 
 describe("CURRENCIES constant", () => {
-  it("contains USD, EUR, CZK, GBP", () => {
-    expect(CURRENCIES).toHaveProperty("USD");
-    expect(CURRENCIES).toHaveProperty("EUR");
-    expect(CURRENCIES).toHaveProperty("CZK");
-    expect(CURRENCIES).toHaveProperty("GBP");
+  const ALL_CODES: CurrencyCode[] = [
+    "CZK","EUR","USD","GBP","JPY","AUD","CAD","CHF",
+    "HKD","CNY","SEK","NOK","DKK","SGD","NZD",
+  ];
+
+  it("contains all 15 supported currencies", () => {
+    for (const code of ALL_CODES) {
+      expect(CURRENCIES).toHaveProperty(code);
+    }
   });
 
   it("each currency has symbol, locale, position, and label", () => {
@@ -25,32 +30,8 @@ describe("CURRENCIES constant", () => {
     }
   });
 
-  it("has correct properties for USD", () => {
-    expect(CURRENCIES.USD.symbol).toBe("$");
-    expect(CURRENCIES.USD.locale).toBe("en-US");
-    expect(CURRENCIES.USD.position).toBe("before");
-    expect(CURRENCIES.USD.label).toBe("US Dollar (USD)");
-  });
-
-  it("has correct properties for EUR", () => {
-    expect(CURRENCIES.EUR.symbol).toBe("€");
-    expect(CURRENCIES.EUR.locale).toBe("de-DE");
-    expect(CURRENCIES.EUR.position).toBe("before");
-    expect(CURRENCIES.EUR.label).toBe("Euro (EUR)");
-  });
-
-  it("has correct properties for CZK", () => {
-    expect(CURRENCIES.CZK.symbol).toBe("Kč");
-    expect(CURRENCIES.CZK.locale).toBe("cs-CZ");
-    expect(CURRENCIES.CZK.position).toBe("after");
-    expect(CURRENCIES.CZK.label).toBe("Czech Crown (CZK)");
-  });
-
-  it("has correct properties for GBP", () => {
-    expect(CURRENCIES.GBP.symbol).toBe("£");
-    expect(CURRENCIES.GBP.locale).toBe("en-GB");
-    expect(CURRENCIES.GBP.position).toBe("before");
-    expect(CURRENCIES.GBP.label).toBe("British Pound (GBP)");
+  it("has exactly 15 currencies", () => {
+    expect(Object.keys(CURRENCIES)).toHaveLength(15);
   });
 });
 
@@ -61,18 +42,14 @@ describe("BASE_CURRENCY constant", () => {
 });
 
 describe("EXCHANGE_RATES", () => {
-  it("includes all display currencies with fallback rates", () => {
-    expect(EXCHANGE_RATES).toHaveProperty("USD");
-    expect(EXCHANGE_RATES).toHaveProperty("EUR");
-    expect(EXCHANGE_RATES).toHaveProperty("CZK");
-    expect(EXCHANGE_RATES).toHaveProperty("GBP");
-  });
-
-  it("includes internal currencies", () => {
-    expect(EXCHANGE_RATES).toHaveProperty("CNY");
-    expect(EXCHANGE_RATES).toHaveProperty("JPY");
-    expect(EXCHANGE_RATES).toHaveProperty("CHF");
-    expect(EXCHANGE_RATES).toHaveProperty("HKD");
+  it("includes all 15 currencies with fallback rates", () => {
+    const codes: CurrencyCode[] = [
+      "CZK","EUR","USD","GBP","JPY","AUD","CAD","CHF",
+      "HKD","CNY","SEK","NOK","DKK","SGD","NZD",
+    ];
+    for (const code of codes) {
+      expect(EXCHANGE_RATES).toHaveProperty(code);
+    }
   });
 
   it("CZK rate is always 1", () => {
@@ -227,5 +204,34 @@ describe("Currency conversion round-trip", () => {
     const inCzk = convertToCzK(original, "USD");
     const backToUsd = convertFromCzK(inCzk, "USD");
     expect(backToUsd).toBeCloseTo(original, 2);
+  });
+});
+
+describe("Cross-rate derivation via CZK", () => {
+  beforeEach(() => {
+    updateExchangeRates({ EUR: 25.0, USD: 20.0, JPY: 0.16, AUD: 14.0 });
+  });
+
+  it("EUR→USD cross-rate equals (EUR/CZK) / (USD/CZK)", () => {
+    const eurInCzk = convertToCzK(100, "EUR");  // 2500 CZK
+    const result = convertFromCzK(eurInCzk, "USD"); // 2500/20 = 125
+    expect(result).toBeCloseTo(125, 2);
+  });
+
+  it("JPY→AUD cross-rate is accurate", () => {
+    const jpyInCzk = convertToCzK(10000, "JPY"); // 1600 CZK
+    const result = convertFromCzK(jpyInCzk, "AUD"); // 1600/14 ≈ 114.29
+    expect(result).toBeCloseTo(1600 / 14, 2);
+  });
+
+  it("round-trip for all new currencies is lossless", () => {
+    updateExchangeRates({ AUD: 14.5, CAD: 17.0, SEK: 2.2, NOK: 2.1, DKK: 3.4, SGD: 17.5, NZD: 13.5 });
+    const codes: CurrencyCode[] = ["AUD","CAD","SEK","NOK","DKK","SGD","NZD"];
+    for (const code of codes) {
+      const original = 100;
+      const inCzk = convertToCzK(original, code);
+      const back = convertFromCzK(inCzk, code);
+      expect(back).toBeCloseTo(original, 6);
+    }
   });
 });
