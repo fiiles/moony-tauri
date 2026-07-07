@@ -29,6 +29,7 @@ A 7-agent exploration (2026-07-07) found the problem is **contradiction and drif
 | D7 | Type contract | `shared/schema.ts` is canonical; `generated-types.ts` is a drift detector only; `extended-types.ts` deprecated; full codegen migration deferred |
 | D8 | Coverage thresholds | Documented as planned gate, NOT enabled (would fail on untested `shared/calculations/`, fixing that is source work → phase-2 backlog) |
 | D9 | CHANGELOG | Not created (ADRs + conventional commits + release tags suffice) |
+| D10 | Git hook tiering | Fast pre-commit (staged-file lint/format via lint-staged, incremental `tsc`, `cargo fmt --check`); heavy pre-push (`npm test`, `cargo clippy`, `cargo test`); CI authoritative. Rationale: slow hooks incentivize `--no-verify`, and superpowers makes many small commits per feature |
 
 ## 3. Deliverables
 
@@ -91,11 +92,12 @@ docs/
 | CI checks formatting | `.github/workflows/ci.yml` | add `npm run format:check` |
 | Align ESLint budget | `package.json` + `ci.yml` | `--max-warnings 120` moves into the npm `lint` script; CI calls the script |
 | Kill `--passWithNoTests` | `package.json` | remove flag from `test` script |
-| Pre-commit runs Rust tests | `.husky/pre-commit` | add `cargo test` (~6s) |
+| Tiered pre-commit (D10) | `.husky/pre-commit`, `package.json` | staged-file Prettier + ESLint via lint-staged (new devDependency), incremental `tsc --noEmit`, `cargo fmt --check`; target < 10s |
+| New pre-push hook (D10) | `.husky/pre-push` | `npm test -- --run`, `cargo clippy -- -D warnings`, `cargo test` — runs once per push instead of per commit |
 | Fix stale permission paths | `.claude/settings.json`, `.claude/settings.local.json` | replace old `Documents/…` repo path |
 | Align Action versions | `.github/workflows/*.yml` | consistent checkout/setup-node majors |
 
-Explicitly NOT done now: coverage thresholds (D8), schema.ts↔Rust automated contract check (needs codegen — source work, phase-2 recommendation), lint-staged (avoid new dep; revisit if pre-commit gets slow).
+Explicitly NOT done now: coverage thresholds (D8), schema.ts↔Rust automated contract check (needs codegen — source work, phase-2 recommendation).
 
 ### 3.4 Docs cleanup
 
@@ -127,6 +129,6 @@ Report only — remediation is future work the user schedules.
 ## 5. Success criteria
 
 1. A fresh agent session given only CLAUDE.md can locate every rule needed to add a full asset domain without reading contradictory guidance.
-2. Every stated gate actually runs somewhere authoritative: lint, typecheck, format, TS tests, cargo fmt/clippy/test all in CI; the same set (minus release build) in pre-commit.
+2. Every stated gate actually runs somewhere authoritative: lint, typecheck, format, TS tests, cargo fmt/clippy/test all in CI; locally tiered per D10 — fast staged-scope checks at commit, full tests + clippy at push. Pre-commit completes in under 10 seconds on a typical change.
 3. Zero contradictions remain between CLAUDE.md, `.agent/rules/`, README, and `docs/`.
 4. The phase-2 audit produces a ranked, verified backlog in `docs/audits/`.
