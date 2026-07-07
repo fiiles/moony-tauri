@@ -5,7 +5,7 @@ All facts (line counts, file counts, table counts) verified 2026-07-07.
 
 ## Stack
 
-- **Tauri 2** — Rust backend, ~31k lines, 206 `#[tauri::command]` handlers in 19 files under `src-tauri/src/commands/`.
+- **Tauri 2** — Rust backend, ~31k lines, 206 `#[tauri::command]` handlers in 18 files under `src-tauri/src/commands/` (the directory's 19th file, `mod.rs`, contains no handlers).
 - **React 18 / TypeScript** — frontend, ~39k lines, 208 files.
 - **SQLCipher-encrypted SQLite** — 37 append-only migrations in `src-tauri/src/db/migrations.rs`, ~51 tables.
 - **wouter** — routing (not React Router).
@@ -27,7 +27,7 @@ UI component (src/pages/, src/components/<domain>/)
           → SQLCipher SQLite
 ```
 
-To see the whole flow end to end, read the budgeting domain top to bottom — it is the cleanest implementation of every layer.
+To see the flow end to end, read the bonds domain top to bottom: `src/pages/Bonds.tsx` → `src/hooks/use-bonds.ts` + `use-bond-mutations.ts` → `bondsApi` in `src/lib/tauri-api.ts` → `src-tauri/src/commands/bonds.rs` (minimal CRUD, so the command talks to SQLite directly). For the cleanest command → service split, read budgeting (`commands/budgeting.rs` → `services/budgeting.rs`) — backend only: its UI calls `budgetingApi` via inline `useQuery`/`useMutation` instead of dedicated hooks, which is exactly the layer-skipping this diagram forbids.
 
 ## Canonical Examples to Copy
 
