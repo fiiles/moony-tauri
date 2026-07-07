@@ -21,7 +21,7 @@ Every feature follows this path — no layer-skipping:
 ```
 UI component (src/pages/, src/components/<domain>/)
   → hook: src/hooks/use-<domain>.ts (useQuery) + use-<domain>-mutations.ts (useMutation)
-    → src/lib/tauri-api.ts — <domain>Api namespace (the ONLY place invoke() is called)
+    → src/lib/tauri-api.ts — <domain>Api namespace (the only place app commands are invoked; src/lib/analytics.ts calls the aptabase plugin directly)
       → #[tauri::command] in src-tauri/src/commands/<domain>.rs (thin)
         → business logic in src-tauri/src/services/<domain>.rs (takes &Connection)
           → SQLCipher SQLite
@@ -36,7 +36,7 @@ When building something new, copy these — never the outliers:
 - **Thin command + service + tests:** `src-tauri/src/commands/budgeting.rs` (63 lines) + `src-tauri/src/services/budgeting.rs` (686 lines, `#[cfg(test)]` at bottom).
 - **Minimal CRUD domain:** `src-tauri/src/commands/bonds.rs` (122 lines) + `src/hooks/use-bonds.ts` + `use-bond-mutations.ts`.
 - **Mutation hook with correct cache invalidation + snapshot:** `src/hooks/use-bank-account-mutations.ts`.
-- **Dialog/form page pattern:** `src/pages/Accounts.tsx` (lifted dialog state) with react-hook-form + zodResolver.
+- **Dialog/form page pattern:** `src/pages/Loans.tsx` (lifted dialog state via `useState`) + `src/components/loans/LoanFormDialog.tsx` (react-hook-form + zodResolver).
 
 ## Domain Map
 
@@ -68,7 +68,7 @@ QueryClientProvider → ThemeProvider → AuthProvider → I18nProvider → Curr
 ```
 
 - Auth states: `needs_setup | locked | unlocked`.
-- `SyncProvider` runs a portfolio history backfill 15 seconds after unlock, then invalidates the relevant React Query caches.
+- `SyncProvider` runs a portfolio history backfill 5 seconds after unlock (`setTimeout(runStartupSync, 5000)` in `src/hooks/SyncProvider.tsx`), then invalidates the relevant React Query caches.
 
 ## Known Structural Debt
 
