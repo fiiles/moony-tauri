@@ -174,7 +174,7 @@ migration that introduced the table.
 | Table | Since | Purpose | Notable columns / constraints |
 |---|---|---|---|
 | `portfolio_metrics_history` | 001 | Daily net-worth snapshots per asset class | Totals as CZK TEXT (`total_savings`, `total_loans_principal`, …, `total_other_assets` added 003); `is_stale` (035); seven `*_by_currency` JSON TEXT `DEFAULT '{}'` (037) |
-| `entity_history` | 001 | Generic per-entity value history (`entity_type` + `entity_id`) | Used by other-assets and portfolio backfill; `value` TEXT, `recorded_at` |
+| `entity_history` | 001 | Generic per-entity value history (`entity_type` + `entity_id`) — **orphaned: no code reads or writes it** (see Deprecated section) | `value` TEXT, `recorded_at` |
 
 (`stock_value_history` and `crypto_value_history` above also feed this domain's trend charts.)
 
@@ -204,3 +204,4 @@ are never dropped) but are dead. Do not read from or write to them in new code.
 | `instruments` | `stock_investments` | Legacy pre-1.0 investment model, "kept for compatibility" |
 | `purchases` | `investment_transactions` | Legacy companion of `instruments` |
 | `transaction_rules` | `categorization_rules` | Replaced by the enhanced rules table in migration 021 |
+| `entity_history` | — (never used) | Created in migration 001 but referenced by no Rust or frontend code since; history/backfill actually uses `portfolio_metrics_history`, `stock_value_history`, and `crypto_value_history` |
