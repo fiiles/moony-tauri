@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  lint-and-typecheck:
-    name: Lint & Typecheck
+  frontend:
+    name: Frontend
     runs-on: ubuntu-latest
 
     steps:
@@ -25,10 +25,16 @@ jobs:
         run: npm ci
 
       - name: Run ESLint
-        run: npm run lint -- --max-warnings 120
+        run: npm run lint
 
       - name: TypeScript type check
         run: npm run typecheck
+
+      - name: Prettier format check
+        run: npm run format:check
+
+      - name: Frontend tests
+        run: npm test
 
   rust-check:
     name: Rust Check
