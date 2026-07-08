@@ -86,7 +86,8 @@ Every Tauri `listen()` call gets its `unlisten()` in the `useEffect` cleanup.
   ADR 0001).
 - Format via `formatCurrency`/`formatCurrencyShort` from `useCurrency()`.
 - Queries whose results depend on exchange rates must include `ratesTimestamp` in their
-  query key so they refetch when ECB rates refresh — see `src/pages/Dashboard.tsx:64`.
+  query key so they refetch when ECB rates refresh — see the portfolio-metrics query in
+  `src/pages/Dashboard.tsx`.
 
 **Why:** hand-rolled conversion or formatting drifts from the rest of the app; a query
 that ignores `ratesTimestamp` shows values computed with stale rates next to values
