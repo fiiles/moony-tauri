@@ -77,7 +77,6 @@ mcp-server/
 docs/UPDATING.md
 
 # AI assistant configuration (internal development tooling)
-CLAUDE.md
 .agent/
 docs/superpowers/
 
