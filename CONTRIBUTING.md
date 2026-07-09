@@ -1,52 +1,47 @@
 # Contributing to Moony
 
-Thank you for your interest in contributing to Moony! This document provides guidelines and information for contributors.
+Thank you for your interest in Moony! This document describes how the project is
+actually developed and how you can contribute.
 
-## 📋 Table of Contents
+## How This Project Is Developed
 
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [How to Contribute](#how-to-contribute)
-- [Development Setup](#development-setup)
-- [Code Style Guidelines](#code-style-guidelines)
-- [Commit Message Guidelines](#commit-message-guidelines)
-- [Pull Request Process](#pull-request-process)
-- [Reporting Bugs](#reporting-bugs)
-- [Suggesting Features](#suggesting-features)
+Moony is maintained by a **solo maintainer working with AI agents**, using
+**trunk-based development on `main`** — small, frequent commits, no long-lived
+branches. There is no formal review queue; quality is enforced by a tiered set
+of automated gates and a documented workflow.
 
-## Code of Conduct
+The authoritative process lives in
+[`docs/standards/workflow.md`](./docs/standards/workflow.md). In short:
 
-Please be respectful and considerate in all interactions. We expect all contributors to:
-
-- Use welcoming and inclusive language
-- Be respectful of differing viewpoints and experiences
-- Gracefully accept constructive criticism
-- Focus on what is best for the community and project
-
-## Getting Started
-
-1. **Fork the repository** on GitHub
-2. **Clone your fork** locally:
-   ```bash
-   git clone https://github.com/YOUR-USERNAME/moony-tauri.git
-   cd moony-tauri
-   ```
-3. **Add the upstream remote**:
-   ```bash
-   git remote add upstream https://github.com/fiiles/moony-tauri.git
-   ```
+- **Tiered workflow** — features (new command, table, page, or domain, or
+  changes over ~150 lines) go through brainstorm → spec (`docs/specs/`) →
+  plan (`docs/plans/`) → TDD → code review → verification. Small fixes (bug
+  fix, copy change, config tweak) need TDD + gates + verification only.
+- **Gates:**
+  - **pre-commit** (fast, <10s): lint-staged (staged-file ESLint/Prettier),
+    `npm run typecheck`, `cargo fmt --check`
+  - **pre-push** (heavy): `npm test`, `cargo clippy -- -D warnings`, `cargo test`
+  - **CI** (authoritative): everything above plus generated-types drift check
+    and `cargo audit`
+- **Coding standards** live in [`docs/standards/`](./docs/standards/)
+  (Rust backend, TypeScript frontend, type contract, testing, i18n).
+- **Architecture decisions** are recorded as ADRs in
+  [`docs/architecture/decisions/`](./docs/architecture/decisions/).
 
 ## How to Contribute
 
-### Types of Contributions Welcome
+External contributions are welcome, with the caveat that this is primarily a
+personal project:
 
-- 🐛 Bug fixes
-- ✨ New features (please discuss first via issue)
-- 📝 Documentation improvements
-- 🌍 Translations and i18n improvements
-- ♿ Accessibility improvements
-- 🎨 UI/UX enhancements
-- 🧪 Test coverage improvements
+- 🐛 **Bug reports** — the most valuable contribution (see below)
+- ✨ **Feature ideas** — open an issue for discussion before writing code
+- 📝 **Documentation fixes**
+- 🌍 **Translations and i18n improvements**
+
+If you want to submit code, open an issue first to align on the approach, then
+open a pull request against `main`. Describe what changed, why, and how you
+tested it — there is no required template. Your change must pass the same gates
+listed above (CI runs them on every PR).
 
 ## Development Setup
 
@@ -56,7 +51,7 @@ Please be respectful and considerate in all interactions. We expect all contribu
 - **Rust** (latest stable)
 - Platform-specific dependencies (see [README.md](./README.md#prerequisites))
 
-### Installation
+### Commands
 
 ```bash
 # Install frontend dependencies
@@ -70,6 +65,10 @@ npm run dev
 
 # Build for production
 npm run tauri build
+
+# Quality gates (run before committing)
+npm run lint && npm run typecheck && npm test
+cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 ```
 
 ### Project Structure
@@ -91,75 +90,33 @@ moony-tauri/
 │   │   └── services/       # Business logic
 │   └── tauri.conf.json     # Tauri configuration
 ├── shared/                 # Shared types and calculations
+├── docs/                   # Standards, architecture, ADRs, specs, plans
 └── public/                 # Static assets
 ```
 
-## Code Style Guidelines
+## Code Style
 
-### TypeScript/React (Frontend)
+Follow the standards in [`docs/standards/`](./docs/standards/). Highlights:
 
-- Use **TypeScript** for all new code
-- Follow existing patterns for components and hooks
-- Use **shadcn/ui** components where possible
-- Use **TanStack Query** for data fetching
-- Use **react-hook-form** with **zod** for forms
-- Keep components focused and reusable
-- Use translations for all user-facing strings via `i18next`
-
-```tsx
-// ✅ Good: typed, uses hooks, translated
-const MyComponent: React.FC<{ title: string }> = ({ title }) => {
-  const { t } = useTranslation();
-  return <h1>{t('common.title')}</h1>;
-};
-```
-
-### Rust (Backend)
-
-- Follow standard Rust conventions
-- Use meaningful variable and function names
-- Add documentation comments for public functions
-- Handle errors properly with `Result` types
-- Keep commands in `commands/` and business logic in `services/`
-
-```rust
-// ✅ Good: documented, proper error handling
-/// Fetches the user's investment portfolio
-pub fn get_portfolio(user_id: i64) -> Result<Portfolio, AppError> {
-    // implementation
-}
-```
-
-### CSS/Styling
-
-- Use **TailwindCSS** utility classes
-- Follow existing patterns in `src/index.css`
-- Support both dark and light themes
-- Ensure responsive design
+- **TypeScript/React** — typed components, TanStack Query for data fetching,
+  shadcn/ui components, react-hook-form + zod for forms, all user-facing
+  strings translated in both locales (`docs/standards/i18n.md`)
+- **Rust** — commands in `commands/`, business logic in `services/`, proper
+  `Result` error handling, tests per `docs/standards/testing.md`
+- **CSS** — TailwindCSS utilities, dark and light theme support
 
 ## Commit Message Guidelines
 
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+We follow the [Conventional Commits](https://www.conventionalcommits.org/)
+specification:
 
 ```
 <type>(<scope>): <description>
-
-[optional body]
-
-[optional footer]
 ```
 
-### Types
+Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `build`, `ci`.
 
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, semicolons, etc.)
-- `refactor`: Code refactoring
-- `test`: Adding or updating tests
-- `chore`: Build process or auxiliary tool changes
-
-### Examples
+Examples:
 
 ```
 feat(investments): add dividend tracking feature
@@ -168,44 +125,7 @@ docs(readme): update installation instructions
 refactor(auth): simplify password validation logic
 ```
 
-## Pull Request Process
-
-1. **Create a feature branch** from `main`:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **Make your changes** following the code style guidelines
-
-3. **Test your changes**:
-   - Run the app in development mode
-   - Test affected features manually
-   - Ensure no TypeScript/Rust errors
-
-4. **Commit your changes** using conventional commit messages
-
-5. **Push to your fork**:
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-6. **Open a Pull Request** against the `main` branch
-
-7. **Fill out the PR template** with:
-   - Description of changes
-   - Related issue numbers
-   - Screenshots (for UI changes)
-   - Testing performed
-
-8. **Address review feedback** promptly
-
-### PR Checklist
-
-- [ ] Code follows the project's style guidelines
-- [ ] Self-reviewed the code for obvious issues
-- [ ] Added/updated translations if adding user-facing strings
-- [ ] Tested changes in development mode
-- [ ] No TypeScript or Rust compilation errors
+Keep commits small and focused — one logical change per commit.
 
 ## Reporting Bugs
 
@@ -221,29 +141,6 @@ When reporting bugs, please include:
 5. **Screenshots** if applicable
 6. **Error messages** from console/logs
 
-### Bug Report Template
-
-```markdown
-**Describe the bug**
-A clear description of the bug.
-
-**To Reproduce**
-1. Go to '...'
-2. Click on '...'
-3. See error
-
-**Expected behavior**
-What you expected to happen.
-
-**Screenshots**
-If applicable, add screenshots.
-
-**Environment:**
-- OS: [e.g., macOS 14.0, Windows 11]
-- Node.js: [e.g., 20.10.0]
-- Rust: [e.g., 1.74.0]
-```
-
 ## Suggesting Features
 
 For new features:
@@ -252,22 +149,6 @@ For new features:
 2. **Open a feature request issue** before implementing
 3. **Describe the feature** and its use case
 4. **Wait for discussion** before starting work
-
-### Feature Request Template
-
-```markdown
-**Is your feature request related to a problem?**
-A clear description of the problem.
-
-**Describe the solution you'd like**
-A clear description of what you want to happen.
-
-**Describe alternatives you've considered**
-Other solutions or features you've considered.
-
-**Additional context**
-Any other context or screenshots.
-```
 
 ## Questions?
 

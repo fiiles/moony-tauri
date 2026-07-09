@@ -1,3 +1,8 @@
+> **⚠️ Historical snapshot (2026-01-04).** This document describes the categorization
+> subsystem as originally built and has not been maintained; the system has since been
+> extended. File paths and links may be stale. For current structure see
+> `docs/architecture/overview.md`.
+
 # ML Categorization Model Training Guide
 
 This guide explains how to train, improve, and maintain the Smart Categorization Engine's machine learning model for bank transaction classification.

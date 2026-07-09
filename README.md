@@ -24,7 +24,7 @@ A modern, privacy-focused personal finance management application built with Tau
 ### 💰 Asset Management
 
 - **🏛️ Bank Accounts** - Track checking and savings accounts with full transaction history
-  - CSV transaction import (FIO Bank format)
+  - CSV transaction import — FIO, ČSOB, Raiffeisen, Moneta, and Revolut formats (auto-detected)
   - Smart auto-categorization with learned and custom rules
   - Transaction filtering and search
 - **📈 Stock Investments** - Track stocks with live price updates
@@ -84,7 +84,7 @@ A modern, privacy-focused personal finance management application built with Tau
 - **Local HTTP API** - When enabled, Moony starts a lightweight local API server on a random port
 - **Session-based auth** - Writes a `session.json` file with a per-session bearer token; no password stored anywhere
 - **Claude Desktop / Claude Code support** - Connect via **[moony-mcp](https://github.com/fiiles/moony-mcp)**, a standalone MCP bridge server
-- **Read-only access** - The API exposes only read endpoints; your data cannot be modified through it
+- **Token-gated access** - The API is off by default; when enabled it requires a bearer token and exposes read endpoints plus selected write endpoints (currently insurance creation). Anyone with the token can read and modify that data — treat the token like a password.
 
 #### Setup
 
@@ -103,7 +103,7 @@ Moony must be **running and unlocked** with MCP Server enabled for the integrati
 ### ⚙️ Settings & Customization
 
 - **Multi-language Support** - Full i18n with English and Czech
-- **Currency Selection** - Choose your preferred display currency (CZK, EUR, USD, GBP)
+- **Currency Selection** - Choose your preferred display currency — 15 currencies (CZK base)
 - **Menu Customization** - Show/hide menu items based on your needs
 - **Auto-updates** - Built-in update notification system
 

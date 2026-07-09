@@ -1,3 +1,7 @@
+> **⚠️ Historical snapshot (2026-01-04).** This document describes the categorization
+> subsystem as originally built and has not been maintained; the system has since been
+> extended. File paths and links may be stale. For current structure see
+> `docs/architecture/overview.md`.
 
 # Smart Categorization Engine - Implementation Walkthrough
 
@@ -24,22 +28,22 @@ flowchart LR
 
 | File | Purpose | Tests |
 |------|---------|-------|
-| [mod.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/mod.rs) | Module exports and re-exports | - |
-| [types.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/types.rs) | Core types: `CategorizationResult`, `RuleType`, [TransactionInput](file:///Users/<user>/Documents/Programov%C3%A1n%C3%AD/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/types.rs#59-73) | 3 |
-| [tokenizer.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/tokenizer.rs) | Czech text normalization, diacritics stripping, stopwords | 8 |
-| [rules.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/rules.rs) | Pattern-based rule engine (regex, contains, symbols) | 6 |
-| [exact_match.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/exact_match.rs) | HashMap-based payee lookup | 8 |
-| [ml_classifier.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/ml_classifier.rs) | Naive Bayes classifier with bincode persistence | 5 |
-| [engine.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/engine.rs) | Master orchestrator with thread-safe access | 7 |
-| [default_rules.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/default_rules.rs) | 80+ Czech banking rules | 3 |
-| [training_data.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/training_data.rs) | Synthetic dataset generator (~1,500+ samples) | 1 |
-| [fio_scraper.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/fio_scraper.rs) | Fio transparent account API client | 1 |
+| `src-tauri/src/services/categorization/mod.rs` | Module exports and re-exports | - |
+| `src-tauri/src/services/categorization/types.rs` | Core types: `CategorizationResult`, `RuleType`, `TransactionInput` | 3 |
+| `src-tauri/src/services/categorization/tokenizer.rs` | Czech text normalization, diacritics stripping, stopwords | 8 |
+| `src-tauri/src/services/categorization/rules.rs` | Pattern-based rule engine (regex, contains, symbols) | 6 |
+| `src-tauri/src/services/categorization/exact_match.rs` | HashMap-based payee lookup | 8 |
+| `src-tauri/src/services/categorization/ml_classifier.rs` | Naive Bayes classifier with bincode persistence | 5 |
+| `src-tauri/src/services/categorization/engine.rs` | Master orchestrator with thread-safe access | 7 |
+| `src-tauri/src/services/categorization/default_rules.rs` | 80+ Czech banking rules | 3 |
+| `src-tauri/src/services/categorization/training_data.rs` | Synthetic dataset generator (~1,500+ samples) | 1 |
+| `src-tauri/src/services/categorization/fio_scraper.rs` | Fio transparent account API client | 1 |
 
 ### Command Layer
 
 | File | Purpose |
 |------|---------|
-| [categorization.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/commands/categorization.rs) | Tauri IPC handlers for frontend integration |
+| `src-tauri/src/commands/categorization.rs` | Tauri IPC handlers for frontend integration |
 
 ---
 
@@ -161,7 +165,7 @@ type CategorizationSource =
 
 ### Synthetic Dataset
 
-The [training_data.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/categorization/training_data.rs) module generates ~1,500+ samples:
+The `src-tauri/src/services/categorization/training_data.rs` module generates ~1,500+ samples:
 
 ```rust
 let training_samples = generate_training_data();
@@ -185,7 +189,7 @@ let training_samples = generate_training_data();
 
 ### Training Guide
 
-See [training_guide.md](file:///Users/<user>/.gemini/antigravity/brain/ac9d451c-2297-4a7c-b001-257be8c80587/training_guide.md) for:
+See `docs/training_guide.md` for:
 - Incremental learning from user corrections
 - Bulk retraining procedures
 - Model export/import
@@ -218,16 +222,16 @@ bincode = "1.3"
 
 | File | Changes |
 |------|---------|
-| [Cargo.toml](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/Cargo.toml) | Added smartcore, unicode-normalization, bincode |
-| [services/mod.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/services/mod.rs) | Registered categorization module |
-| [commands/mod.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/commands/mod.rs) | Registered categorization commands |
-| [lib.rs](file:///Users/<user>/Documents/Programování/FinanceApp/Moony-tauri/src-tauri/src/lib.rs) | Added CategorizationState + 10 command handlers |
+| `src-tauri/Cargo.toml` | Added smartcore, unicode-normalization, bincode |
+| `src-tauri/src/services/mod.rs` | Registered categorization module |
+| `src-tauri/src/commands/mod.rs` | Registered categorization commands |
+| `src-tauri/src/lib.rs` | Added CategorizationState + 10 command handlers |
 
 ---
 
 ## Next Steps (Optional)
 
-1. **Database Migration**: Add [learned_payees](file:///Users/<user>/Documents/Programov%C3%A1n%C3%AD/FinanceApp/Moony-tauri/src-tauri/src/commands/categorization.rs#119-126) table for persistence
+1. **Database Migration**: Add `learned_payees` table for persistence
 2. **Frontend Integration**: Create React components for categorization UI
 3. **Auto-categorize on Import**: Hook into CSV import flow
 4. **Rule Editor**: UI for managing custom rules
