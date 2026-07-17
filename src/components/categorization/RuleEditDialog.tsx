@@ -1,6 +1,6 @@
 /**
  * Rule Edit Dialog Component
- * 
+ *
  * Dialog for creating and editing custom categorization rules.
  */
 import { useState, useEffect } from 'react';
@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { toast } from "sonner";
+import { toast } from 'sonner';
 import { categorizationApi, type CustomRule, type CustomRuleInput } from '@/lib/tauri-api';
 import { CategoryIcon } from '@/components/common/CategoryIcon';
 import type { TransactionCategory } from '@shared/schema';
@@ -38,12 +38,7 @@ interface RuleEditDialogProps {
   categories: TransactionCategory[];
 }
 
-const RULE_TYPES = [
-  'Contains',
-  'Regex',
-  'StartsWith',
-  'EndsWith',
-] as const;
+const RULE_TYPES = ['Contains', 'Regex', 'StartsWith', 'EndsWith'] as const;
 
 // Rule mode: either pattern-based (text matching) or IBAN-based (exact account matching)
 type RuleMode = 'pattern' | 'iban';
@@ -146,8 +141,8 @@ export default function RuleEditDialog({
       priority,
       isActive,
       stopProcessing,
-      ibanPattern: ruleMode === 'iban' ? (ibanPattern || undefined) : undefined,
-      variableSymbol: ruleMode === 'iban' ? (variableSymbol || undefined) : undefined,
+      ibanPattern: ruleMode === 'iban' ? ibanPattern || undefined : undefined,
+      variableSymbol: ruleMode === 'iban' ? variableSymbol || undefined : undefined,
     };
 
     if (rule) {
@@ -162,12 +157,8 @@ export default function RuleEditDialog({
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>
-              {rule ? t('customRules.editRule') : t('customRules.addRule')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('customRules.description')}
-            </DialogDescription>
+            <DialogTitle>{rule ? t('customRules.editRule') : t('customRules.addRule')}</DialogTitle>
+            <DialogDescription>{t('customRules.description')}</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -207,10 +198,9 @@ export default function RuleEditDialog({
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                {ruleMode === 'pattern' 
+                {ruleMode === 'pattern'
                   ? t('customRules.form.modePatternHelp')
-                  : t('customRules.form.modeIbanHelp')
-                }
+                  : t('customRules.form.modeIbanHelp')}
               </p>
             </div>
 
@@ -316,19 +306,13 @@ export default function RuleEditDialog({
                 min={1}
                 max={100}
               />
-              <p className="text-xs text-muted-foreground">
-                {t('customRules.form.priorityHelp')}
-              </p>
+              <p className="text-xs text-muted-foreground">{t('customRules.form.priorityHelp')}</p>
             </div>
 
             {/* Active Toggle */}
             <div className="flex items-center justify-between">
               <Label htmlFor="isActive">{t('customRules.form.active')}</Label>
-              <Switch
-                id="isActive"
-                checked={isActive}
-                onCheckedChange={setIsActive}
-              />
+              <Switch id="isActive" checked={isActive} onCheckedChange={setIsActive} />
             </div>
 
             {/* Stop Processing Toggle */}
@@ -356,21 +340,21 @@ export default function RuleEditDialog({
             >
               {tCommon('buttons.cancel')}
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={
-                isLoading || 
-                !name || 
-                !categoryId || 
-                (ruleMode === 'pattern' && !pattern) || 
+                isLoading ||
+                !name ||
+                !categoryId ||
+                (ruleMode === 'pattern' && !pattern) ||
                 (ruleMode === 'iban' && !ibanPattern)
               }
             >
               {isLoading
                 ? tCommon('status.saving')
                 : rule
-                ? tCommon('buttons.save')
-                : tCommon('buttons.create')}
+                  ? tCommon('buttons.save')
+                  : tCommon('buttons.create')}
             </Button>
           </DialogFooter>
         </form>

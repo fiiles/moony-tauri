@@ -7,9 +7,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import type { SavingsAccount } from "@shared/schema";
-import { useTranslation } from "react-i18next";
+} from '@/components/ui/alert-dialog';
+import type { SavingsAccount } from '@shared/schema';
+import { useTranslation } from 'react-i18next';
 
 interface DeleteSavingsAccountDialogProps {
   open: boolean;
@@ -52,4 +52,3 @@ export function DeleteSavingsAccountDialog({
     </AlertDialog>
   );
 }
-

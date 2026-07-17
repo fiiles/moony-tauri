@@ -1,24 +1,26 @@
-import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, TrendingUp } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AddInvestmentModal } from "@/components/stocks/AddInvestmentModal";
-import { InvestmentsSummary } from "@/components/stocks/InvestmentsSummary";
-import { InvestmentsTable } from "@/components/stocks/InvestmentsTable";
-import { EmptyState } from "@/components/common/EmptyState";
-import { investmentsApi, priceApi, exportApi } from "@/lib/tauri-api";
-import type { StockInvestmentWithPrice } from "@shared/types";
-import type { InvestmentTransaction } from "@shared/schema";
-import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from "@/utils/stocks";
-import { calculateRealizedGains } from "@shared/calculations";
-import PortfolioValueTrendChart, { type TransactionMarker } from "@/components/common/PortfolioValueTrendChart";
-import { ExportButton } from "@/components/common/ExportButton";
-import { ImportInvestmentsModal } from "@/components/stocks/ImportInvestmentsModal";
-import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
-import { useMemo } from "react";
-import { useCurrency } from "@/lib/currency";
-import type { CurrencyCode } from "@shared/currencies";
+import { useLocation } from 'wouter';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, TrendingUp } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
+import { InvestmentsSummary } from '@/components/stocks/InvestmentsSummary';
+import { InvestmentsTable } from '@/components/stocks/InvestmentsTable';
+import { EmptyState } from '@/components/common/EmptyState';
+import { investmentsApi, priceApi, exportApi } from '@/lib/tauri-api';
+import type { StockInvestmentWithPrice } from '@shared/types';
+import type { InvestmentTransaction } from '@shared/schema';
+import { mapInvestmentToHolding, calculateMetrics, type HoldingData } from '@/utils/stocks';
+import { calculateRealizedGains } from '@shared/calculations';
+import PortfolioValueTrendChart, {
+  type TransactionMarker,
+} from '@/components/common/PortfolioValueTrendChart';
+import { ExportButton } from '@/components/common/ExportButton';
+import { ImportInvestmentsModal } from '@/components/stocks/ImportInvestmentsModal';
+import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
+import { useCurrency } from '@/lib/currency';
+import type { CurrencyCode } from '@shared/currencies';
 
 export default function Stocks() {
   const { t } = useTranslation('stocks');
@@ -27,7 +29,7 @@ export default function Stocks() {
   const { convert, currencyCode } = useCurrency();
 
   const { data: investments, isLoading } = useQuery<StockInvestmentWithPrice[]>({
-    queryKey: ["investments"],
+    queryKey: ['investments'],
     queryFn: () => investmentsApi.getAll(),
     refetchOnMount: true,
     staleTime: 60 * 1000,
@@ -35,7 +37,7 @@ export default function Stocks() {
 
   // Fetch all stock transactions for chart markers
   const { data: allTransactions } = useQuery<InvestmentTransaction[]>({
-    queryKey: ["all-stock-transactions"],
+    queryKey: ['all-stock-transactions'],
     queryFn: () => investmentsApi.getAllTransactions(),
     staleTime: 60 * 1000,
   });
@@ -45,29 +47,38 @@ export default function Stocks() {
     if (!allTransactions || allTransactions.length === 0) return [];
 
     // Group transactions by date (day granularity)
-    const markersByDate = new Map<number, { buyAmount: number; sellAmount: number; buyTickers: string[]; sellTickers: string[] }>();
+    const markersByDate = new Map<
+      number,
+      { buyAmount: number; sellAmount: number; buyTickers: string[]; sellTickers: string[] }
+    >();
 
     for (const tx of allTransactions) {
       // Normalize to start of day (in user's timezone)
       const txDate = new Date(tx.transactionDate * 1000);
-      const dayStart = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime() / 1000;
+      const dayStart =
+        new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime() / 1000;
 
-      const existing = markersByDate.get(dayStart) || { buyAmount: 0, sellAmount: 0, buyTickers: [], sellTickers: [] };
-      
+      const existing = markersByDate.get(dayStart) || {
+        buyAmount: 0,
+        sellAmount: 0,
+        buyTickers: [],
+        sellTickers: [],
+      };
+
       // Calculate total value in CZK (base currency)
       const quantity = parseFloat(tx.quantity) || 0;
       const pricePerUnit = parseFloat(tx.pricePerUnit) || 0;
-      const txCurrency = (tx.currency || "CZK") as CurrencyCode;
-      
-      // Convert to CZK for consistency
-      const totalInCzk = convert(quantity * pricePerUnit, txCurrency, "CZK");
+      const txCurrency = (tx.currency || 'CZK') as CurrencyCode;
 
-      if (tx.type === "buy") {
+      // Convert to CZK for consistency
+      const totalInCzk = convert(quantity * pricePerUnit, txCurrency, 'CZK');
+
+      if (tx.type === 'buy') {
         existing.buyAmount += totalInCzk;
         if (!existing.buyTickers.includes(tx.ticker)) {
           existing.buyTickers.push(tx.ticker);
         }
-      } else if (tx.type === "sell") {
+      } else if (tx.type === 'sell') {
         existing.sellAmount += totalInCzk;
         if (!existing.sellTickers.includes(tx.ticker)) {
           existing.sellTickers.push(tx.ticker);
@@ -103,15 +114,17 @@ export default function Stocks() {
       return pricesResult;
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["investments"] });
-      queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-      queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
-      
+      queryClient.invalidateQueries({ queryKey: ['investments'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
+
       // Check if rate limit was hit (either from API or because there were more tickers than limit)
       if (result.rate_limit_hit) {
         toast(t('toast.rateLimitReached'), { description: t('toast.rateLimitDescription') });
       } else {
-        toast(t('toast.pricesRefreshed', { count: result.updated.length }), { description: t('toast.pricesRefreshedDescription') });
+        toast(t('toast.pricesRefreshed', { count: result.updated.length }), {
+          description: t('toast.pricesRefreshedDescription'),
+        });
       }
     },
     onError: (error: Error) => {
@@ -123,53 +136,56 @@ export default function Stocks() {
   // No grouping needed since stock_investments is unique per user+ticker
   // Override marketValue, gainLoss, gainLossPercent with converted values for consistent display in preferred currency
   const holdings = useMemo(() => {
-    return (investments || []).map(inv => {
-      const holding = mapInvestmentToHolding(inv);
-      
-      const preferredCurrency = currencyCode as CurrencyCode;
-      const marketPriceCurrency = (inv.currency || "USD") as CurrencyCode;
-      const avgCostCurrency = (inv.averagePriceCurrency || "USD") as CurrencyCode;
+    return (investments || [])
+      .map((inv) => {
+        const holding = mapInvestmentToHolding(inv);
 
-      // Convert originalPrice (native stock currency) directly to avoid the CZK round-trip
-      // (backend USD→CZK then frontend CZK→USD with different rate sets causes ~7% errors).
-      const originalCurrentPrice = parseFloat(String(inv.originalPrice)) || 0;
-      const currentPriceConverted = originalCurrentPrice > 0
-          ? convert(originalCurrentPrice, marketPriceCurrency, preferredCurrency)
-          : convert(holding.currentPrice, "CZK", preferredCurrency);
-      const marketValue = holding.quantity * currentPriceConverted;
+        const preferredCurrency = currencyCode as CurrencyCode;
+        const marketPriceCurrency = (inv.currency || 'USD') as CurrencyCode;
+        const avgCostCurrency = (inv.averagePriceCurrency || 'USD') as CurrencyCode;
 
-      // holding.avgCost is in avgCostCurrency, convert to preferred
-      const avgCostConverted = convert(holding.avgCost, avgCostCurrency, preferredCurrency);
-      const totalCostConverted = holding.quantity * avgCostConverted;
+        // Convert originalPrice (native stock currency) directly to avoid the CZK round-trip
+        // (backend USD→CZK then frontend CZK→USD with different rate sets causes ~7% errors).
+        const originalCurrentPrice = parseFloat(String(inv.originalPrice)) || 0;
+        const currentPriceConverted =
+          originalCurrentPrice > 0
+            ? convert(originalCurrentPrice, marketPriceCurrency, preferredCurrency)
+            : convert(holding.currentPrice, 'CZK', preferredCurrency);
+        const marketValue = holding.quantity * currentPriceConverted;
 
-      const gainLoss = marketValue - totalCostConverted;
-      const gainLossPercent = totalCostConverted !== 0 ? (gainLoss / totalCostConverted) * 100 : 0;
+        // holding.avgCost is in avgCostCurrency, convert to preferred
+        const avgCostConverted = convert(holding.avgCost, avgCostCurrency, preferredCurrency);
+        const totalCostConverted = holding.quantity * avgCostConverted;
 
-      return {
-        ...holding,
-        // Main values in Preferred Currency
-        avgCost: avgCostConverted,
-        avgCostCurrency: preferredCurrency,
-        currentPrice: currentPriceConverted,
-        currency: preferredCurrency,
-        totalCost: totalCostConverted, // Override for correct portfolio totals calculation
-        
-        // Original values for subtitle display
-        originalAvgCost: holding.avgCost,
-        originalAvgCostCurrency: avgCostCurrency,
-        originalCurrentPrice: originalCurrentPrice,
-        originalCurrency: marketPriceCurrency,
+        const gainLoss = marketValue - totalCostConverted;
+        const gainLossPercent =
+          totalCostConverted !== 0 ? (gainLoss / totalCostConverted) * 100 : 0;
 
-        // Calculated metrics in Preferred Currency
-        marketValue, 
-        gainLoss,   
-        gainLossPercent,
-      };
-    }).sort((a, b) =>
-      (a.companyName || "").localeCompare(b.companyName || "", undefined, { sensitivity: 'base' })
-    );
+        return {
+          ...holding,
+          // Main values in Preferred Currency
+          avgCost: avgCostConverted,
+          avgCostCurrency: preferredCurrency,
+          currentPrice: currentPriceConverted,
+          currency: preferredCurrency,
+          totalCost: totalCostConverted, // Override for correct portfolio totals calculation
+
+          // Original values for subtitle display
+          originalAvgCost: holding.avgCost,
+          originalAvgCostCurrency: avgCostCurrency,
+          originalCurrentPrice: originalCurrentPrice,
+          originalCurrency: marketPriceCurrency,
+
+          // Calculated metrics in Preferred Currency
+          marketValue,
+          gainLoss,
+          gainLossPercent,
+        };
+      })
+      .sort((a, b) =>
+        (a.companyName || '').localeCompare(b.companyName || '', undefined, { sensitivity: 'base' })
+      );
   }, [investments, convert, currencyCode]);
-
 
   // Calculate total dividend yield from holdings
   const totalDividendYield = holdings.reduce((sum, holding) => {
@@ -208,7 +224,9 @@ export default function Stocks() {
             disabled={refreshPricesMutation.isPending}
             title={t('refreshPrices')}
           >
-            <RefreshCw className={`h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`}
+            />
           </Button>
           <ExportButton exportFn={exportApi.stockTransactions} />
           <ImportInvestmentsModal />
@@ -220,18 +238,19 @@ export default function Stocks() {
         metrics={metrics}
         realizedGain={realizedGain}
         isLoading={refreshPricesMutation.isPending}
-        latestFetchedAt={holdings.reduce((latest, h) => {
-          if (!h.fetchedAt) return latest;
-          // Handle both seconds (Unix timestamp) and ISO strings/Dates
-          // If it's a number and small (less than year 1973 in ms), assume seconds
-          const value = h.fetchedAt;
-          const date = new Date(
-            typeof value === 'number' && value < 100000000000
-              ? value * 1000
-              : value
-          );
-          return !latest || date > latest ? date : latest;
-        }, undefined as Date | undefined)}
+        latestFetchedAt={holdings.reduce(
+          (latest, h) => {
+            if (!h.fetchedAt) return latest;
+            // Handle both seconds (Unix timestamp) and ISO strings/Dates
+            // If it's a number and small (less than year 1973 in ms), assume seconds
+            const value = h.fetchedAt;
+            const date = new Date(
+              typeof value === 'number' && value < 100000000000 ? value * 1000 : value
+            );
+            return !latest || date > latest ? date : latest;
+          },
+          undefined as Date | undefined
+        )}
       />
 
       <PortfolioValueTrendChart
@@ -258,4 +277,3 @@ export default function Stocks() {
     </div>
   );
 }
-

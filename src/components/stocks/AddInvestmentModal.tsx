@@ -1,354 +1,360 @@
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { investmentsApi, priceApi } from "@/lib/tauri-api";
-import { CURRENCIES } from "@shared/currencies";
-import { useState } from "react";
-import { Plus, Search, Loader2 } from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { investmentsApi, priceApi } from '@/lib/tauri-api';
+import { CURRENCIES } from '@shared/currencies';
+import { useState } from 'react';
+import { Plus, Search, Loader2 } from 'lucide-react';
 import {
-    AlertDialog,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 const formSchema = z.object({
-    companyName: z.string().min(1, "validation.companyNameRequired"),
-    ticker: z.string().min(1, "validation.tickerRequired"),
-    quantity: z.coerce.number().positive("validation.quantityPositive"),
-    pricePerUnit: z.coerce.number().positive("validation.pricePositive"),
-    currency: z.enum(["USD", "EUR", "CZK", "GBP"]),
-    date: z.string().optional(), // Input type="date" returns string
+  companyName: z.string().min(1, 'validation.companyNameRequired'),
+  ticker: z.string().min(1, 'validation.tickerRequired'),
+  quantity: z.coerce.number().positive('validation.quantityPositive'),
+  pricePerUnit: z.coerce.number().positive('validation.pricePositive'),
+  currency: z.enum(['USD', 'EUR', 'CZK', 'GBP']),
+  date: z.string().optional(), // Input type="date" returns string
 });
 
-
 export function AddInvestmentModal() {
-    const { t } = useTranslation('stocks');
-    const { t: tc } = useTranslation('common');
-    const [open, setOpen] = useState(false);
-    const [searchResults, setSearchResults] = useState<Array<{ symbol: string; shortname: string; exchange: string }>>([]);
-    const [showResultsDialog, setShowResultsDialog] = useState(false);
-    const [searching, setSearching] = useState(false);
-    const queryClient = useQueryClient();
+  const { t } = useTranslation('stocks');
+  const { t: tc } = useTranslation('common');
+  const [open, setOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<
+    Array<{ symbol: string; shortname: string; exchange: string }>
+  >([]);
+  const [showResultsDialog, setShowResultsDialog] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const queryClient = useQueryClient();
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            companyName: "",
-            ticker: "",
-            quantity: 0,
-            pricePerUnit: 0,
-            currency: "USD",
-            date: new Date().toISOString().split("T")[0],
-        },
-    });
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      companyName: '',
+      ticker: '',
+      quantity: 0,
+      pricePerUnit: 0,
+      currency: 'USD',
+      date: new Date().toISOString().split('T')[0],
+    },
+  });
 
-    const searchTicker = async (query?: string) => {
-        const searchQuery = query || form.getValues("ticker") || form.getValues("companyName");
-        if (!searchQuery) {
-            return;
-        }
-
-        setSearching(true);
-        try {
-            const results = await priceApi.searchStockTickers(searchQuery);
-
-            if (results.length === 0) {
-                toast.error(t('toast.noResults'), { description: t('modal.add.noTickerFound') });
-            } else if (results.length === 1) {
-                // Auto-select single result
-                form.setValue("ticker", results[0].symbol);
-                form.setValue("companyName", results[0].shortname || searchQuery);
-                toast(t('toast.tickerFound'), { description: `${results[0].symbol} – ${results[0].shortname}` });
-            } else {
-                // Show selection dialog for multiple results
-                setSearchResults(results);
-                setShowResultsDialog(true);
-            }
-        } catch (error: unknown) {
-            console.error("Ticker search error:", error);
-            const message = error instanceof Error ? error.message : t('modal.add.searchError');
-            toast.error(t('toast.searchFailed'), { description: message });
-        } finally {
-            setSearching(false);
-        }
-    };
-
-    const selectTicker = (result: { symbol: string; shortname: string }) => {
-        form.setValue("ticker", result.symbol);
-        form.setValue("companyName", result.shortname);
-        setShowResultsDialog(false);
-        setSearchResults([]);
-    };
-
-    const createInvestment = useMutation({
-        mutationFn: async (values: z.infer<typeof formSchema>) => {
-            const investmentData = {
-                ticker: values.ticker,
-                companyName: values.companyName,
-            };
-            const initialTransaction = {
-                type: "buy",
-                ticker: values.ticker,
-                companyName: values.companyName,
-                quantity: values.quantity.toString(),
-                pricePerUnit: values.pricePerUnit.toString(),
-                currency: values.currency,
-                transactionDate: values.date ? Math.floor(new Date(values.date).getTime() / 1000) : Math.floor(Date.now() / 1000),
-            };
-            return investmentsApi.create(investmentData, initialTransaction);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["investments"] });
-            queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            queryClient.invalidateQueries({ queryKey: ["all-stock-transactions"] });
-            setOpen(false);
-            form.reset();
-            
-            // Refresh prices and dividends for the new stock (runs in background)
-            priceApi.refreshStockPrices().then(() => {
-                queryClient.invalidateQueries({ queryKey: ["investments"] });
-                queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            }).catch(console.error);
-            priceApi.refreshDividends().then(() => {
-                queryClient.invalidateQueries({ queryKey: ["investments"] });
-                queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
-            }).catch(console.error);
-        },
-    });
-
-
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        createInvestment.mutate(values);
+  const searchTicker = async (query?: string) => {
+    const searchQuery = query || form.getValues('ticker') || form.getValues('companyName');
+    if (!searchQuery) {
+      return;
     }
 
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    {t('addInvestment')}
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>{t('modal.add.title')}</DialogTitle>
-                    <DialogDescription>
-                        {t('modal.add.description')}
-                    </DialogDescription>
-                </DialogHeader>
-                <Form {...form}>
-                    <form id="add-investment-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                <FormField
-                                    control={form.control}
-                                    name="companyName"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{t('modal.add.companyName')} *</FormLabel>
-                                            <div className="flex gap-2">
-                                                <FormControl>
-                                                    <Input placeholder="Apple Inc." {...field} />
-                                                </FormControl>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={() => searchTicker(field.value)}
-                                                    disabled={searching || !field.value}
-                                                >
-                                                    {searching ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    ) : (
-                                                        <Search className="h-4 w-4" />
-                                                    )}
-                                                </Button>
-                                            </div>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="ticker"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>{t('modal.add.ticker')} *</FormLabel>
-                                            <div className="flex gap-2">
-                                                <FormControl>
-                                                    <Input placeholder="AAPL" {...field} />
-                                                </FormControl>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={() => searchTicker(field.value)}
-                                                    disabled={searching || !field.value}
-                                                >
-                                                    {searching ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    ) : (
-                                                        <Search className="h-4 w-4" />
-                                                    )}
-                                                </Button>
-                                            </div>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+    setSearching(true);
+    try {
+      const results = await priceApi.searchStockTickers(searchQuery);
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="pricePerUnit"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>{t('modal.add.pricePerShare')} *</FormLabel>
-                                                <FormControl>
-                                                    <Input 
-                                                        type="number" 
-                                                        step="0.01" 
-                                                        {...field} 
-                                                        onBlur={(e) => {
-                                                            const value = parseFloat(e.target.value);
-                                                            if (!isNaN(value)) {
-                                                                field.onChange(value.toFixed(2));
-                                                            }
-                                                            field.onBlur();
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="currency"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>{tc('labels.currency')}</FormLabel>
-                                                <Select
-                                                    onValueChange={field.onChange}
-                                                    defaultValue={field.value}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder={tc('labels.selectCurrency')} />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {Object.values(CURRENCIES).map((currency) => (
-                                                            <SelectItem key={currency.code} value={currency.code}>
-                                                                {currency.code}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="quantity"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>{t('modal.add.quantity')} *</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.0001" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="date"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>{tc('labels.date')}</FormLabel>
-                                                <FormControl>
-                                                    <Input type="date" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
+      if (results.length === 0) {
+        toast.error(t('toast.noResults'), { description: t('modal.add.noTickerFound') });
+      } else if (results.length === 1) {
+        // Auto-select single result
+        form.setValue('ticker', results[0].symbol);
+        form.setValue('companyName', results[0].shortname || searchQuery);
+        toast(t('toast.tickerFound'), {
+          description: `${results[0].symbol} – ${results[0].shortname}`,
+        });
+      } else {
+        // Show selection dialog for multiple results
+        setSearchResults(results);
+        setShowResultsDialog(true);
+      }
+    } catch (error: unknown) {
+      console.error('Ticker search error:', error);
+      const message = error instanceof Error ? error.message : t('modal.add.searchError');
+      toast.error(t('toast.searchFailed'), { description: message });
+    } finally {
+      setSearching(false);
+    }
+  };
 
-                    </form>
-                </Form>
-                <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                        {tc('buttons.cancel')}
+  const selectTicker = (result: { symbol: string; shortname: string }) => {
+    form.setValue('ticker', result.symbol);
+    form.setValue('companyName', result.shortname);
+    setShowResultsDialog(false);
+    setSearchResults([]);
+  };
+
+  const createInvestment = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      const investmentData = {
+        ticker: values.ticker,
+        companyName: values.companyName,
+      };
+      const initialTransaction = {
+        type: 'buy',
+        ticker: values.ticker,
+        companyName: values.companyName,
+        quantity: values.quantity.toString(),
+        pricePerUnit: values.pricePerUnit.toString(),
+        currency: values.currency,
+        transactionDate: values.date
+          ? Math.floor(new Date(values.date).getTime() / 1000)
+          : Math.floor(Date.now() / 1000),
+      };
+      return investmentsApi.create(investmentData, initialTransaction);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investments'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['all-stock-transactions'] });
+      setOpen(false);
+      form.reset();
+
+      // Refresh prices and dividends for the new stock (runs in background)
+      priceApi
+        .refreshStockPrices()
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['investments'] });
+          queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+        })
+        .catch(console.error);
+      priceApi
+        .refreshDividends()
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['investments'] });
+          queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
+        })
+        .catch(console.error);
+    },
+  });
+
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    createInvestment.mutate(values);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="gap-2">
+          <Plus className="h-4 w-4" />
+          {t('addInvestment')}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t('modal.add.title')}</DialogTitle>
+          <DialogDescription>{t('modal.add.description')}</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form
+            id="add-investment-form"
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+          >
+            <FormField
+              control={form.control}
+              name="companyName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('modal.add.companyName')} *</FormLabel>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input placeholder="Apple Inc." {...field} />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => searchTicker(field.value)}
+                      disabled={searching || !field.value}
+                    >
+                      {searching ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
                     </Button>
-                    <Button type="submit" form="add-investment-form" disabled={createInvestment.isPending}>
-                        {createInvestment.isPending ? tc('status.adding') : t('addInvestment')}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="ticker"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('modal.add.ticker')} *</FormLabel>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input placeholder="AAPL" {...field} />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => searchTicker(field.value)}
+                      disabled={searching || !field.value}
+                    >
+                      {searching ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
                     </Button>
-                </DialogFooter>
-            </DialogContent>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            <AlertDialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t('modal.add.selectTicker')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {t('modal.add.multipleResults')}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="max-h-60 overflow-y-auto space-y-2">
-                        {searchResults.map((result) => (
-                            <button
-                                key={result.symbol}
-                                onClick={() => selectTicker(result)}
-                                className="w-full text-left p-3 rounded border hover:bg-accent transition-colors"
-                            >
-                                <div className="font-semibold">{result.symbol}</div>
-                                <div className="text-sm text-muted-foreground">
-                                    {result.shortname} • {result.exchange}
-                                </div>
-                            </button>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="pricePerUnit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('modal.add.pricePerShare')} *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...field}
+                        onBlur={(e) => {
+                          const value = parseFloat(e.target.value);
+                          if (!isNaN(value)) {
+                            field.onChange(value.toFixed(2));
+                          }
+                          field.onBlur();
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{tc('labels.currency')}</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={tc('labels.selectCurrency')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.values(CURRENCIES).map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.code}
+                          </SelectItem>
                         ))}
-                    </div>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{tc('buttons.cancel')}</AlertDialogCancel>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </Dialog>
-    );
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('modal.add.quantity')} *</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.0001" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{tc('labels.date')}</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </form>
+        </Form>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            {tc('buttons.cancel')}
+          </Button>
+          <Button type="submit" form="add-investment-form" disabled={createInvestment.isPending}>
+            {createInvestment.isPending ? tc('status.adding') : t('addInvestment')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+
+      <AlertDialog open={showResultsDialog} onOpenChange={setShowResultsDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('modal.add.selectTicker')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('modal.add.multipleResults')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-60 overflow-y-auto space-y-2">
+            {searchResults.map((result) => (
+              <button
+                key={result.symbol}
+                onClick={() => selectTicker(result)}
+                className="w-full text-left p-3 rounded border hover:bg-accent transition-colors"
+              >
+                <div className="font-semibold">{result.symbol}</div>
+                <div className="text-sm text-muted-foreground">
+                  {result.shortname} • {result.exchange}
+                </div>
+              </button>
+            ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tc('buttons.cancel')}</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Dialog>
+  );
 }

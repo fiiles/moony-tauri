@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { useState, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -10,19 +10,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Search, Eye, EyeOff, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-import type { HoldingData } from "@/utils/stocks";
-import { useCurrency } from "@/lib/currency";
-import { AssetLogo } from "@/components/common/AssetLogo";
-import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Search, Eye, EyeOff, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import type { HoldingData } from '@/utils/stocks';
+import { useCurrency } from '@/lib/currency';
+import { AssetLogo } from '@/components/common/AssetLogo';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
 
 interface InvestmentsTableProps {
   holdings: HoldingData[];
@@ -30,24 +25,27 @@ interface InvestmentsTableProps {
   isLoading?: boolean;
 }
 
-export function InvestmentsTable({
-  holdings,
-  onViewDetail,
-  isLoading,
-}: InvestmentsTableProps) {
+export function InvestmentsTable({ holdings, onViewDetail, isLoading }: InvestmentsTableProps) {
   const { formatCurrency, formatCurrencyRaw, currencyCode } = useCurrency();
   const { t } = useTranslation('stocks');
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [hideZeroPositions, setHideZeroPositions] = useState(true);
 
   // Sorting state
-  type SortColumn = 'name' | 'quantity' | 'avgCost' | 'currentPrice' | 'marketValue' | 'gainLoss' | 'dividend';
+  type SortColumn =
+    | 'name'
+    | 'quantity'
+    | 'avgCost'
+    | 'currentPrice'
+    | 'marketValue'
+    | 'gainLoss'
+    | 'dividend';
   const [sortColumn, setSortColumn] = useState<SortColumn>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortColumn(column);
       setSortDirection('asc');
@@ -58,9 +56,11 @@ export function InvestmentsTable({
     if (sortColumn !== column) {
       return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
     }
-    return sortDirection === 'asc'
-      ? <ArrowUp className="h-3 w-3 ml-1" />
-      : <ArrowDown className="h-3 w-3 ml-1" />;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3 ml-1" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1" />
+    );
   };
 
   const filteredHoldings = useMemo(() => {
@@ -69,8 +69,8 @@ export function InvestmentsTable({
 
     if (term) {
       filtered = holdings.filter((h) => {
-        const name = (h.companyName ?? "").toString().toLowerCase();
-        const code = (h.ticker ?? "").toString().toLowerCase();
+        const name = (h.companyName ?? '').toString().toLowerCase();
+        const code = (h.ticker ?? '').toString().toLowerCase();
         return name.includes(term) || code.includes(term);
       });
     }
@@ -79,7 +79,9 @@ export function InvestmentsTable({
       let comparison = 0;
       switch (sortColumn) {
         case 'name':
-          comparison = (a.companyName || '').localeCompare(b.companyName || '', undefined, { sensitivity: 'base' });
+          comparison = (a.companyName || '').localeCompare(b.companyName || '', undefined, {
+            sensitivity: 'base',
+          });
           break;
         case 'quantity':
           comparison = a.quantity - b.quantity;
@@ -105,10 +107,12 @@ export function InvestmentsTable({
   }, [holdings, search, hideZeroPositions, sortColumn, sortDirection]);
 
   return (
-    <Card className={cn(
-      "border shadow-sm card-hover transition-opacity duration-300",
-      isLoading && "opacity-50 animate-pulse"
-    )}>
+    <Card
+      className={cn(
+        'border shadow-sm card-hover transition-opacity duration-300',
+        isLoading && 'opacity-50 animate-pulse'
+      )}
+    >
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold mb-6">{t('table.title')}</h2>
@@ -117,9 +121,13 @@ export function InvestmentsTable({
               variant="outline"
               size="sm"
               onClick={() => setHideZeroPositions((prev) => !prev)}
-              className={cn("gap-1.5 text-xs", !hideZeroPositions && "border-primary text-primary")}
+              className={cn('gap-1.5 text-xs', !hideZeroPositions && 'border-primary text-primary')}
             >
-              {hideZeroPositions ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {hideZeroPositions ? (
+                <EyeOff className="h-3.5 w-3.5" />
+              ) : (
+                <Eye className="h-3.5 w-3.5" />
+              )}
               {hideZeroPositions ? t('table.showZeroPositions') : t('table.hideZeroPositions')}
             </Button>
             <div className="relative">
@@ -139,37 +147,78 @@ export function InvestmentsTable({
           <Table>
             <TableHeader className="[&_th]:bg-muted/50">
               <TableRow>
-                <TableHead className="w-[250px] text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('name')}>
-                  <span className="flex items-center">{t('table.investment')}<SortIcon column="name" /></span>
+                <TableHead
+                  className="w-[250px] text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('name')}
+                >
+                  <span className="flex items-center">
+                    {t('table.investment')}
+                    <SortIcon column="name" />
+                  </span>
                 </TableHead>
-                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('quantity')}>
-                  <span className="flex items-center justify-end">{t('table.quantity')}<SortIcon column="quantity" /></span>
+                <TableHead
+                  className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('quantity')}
+                >
+                  <span className="flex items-center justify-end">
+                    {t('table.quantity')}
+                    <SortIcon column="quantity" />
+                  </span>
                 </TableHead>
-                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('avgCost')}>
-                  <span className="flex items-center justify-end">{t('table.avgCost')}<SortIcon column="avgCost" /></span>
+                <TableHead
+                  className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('avgCost')}
+                >
+                  <span className="flex items-center justify-end">
+                    {t('table.avgCost')}
+                    <SortIcon column="avgCost" />
+                  </span>
                 </TableHead>
-                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('currentPrice')}>
-                  <span className="flex items-center justify-end">{t('table.marketPrice')}<SortIcon column="currentPrice" /></span>
+                <TableHead
+                  className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('currentPrice')}
+                >
+                  <span className="flex items-center justify-end">
+                    {t('table.marketPrice')}
+                    <SortIcon column="currentPrice" />
+                  </span>
                 </TableHead>
-                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('marketValue')}>
-                  <span className="flex items-center justify-end">{t('table.marketValue')}<SortIcon column="marketValue" /></span>
+                <TableHead
+                  className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('marketValue')}
+                >
+                  <span className="flex items-center justify-end">
+                    {t('table.marketValue')}
+                    <SortIcon column="marketValue" />
+                  </span>
                 </TableHead>
-                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('gainLoss')}>
-                  <span className="flex items-center justify-end">{t('table.totalGainLoss')}<SortIcon column="gainLoss" /></span>
+                <TableHead
+                  className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('gainLoss')}
+                >
+                  <span className="flex items-center justify-end">
+                    {t('table.totalGainLoss')}
+                    <SortIcon column="gainLoss" />
+                  </span>
                 </TableHead>
-                <TableHead className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50" onClick={() => handleSort('dividend')}>
-                  <span className="flex items-center justify-end">{t('table.estDividend')}<SortIcon column="dividend" /></span>
+                <TableHead
+                  className="text-right text-xs font-medium uppercase text-muted-foreground cursor-pointer select-none hover:bg-muted/50"
+                  onClick={() => handleSort('dividend')}
+                >
+                  <span className="flex items-center justify-end">
+                    {t('table.estDividend')}
+                    <SortIcon column="dividend" />
+                  </span>
                 </TableHead>
-                <TableHead className="text-right w-[80px] text-xs font-medium uppercase text-muted-foreground">{t('table.actions')}</TableHead>
+                <TableHead className="text-right w-[80px] text-xs font-medium uppercase text-muted-foreground">
+                  {t('table.actions')}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredHoldings.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="text-center text-muted-foreground py-8"
-                  >
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                     {t('table.noHoldings')}
                   </TableCell>
                 </TableRow>
@@ -188,12 +237,8 @@ export function InvestmentsTable({
                           className="flex-shrink-0 text-white"
                         />
                         <div className="min-w-0 flex-1 overflow-hidden">
-                          <p className="font-medium break-words">
-                            {holding.companyName}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {holding.ticker}
-                          </p>
+                          <p className="font-medium break-words">{holding.companyName}</p>
+                          <p className="text-sm text-muted-foreground">{holding.ticker}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -203,19 +248,23 @@ export function InvestmentsTable({
                     <TableCell className="text-right">
                       <div className="flex flex-col items-end">
                         <span className="data-value">
-                          {formatCurrencyRaw(holding.avgCost, { 
-                            minimumFractionDigits: holding.avgCost >= 1000 ? 0 : 2, 
-                            maximumFractionDigits: holding.avgCost >= 1000 ? 0 : 2 
+                          {formatCurrencyRaw(holding.avgCost, {
+                            minimumFractionDigits: holding.avgCost >= 1000 ? 0 : 2,
+                            maximumFractionDigits: holding.avgCost >= 1000 ? 0 : 2,
                           })}
                         </span>
-                        {holding.originalAvgCostCurrency && holding.originalAvgCostCurrency !== currencyCode && (
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {(holding.originalAvgCost || 0).toLocaleString(undefined, {
-                              minimumFractionDigits: (holding.originalAvgCost || 0) >= 1000 ? 0 : 2,
-                              maximumFractionDigits: (holding.originalAvgCost || 0) >= 1000 ? 0 : 2
-                            })} {holding.originalAvgCostCurrency}
-                          </span>
-                        )}
+                        {holding.originalAvgCostCurrency &&
+                          holding.originalAvgCostCurrency !== currencyCode && (
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {(holding.originalAvgCost || 0).toLocaleString(undefined, {
+                                minimumFractionDigits:
+                                  (holding.originalAvgCost || 0) >= 1000 ? 0 : 2,
+                                maximumFractionDigits:
+                                  (holding.originalAvgCost || 0) >= 1000 ? 0 : 2,
+                              })}{' '}
+                              {holding.originalAvgCostCurrency}
+                            </span>
+                          )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -225,7 +274,10 @@ export function InvestmentsTable({
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Badge variant="warning" className="cursor-help h-5 px-1.5 text-[10px]">
+                                  <Badge
+                                    variant="warning"
+                                    className="cursor-help h-5 px-1.5 text-[10px]"
+                                  >
                                     {t('badges.manual')}
                                   </Badge>
                                 </TooltipTrigger>
@@ -235,36 +287,43 @@ export function InvestmentsTable({
                               </Tooltip>
                             </TooltipProvider>
                           )}
-                          <span className="data-value">{formatCurrencyRaw(holding.currentPrice, { 
-                            minimumFractionDigits: holding.currentPrice >= 1000 ? 0 : 2, 
-                            maximumFractionDigits: holding.currentPrice >= 1000 ? 0 : 2 
-                          })}</span>
+                          <span className="data-value">
+                            {formatCurrencyRaw(holding.currentPrice, {
+                              minimumFractionDigits: holding.currentPrice >= 1000 ? 0 : 2,
+                              maximumFractionDigits: holding.currentPrice >= 1000 ? 0 : 2,
+                            })}
+                          </span>
                         </div>
-                         {holding.originalCurrency && holding.originalCurrency !== currencyCode && (
+                        {holding.originalCurrency && holding.originalCurrency !== currencyCode && (
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
                             {(holding.originalCurrentPrice || 0).toLocaleString(undefined, {
-                              minimumFractionDigits: (holding.originalCurrentPrice || 0) >= 1000 ? 0 : 2,
-                              maximumFractionDigits: (holding.originalCurrentPrice || 0) >= 1000 ? 0 : 2
-                            })} {holding.originalCurrency}
+                              minimumFractionDigits:
+                                (holding.originalCurrentPrice || 0) >= 1000 ? 0 : 2,
+                              maximumFractionDigits:
+                                (holding.originalCurrentPrice || 0) >= 1000 ? 0 : 2,
+                            })}{' '}
+                            {holding.originalCurrency}
                           </span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-semibold data-value">
-                      {formatCurrencyRaw(holding.marketValue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      {formatCurrencyRaw(holding.marketValue, {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div
-                        className={
-                          holding.gainLoss >= 0 ? "text-positive" : "text-negative"
-                        }
-                      >
+                      <div className={holding.gainLoss >= 0 ? 'text-positive' : 'text-negative'}>
                         <p className="font-semibold data-value">
-                          {holding.gainLoss >= 0 ? "+" : "-"}
-                          {formatCurrencyRaw(Math.abs(holding.gainLoss), { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          {holding.gainLoss >= 0 ? '+' : '-'}
+                          {formatCurrencyRaw(Math.abs(holding.gainLoss), {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          })}
                         </p>
                         <p className="text-xs data-value">
-                          ({holding.gainLoss >= 0 ? "+" : ""}
+                          ({holding.gainLoss >= 0 ? '+' : ''}
                           {holding.gainLossPercent.toFixed(2)}%)
                         </p>
                       </div>
@@ -275,7 +334,10 @@ export function InvestmentsTable({
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Badge variant="warning" className="cursor-help h-5 px-1.5 text-[10px]">
+                                <Badge
+                                  variant="warning"
+                                  className="cursor-help h-5 px-1.5 text-[10px]"
+                                >
                                   {t('badges.manual')}
                                 </Badge>
                               </TooltipTrigger>
@@ -287,16 +349,23 @@ export function InvestmentsTable({
                         )}
                         <span className="data-value">
                           {holding.dividendYield
-                            ? formatCurrency(holding.dividendYield * holding.quantity, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-                            : "—"}
+                            ? formatCurrency(holding.dividendYield * holding.quantity, {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0,
+                              })
+                            : '—'}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={(e) => {
-                        e.stopPropagation();
-                        onViewDetail(holding);
-                      }}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewDetail(holding);
+                        }}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -310,4 +379,3 @@ export function InvestmentsTable({
     </Card>
   );
 }
-

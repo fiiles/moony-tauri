@@ -1,43 +1,44 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Plus, PiggyBank } from "lucide-react";
-import { useSavingsAccounts } from "@/hooks/use-savings-accounts";
-import { useSavingsAccountMutations } from "@/hooks/use-savings-account-mutations";
-import { SavingsAccountFormDialog } from "@/components/savings/SavingsAccountFormDialog";
-import { DeleteSavingsAccountDialog } from "@/components/savings/DeleteSavingsAccountDialog";
-import { SavingsAccountsSummary } from "@/components/savings/SavingsAccountsSummary";
-import { SavingsAccountsTable } from "@/components/savings/SavingsAccountsTable";
-import { EmptyState } from "@/components/common/EmptyState";
-import type { SavingsAccount, InsertSavingsAccount } from "@shared/schema";
-import { useTranslation } from "react-i18next";
-import { ExportButton } from "@/components/common/ExportButton";
-import { exportApi } from "@/lib/tauri-api";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Plus, PiggyBank } from 'lucide-react';
+import { useSavingsAccounts } from '@/hooks/use-savings-accounts';
+import { useSavingsAccountMutations } from '@/hooks/use-savings-account-mutations';
+import { SavingsAccountFormDialog } from '@/components/savings/SavingsAccountFormDialog';
+import { DeleteSavingsAccountDialog } from '@/components/savings/DeleteSavingsAccountDialog';
+import { SavingsAccountsSummary } from '@/components/savings/SavingsAccountsSummary';
+import { SavingsAccountsTable } from '@/components/savings/SavingsAccountsTable';
+import { EmptyState } from '@/components/common/EmptyState';
+import type { SavingsAccount, InsertSavingsAccount } from '@shared/schema';
+import { useTranslation } from 'react-i18next';
+import { ExportButton } from '@/components/common/ExportButton';
+import { exportApi } from '@/lib/tauri-api';
 
 export default function Accounts() {
   const { t } = useTranslation('savings');
   const { accounts, metrics, isLoading } = useSavingsAccounts();
-  const { createMutation, updateMutation, deleteMutation } =
-    useSavingsAccountMutations();
+  const { createMutation, updateMutation, deleteMutation } = useSavingsAccountMutations();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedAccount, setSelectedAccount] =
-    useState<SavingsAccount | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<SavingsAccount | null>(null);
 
   const handleAddClick = () => {
     setAddDialogOpen(true);
   };
 
   const handleAddSubmit = (data: InsertSavingsAccount | any, zones?: any[]) => {
-    if ("id" in data) {
+    if ('id' in data) {
       return;
     }
-    createMutation.mutate({ data: data as InsertSavingsAccount, zones }, {
-      onSuccess: () => {
-        setAddDialogOpen(false);
-      },
-    });
+    createMutation.mutate(
+      { data: data as InsertSavingsAccount, zones },
+      {
+        onSuccess: () => {
+          setAddDialogOpen(false);
+        },
+      }
+    );
   };
 
   const handleEditClick = (account: SavingsAccount) => {
@@ -46,18 +47,29 @@ export default function Accounts() {
   };
 
   const handleEditSubmit = (
-    data: InsertSavingsAccount | { id: string; name?: string; balance?: string; interestRate?: string; hasZoneDesignation?: boolean },
+    data:
+      | InsertSavingsAccount
+      | {
+          id: string;
+          name?: string;
+          balance?: string;
+          interestRate?: string;
+          hasZoneDesignation?: boolean;
+        },
     zones?: any[]
   ) => {
-    if (!("id" in data)) {
+    if (!('id' in data)) {
       return;
     }
-    updateMutation.mutate({ id: data.id, data, zones }, {
-      onSuccess: () => {
-        setEditDialogOpen(false);
-        setSelectedAccount(null);
-      },
-    });
+    updateMutation.mutate(
+      { id: data.id, data, zones },
+      {
+        onSuccess: () => {
+          setEditDialogOpen(false);
+          setSelectedAccount(null);
+        },
+      }
+    );
   };
 
   const handleDeleteClick = (account: SavingsAccount) => {
@@ -149,4 +161,3 @@ export default function Accounts() {
     </div>
   );
 }
-

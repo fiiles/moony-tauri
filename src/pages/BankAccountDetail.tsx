@@ -63,7 +63,7 @@ import { useTranslation } from 'react-i18next';
 import { useCurrency } from '@/lib/currency';
 import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
 import { useCategorization } from '@/hooks/useCategorization';
-import { toast } from "sonner";
+import { toast } from 'sonner';
 import { isCzechIBAN, ibanToBBAN, formatAccountNumber } from '@/utils/iban-utils';
 
 export default function BankAccountDetail() {
@@ -424,7 +424,9 @@ export default function BankAccountDetail() {
         duration: 5000,
       });
     } else {
-      toast.error(t('categorization.noMatches'), { description: t('categorization.noMatchesDesc') });
+      toast.error(t('categorization.noMatches'), {
+        description: t('categorization.noMatchesDesc'),
+      });
     }
   };
 

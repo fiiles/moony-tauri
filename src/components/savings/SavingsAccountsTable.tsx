@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -8,21 +8,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { MoreVertical, Pencil, Trash2, Check, Info } from "lucide-react";
-import type { SavingsAccount } from "@shared/schema";
-import { useCurrency } from "@/lib/currency";
-import { Badge } from "@/components/ui/badge";
-import { SavingsAccountZonesModal } from "./SavingsAccountZonesModal";
-import { convertToCzK } from "@shared/currencies";
-import { useTranslation } from "react-i18next";
-import { useLanguage } from "@/i18n/I18nProvider";
+} from '@/components/ui/dropdown-menu';
+import { MoreVertical, Pencil, Trash2, Check, Info } from 'lucide-react';
+import type { SavingsAccount } from '@shared/schema';
+import { useCurrency } from '@/lib/currency';
+import { Badge } from '@/components/ui/badge';
+import { SavingsAccountZonesModal } from './SavingsAccountZonesModal';
+import { convertToCzK } from '@shared/currencies';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '@/i18n/I18nProvider';
 
 interface SavingsAccountsTableProps {
   accounts: SavingsAccount[];
@@ -30,16 +30,14 @@ interface SavingsAccountsTableProps {
   onDelete: (account: SavingsAccount) => void;
 }
 
-export function SavingsAccountsTable({
-  accounts,
-  onEdit,
-  onDelete,
-}: SavingsAccountsTableProps) {
+export function SavingsAccountsTable({ accounts, onEdit, onDelete }: SavingsAccountsTableProps) {
   const { t } = useTranslation('savings');
   const { t: tc } = useTranslation('common');
   const { formatCurrency } = useCurrency();
   const { formatDate } = useLanguage();
-  const [selectedAccountForZones, setSelectedAccountForZones] = useState<SavingsAccount | null>(null);
+  const [selectedAccountForZones, setSelectedAccountForZones] = useState<SavingsAccount | null>(
+    null
+  );
 
   return (
     <Card className="border card-hover">
@@ -61,17 +59,17 @@ export function SavingsAccountsTable({
             <TableBody>
               {accounts.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center text-muted-foreground py-8"
-                  >
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     {t('table.noAccounts')}
                   </TableCell>
                 </TableRow>
               ) : (
                 accounts.map((account) => {
-                  const accountCurrency = (account as any).currency || "CZK";
-                  const balanceInUserCurrency = convertToCzK(parseFloat(account.balance), accountCurrency as any);
+                  const accountCurrency = (account as any).currency || 'CZK';
+                  const balanceInUserCurrency = convertToCzK(
+                    parseFloat(account.balance),
+                    accountCurrency as any
+                  );
 
                   return (
                     <TableRow key={account.id}>
@@ -84,13 +82,18 @@ export function SavingsAccountsTable({
                           ? `${account.effectiveInterestRate.toFixed(2)}%`
                           : `${parseFloat(account.interestRate).toFixed(2)}%`}
                         {account.hasZoneDesignation && (
-                          <span className="text-xs text-muted-foreground ml-1">({t('table.effective')})</span>
+                          <span className="text-xs text-muted-foreground ml-1">
+                            ({t('table.effective')})
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="text-center">
                         {account.hasZoneDesignation ? (
                           <div className="flex items-center justify-center gap-1">
-                            <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
+                            <Badge
+                              variant="secondary"
+                              className="bg-blue-100 text-blue-800 border-blue-200"
+                            >
                               <Check className="h-3 w-3 mr-1" />
                               {t('table.zoned')}
                             </Badge>
@@ -148,10 +151,9 @@ export function SavingsAccountsTable({
       <SavingsAccountZonesModal
         open={!!selectedAccountForZones}
         onOpenChange={(open) => !open && setSelectedAccountForZones(null)}
-        accountId={selectedAccountForZones?.id || ""}
-        accountName={selectedAccountForZones?.name || ""}
+        accountId={selectedAccountForZones?.id || ''}
+        accountName={selectedAccountForZones?.name || ''}
       />
     </Card>
   );
 }
-

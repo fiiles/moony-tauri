@@ -1,8 +1,16 @@
-import { Card } from "@/components/ui/card";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { useCurrency } from "@/lib/currency";
-import { useTranslation } from "react-i18next";
-import { useState } from "react";
+import { Card } from '@/components/ui/card';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import { useCurrency } from '@/lib/currency';
+import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
 
 interface AssetClassData {
   date: string;
@@ -21,10 +29,10 @@ interface AssetClassTrendChartProps {
 // Asset class colors using theme tokens
 const ASSET_COLORS = {
   investments: 'hsl(var(--chart-1))', // Violet (primary)
-  savings: 'hsl(var(--chart-6))',     // Green
-  bonds: 'hsl(var(--chart-7))',       // Amber/Orange
-  realEstate: 'hsl(var(--chart-8))',  // Blue
-  crypto: 'hsl(var(--chart-4))',      // Pink
+  savings: 'hsl(var(--chart-6))', // Green
+  bonds: 'hsl(var(--chart-7))', // Amber/Orange
+  realEstate: 'hsl(var(--chart-8))', // Blue
+  crypto: 'hsl(var(--chart-4))', // Pink
   otherAssets: 'hsl(var(--chart-5))', // Red-ish
 } as const;
 
@@ -46,12 +54,11 @@ export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps
 
   // Toggle series visibility
   const toggleSeries = (key: AssetKey) => {
-    setVisibleSeries(prev => ({
+    setVisibleSeries((prev) => ({
       ...prev,
       [key]: !prev[key],
     }));
   };
-
 
   // Clickable legend
   const renderLegend = () => {
@@ -74,10 +81,7 @@ export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps
               visibleSeries[item.key] ? 'opacity-100' : 'opacity-40'
             }`}
           >
-            <div
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: item.color }}
-            />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
             <span className="text-sm text-muted-foreground">{item.label}</span>
           </button>
         ))}
@@ -100,7 +104,6 @@ export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps
           <div className="min-h-[350px]">
             <ResponsiveContainer width="100%" height={350}>
               <AreaChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 25 }}>
-
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis
                   dataKey="date"
@@ -115,7 +118,10 @@ export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps
                 <Tooltip
                   content={({ active, payload, label }) => {
                     if (!active || !payload || payload.length === 0) return null;
-                    const total = payload.reduce((sum, entry) => sum + ((entry.value as number) ?? 0), 0);
+                    const total = payload.reduce(
+                      (sum, entry) => sum + ((entry.value as number) ?? 0),
+                      0
+                    );
                     return (
                       <div
                         style={{
@@ -125,21 +131,48 @@ export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps
                           padding: '8px 12px',
                         }}
                       >
-                        <p className="text-sm font-medium mb-1" style={{ color: 'hsl(var(--foreground))' }}>{label}</p>
+                        <p
+                          className="text-sm font-medium mb-1"
+                          style={{ color: 'hsl(var(--foreground))' }}
+                        >
+                          {label}
+                        </p>
                         {payload.map((entry) => (
-                          <div key={entry.dataKey} className="flex items-center justify-between gap-4 text-sm">
+                          <div
+                            key={entry.dataKey}
+                            className="flex items-center justify-between gap-4 text-sm"
+                          >
                             <span className="flex items-center gap-1.5">
-                              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-                              <span style={{ color: 'hsl(var(--muted-foreground))' }}>{t(`cards.${entry.dataKey}`)}</span>
+                              <span
+                                className="inline-block w-2.5 h-2.5 rounded-full"
+                                style={{ backgroundColor: entry.color }}
+                              />
+                              <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+                                {t(`cards.${entry.dataKey}`)}
+                              </span>
                             </span>
                             <span style={{ color: 'hsl(var(--foreground))' }}>
-                              {formatCurrency((entry.value as number) ?? 0, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              {formatCurrency((entry.value as number) ?? 0, {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0,
+                              })}
                             </span>
                           </div>
                         ))}
-                        <div className="flex items-center justify-between gap-4 text-sm font-semibold mt-1 pt-1" style={{ borderTop: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }}>
+                        <div
+                          className="flex items-center justify-between gap-4 text-sm font-semibold mt-1 pt-1"
+                          style={{
+                            borderTop: '1px solid hsl(var(--border))',
+                            color: 'hsl(var(--foreground))',
+                          }}
+                        >
                           <span>{t('common:total', 'Total')}</span>
-                          <span>{formatCurrency(total, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                          <span>
+                            {formatCurrency(total, {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0,
+                            })}
+                          </span>
                         </div>
                       </div>
                     );

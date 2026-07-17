@@ -1,5 +1,5 @@
 // src/components/common/EmptyState.tsx
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from '@/components/ui/card';
 
 interface EmptyStateProps {
   icon: React.ReactNode;

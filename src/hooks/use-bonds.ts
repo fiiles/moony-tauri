@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { bondsApi } from "@/lib/tauri-api";
-import { convertToCzK, type CurrencyCode } from "@shared/currencies";
-import type { Bond } from "@shared/schema";
+import { useQuery } from '@tanstack/react-query';
+import { bondsApi } from '@/lib/tauri-api';
+import { convertToCzK, type CurrencyCode } from '@shared/currencies';
+import type { Bond } from '@shared/schema';
 
 export interface BondsMetrics {
   totalCouponValue: number;
@@ -14,20 +14,17 @@ export interface BondsMetrics {
 
 export function useBonds() {
   const { data: bonds = [], isLoading } = useQuery({
-    queryKey: ["bonds"],
+    queryKey: ['bonds'],
     queryFn: () => bondsApi.getAll(),
   });
 
   // Calculate metrics in CZK
-  const totalValue = bonds.reduce(
-    (sum, bond: Bond) => {
-      const value = parseFloat(bond.couponValue || "0");
-      const quantity = parseFloat(bond.quantity || "1");
-      const currency = bond.currency || "CZK";
-      return sum + convertToCzK(value * quantity, currency as CurrencyCode);
-    },
-    0
-  );
+  const totalValue = bonds.reduce((sum, bond: Bond) => {
+    const value = parseFloat(bond.couponValue || '0');
+    const quantity = parseFloat(bond.quantity || '1');
+    const currency = bond.currency || 'CZK';
+    return sum + convertToCzK(value * quantity, currency as CurrencyCode);
+  }, 0);
 
   // Calculate weighted average yield (weighted by total value in CZK)
   const averageYield = (() => {
@@ -35,14 +32,14 @@ export function useBonds() {
 
     const { weightedSum, totalWeight } = bonds.reduce(
       (acc, bond: Bond) => {
-        const value = parseFloat(bond.couponValue || "0");
-        const quantity = parseFloat(bond.quantity || "1");
-        const currency = bond.currency || "CZK";
+        const value = parseFloat(bond.couponValue || '0');
+        const quantity = parseFloat(bond.quantity || '1');
+        const currency = bond.currency || 'CZK';
         const totalValueCzk = convertToCzK(value * quantity, currency as CurrencyCode);
-        const rate = parseFloat(bond.interestRate || "0");
+        const rate = parseFloat(bond.interestRate || '0');
 
         return {
-          weightedSum: acc.weightedSum + (totalValueCzk * rate),
+          weightedSum: acc.weightedSum + totalValueCzk * rate,
           totalWeight: acc.totalWeight + totalValueCzk,
         };
       },
@@ -52,19 +49,16 @@ export function useBonds() {
     return totalWeight > 0 ? weightedSum / totalWeight : 0;
   })();
 
-  const projectedYearlyIncome = bonds.reduce(
-    (sum, bond: Bond) => {
-      const value = parseFloat(bond.couponValue || "0");
-      const quantity = parseFloat(bond.quantity || "1");
-      const rate = parseFloat(bond.interestRate || "0");
-      // Calculate income in original currency (value * quantity * rate%)
-      const income = (value * quantity * rate) / 100;
-      // Convert income to CZK
-      const currency = bond.currency || "CZK";
-      return sum + convertToCzK(income, currency as CurrencyCode);
-    },
-    0
-  );
+  const projectedYearlyIncome = bonds.reduce((sum, bond: Bond) => {
+    const value = parseFloat(bond.couponValue || '0');
+    const quantity = parseFloat(bond.quantity || '1');
+    const rate = parseFloat(bond.interestRate || '0');
+    // Calculate income in original currency (value * quantity * rate%)
+    const income = (value * quantity * rate) / 100;
+    // Convert income to CZK
+    const currency = bond.currency || 'CZK';
+    return sum + convertToCzK(income, currency as CurrencyCode);
+  }, 0);
 
   const metrics: BondsMetrics = {
     totalValue,

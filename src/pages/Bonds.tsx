@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Plus, FileText } from "lucide-react";
-import { useBonds } from "@/hooks/use-bonds";
-import { BondsSummary } from "@/components/bonds/BondsSummary";
-import { BondsTable } from "@/components/bonds/BondsTable";
-import { BondsFormDialog } from "@/components/bonds/BondsFormDialog";
-import { DeleteBondDialog } from "@/components/bonds/DeleteBondDialog";
-import { useBondMutations } from "@/hooks/use-bond-mutations";
-import type { Bond, InsertBond } from "@shared/schema";
-import { useTranslation } from "react-i18next";
-import { ExportButton } from "@/components/common/ExportButton";
-import { EmptyState } from "@/components/common/EmptyState";
-import { exportApi } from "@/lib/tauri-api";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Plus, FileText } from 'lucide-react';
+import { useBonds } from '@/hooks/use-bonds';
+import { BondsSummary } from '@/components/bonds/BondsSummary';
+import { BondsTable } from '@/components/bonds/BondsTable';
+import { BondsFormDialog } from '@/components/bonds/BondsFormDialog';
+import { DeleteBondDialog } from '@/components/bonds/DeleteBondDialog';
+import { useBondMutations } from '@/hooks/use-bond-mutations';
+import type { Bond, InsertBond } from '@shared/schema';
+import { useTranslation } from 'react-i18next';
+import { ExportButton } from '@/components/common/ExportButton';
+import { EmptyState } from '@/components/common/EmptyState';
+import { exportApi } from '@/lib/tauri-api';
 
 export default function Bonds() {
   const { t } = useTranslation('bonds');
@@ -26,7 +26,7 @@ export default function Bonds() {
   const handleAddClick = () => setAddDialogOpen(true);
 
   const handleAddSubmit = (data: InsertBond | any) => {
-    if ("id" in data) return;
+    if ('id' in data) return;
     createMutation.mutate(data as InsertBond, { onSuccess: () => setAddDialogOpen(false) });
   };
 
@@ -35,9 +35,16 @@ export default function Bonds() {
     setEditDialogOpen(true);
   };
 
-  const handleEditSubmit = (data: InsertBond | { id: string; name?: string; couponValue?: string; interestRate?: string }) => {
-    if (!("id" in data)) return;
-    updateMutation.mutate(data, { onSuccess: () => { setEditDialogOpen(false); setSelectedBond(null); } });
+  const handleEditSubmit = (
+    data: InsertBond | { id: string; name?: string; couponValue?: string; interestRate?: string }
+  ) => {
+    if (!('id' in data)) return;
+    updateMutation.mutate(data, {
+      onSuccess: () => {
+        setEditDialogOpen(false);
+        setSelectedBond(null);
+      },
+    });
   };
 
   const handleDeleteClick = (bond: Bond) => {
@@ -47,7 +54,12 @@ export default function Bonds() {
 
   const handleDeleteConfirm = () => {
     if (!selectedBond) return;
-    deleteMutation.mutate(selectedBond.id, { onSuccess: () => { setDeleteDialogOpen(false); setSelectedBond(null); } });
+    deleteMutation.mutate(selectedBond.id, {
+      onSuccess: () => {
+        setDeleteDialogOpen(false);
+        setSelectedBond(null);
+      },
+    });
   };
 
   if (isLoading) {
@@ -95,11 +107,28 @@ export default function Bonds() {
         <BondsTable bonds={bonds} onEdit={handleEditClick} onDelete={handleDeleteClick} />
       )}
 
-      <BondsFormDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} onSubmit={handleAddSubmit} isLoading={createMutation.isPending} />
+      <BondsFormDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onSubmit={handleAddSubmit}
+        isLoading={createMutation.isPending}
+      />
 
-      <BondsFormDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} onSubmit={handleEditSubmit} bond={selectedBond} isLoading={updateMutation.isPending} />
+      <BondsFormDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSubmit={handleEditSubmit}
+        bond={selectedBond}
+        isLoading={updateMutation.isPending}
+      />
 
-      <DeleteBondDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} bond={selectedBond} onConfirm={handleDeleteConfirm} isLoading={deleteMutation.isPending} />
+      <DeleteBondDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        bond={selectedBond}
+        onConfirm={handleDeleteConfirm}
+        isLoading={deleteMutation.isPending}
+      />
     </div>
   );
 }

@@ -21,7 +21,7 @@ export interface UseUpdaterReturn {
   updateAvailable: UpdateInfo | null;
   progress: UpdateProgress | null;
   error: string | null;
-  
+
   // Actions
   checkForUpdate: () => Promise<void>;
   downloadAndInstall: () => Promise<void>;
@@ -42,7 +42,7 @@ export function useUpdater(): UseUpdaterReturn {
 
     try {
       const updateResult = await check();
-      
+
       if (updateResult) {
         setUpdate(updateResult);
         setUpdateAvailable({
@@ -84,9 +84,7 @@ export function useUpdater(): UseUpdaterReturn {
             break;
           case 'Progress': {
             downloaded += event.data.chunkLength;
-            const percentage = contentLength 
-              ? Math.round((downloaded / contentLength) * 100) 
-              : 0;
+            const percentage = contentLength ? Math.round((downloaded / contentLength) * 100) : 0;
             setProgress({ downloaded, contentLength, percentage });
             break;
           }

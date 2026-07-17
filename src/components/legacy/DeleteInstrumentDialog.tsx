@@ -7,8 +7,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import type { Instrument } from "@shared/schema";
+} from '@/components/ui/alert-dialog';
+import type { Instrument } from '@shared/schema';
 
 interface DeleteInstrumentDialogProps {
   open: boolean;
@@ -31,11 +31,9 @@ export function DeleteInstrumentDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the
-            instrument
-            {instrument &&
-              ` "${instrument.name}" (${instrument.code})`}{" "}
-            and all associated purchases.
+            This action cannot be undone. This will permanently delete the instrument
+            {instrument && ` "${instrument.name}" (${instrument.code})`} and all associated
+            purchases.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -45,11 +43,10 @@ export function DeleteInstrumentDialog({
             disabled={isLoading}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isLoading ? "Deleting..." : "Delete"}
+            {isLoading ? 'Deleting...' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 }
-

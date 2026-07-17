@@ -1,18 +1,18 @@
-import { InsuranceList } from "@/components/insurance/InsuranceList";
-import { InsuranceFormDialog } from "@/components/insurance/InsuranceFormDialog";
-import { Button } from "@/components/ui/button";
-import { Plus, Shield, Bot, X } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { insuranceApi, exportApi } from "@/lib/tauri-api";
-import { InsurancePolicy } from "@shared/schema";
-import { SummaryCard } from "@/components/common/SummaryCard";
-import { EmptyState } from "@/components/common/EmptyState";
-import { useCurrency } from "@/lib/currency";
-import { convertToCzK, convertFromCzK, type CurrencyCode } from "@shared/currencies";
-import { useTranslation } from "react-i18next";
-import { ExportButton } from "@/components/common/ExportButton";
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { InsuranceList } from '@/components/insurance/InsuranceList';
+import { InsuranceFormDialog } from '@/components/insurance/InsuranceFormDialog';
+import { Button } from '@/components/ui/button';
+import { Plus, Shield, Bot, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { insuranceApi, exportApi } from '@/lib/tauri-api';
+import { InsurancePolicy } from '@shared/schema';
+import { SummaryCard } from '@/components/common/SummaryCard';
+import { EmptyState } from '@/components/common/EmptyState';
+import { useCurrency } from '@/lib/currency';
+import { convertToCzK, convertFromCzK, type CurrencyCode } from '@shared/currencies';
+import { useTranslation } from 'react-i18next';
+import { ExportButton } from '@/components/common/ExportButton';
+import { useState } from 'react';
+import { useLocation } from 'wouter';
 
 export default function Insurance() {
   const { t } = useTranslation('insurance');
@@ -29,7 +29,7 @@ export default function Insurance() {
   const { formatCurrencyRaw, currencyCode: userCurrency } = useCurrency();
 
   const { data: policies, isLoading } = useQuery<InsurancePolicy[]>({
-    queryKey: ["insurance"],
+    queryKey: ['insurance'],
     queryFn: () => insuranceApi.getAll(),
   });
 
@@ -45,32 +45,33 @@ export default function Insurance() {
   }
 
   // Calculate total yearly cost with currency conversion
-  const totalYearlyCost = policies?.reduce((sum, policy) => {
-    if (policy.status !== 'active') return sum;
+  const totalYearlyCost =
+    policies?.reduce((sum, policy) => {
+      if (policy.status !== 'active') return sum;
 
-    const regularPayment = Number(policy.regularPayment);
-    const currency = policy.regularPaymentCurrency || "CZK";
+      const regularPayment = Number(policy.regularPayment);
+      const currency = policy.regularPaymentCurrency || 'CZK';
 
-    // Convert to CZK first, then to user currency
-    const inCzk = convertToCzK(regularPayment, currency as CurrencyCode);
-    const converted = convertFromCzK(inCzk, userCurrency as CurrencyCode);
+      // Convert to CZK first, then to user currency
+      const inCzk = convertToCzK(regularPayment, currency as CurrencyCode);
+      const converted = convertFromCzK(inCzk, userCurrency as CurrencyCode);
 
-    // Calculate yearly amount based on frequency
-    let yearlyAmount = 0;
-    if (policy.paymentFrequency === 'monthly') {
-      yearlyAmount = converted * 12;
-    } else if (policy.paymentFrequency === 'quarterly') {
-      yearlyAmount = converted * 4;
-    } else if (policy.paymentFrequency === 'annually') {
-      yearlyAmount = converted;
-    } else if (policy.paymentFrequency === 'one_time') {
-      yearlyAmount = 0; // One-time payments don't contribute to recurring costs
-    }
+      // Calculate yearly amount based on frequency
+      let yearlyAmount = 0;
+      if (policy.paymentFrequency === 'monthly') {
+        yearlyAmount = converted * 12;
+      } else if (policy.paymentFrequency === 'quarterly') {
+        yearlyAmount = converted * 4;
+      } else if (policy.paymentFrequency === 'annually') {
+        yearlyAmount = converted;
+      } else if (policy.paymentFrequency === 'one_time') {
+        yearlyAmount = 0; // One-time payments don't contribute to recurring costs
+      }
 
-    return sum + yearlyAmount;
-  }, 0) || 0;
+      return sum + yearlyAmount;
+    }, 0) || 0;
 
-  const activePolicies = policies?.filter(p => p.status === 'active').length || 0;
+  const activePolicies = policies?.filter((p) => p.status === 'active').length || 0;
 
   return (
     <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto space-y-8">

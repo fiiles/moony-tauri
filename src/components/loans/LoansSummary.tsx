@@ -1,7 +1,7 @@
-import { SummaryCard } from "@/components/common/SummaryCard";
-import { useCurrency } from "@/lib/currency";
-import { Banknote, Percent, Calendar } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { SummaryCard } from '@/components/common/SummaryCard';
+import { useCurrency } from '@/lib/currency';
+import { Banknote, Percent, Calendar } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface LoansSummaryProps {
   metrics: {
@@ -37,4 +37,3 @@ export function LoansSummary({ metrics }: LoansSummaryProps) {
     </div>
   );
 }
-

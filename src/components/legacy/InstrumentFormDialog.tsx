@@ -1,16 +1,16 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -18,11 +18,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import type { Instrument, InsertInstrument } from "@shared/schema";
-import { useCurrency } from "@/lib/currency";
-import { currencies } from "@/lib/currency";
-import { CurrencyCode } from "@shared/currencies";
+} from '@/components/ui/dialog';
+import type { Instrument, InsertInstrument } from '@shared/schema';
+import { useCurrency } from '@/lib/currency';
+import { currencies } from '@/lib/currency';
+import { CurrencyCode } from '@shared/currencies';
 
 type UpdateInstrumentData = {
   id: string;
@@ -63,10 +63,10 @@ export function InstrumentFormDialog({
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(userCurrency);
 
   const [formData, setFormData] = useState<InsertInstrument>({
-    name: "",
-    code: "",
-    type: "stock",
-    currentPrice: "0",
+    name: '',
+    code: '',
+    type: 'stock',
+    currentPrice: '0',
     previousPrice: null,
   });
 
@@ -78,11 +78,11 @@ export function InstrumentFormDialog({
     fees: string;
     note: string;
   }>({
-    purchaseDate: new Date().toISOString().split("T")[0], // Today's date in YYYY-MM-DD format
-    quantity: "",
-    pricePerUnit: "",
-    fees: "",
-    note: "",
+    purchaseDate: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
+    quantity: '',
+    pricePerUnit: '',
+    fees: '',
+    note: '',
   });
 
   useEffect(() => {
@@ -90,9 +90,9 @@ export function InstrumentFormDialog({
 
     if (instrument) {
       // Convert stored CZK prices to user's currency for display
-      const displayCurrentPrice = convert(Number(instrument.currentPrice), "CZK", userCurrency);
+      const displayCurrentPrice = convert(Number(instrument.currentPrice), 'CZK', userCurrency);
       const displayPreviousPrice = instrument.previousPrice
-        ? convert(Number(instrument.previousPrice), "CZK", userCurrency)
+        ? convert(Number(instrument.previousPrice), 'CZK', userCurrency)
         : null;
 
       setFormData({
@@ -105,19 +105,19 @@ export function InstrumentFormDialog({
       setSelectedCurrency(userCurrency);
     } else {
       setFormData({
-        name: "",
-        code: "",
-        type: "stock",
-        currentPrice: "0",
+        name: '',
+        code: '',
+        type: 'stock',
+        currentPrice: '0',
         previousPrice: null,
       });
       // Reset purchase data to defaults
       setPurchaseData({
-        purchaseDate: new Date().toISOString().split("T")[0],
-        quantity: "",
-        pricePerUnit: "",
-        fees: "",
-        note: "",
+        purchaseDate: new Date().toISOString().split('T')[0],
+        quantity: '',
+        pricePerUnit: '',
+        fees: '',
+        note: '',
       });
       setSelectedCurrency(userCurrency);
     }
@@ -125,9 +125,9 @@ export function InstrumentFormDialog({
 
   const handleSubmit = () => {
     // Convert input amounts from SELECTED currency to BASE currency (CZK)
-    const currentPriceInCzk = convert(Number(formData.currentPrice), selectedCurrency, "CZK");
+    const currentPriceInCzk = convert(Number(formData.currentPrice), selectedCurrency, 'CZK');
     const previousPriceInCzk = formData.previousPrice
-      ? convert(Number(formData.previousPrice), selectedCurrency, "CZK")
+      ? convert(Number(formData.previousPrice), selectedCurrency, 'CZK')
       : null;
 
     if (isEditMode && instrument) {
@@ -142,10 +142,10 @@ export function InstrumentFormDialog({
     } else {
       // Add mode: include purchase data
       // Convert purchase amounts to CZK
-      const pricePerUnitInCzk = convert(Number(purchaseData.pricePerUnit), selectedCurrency, "CZK");
+      const pricePerUnitInCzk = convert(Number(purchaseData.pricePerUnit), selectedCurrency, 'CZK');
       const feesInCzk = purchaseData.fees
-        ? convert(Number(purchaseData.fees), selectedCurrency, "CZK")
-        : "0";
+        ? convert(Number(purchaseData.fees), selectedCurrency, 'CZK')
+        : '0';
 
       onSubmit({
         ...formData,
@@ -166,18 +166,18 @@ export function InstrumentFormDialog({
     onOpenChange(false);
     if (!isEditMode) {
       setFormData({
-        name: "",
-        code: "",
-        type: "stock",
-        currentPrice: "0",
+        name: '',
+        code: '',
+        type: 'stock',
+        currentPrice: '0',
         previousPrice: null,
       });
       setPurchaseData({
-        purchaseDate: new Date().toISOString().split("T")[0],
-        quantity: "",
-        pricePerUnit: "",
-        fees: "",
-        note: "",
+        purchaseDate: new Date().toISOString().split('T')[0],
+        quantity: '',
+        pricePerUnit: '',
+        fees: '',
+        note: '',
       });
     }
   };
@@ -186,11 +186,11 @@ export function InstrumentFormDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? "Modify Instrument" : "Add New Investment"}</DialogTitle>
+          <DialogTitle>{isEditMode ? 'Modify Instrument' : 'Add New Investment'}</DialogTitle>
           <DialogDescription>
             {isEditMode
               ? "Update the instrument details. Click save when you're done."
-              : "Add a new investment instrument to your portfolio. Fill in all required fields."}
+              : 'Add a new investment instrument to your portfolio. Fill in all required fields.'}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
@@ -206,7 +206,7 @@ export function InstrumentFormDialog({
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder={isEditMode ? "Instrument name" : "e.g., Apple Inc."}
+                  placeholder={isEditMode ? 'Instrument name' : 'e.g., Apple Inc.'}
                   required
                 />
               </div>
@@ -215,10 +215,8 @@ export function InstrumentFormDialog({
                 <Input
                   id="code"
                   value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value.toUpperCase() })
-                  }
-                  placeholder={isEditMode ? "Instrument code" : "e.g., AAPL"}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                  placeholder={isEditMode ? 'Instrument code' : 'e.g., AAPL'}
                   required
                 />
               </div>
@@ -226,7 +224,7 @@ export function InstrumentFormDialog({
                 <Label htmlFor="type">Type *</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(value: "stock" | "commodity") =>
+                  onValueChange={(value: 'stock' | 'commodity') =>
                     setFormData({ ...formData, type: value })
                   }
                 >
@@ -244,9 +242,7 @@ export function InstrumentFormDialog({
 
           {/* Pricing Section */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground border-b pb-2">
-              Pricing Details
-            </h3>
+            <h3 className="text-sm font-semibold text-foreground border-b pb-2">Pricing Details</h3>
             <div className="grid gap-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -256,9 +252,7 @@ export function InstrumentFormDialog({
                     type="number"
                     step="0.01"
                     value={formData.currentPrice}
-                    onChange={(e) =>
-                      setFormData({ ...formData, currentPrice: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, currentPrice: e.target.value })}
                     placeholder="0.00"
                     required
                   />
@@ -284,12 +278,12 @@ export function InstrumentFormDialog({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="previousPrice">Previous Price {!isEditMode && "(Optional)"}</Label>
+                <Label htmlFor="previousPrice">Previous Price {!isEditMode && '(Optional)'}</Label>
                 <Input
                   id="previousPrice"
                   type="number"
                   step="0.01"
-                  value={formData.previousPrice || ""}
+                  value={formData.previousPrice || ''}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
@@ -411,15 +405,14 @@ export function InstrumentFormDialog({
           >
             {isLoading
               ? isEditMode
-                ? "Saving..."
-                : "Adding..."
+                ? 'Saving...'
+                : 'Adding...'
               : isEditMode
-                ? "Save Changes"
-                : "Add Investment"}
+                ? 'Save Changes'
+                : 'Add Investment'}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

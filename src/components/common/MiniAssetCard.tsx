@@ -1,6 +1,6 @@
-import { Card } from "@/components/ui/card";
-import { useCurrency } from "@/lib/currency";
-import { useTranslation } from "react-i18next";
+import { Card } from '@/components/ui/card';
+import { useCurrency } from '@/lib/currency';
+import { useTranslation } from 'react-i18next';
 
 interface SparklineData {
   value: number;
@@ -21,7 +21,7 @@ export default function MiniAssetCard({
   sparklineData,
   color,
   onViewDetails,
-  icon
+  icon,
 }: MiniAssetCardProps) {
   const { formatCurrency } = useCurrency();
   const { t } = useTranslation('common');
@@ -29,15 +29,17 @@ export default function MiniAssetCard({
   const createSparklinePath = (data: SparklineData[]) => {
     if (data.length === 0) return '';
 
-    const max = Math.max(...data.map(d => d.value));
-    const min = Math.min(...data.map(d => d.value));
+    const max = Math.max(...data.map((d) => d.value));
+    const min = Math.min(...data.map((d) => d.value));
     const range = max - min || 1;
 
-    const points = data.map((d, i) => {
-      const x = (i / (data.length - 1)) * 100;
-      const y = 30 - ((d.value - min) / range) * 25;
-      return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-    }).join(' ');
+    const points = data
+      .map((d, i) => {
+        const x = (i / (data.length - 1)) * 100;
+        const y = 30 - ((d.value - min) / range) * 25;
+        return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+      })
+      .join(' ');
 
     return points;
   };
@@ -47,11 +49,7 @@ export default function MiniAssetCard({
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {icon && (
-              <div className="icon-container">
-                {icon}
-              </div>
-            )}
+            {icon && <div className="icon-container">{icon}</div>}
             <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
           </div>
           <button
@@ -64,11 +62,15 @@ export default function MiniAssetCard({
             {t('buttons.viewDetails')}
           </button>
         </div>
-        <p className="text-2xl font-bold tracking-tight data-value">
-          {formatCurrency(value)}
-        </p>
+        <p className="text-2xl font-bold tracking-tight data-value">{formatCurrency(value)}</p>
         <div className="flex-1 h-12">
-          <svg height="48" preserveAspectRatio="none" viewBox="0 0 100 30" width="100%" className="overflow-visible">
+          <svg
+            height="48"
+            preserveAspectRatio="none"
+            viewBox="0 0 100 30"
+            width="100%"
+            className="overflow-visible"
+          >
             <path
               d={createSparklinePath(sparklineData)}
               fill="none"
@@ -83,5 +85,3 @@ export default function MiniAssetCard({
     </Card>
   );
 }
-
-

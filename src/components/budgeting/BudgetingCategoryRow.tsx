@@ -1,18 +1,18 @@
-import { useState } from "react";
-import { ChevronDown, ChevronRight, Target, Tag, type LucideProps } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useCurrency } from "@/lib/currency";
-import { useTranslation } from "react-i18next";
-import BudgetProgressBar from "./BudgetProgressBar";
-import type { CategorySpendingSummary } from "@/lib/tauri-api";
-import { budgetingApi } from "@/lib/tauri-api";
-import { useQuery } from "@tanstack/react-query";
-import { CategorySelector } from "@/components/bank-accounts/CategorySelector";
-import type { TransactionCategory } from "@shared/schema";
-import { ICON_MAP } from "@/components/common/category-icons-map";
-import type { ComponentType } from "react";
+import { useState } from 'react';
+import { ChevronDown, ChevronRight, Target, Tag, type LucideProps } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useCurrency } from '@/lib/currency';
+import { useTranslation } from 'react-i18next';
+import BudgetProgressBar from './BudgetProgressBar';
+import type { CategorySpendingSummary } from '@/lib/tauri-api';
+import { budgetingApi } from '@/lib/tauri-api';
+import { useQuery } from '@tanstack/react-query';
+import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
+import type { TransactionCategory } from '@shared/schema';
+import { ICON_MAP } from '@/components/common/category-icons-map';
+import type { ComponentType } from 'react';
 
 function getCategoryIcon(iconName: string | null | undefined): ComponentType<LucideProps> {
   return ICON_MAP[iconName || 'tag'] || Tag;
@@ -73,8 +73,8 @@ export default function BudgetingCategoryRow({
           <div className="flex items-center justify-between gap-4">
             {/* Left side: expand button + icon + name + count */}
             <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="flex items-center gap-3 p-0 h-auto hover:bg-transparent flex-1 justify-start"
               >
                 {isOpen ? (
@@ -82,21 +82,27 @@ export default function BudgetingCategoryRow({
                 ) : (
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
-                
+
                 {/* Category icon */}
-                <div 
+                <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: category.categoryColor ? `${category.categoryColor}20` : '#9E9E9E20' }}
+                  style={{
+                    backgroundColor: category.categoryColor
+                      ? `${category.categoryColor}20`
+                      : '#9E9E9E20',
+                  }}
                 >
-                  <IconComponent 
-                    className="h-4 w-4" 
-                    style={{ color: category.categoryColor || '#9E9E9E' }} 
+                  <IconComponent
+                    className="h-4 w-4"
+                    style={{ color: category.categoryColor || '#9E9E9E' }}
                   />
                 </div>
-                
+
                 <div className="flex flex-col items-start">
                   <span className="font-medium text-sm">
-                    {t(`categories.${category.categoryId}`, { defaultValue: category.categoryName })}
+                    {t(`categories.${category.categoryId}`, {
+                      defaultValue: category.categoryName,
+                    })}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {category.transactionCount} {t('transactions')}
@@ -111,8 +117,8 @@ export default function BudgetingCategoryRow({
               {isExpense && (
                 <div className="w-32">
                   {hasBudget ? (
-                    <BudgetProgressBar 
-                      spent={totalAmount} 
+                    <BudgetProgressBar
+                      spent={totalAmount}
                       budget={budgetAmount}
                       showLabels={true}
                     />
@@ -134,10 +140,15 @@ export default function BudgetingCategoryRow({
               )}
 
               {/* Amount */}
-              <span className={`font-semibold text-sm min-w-[100px] text-right ${
-                isExpense ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'
-              }`}>
-                {isExpense ? '-' : '+'}{formatCurrency(totalAmount)}
+              <span
+                className={`font-semibold text-sm min-w-[100px] text-right ${
+                  isExpense
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-green-600 dark:text-green-400'
+                }`}
+              >
+                {isExpense ? '-' : '+'}
+                {formatCurrency(totalAmount)}
               </span>
             </div>
           </div>
@@ -146,9 +157,7 @@ export default function BudgetingCategoryRow({
         <CollapsibleContent>
           <CardContent className="pt-0 pb-4 px-4">
             {isLoading ? (
-              <div className="text-sm text-muted-foreground text-center py-4">
-                {t('loading')}
-              </div>
+              <div className="text-sm text-muted-foreground text-center py-4">{t('loading')}</div>
             ) : transactions.length > 0 ? (
               <div className="space-y-2">
                 {transactions.map((tx) => (
@@ -177,17 +186,21 @@ export default function BudgetingCategoryRow({
                           <CategorySelector
                             categories={categories}
                             currentCategoryId={tx.categoryId}
-                            onCategoryChange={(newCategoryId) => onCategoryChange(tx.id, newCategoryId)}
+                            onCategoryChange={(newCategoryId) =>
+                              onCategoryChange(tx.id, newCategoryId)
+                            }
                             compact
                           />
                         </div>
                       )}
 
-                      <span className={`font-medium ${
-                        tx.txType.toLowerCase() === 'credit' 
-                          ? 'text-green-600 dark:text-green-400' 
-                          : 'text-red-600 dark:text-red-400'
-                      }`}>
+                      <span
+                        className={`font-medium ${
+                          tx.txType.toLowerCase() === 'credit'
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-red-600 dark:text-red-400'
+                        }`}
+                      >
                         {tx.txType.toLowerCase() === 'credit' ? '+' : '-'}
                         {formatCurrency(Math.abs(parseFloat(tx.amount)))}
                       </span>

@@ -1,11 +1,11 @@
-import type { StockInvestmentWithPrice } from "@shared/types";
+import type { StockInvestmentWithPrice } from '@shared/types';
 import {
   calculateHoldingMetrics,
   calculatePortfolioTotals,
   findTopPerformer,
   calculateGainLoss,
   calculateGainLossPercent,
-} from "@shared/calculations";
+} from '@shared/calculations';
 
 export interface HoldingData {
   id: string;
@@ -84,7 +84,6 @@ export function mapInvestmentToHolding(investment: StockInvestmentWithPrice): Ho
   };
 }
 
-
 export function calculateMetrics(
   holdings: HoldingData[],
   dividendYield: number = 0
@@ -140,7 +139,15 @@ export function groupHoldingsByTicker(holdings: HoldingData[]): HoldingData[] {
 }
 
 export function getInstrumentIcon(ticker: string): string {
-  const colors = ["bg-orange-500", "bg-gray-800", "bg-teal-600", "bg-black", "bg-blue-600", "bg-purple-600", "bg-red-600"];
-  const hash = ticker.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const colors = [
+    'bg-orange-500',
+    'bg-gray-800',
+    'bg-teal-600',
+    'bg-black',
+    'bg-blue-600',
+    'bg-purple-600',
+    'bg-red-600',
+  ];
+  const hash = ticker.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[hash % colors.length];
 }

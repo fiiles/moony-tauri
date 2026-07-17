@@ -1,6 +1,6 @@
 /**
  * Categorization Rules Management Page
- * 
+ *
  * Allows users to view, edit, and delete learned rules,
  * as well as create and manage custom pattern-based rules.
  */
@@ -31,18 +31,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 import { categorizationApi, bankAccountsApi, type CustomRule } from '@/lib/tauri-api';
-import { 
-  Trash2, 
-  Search, 
-  Plus, 
-  BookOpen, 
+import {
+  Trash2,
+  Search,
+  Plus,
+  BookOpen,
   Settings2,
   User,
   Building,
@@ -70,13 +66,7 @@ function formatIbanDisplay(iban: string | undefined | null): string {
 }
 
 // Rule type badge component
-function RuleTypeBadge({ 
-  ruleType, 
-  t 
-}: { 
-  ruleType: string; 
-  t: (key: string) => string 
-}) {
+function RuleTypeBadge({ ruleType, t }: { ruleType: string; t: (key: string) => string }) {
   const badgeColors: Record<string, string> = {
     payee_default: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     iban_only_default: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
@@ -86,7 +76,12 @@ function RuleTypeBadge({
   const icons: Record<string, React.ReactNode> = {
     payee_default: <User className="h-3 w-3" />,
     iban_only_default: <Building className="h-3 w-3" />,
-    iban_default: <><User className="h-3 w-3" /><Building className="h-3 w-3" /></>,
+    iban_default: (
+      <>
+        <User className="h-3 w-3" />
+        <Building className="h-3 w-3" />
+      </>
+    ),
   };
 
   return (
@@ -114,7 +109,9 @@ export default function CategorizationRules() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ type: 'single' | 'bulk'; id?: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'single' | 'bulk'; id?: string } | null>(
+    null
+  );
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<CustomRule | null>(null);
 
@@ -217,7 +214,7 @@ export default function CategorizationRules() {
 
   function handleConfirmDelete() {
     if (!deleteTarget) return;
-    
+
     if (activeTab === 'learned') {
       if (deleteTarget.type === 'bulk') {
         bulkDeleteMutation.mutate(Array.from(selectedIds));
@@ -229,7 +226,7 @@ export default function CategorizationRules() {
         deleteCustomRuleMutation.mutate(deleteTarget.id);
       }
     }
-    
+
     setDeleteDialogOpen(false);
     setDeleteTarget(null);
   }
@@ -276,8 +273,6 @@ export default function CategorizationRules() {
         <p className="page-subtitle">{t('subtitle')}</p>
       </div>
 
-
-
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'learned' | 'custom')}>
         <div className="flex items-center justify-between gap-4">
@@ -312,11 +307,7 @@ export default function CategorizationRules() {
 
             {/* Bulk delete button for learned rules */}
             {activeTab === 'learned' && selectedIds.size > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => handleDeleteClick('bulk')}
-              >
+              <Button variant="destructive" size="sm" onClick={() => handleDeleteClick('bulk')}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 {t('learnedRules.bulkDelete')} ({selectedIds.size})
               </Button>
@@ -358,7 +349,10 @@ export default function CategorizationRules() {
                     <TableRow>
                       <TableHead className="w-12 align-middle">
                         <Checkbox
-                          checked={selectedIds.size === filteredLearnedRules.length && filteredLearnedRules.length > 0}
+                          checked={
+                            selectedIds.size === filteredLearnedRules.length &&
+                            filteredLearnedRules.length > 0
+                          }
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
@@ -452,8 +446,12 @@ export default function CategorizationRules() {
                       <TableHead>{t('customRules.columns.type')}</TableHead>
                       <TableHead>{t('customRules.columns.pattern')}</TableHead>
                       <TableHead>{t('customRules.columns.category')}</TableHead>
-                      <TableHead className="text-center">{t('customRules.columns.priority')}</TableHead>
-                      <TableHead className="text-center">{t('customRules.columns.active')}</TableHead>
+                      <TableHead className="text-center">
+                        {t('customRules.columns.priority')}
+                      </TableHead>
+                      <TableHead className="text-center">
+                        {t('customRules.columns.active')}
+                      </TableHead>
                       <TableHead className="w-20">{tCommon('labels.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -469,16 +467,17 @@ export default function CategorizationRules() {
                                   {t('customRules.systemRule')}
                                 </Badge>
                               </TooltipTrigger>
-                              <TooltipContent>
-                                {t('customRules.systemRuleTooltip')}
-                              </TooltipContent>
+                              <TooltipContent>{t('customRules.systemRuleTooltip')}</TooltipContent>
                             </Tooltip>
                           )}
                         </TableCell>
                         <TableCell>
                           {/* Show IBAN Match for IBAN-based rules (pattern is '*' and has ibanPattern) */}
                           {rule.pattern === '*' && rule.ibanPattern ? (
-                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                            <Badge
+                              variant="secondary"
+                              className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
+                            >
                               <Building className="h-3 w-3 mr-1" />
                               {t('customRules.form.modeIban')}
                             </Badge>
@@ -492,10 +491,9 @@ export default function CategorizationRules() {
                           <div className="flex flex-col">
                             <span className="truncate">
                               {/* Show IBAN pattern for IBAN-based rules, otherwise show regular pattern */}
-                              {rule.pattern === '*' && rule.ibanPattern 
-                                ? formatIbanDisplay(rule.ibanPattern) 
-                                : rule.pattern
-                              }
+                              {rule.pattern === '*' && rule.ibanPattern
+                                ? formatIbanDisplay(rule.ibanPattern)
+                                : rule.pattern}
                             </span>
                             {/* Show VS as subtitle if present */}
                             {rule.variableSymbol && (
@@ -507,14 +505,19 @@ export default function CategorizationRules() {
                         </TableCell>
                         <TableCell>
                           {(() => {
-                            const category = categories.find(c => c.id === rule.categoryId);
+                            const category = categories.find((c) => c.id === rule.categoryId);
                             return category ? (
                               <div className="flex items-center gap-2">
-                                <CategoryIcon iconName={category.icon || 'Tag'} className="h-4 w-4" />
+                                <CategoryIcon
+                                  iconName={category.icon || 'Tag'}
+                                  className="h-4 w-4"
+                                />
                                 <span className="text-sm">{category.name}</span>
                               </div>
                             ) : (
-                              <span className="text-sm text-muted-foreground">{rule.categoryId}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {rule.categoryId}
+                              </span>
                             );
                           })()}
                         </TableCell>
@@ -564,15 +567,15 @@ export default function CategorizationRules() {
               {deleteTarget?.type === 'bulk'
                 ? t('learnedRules.bulkDeleteConfirmTitle')
                 : activeTab === 'learned'
-                ? t('learnedRules.deleteConfirmTitle')
-                : t('customRules.deleteConfirmTitle')}
+                  ? t('learnedRules.deleteConfirmTitle')
+                  : t('customRules.deleteConfirmTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget?.type === 'bulk'
                 ? t('learnedRules.bulkDeleteConfirmDescription', { count: selectedIds.size })
                 : activeTab === 'learned'
-                ? t('learnedRules.deleteConfirmDescription')
-                : t('customRules.deleteConfirmDescription')}
+                  ? t('learnedRules.deleteConfirmDescription')
+                  : t('customRules.deleteConfirmDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

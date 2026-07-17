@@ -14,14 +14,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { useTranslation } from "react-i18next";
-import { useLocation } from "wouter";
-import { priceApi, authApi } from "@/lib/tauri-api";
+import { useTranslation } from 'react-i18next';
+import { useLocation } from 'wouter';
+import { priceApi, authApi } from '@/lib/tauri-api';
 
 export function CoinGeckoApiKeyModal() {
-    const { t } = useTranslation("crypto");
-    const [, setLocation] = useLocation();
-    const [open, setOpen] = useState(false);
+  const { t } = useTranslation('crypto');
+  const [, setLocation] = useLocation();
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const checkShouldShow = async () => {

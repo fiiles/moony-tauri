@@ -1,32 +1,32 @@
-import { useQuery } from "@tanstack/react-query";
-import { Instrument, Purchase, SavingsAccount, Bond } from "@shared/schema";
+import { useQuery } from '@tanstack/react-query';
+import { Instrument, Purchase, SavingsAccount, Bond } from '@shared/schema';
 
 export function useInstruments() {
-    return useQuery<Instrument[]>({
-        queryKey: ["/api/instruments"],
-    });
+  return useQuery<Instrument[]>({
+    queryKey: ['/api/instruments'],
+  });
 }
 
 export function usePurchases() {
-    return useQuery<Purchase[]>({
-        queryKey: ["/api/purchases"],
-    });
+  return useQuery<Purchase[]>({
+    queryKey: ['/api/purchases'],
+  });
 }
 
 export function useSavingsAccounts() {
-    return useQuery<SavingsAccount[]>({
-        queryKey: ["/api/savings-accounts"],
-    });
+  return useQuery<SavingsAccount[]>({
+    queryKey: ['/api/savings-accounts'],
+  });
 }
 
 export function useBonds() {
-    return useQuery<Bond[]>({
-        queryKey: ["/api/bonds"],
-    });
+  return useQuery<Bond[]>({
+    queryKey: ['/api/bonds'],
+  });
 }
 
 export function useNetWorthHistory() {
-    return useQuery<{ date: string; value: number }[]>({
-        queryKey: ["/api/history/net-worth"],
-    });
+  return useQuery<{ date: string; value: number }[]>({
+    queryKey: ['/api/history/net-worth'],
+  });
 }

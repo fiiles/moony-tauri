@@ -1,7 +1,7 @@
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Shield, Plus } from "lucide-react";
-import { useCurrency } from "@/lib/currency";
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Shield, Plus } from 'lucide-react';
+import { useCurrency } from '@/lib/currency';
 
 interface InsurancePolicy {
   id: string;
@@ -28,8 +28,8 @@ export default function InsuranceCard({ policies, onAdd }: InsuranceCardProps) {
           <Shield className="w-5 h-5 text-chart-3" />
           <h3 className="text-lg font-semibold">Insurance</h3>
         </div>
-        <Button 
-          size="sm" 
+        <Button
+          size="sm"
           variant="outline"
           onClick={() => {
             onAdd?.();
@@ -39,7 +39,7 @@ export default function InsuranceCard({ policies, onAdd }: InsuranceCardProps) {
           <Plus className="w-4 h-4" />
         </Button>
       </div>
-      
+
       <div className="space-y-3">
         <div className="flex justify-between items-baseline pb-3 border-b">
           <div className="space-y-1">
@@ -48,13 +48,14 @@ export default function InsuranceCard({ policies, onAdd }: InsuranceCardProps) {
               {formatCurrencyShort(totalPremiums)}/yr premiums
             </p>
           </div>
-          <span className="text-2xl font-bold tabular-nums">
-            {formatCurrency(totalCoverage)}
-          </span>
+          <span className="text-2xl font-bold tabular-nums">{formatCurrency(totalCoverage)}</span>
         </div>
-        
+
         {policies.map((policy) => (
-          <div key={policy.id} className="flex justify-between items-start py-2 hover-elevate rounded-md px-2 -mx-2">
+          <div
+            key={policy.id}
+            className="flex justify-between items-start py-2 hover-elevate rounded-md px-2 -mx-2"
+          >
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <p className="font-medium text-sm">{policy.policyType}</p>

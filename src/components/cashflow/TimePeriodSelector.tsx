@@ -1,7 +1,7 @@
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 
 const periods = ['30D', '90D', 'YTD', '1Y', '5Y', 'All'] as const;
-export type Period = typeof periods[number];
+export type Period = (typeof periods)[number];
 
 interface TimePeriodSelectorProps {
   value: Period;
@@ -16,10 +16,9 @@ export default function TimePeriodSelector({ value, onChange }: TimePeriodSelect
           key={period}
           variant="ghost"
           size="sm"
-          className={`h-8 px-3 ${value === period
-              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-              : ''
-            }`}
+          className={`h-8 px-3 ${
+            value === period ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''
+          }`}
           onClick={() => onChange(period)}
           data-testid={`button-period-${period.toLowerCase()}`}
         >

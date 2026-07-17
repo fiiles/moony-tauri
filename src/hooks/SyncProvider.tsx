@@ -6,7 +6,9 @@ import { SyncContext } from './sync-context';
 export function SyncProvider({ children }: { children: ReactNode }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
-  const [lastResult, setLastResult] = useState<Awaited<ReturnType<typeof portfolioApi.startBackfill>> | null>(null);
+  const [lastResult, setLastResult] = useState<Awaited<
+    ReturnType<typeof portfolioApi.startBackfill>
+  > | null>(null);
   const isSyncingRef = useRef(false);
   const hasRun = useRef(false);
   const queryClient = useQueryClient();
@@ -97,7 +99,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   return (
-    <SyncContext.Provider value={{ isSyncing, progress, lastResult, startBackfill, recordTodaySnapshot }}>
+    <SyncContext.Provider
+      value={{ isSyncing, progress, lastResult, startBackfill, recordTodaySnapshot }}
+    >
       {children}
     </SyncContext.Provider>
   );

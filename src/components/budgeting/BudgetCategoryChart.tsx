@@ -1,12 +1,19 @@
-import { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, ArrowDownLeft, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import { useCurrency } from "@/lib/currency";
-import { isCzechIBAN, ibanToBBAN, formatAccountNumber } from "@/utils/iban-utils";
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ArrowUpRight, ArrowDownLeft, ArrowUpDown, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useCurrency } from '@/lib/currency';
+import { isCzechIBAN, ibanToBBAN, formatAccountNumber } from '@/utils/iban-utils';
 import {
   BarChart,
   Bar,
@@ -16,12 +23,12 @@ import {
   ResponsiveContainer,
   Cell,
   CartesianGrid,
-} from "recharts";
-import type { CategorySpendingSummary } from "@/lib/tauri-api";
-import { budgetingApi } from "@/lib/tauri-api";
-import { useQuery } from "@tanstack/react-query";
+} from 'recharts';
+import type { CategorySpendingSummary } from '@/lib/tauri-api';
+import { budgetingApi } from '@/lib/tauri-api';
+import { useQuery } from '@tanstack/react-query';
 
-type Timeframe = "monthly" | "quarterly" | "yearly";
+type Timeframe = 'monthly' | 'quarterly' | 'yearly';
 
 interface BudgetCategoryChartProps {
   categories: CategorySpendingSummary[];
@@ -35,32 +42,36 @@ interface BudgetCategoryChartProps {
 
 // Category colors using theme tokens
 const CATEGORY_COLORS: Record<string, string> = {
-  'cat_investments': 'hsl(var(--chart-1))',
-  'cat_taxes': 'hsl(var(--destructive))',
-  'cat_income': 'hsl(var(--positive))',
-  'cat_savings': 'hsl(var(--chart-7))',
-  'cat_loan_payments': 'hsl(var(--chart-3))',
-  'cat_groceries': 'hsl(var(--chart-6))',
-  'cat_other': 'hsl(var(--chart-5))',
-  'cat_shopping': 'hsl(var(--chart-4))',
-  'cat_housing': 'hsl(var(--chart-2))',
-  'cat_dining': 'hsl(var(--chart-3))',
-  'cat_transport': 'hsl(var(--chart-8))',
-  'cat_utilities': 'hsl(var(--chart-6))',
-  'cat_entertainment': 'hsl(var(--chart-1))',
-  'cat_health': 'hsl(var(--destructive))',
-  'cat_travel': 'hsl(var(--chart-8))',
-  'cat_subscriptions': 'hsl(var(--muted-foreground))',
-  'cat_insurance': 'hsl(var(--muted-foreground))',
-  'uncategorized': 'hsl(var(--muted-foreground))',
+  cat_investments: 'hsl(var(--chart-1))',
+  cat_taxes: 'hsl(var(--destructive))',
+  cat_income: 'hsl(var(--positive))',
+  cat_savings: 'hsl(var(--chart-7))',
+  cat_loan_payments: 'hsl(var(--chart-3))',
+  cat_groceries: 'hsl(var(--chart-6))',
+  cat_other: 'hsl(var(--chart-5))',
+  cat_shopping: 'hsl(var(--chart-4))',
+  cat_housing: 'hsl(var(--chart-2))',
+  cat_dining: 'hsl(var(--chart-3))',
+  cat_transport: 'hsl(var(--chart-8))',
+  cat_utilities: 'hsl(var(--chart-6))',
+  cat_entertainment: 'hsl(var(--chart-1))',
+  cat_health: 'hsl(var(--destructive))',
+  cat_travel: 'hsl(var(--chart-8))',
+  cat_subscriptions: 'hsl(var(--muted-foreground))',
+  cat_insurance: 'hsl(var(--muted-foreground))',
+  uncategorized: 'hsl(var(--muted-foreground))',
 };
 
 const getCategoryColor = (categoryId: string, index: number): string => {
   const fallbackColors = [
-    'hsl(var(--chart-1))', 'hsl(var(--chart-4))',
-    'hsl(var(--chart-2))', 'hsl(var(--chart-6))',
-    'hsl(var(--chart-8))', 'hsl(var(--destructive))',
-    'hsl(var(--chart-3))', 'hsl(var(--chart-7))'
+    'hsl(var(--chart-1))',
+    'hsl(var(--chart-4))',
+    'hsl(var(--chart-2))',
+    'hsl(var(--chart-6))',
+    'hsl(var(--chart-8))',
+    'hsl(var(--destructive))',
+    'hsl(var(--chart-3))',
+    'hsl(var(--chart-7))',
   ];
   return CATEGORY_COLORS[categoryId] || fallbackColors[index % fallbackColors.length];
 };
@@ -79,7 +90,7 @@ export function BudgetCategoryChart({
   isLoading = false,
 }: BudgetCategoryChartProps) {
   // Budget multiplier: budgets are stored as monthly, scale for quarterly/yearly
-  const budgetMultiplier = timeframe === "yearly" ? 12 : timeframe === "quarterly" ? 3 : 1;
+  const budgetMultiplier = timeframe === 'yearly' ? 12 : timeframe === 'quarterly' ? 3 : 1;
   const { t, i18n } = useTranslation('budgeting');
   const { formatCurrencyRaw, currencyCode, convert } = useCurrency();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -92,7 +103,7 @@ export function BudgetCategoryChart({
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortColumn(column);
       setSortDirection('desc');
@@ -103,26 +114,25 @@ export function BudgetCategoryChart({
     if (sortColumn !== column) {
       return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
     }
-    return sortDirection === 'asc' 
-      ? <ArrowUp className="h-3 w-3 ml-1" />
-      : <ArrowDown className="h-3 w-3 ml-1" />;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3 ml-1" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1" />
+    );
   };
 
   // Toggle category filter
   const handleToggleCategoryFilter = (categoryId: string) => {
-    setExcludedCategoryIds(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
+    setExcludedCategoryIds((prev) =>
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
     );
   };
 
   // All available categories for the filter (before any filtering)
   const allCategoryItems = useMemo(() => {
     const filtered = categories
-      .filter(cat => 
-        cat.categoryId !== 'cat_internal_transfers' && 
-        cat.categoryId !== 'cat_income'
+      .filter(
+        (cat) => cat.categoryId !== 'cat_internal_transfers' && cat.categoryId !== 'cat_income'
       )
       .map((cat, index) => ({
         name: t(`categories.${cat.categoryId}`, { defaultValue: cat.categoryName }),
@@ -146,19 +156,22 @@ export function BudgetCategoryChart({
   // Filter out income/transfers, apply exclusion filter, and add uncategorized
   const chartData = useMemo(() => {
     const filtered = categories
-      .filter(cat => 
-        cat.categoryId !== 'cat_internal_transfers' && 
-        cat.categoryId !== 'cat_income' &&
-        !excludedCategoryIds.includes(cat.categoryId)
+      .filter(
+        (cat) =>
+          cat.categoryId !== 'cat_internal_transfers' &&
+          cat.categoryId !== 'cat_income' &&
+          !excludedCategoryIds.includes(cat.categoryId)
       )
       .map((cat, index) => {
         const amountCzk = Math.abs(parseFloat(cat.totalAmount) || 0);
-        const budgetCzk = cat.budgetGoal ? (parseFloat(cat.budgetGoal.amount) || 0) * budgetMultiplier : 0;
-        
+        const budgetCzk = cat.budgetGoal
+          ? (parseFloat(cat.budgetGoal.amount) || 0) * budgetMultiplier
+          : 0;
+
         return {
           name: t(`categories.${cat.categoryId}`, { defaultValue: cat.categoryName }),
-          amount: convert(amountCzk, "CZK", currencyCode),
-          budget: convert(budgetCzk, "CZK", currencyCode),
+          amount: convert(amountCzk, 'CZK', currencyCode),
+          budget: convert(budgetCzk, 'CZK', currencyCode),
           color: getCategoryColor(cat.categoryId, index),
           hasBudget: !!cat.budgetGoal,
           categoryId: cat.categoryId,
@@ -170,7 +183,7 @@ export function BudgetCategoryChart({
       const amountCzk = Math.abs(uncategorizedAmount);
       filtered.push({
         name: t('uncategorized'),
-        amount: convert(amountCzk, "CZK", currencyCode),
+        amount: convert(amountCzk, 'CZK', currencyCode),
         budget: 0,
         color: CATEGORY_COLORS['uncategorized'],
         hasBudget: false,
@@ -180,7 +193,16 @@ export function BudgetCategoryChart({
     }
 
     return filtered.sort((a, b) => b.amount - a.amount).slice(0, 12);
-  }, [categories, uncategorizedAmount, uncategorizedCount, excludedCategoryIds, budgetMultiplier, t, currencyCode, convert]);
+  }, [
+    categories,
+    uncategorizedAmount,
+    uncategorizedCount,
+    excludedCategoryIds,
+    budgetMultiplier,
+    t,
+    currencyCode,
+    convert,
+  ]);
 
   // Fetch transactions for selected category
   const { data: transactions = [], isLoading: txLoading } = useQuery({
@@ -222,12 +244,26 @@ export function BudgetCategoryChart({
   const handleBarClick = (data: Record<string, unknown>) => {
     const categoryId = data?.categoryId as string | undefined;
     if (categoryId) {
-      setSelectedCategoryId(prev => prev === categoryId ? null : categoryId);
+      setSelectedCategoryId((prev) => (prev === categoryId ? null : categoryId));
     }
   };
 
   // Custom tooltip
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { name: string; amount: number; budget: number; hasBudget: boolean; transactionCount: number } }> }) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+  }: {
+    active?: boolean;
+    payload?: Array<{
+      payload: {
+        name: string;
+        amount: number;
+        budget: number;
+        hasBudget: boolean;
+        transactionCount: number;
+      };
+    }>;
+  }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
@@ -265,7 +301,7 @@ export function BudgetCategoryChart({
     });
   };
 
-  const selectedCategory = chartData.find(c => c.categoryId === selectedCategoryId);
+  const selectedCategory = chartData.find((c) => c.categoryId === selectedCategoryId);
 
   // Check if we have data to show (considering the filter might hide everything)
   const hasAnyData = allCategoryItems.length > 0;
@@ -288,7 +324,9 @@ export function BudgetCategoryChart({
   return (
     <div className="space-y-6">
       {/* Chart Card */}
-      <Card className={`border shadow-sm card-hover ${isLoading ? "opacity-50 animate-pulse" : ""}`}>
+      <Card
+        className={`border shadow-sm card-hover ${isLoading ? 'opacity-50 animate-pulse' : ''}`}
+      >
         <CardHeader className="pb-4">
           <div className="flex flex-col gap-1">
             <div className="flex items-start justify-between gap-4">
@@ -296,21 +334,24 @@ export function BudgetCategoryChart({
                 <CardTitle className="text-xl font-semibold">{t('expenses')}</CardTitle>
                 {excludedCategoryIds.length > 0 && (
                   <span className="text-sm text-muted-foreground">
-                    {t('total', 'Total')} <span className="font-semibold text-foreground">{formatCurrencyRaw(chartData.reduce((sum, cat) => sum + cat.amount, 0))}</span>
+                    {t('total', 'Total')}{' '}
+                    <span className="font-semibold text-foreground">
+                      {formatCurrencyRaw(chartData.reduce((sum, cat) => sum + cat.amount, 0))}
+                    </span>
                   </span>
                 )}
               </div>
               {/* Category Filters - inline with header, right-aligned, limited to 2/3 width */}
               {allCategoryItems.length > 0 && (
                 <div className="w-2/3 flex flex-wrap items-center justify-end gap-1.5">
-                  {allCategoryItems.map(cat => {
+                  {allCategoryItems.map((cat) => {
                     const isExcluded = excludedCategoryIds.includes(cat.categoryId);
                     return (
                       <Badge
                         key={cat.categoryId}
-                        variant={isExcluded ? "outline" : "default"}
+                        variant={isExcluded ? 'outline' : 'default'}
                         className={`cursor-pointer transition-all h-6 px-2 text-xs ${
-                          isExcluded ? "opacity-50 bg-muted" : ""
+                          isExcluded ? 'opacity-50 bg-muted' : ''
                         }`}
                         style={{
                           backgroundColor: isExcluded ? undefined : cat.color,
@@ -350,8 +391,8 @@ export function BudgetCategoryChart({
                 barCategoryGap="20%" // Slightly increased gap for better look with overlaid bars
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                <XAxis 
-                  dataKey="name" 
+                <XAxis
+                  dataKey="name"
                   xAxisId="0"
                   tick={{ fontSize: 14, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={{ stroke: 'hsl(var(--border))' }}
@@ -362,18 +403,13 @@ export function BudgetCategoryChart({
                   interval={0}
                 />
                 {/* Secondary hidden axis to allow layering bars on top of each other */}
-                <XAxis 
-                  dataKey="name" 
-                  xAxisId="1"
-                  hide
-                  interval={0}
-                />
-                <YAxis 
+                <XAxis dataKey="name" xAxisId="1" hide interval={0} />
+                <YAxis
                   tickFormatter={(value) => {
-                    if (value === 0) return "0";
+                    if (value === 0) return '0';
                     return new Intl.NumberFormat(i18n.language, {
-                      notation: "compact",
-                      compactDisplay: "short",
+                      notation: 'compact',
+                      compactDisplay: 'short',
                       maximumFractionDigits: 1,
                     }).format(value);
                   }}
@@ -382,11 +418,11 @@ export function BudgetCategoryChart({
                   axisLine={{ stroke: 'hsl(var(--border))' }}
                   width={70}
                 />
-                <Tooltip 
-                  content={<CustomTooltip />} 
+                <Tooltip
+                  content={<CustomTooltip />}
                   cursor={{ fill: 'hsl(var(--muted-foreground) / 0.2)' }}
                 />
-                
+
                 {/* Actual spending bars */}
                 <Bar
                   dataKey="amount"
@@ -401,7 +437,9 @@ export function BudgetCategoryChart({
                     <Cell
                       key={`cell-${index}`}
                       fill={entry.color}
-                      stroke={selectedCategoryId === entry.categoryId ? "hsl(var(--primary))" : undefined}
+                      stroke={
+                        selectedCategoryId === entry.categoryId ? 'hsl(var(--primary))' : undefined
+                      }
                       strokeWidth={selectedCategoryId === entry.categoryId ? 3 : 0}
                     />
                   ))}
@@ -412,30 +450,35 @@ export function BudgetCategoryChart({
                   dataKey="budget"
                   xAxisId="1"
                   shape={(props: unknown) => {
-                    const { x, y, width, payload } = props as { x: number; y: number; width: number; payload: { budget: number } };
+                    const { x, y, width, payload } = props as {
+                      x: number;
+                      y: number;
+                      width: number;
+                      payload: { budget: number };
+                    };
                     // Only draw line if there is a budget
                     if (!width || payload?.budget === 0) return <g />;
-                    
+
                     // Calculate the full width of the category slot
                     // User requested 1.35x width
                     const fullWidth = width * 1.35;
                     const offset = (fullWidth - width) / 2;
-                    
+
                     return (
-                       <g>
+                      <g>
                         {/* The dashed line */}
-                        <line 
-                          x1={x - offset} 
-                          y1={y} 
-                          x2={x + width + offset} 
-                          y2={y} 
-                          stroke="hsl(var(--foreground))" 
-                          strokeWidth={2} 
+                        <line
+                          x1={x - offset}
+                          y1={y}
+                          x2={x + width + offset}
+                          y2={y}
+                          stroke="hsl(var(--foreground))"
+                          strokeWidth={2}
                           strokeDasharray="2 4"
                           strokeLinecap="round"
                           className=""
                         />
-                       </g>
+                      </g>
                     );
                   }}
                   isAnimationActive={false} // Disable animation for the line to avoid weird transitions
@@ -443,7 +486,7 @@ export function BudgetCategoryChart({
               </BarChart>
             </ResponsiveContainer>
           </div>
-          
+
           {/* Legend */}
           <div className="flex items-center justify-center gap-8 -mt-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
@@ -464,17 +507,13 @@ export function BudgetCategoryChart({
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <div 
-                  className="w-3 h-3 rounded-full" 
+                <div
+                  className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: selectedCategory?.color || '#9ca3af' }}
                 />
                 {selectedCategory?.name || t('uncategorized')}
               </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setSelectedCategoryId(null)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setSelectedCategoryId(null)}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -486,100 +525,103 @@ export function BudgetCategoryChart({
               </div>
             ) : transactions.length > 0 ? (
               <div className="rounded-lg border">
-              <Table>
-                <TableHeader className="[&_th]:bg-muted/50">
-                  <TableRow>
-                    <TableHead 
-                      className="w-[90px] cursor-pointer select-none hover:bg-muted/50"
-                      onClick={() => handleSort('date')}
-                    >
-                      <span className="flex items-center">
-                        {t('date')}
-                        <SortIcon column="date" />
-                      </span>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none hover:bg-muted/50"
-                      onClick={() => handleSort('description')}
-                    >
-                      <span className="flex items-center">
-                        {t('description')}
-                        <SortIcon column="description" />
-                      </span>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none hover:bg-muted/50"
-                      onClick={() => handleSort('payee')}
-                    >
-                      <span className="flex items-center">
-                        {t('payee', 'Payee')}
-                        <SortIcon column="payee" />
-                      </span>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none hover:bg-muted/50"
-                      onClick={() => handleSort('account')}
-                    >
-                      <span className="flex items-center">
-                        {t('account')}
-                        <SortIcon column="account" />
-                      </span>
-                    </TableHead>
-                    <TableHead 
-                      className="text-right w-[120px] cursor-pointer select-none hover:bg-muted/50"
-                      onClick={() => handleSort('amount')}
-                    >
-                      <span className="flex items-center justify-end">
-                        {t('amount')}
-                        <SortIcon column="amount" />
-                      </span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedTransactions.map((tx) => {
-                    const isCredit = tx.txType?.toLowerCase() === 'credit';
-                    const amountNum = parseFloat(tx.amount);
-                    return (
-                      <TableRow key={tx.id}>
-                        <TableCell>{formatDate(tx.bookingDate)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-start gap-2">
-                            {isCredit ? (
-                              <ArrowDownLeft className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                            ) : (
-                              <ArrowUpRight className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-                            )}
-                            <span className="break-words whitespace-normal">
-                              {tx.description || '-'}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="break-words whitespace-normal">
-                              {tx.counterpartyName || '-'}
+                <Table>
+                  <TableHeader className="[&_th]:bg-muted/50">
+                    <TableRow>
+                      <TableHead
+                        className="w-[90px] cursor-pointer select-none hover:bg-muted/50"
+                        onClick={() => handleSort('date')}
+                      >
+                        <span className="flex items-center">
+                          {t('date')}
+                          <SortIcon column="date" />
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none hover:bg-muted/50"
+                        onClick={() => handleSort('description')}
+                      >
+                        <span className="flex items-center">
+                          {t('description')}
+                          <SortIcon column="description" />
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none hover:bg-muted/50"
+                        onClick={() => handleSort('payee')}
+                      >
+                        <span className="flex items-center">
+                          {t('payee', 'Payee')}
+                          <SortIcon column="payee" />
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        className="cursor-pointer select-none hover:bg-muted/50"
+                        onClick={() => handleSort('account')}
+                      >
+                        <span className="flex items-center">
+                          {t('account')}
+                          <SortIcon column="account" />
+                        </span>
+                      </TableHead>
+                      <TableHead
+                        className="text-right w-[120px] cursor-pointer select-none hover:bg-muted/50"
+                        onClick={() => handleSort('amount')}
+                      >
+                        <span className="flex items-center justify-end">
+                          {t('amount')}
+                          <SortIcon column="amount" />
+                        </span>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedTransactions.map((tx) => {
+                      const isCredit = tx.txType?.toLowerCase() === 'credit';
+                      const amountNum = parseFloat(tx.amount);
+                      return (
+                        <TableRow key={tx.id}>
+                          <TableCell>{formatDate(tx.bookingDate)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-start gap-2">
+                              {isCredit ? (
+                                <ArrowDownLeft className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                              ) : (
+                                <ArrowUpRight className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                              )}
+                              <span className="break-words whitespace-normal">
+                                {tx.description || '-'}
+                              </span>
                             </div>
-                            {tx.counterpartyIban && (
-                              <div className="text-xs text-muted-foreground">
-                                {isCzechIBAN(tx.counterpartyIban) 
-                                  ? ibanToBBAN(tx.counterpartyIban) 
-                                  : formatAccountNumber(tx.counterpartyIban)}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="break-words whitespace-normal">
+                                {tx.counterpartyName || '-'}
                               </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {tx.bankAccountName}
-                        </TableCell>
-                        <TableCell className={`text-right font-mono ${isCredit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {isCredit ? '+' : '-'}{Math.abs(amountNum).toLocaleString()} {tx.currency || 'CZK'}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                              {tx.counterpartyIban && (
+                                <div className="text-xs text-muted-foreground">
+                                  {isCzechIBAN(tx.counterpartyIban)
+                                    ? ibanToBBAN(tx.counterpartyIban)
+                                    : formatAccountNumber(tx.counterpartyIban)}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {tx.bankAccountName}
+                          </TableCell>
+                          <TableCell
+                            className={`text-right font-mono ${isCredit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}
+                          >
+                            {isCredit ? '+' : '-'}
+                            {Math.abs(amountNum).toLocaleString()} {tx.currency || 'CZK'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">{t('noTransactions')}</p>

@@ -1,8 +1,8 @@
-import { SummaryCard } from "@/components/common/SummaryCard";
-import { useCurrency } from "@/lib/currency";
-import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
+import { SummaryCard } from '@/components/common/SummaryCard';
+import { useCurrency } from '@/lib/currency';
+import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
 
 interface BudgetingSummaryProps {
   totalIncome: number;
@@ -24,10 +24,12 @@ export function BudgetingSummary({
   const { t } = useTranslation('budgeting');
 
   return (
-    <div className={cn(
-      "grid gap-4 md:grid-cols-3 transition-opacity duration-300",
-      isLoading && "opacity-50 animate-pulse"
-    )}>
+    <div
+      className={cn(
+        'grid gap-4 md:grid-cols-3 transition-opacity duration-300',
+        isLoading && 'opacity-50 animate-pulse'
+      )}
+    >
       <SummaryCard
         title={t('totalIncome')}
         value={formatCurrency(totalIncome, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -37,17 +39,23 @@ export function BudgetingSummary({
 
       <SummaryCard
         title={t('totalExpenses')}
-        value={formatCurrency(totalExpenses, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        value={formatCurrency(totalExpenses, {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        })}
         icon={<TrendingDown className="h-4 w-4" />}
         valueClassName="text-negative"
       />
 
       <SummaryCard
         title={t('netBalance')}
-        value={formatCurrency(Math.abs(netBalance), { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        value={formatCurrency(Math.abs(netBalance), {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        })}
         icon={<Wallet className="h-4 w-4" />}
         subtitle={netBalance >= 0 ? t('surplus') : t('deficit')}
-        valueClassName={netBalance >= 0 ? "text-positive" : "text-negative"}
+        valueClassName={netBalance >= 0 ? 'text-positive' : 'text-negative'}
       />
     </div>
   );

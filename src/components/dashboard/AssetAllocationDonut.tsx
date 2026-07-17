@@ -1,7 +1,7 @@
-import { Card } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { useCurrency } from "@/lib/currency";
-import { useTranslation } from "react-i18next";
+import { Card } from '@/components/ui/card';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { useCurrency } from '@/lib/currency';
+import { useTranslation } from 'react-i18next';
 
 interface AllocationData {
   name: string;
@@ -16,7 +16,10 @@ interface AssetAllocationDonutProps {
   valueKey?: string;
 }
 
-export default function AssetAllocationDonut({ data, valueKey = 'value' }: AssetAllocationDonutProps) {
+export default function AssetAllocationDonut({
+  data,
+  valueKey = 'value',
+}: AssetAllocationDonutProps) {
   const { formatCurrency } = useCurrency();
   const { t } = useTranslation('dashboard');
 
@@ -38,7 +41,7 @@ export default function AssetAllocationDonut({ data, valueKey = 'value' }: Asset
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
-          <Tooltip formatter={(value) => formatCurrency(value as number ?? 0)} />
+          <Tooltip formatter={(value) => formatCurrency((value as number) ?? 0)} />
         </PieChart>
       </ResponsiveContainer>
 
@@ -46,10 +49,7 @@ export default function AssetAllocationDonut({ data, valueKey = 'value' }: Asset
         {data.map((item, index) => (
           <div key={index} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div
-                className="w-3 h-3 rounded-sm"
-                style={{ backgroundColor: item.color }}
-              />
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
               <span className="text-sm">{item.name}</span>
             </div>
             <span className="text-sm font-semibold">{Math.round(item.percentage)}%</span>
@@ -59,4 +59,3 @@ export default function AssetAllocationDonut({ data, valueKey = 'value' }: Asset
     </Card>
   );
 }
-

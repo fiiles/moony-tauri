@@ -1,247 +1,247 @@
-
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { toast } from "sonner";
-import type { CryptoHoldingData } from "@/components/crypto/CryptoTable";
-import { useCurrency } from "@/lib/currency";
-import { CurrencyCode } from "@shared/currencies";
-import { cryptoApi } from "@/lib/tauri-api";
-import { useTranslation } from "react-i18next";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
+import type { CryptoHoldingData } from '@/components/crypto/CryptoTable';
+import { useCurrency } from '@/lib/currency';
+import { CurrencyCode } from '@shared/currencies';
+import { cryptoApi } from '@/lib/tauri-api';
+import { useTranslation } from 'react-i18next';
 
 const manualPriceSchema = z.object({
-    price: z.string().min(1, "Price is required"),
-    currency: z.string(),
+  price: z.string().min(1, 'Price is required'),
+  currency: z.string(),
 });
 
 type FormData = z.infer<typeof manualPriceSchema>;
 
 interface UpdateCryptoPriceModalProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    investment: CryptoHoldingData | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  investment: CryptoHoldingData | null;
 }
 
 export function UpdateCryptoPriceModal({
-    open,
-    onOpenChange,
-    investment,
+  open,
+  onOpenChange,
+  investment,
 }: UpdateCryptoPriceModalProps) {
-    const { t } = useTranslation('crypto');
-    const { t: tc } = useTranslation('common');
-    const queryClient = useQueryClient();
-    const { currencyCode: userCurrency, convert } = useCurrency();
-    const form = useForm<FormData>({
-        resolver: zodResolver(manualPriceSchema),
-        defaultValues: {
-            price: "",
-            currency: "CZK",
-        },
-    });
+  const { t } = useTranslation('crypto');
+  const { t: tc } = useTranslation('common');
+  const queryClient = useQueryClient();
+  const { currencyCode: userCurrency, convert } = useCurrency();
+  const form = useForm<FormData>({
+    resolver: zodResolver(manualPriceSchema),
+    defaultValues: {
+      price: '',
+      currency: 'CZK',
+    },
+  });
 
-    // Reset form when investment changes
-    useEffect(() => {
-        if (investment && open) {
-            // Use originalPrice (in source currency) for prefill, not currentPrice (which is converted to CZK)
-            const priceToShow = Number(investment.originalPrice ?? investment.currentPrice);
-            form.reset({
-                price: priceToShow ? Math.round(priceToShow).toString() : "",
-                currency: investment.currency || "USD",
-            });
-        }
-    }, [investment, open, form]);
+  // Reset form when investment changes
+  useEffect(() => {
+    if (investment && open) {
+      // Use originalPrice (in source currency) for prefill, not currentPrice (which is converted to CZK)
+      const priceToShow = Number(investment.originalPrice ?? investment.currentPrice);
+      form.reset({
+        price: priceToShow ? Math.round(priceToShow).toString() : '',
+        currency: investment.currency || 'USD',
+      });
+    }
+  }, [investment, open, form]);
 
-    const mutation = useMutation({
-        mutationFn: async (data: FormData) => {
-            if (!investment) return;
-            // Use the crypto-specific API with symbol and optional coingeckoId
-            return cryptoApi.updatePrice(investment.ticker, data.price, data.currency, investment.coingeckoId);
-        },
+  const mutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      if (!investment) return;
+      // Use the crypto-specific API with symbol and optional coingeckoId
+      return cryptoApi.updatePrice(
+        investment.ticker,
+        data.price,
+        data.currency,
+        investment.coingeckoId
+      );
+    },
 
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["crypto"] });
-            queryClient.invalidateQueries({ queryKey: ["crypto-detail", investment?.id] });
-            queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
-            toast(tc('status.success'), { description: t('toast.updated') });
-            onOpenChange(false);
-        },
-        onError: (error) => {
-            toast.error(tc('status.error'), { description: error.message });
-        },
-    });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['crypto'] });
+      queryClient.invalidateQueries({ queryKey: ['crypto-detail', investment?.id] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+      toast(tc('status.success'), { description: t('toast.updated') });
+      onOpenChange(false);
+    },
+    onError: (error) => {
+      toast.error(tc('status.error'), { description: error.message });
+    },
+  });
 
-    const deleteMutation = useMutation({
-        mutationFn: async () => {
-            if (!investment) return;
-            return cryptoApi.deleteManualPrice(investment.ticker);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["crypto"] });
-            queryClient.invalidateQueries({ queryKey: ["crypto-detail", investment?.id] });
-            queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
-            toast(tc('status.success'), { description: t('toast.manualPriceDeleted') });
-            onOpenChange(false);
-        },
-        onError: (error: Error) => {
-            toast.error(tc('status.error'), { description: error.message });
-        },
-    });
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!investment) return;
+      return cryptoApi.deleteManualPrice(investment.ticker);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['crypto'] });
+      queryClient.invalidateQueries({ queryKey: ['crypto-detail', investment?.id] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+      toast(tc('status.success'), { description: t('toast.manualPriceDeleted') });
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast.error(tc('status.error'), { description: error.message });
+    },
+  });
 
-    const onSubmit = (data: FormData) => {
-        mutation.mutate(data);
-    };
+  const onSubmit = (data: FormData) => {
+    mutation.mutate(data);
+  };
 
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{t('modals.updatePrice.title')}</DialogTitle>
-                    <DialogDescription>
-                        Set a manual price override for this crypto holding.
-                    </DialogDescription>
-                </DialogHeader>
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('modals.updatePrice.title')}</DialogTitle>
+          <DialogDescription>
+            Set a manual price override for this crypto holding.
+          </DialogDescription>
+        </DialogHeader>
 
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="price"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{tc('labels.price')}</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="number"
-                                                step="1"
-                                                placeholder="0"
-                                                {...field}
-                                                onBlur={(e) => {
-                                                    const value = parseFloat(e.target.value);
-                                                    if (!isNaN(value)) {
-                                                        field.onChange(Math.round(value).toString());
-                                                    }
-                                                    field.onBlur();
-                                                }}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{tc('labels.price')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="1"
+                        placeholder="0"
+                        {...field}
+                        onBlur={(e) => {
+                          const value = parseFloat(e.target.value);
+                          if (!isNaN(value)) {
+                            field.onChange(Math.round(value).toString());
+                          }
+                          field.onBlur();
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                            <FormField
-                                control={form.control}
-                                name="currency"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>{tc('labels.currency')}</FormLabel>
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder={tc('labels.selectCurrency')} />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="CZK">CZK</SelectItem>
-                                                <SelectItem value="USD">USD</SelectItem>
-                                                <SelectItem value="EUR">EUR</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{tc('labels.currency')}</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={tc('labels.selectCurrency')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="CZK">CZK</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-                        <div className="rounded-lg bg-muted p-3 text-sm">
-                            <div className="flex justify-between items-center">
-                                <span className="text-muted-foreground">{tc('labels.estimatedTotal')}</span>
-                                <span className="font-medium">
-                                    {(() => {
-                                        const price = parseFloat(form.watch("price") || "0");
-                                        // Crypto quantity might be different type or property, checking...
-                                        // Based on previous file view: CryptoHoldingData interface likely has 'quantity' or 'balance' or similar. 
-                                        // Let's assume 'quantity' for now as it's standard, but valid to check. 
-                                        // Checking file content from previous step... investment prop is CryptoHoldingData
-                                        // Previous task used investment.quantity? No, I need to check CryptoHoldingData definition or usage.
-                                        // Ah, typically it's 'quantity' for standardized holdings.
-                                        // Wait, checking UpdateCryptoPriceModal.tsx content from step 183: 
-                                        // It receives `investment: CryptoHoldingData | null`.
-                                        // I should verify if CryptoHoldingData has `quantity`.
-                                        const quantity = investment?.quantity || 0;
-                                        const total = price * quantity;
-                                        const formCurrency = form.watch("currency") as CurrencyCode;
+            <div className="rounded-lg bg-muted p-3 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">{tc('labels.estimatedTotal')}</span>
+                <span className="font-medium">
+                  {(() => {
+                    const price = parseFloat(form.watch('price') || '0');
+                    // Crypto quantity might be different type or property, checking...
+                    // Based on previous file view: CryptoHoldingData interface likely has 'quantity' or 'balance' or similar.
+                    // Let's assume 'quantity' for now as it's standard, but valid to check.
+                    // Checking file content from previous step... investment prop is CryptoHoldingData
+                    // Previous task used investment.quantity? No, I need to check CryptoHoldingData definition or usage.
+                    // Ah, typically it's 'quantity' for standardized holdings.
+                    // Wait, checking UpdateCryptoPriceModal.tsx content from step 183:
+                    // It receives `investment: CryptoHoldingData | null`.
+                    // I should verify if CryptoHoldingData has `quantity`.
+                    const quantity = investment?.quantity || 0;
+                    const total = price * quantity;
+                    const formCurrency = form.watch('currency') as CurrencyCode;
 
-                                        const formattedTotal = total.toFixed(2);
+                    const formattedTotal = total.toFixed(2);
 
-                                        if (formCurrency !== userCurrency) {
-                                            const convertedTotal = convert(total, formCurrency, userCurrency);
-                                            return `${formattedTotal} ${formCurrency} / ${convertedTotal.toFixed(2)} ${userCurrency}`;
-                                        }
+                    if (formCurrency !== userCurrency) {
+                      const convertedTotal = convert(total, formCurrency, userCurrency);
+                      return `${formattedTotal} ${formCurrency} / ${convertedTotal.toFixed(2)} ${userCurrency}`;
+                    }
 
-                                        return `${formattedTotal} ${formCurrency}`;
-                                    })()}
-                                </span>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1 text-right">
-                                Formula: {form.watch("price") || "0"} × {investment?.quantity?.toFixed(8) || "0"} units
-                            </div>
-                        </div>
+                    return `${formattedTotal} ${formCurrency}`;
+                  })()}
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground mt-1 text-right">
+                Formula: {form.watch('price') || '0'} × {investment?.quantity?.toFixed(8) || '0'}{' '}
+                units
+              </div>
+            </div>
 
-                        <div className="flex gap-2">
-                            <Button
-                                type="submit"
-                                className="flex-1"
-                                disabled={mutation.isPending}
-                            >
-                                {mutation.isPending ? tc('status.updating') : t('actions.updatePrice')}
-                            </Button>
-                            {investment?.isManualPrice && (
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    onClick={() => deleteMutation.mutate()}
-                                    disabled={deleteMutation.isPending}
-                                >
-                                    {deleteMutation.isPending ? tc('status.deleting', { defaultValue: 'Deleting...' }) : tc('actions.delete', { defaultValue: 'Delete' })}
-                                </Button>
-                            )}
-                        </div>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
-    );
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1" disabled={mutation.isPending}>
+                {mutation.isPending ? tc('status.updating') : t('actions.updatePrice')}
+              </Button>
+              {investment?.isManualPrice && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => deleteMutation.mutate()}
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending
+                    ? tc('status.deleting', { defaultValue: 'Deleting...' })
+                    : tc('actions.delete', { defaultValue: 'Delete' })}
+                </Button>
+              )}
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
 }

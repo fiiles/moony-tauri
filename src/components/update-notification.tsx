@@ -14,14 +14,8 @@ import { useUpdater } from '@/hooks/use-updater';
 
 export function UpdateNotification() {
   const { t } = useTranslation();
-  const {
-    isDownloading,
-    updateAvailable,
-    progress,
-    error,
-    downloadAndInstall,
-    dismissUpdate,
-  } = useUpdater();
+  const { isDownloading, updateAvailable, progress, error, downloadAndInstall, dismissUpdate } =
+    useUpdater();
 
   if (!updateAvailable && !error) {
     return null;
@@ -45,13 +39,13 @@ export function UpdateNotification() {
             )}
           </DialogTitle>
           <DialogDescription>
-            {error ? (
-              error
-            ) : updateAvailable ? (
-              t('update.newVersion', 'A new version {{version}} is available.', {
-                version: updateAvailable.version,
-              })
-            ) : null}
+            {error
+              ? error
+              : updateAvailable
+                ? t('update.newVersion', 'A new version {{version}} is available.', {
+                    version: updateAvailable.version,
+                  })
+                : null}
           </DialogDescription>
         </DialogHeader>
 

@@ -1,6 +1,6 @@
-import { Card } from "@/components/ui/card";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { useCurrency } from "@/lib/currency";
+import { Card } from '@/components/ui/card';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { useCurrency } from '@/lib/currency';
 
 interface AssetData {
   name: string;
@@ -35,18 +35,13 @@ export default function AssetAllocationChart({ data }: AssetAllocationChartProps
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
-          <Tooltip 
-            formatter={(value) => formatCurrency(value as number ?? 0)}
-          />
+          <Tooltip formatter={(value) => formatCurrency((value as number) ?? 0)} />
         </PieChart>
       </ResponsiveContainer>
       <div className="mt-4 grid grid-cols-2 gap-2">
         {data.map((item, index) => (
           <div key={index} className="flex items-center gap-2">
-            <div 
-              className="w-3 h-3 rounded-sm" 
-              style={{ backgroundColor: item.color }}
-            />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
             <span className="text-sm text-muted-foreground">{item.name}</span>
           </div>
         ))}

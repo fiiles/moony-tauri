@@ -1,6 +1,14 @@
-import { Card } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { useCurrency } from "@/lib/currency";
+import { Card } from '@/components/ui/card';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import { useCurrency } from '@/lib/currency';
 
 interface TrendData {
   date: string;
@@ -20,28 +28,28 @@ export default function WealthTrendChart({ data }: WealthTrendChartProps) {
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis 
-            dataKey="date" 
+          <XAxis
+            dataKey="date"
             stroke="hsl(var(--muted-foreground))"
             tick={{ fill: 'hsl(var(--muted-foreground))' }}
           />
-          <YAxis 
+          <YAxis
             stroke="hsl(var(--muted-foreground))"
             tick={{ fill: 'hsl(var(--muted-foreground))' }}
             tickFormatter={(value) => formatCurrencyShort(value)}
           />
-          <Tooltip 
-            formatter={(value) => [formatCurrency(value as number ?? 0), 'Net Worth']}
+          <Tooltip
+            formatter={(value) => [formatCurrency((value as number) ?? 0), 'Net Worth']}
             contentStyle={{
               backgroundColor: 'hsl(var(--popover))',
               border: '1px solid hsl(var(--border))',
               borderRadius: '6px',
             }}
           />
-          <Line 
-            type="monotone" 
-            dataKey="value" 
-            stroke="hsl(var(--chart-1))" 
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="hsl(var(--chart-1))"
             strokeWidth={2}
             dot={{ fill: 'hsl(var(--chart-1))' }}
           />

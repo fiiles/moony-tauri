@@ -1,22 +1,27 @@
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Target, X, Settings2, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { budgetingApi, bankAccountsApi, type InsertBudgetGoal, type BudgetGoal } from "@/lib/tauri-api";
-import { BudgetingSummary } from "@/components/budgeting/BudgetingSummary";
-import { BudgetCategoryChart } from "@/components/budgeting/BudgetCategoryChart";
-import { toast } from "sonner";
-import { useCurrency } from "@/lib/currency";
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { ChevronLeft, ChevronRight, Target, X, Settings2, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  budgetingApi,
+  bankAccountsApi,
+  type InsertBudgetGoal,
+  type BudgetGoal,
+} from '@/lib/tauri-api';
+import { BudgetingSummary } from '@/components/budgeting/BudgetingSummary';
+import { BudgetCategoryChart } from '@/components/budgeting/BudgetCategoryChart';
+import { toast } from 'sonner';
+import { useCurrency } from '@/lib/currency';
 
-type Timeframe = "monthly" | "quarterly" | "yearly";
+type Timeframe = 'monthly' | 'quarterly' | 'yearly';
 
 /**
  * Budgeting Report Page
- * 
+ *
  * Visualizes spending across all accounts by category,
  * with expandable transaction details and budget goal tracking.
  * Monarch-inspired premium UX design.
@@ -28,10 +33,10 @@ export default function Budgeting() {
   const queryClient = useQueryClient();
 
   // State
-  const [timeframe, setTimeframe] = useState<Timeframe>("monthly");
+  const [timeframe, setTimeframe] = useState<Timeframe>('monthly');
   const [periodOffset, setPeriodOffset] = useState(-1); // Default to last month
   const [isManagementOpen, setIsManagementOpen] = useState(false);
-  
+
   // Track edited budget amounts (categoryId -> amount string)
   const [editedBudgets, setEditedBudgets] = useState<Record<string, string>>({});
 
@@ -41,22 +46,22 @@ export default function Budgeting() {
     let start: Date;
     let end: Date;
     let label: string;
-    
+
     // Get current language for locale-aware formatting
     const locale = i18n.language === 'cs' ? 'cs-CZ' : 'en-US';
 
-    if (timeframe === "monthly") {
+    if (timeframe === 'monthly') {
       start = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
       end = new Date(now.getFullYear(), now.getMonth() + periodOffset + 1, 0);
       const rawLabel = start.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
       // Capitalize first letter (important for Czech)
       label = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1);
-    } else if (timeframe === "quarterly") {
+    } else if (timeframe === 'quarterly') {
       const currentQuarter = Math.floor(now.getMonth() / 3);
       const targetQuarter = currentQuarter + periodOffset;
       const targetYear = now.getFullYear() + Math.floor(targetQuarter / 4);
       const normalizedQuarter = ((targetQuarter % 4) + 4) % 4;
-      
+
       start = new Date(targetYear, normalizedQuarter * 3, 1);
       end = new Date(targetYear, (normalizedQuarter + 1) * 3, 0);
       label = `Q${normalizedQuarter + 1} ${targetYear}`;
@@ -125,12 +130,12 @@ export default function Budgeting() {
 
     upsertMutation.mutate({
       categoryId,
-      timeframe: "monthly", // Always save as monthly
+      timeframe: 'monthly', // Always save as monthly
       amount,
     });
 
     // Clear edited state
-    setEditedBudgets(prev => {
+    setEditedBudgets((prev) => {
       const next = { ...prev };
       delete next[categoryId];
       return next;
@@ -144,32 +149,26 @@ export default function Budgeting() {
 
   // Get goal for a category (budgets are always stored as monthly)
   const getGoalForCategory = (categoryId: string): BudgetGoal | undefined => {
-    return budgetGoals.find(g => g.categoryId === categoryId && g.timeframe === "monthly");
+    return budgetGoals.find((g) => g.categoryId === categoryId && g.timeframe === 'monthly');
   };
 
   // Calculate stats (exclude internal transfers and income from expenses)
   const filteredExpenses = useMemo(() => {
-    return (report?.expenseCategories || [])
-      .filter(c => 
-        c.categoryId !== 'cat_internal_transfers' && 
-        c.categoryId !== 'cat_income'
-      );
+    return (report?.expenseCategories || []).filter(
+      (c) => c.categoryId !== 'cat_internal_transfers' && c.categoryId !== 'cat_income'
+    );
   }, [report?.expenseCategories]);
 
   // Categories available for budget setting (expense categories only)
   const budgetableCategories = useMemo(() => {
-    return categories.filter(c => 
-      c.id !== 'cat_income' && 
-      c.id !== 'cat_internal_transfers'
-    );
+    return categories.filter((c) => c.id !== 'cat_income' && c.id !== 'cat_internal_transfers');
   }, [categories]);
 
-  const totalIncome = parseFloat(report?.totalIncome || "0");
-  const totalExpenses = filteredExpenses.reduce(
-    (sum, cat) => sum + Math.abs(parseFloat(cat.totalAmount) || 0), 
-    0
-  ) + Math.abs(parseFloat(report?.uncategorizedExpenses || "0"));
-  
+  const totalIncome = parseFloat(report?.totalIncome || '0');
+  const totalExpenses =
+    filteredExpenses.reduce((sum, cat) => sum + Math.abs(parseFloat(cat.totalAmount) || 0), 0) +
+    Math.abs(parseFloat(report?.uncategorizedExpenses || '0'));
+
   const netBalance = totalIncome - totalExpenses;
 
   return (
@@ -188,18 +187,16 @@ export default function Budgeting() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setPeriodOffset(prev => prev - 1)}
+              onClick={() => setPeriodOffset((prev) => prev - 1)}
               className="h-8 w-8"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm font-semibold min-w-[100px] text-center">
-              {periodLabel}
-            </span>
+            <span className="text-sm font-semibold min-w-[100px] text-center">{periodLabel}</span>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setPeriodOffset(prev => prev + 1)}
+              onClick={() => setPeriodOffset((prev) => prev + 1)}
               disabled={periodOffset >= 0}
               className="h-8 w-8"
             >
@@ -210,37 +207,46 @@ export default function Budgeting() {
           {/* Timeframe buttons - styled like tabs */}
           <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
             <Button
-              variant={timeframe === "monthly" ? "default" : "ghost"}
+              variant={timeframe === 'monthly' ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => { setTimeframe("monthly"); setPeriodOffset(0); }}
+              onClick={() => {
+                setTimeframe('monthly');
+                setPeriodOffset(0);
+              }}
               className={`h-8 px-4 text-sm font-medium transition-all ${
-                timeframe === "monthly" 
-                  ? "bg-primary text-primary-foreground shadow-sm" 
-                  : "hover:bg-muted"
+                timeframe === 'monthly'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'hover:bg-muted'
               }`}
             >
               {t('monthly')}
             </Button>
             <Button
-              variant={timeframe === "quarterly" ? "default" : "ghost"}
+              variant={timeframe === 'quarterly' ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => { setTimeframe("quarterly"); setPeriodOffset(0); }}
+              onClick={() => {
+                setTimeframe('quarterly');
+                setPeriodOffset(0);
+              }}
               className={`h-8 px-4 text-sm font-medium transition-all ${
-                timeframe === "quarterly" 
-                  ? "bg-primary text-primary-foreground shadow-sm" 
-                  : "hover:bg-muted"
+                timeframe === 'quarterly'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'hover:bg-muted'
               }`}
             >
               {t('quarterly')}
             </Button>
             <Button
-              variant={timeframe === "yearly" ? "default" : "ghost"}
+              variant={timeframe === 'yearly' ? 'default' : 'ghost'}
               size="sm"
-              onClick={() => { setTimeframe("yearly"); setPeriodOffset(0); }}
+              onClick={() => {
+                setTimeframe('yearly');
+                setPeriodOffset(0);
+              }}
               className={`h-8 px-4 text-sm font-medium transition-all ${
-                timeframe === "yearly" 
-                  ? "bg-primary text-primary-foreground shadow-sm" 
-                  : "hover:bg-muted"
+                timeframe === 'yearly'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'hover:bg-muted'
               }`}
             >
               {t('yearly')}
@@ -251,7 +257,7 @@ export default function Budgeting() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsManagementOpen(prev => !prev)}
+            onClick={() => setIsManagementOpen((prev) => !prev)}
             className="h-8 px-3 gap-1.5"
           >
             <Settings2 className="h-4 w-4" />
@@ -284,23 +290,23 @@ export default function Budgeting() {
 
               {/* Category budget rows */}
               <div className="grid gap-3">
-                {budgetableCategories.map(category => {
+                {budgetableCategories.map((category) => {
                   const goal = getGoalForCategory(category.id);
-                  const spent = filteredExpenses.find(e => e.categoryId === category.id);
+                  const spent = filteredExpenses.find((e) => e.categoryId === category.id);
                   const spentAmount = spent ? Math.abs(parseFloat(spent.totalAmount) || 0) : 0;
                   const hasEditedValue = category.id in editedBudgets;
-                  const displayAmount = hasEditedValue 
-                    ? editedBudgets[category.id] 
-                    : (goal?.amount || "");
+                  const displayAmount = hasEditedValue
+                    ? editedBudgets[category.id]
+                    : goal?.amount || '';
 
                   return (
-                    <div 
-                      key={category.id} 
+                    <div
+                      key={category.id}
                       className="flex items-center gap-4 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
                     >
                       {/* Category info */}
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div 
+                        <div
                           className="w-3 h-3 rounded-full shrink-0"
                           style={{ backgroundColor: category.color || '#9E9E9E' }}
                         />
@@ -324,15 +330,17 @@ export default function Budgeting() {
                           step="100"
                           placeholder={t('noBudget')}
                           value={displayAmount}
-                          onChange={(e) => setEditedBudgets(prev => ({
-                            ...prev,
-                            [category.id]: e.target.value
-                          }))}
+                          onChange={(e) =>
+                            setEditedBudgets((prev) => ({
+                              ...prev,
+                              [category.id]: e.target.value,
+                            }))
+                          }
                           className="w-32 h-8 text-right"
                         />
-                        
+
                         {/* Save button - shows when value changed */}
-                        {hasEditedValue && editedBudgets[category.id] !== (goal?.amount || "") && (
+                        {hasEditedValue && editedBudgets[category.id] !== (goal?.amount || '') && (
                           <Button
                             size="sm"
                             className="h-8"
@@ -347,9 +355,8 @@ export default function Budgeting() {
                         {goal && !hasEditedValue && (
                           <Badge variant="secondary" className="shrink-0">
                             {parseFloat(goal.amount) > 0
-                              ? `${Math.round(spentAmount / parseFloat(goal.amount) * 100)}%`
-                              : t('active')
-                            }
+                              ? `${Math.round((spentAmount / parseFloat(goal.amount)) * 100)}%`
+                              : t('active')}
                           </Badge>
                         )}
 
@@ -386,7 +393,7 @@ export default function Budgeting() {
       {/* Expenses Chart */}
       <BudgetCategoryChart
         categories={filteredExpenses}
-        uncategorizedAmount={parseFloat(report?.uncategorizedExpenses || "0")}
+        uncategorizedAmount={parseFloat(report?.uncategorizedExpenses || '0')}
         uncategorizedCount={report?.uncategorizedTransactionCount || 0}
         startDate={startDate}
         endDate={endDate}

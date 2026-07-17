@@ -1,49 +1,90 @@
-import { useState } from "react";
-import { MenuPreferences } from "@shared/schema";
-import { CurrencyCode } from "@shared/currencies";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCurrency } from "@/lib/currency";
-import { currencies } from "@/lib/currency";
-import { useAuth } from "@/hooks/use-auth";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { authApi, priceApi } from "@/lib/tauri-api";
-import { queryClient } from "@/lib/queryClient";
-import { toast } from "sonner";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Eye, EyeOff, ExternalLink, Copy, Check, ShieldCheck, AlertTriangle, Activity, User, Lock, Key, Coins, Languages, Menu, LayoutDashboard, Trash2, Bot } from "lucide-react";
-import { getConsent, setConsent } from "@/lib/analytics";
-import { useTranslation, Trans } from "react-i18next";
-import { useLanguage } from "@/i18n/I18nProvider";
-import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type SupportedLanguage } from "@/i18n/index";
-import { translateApiError } from "@/lib/translate-api-error";
-
+import { useState } from 'react';
+import { MenuPreferences } from '@shared/schema';
+import { CurrencyCode } from '@shared/currencies';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCurrency } from '@/lib/currency';
+import { currencies } from '@/lib/currency';
+import { useAuth } from '@/hooks/use-auth';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { authApi, priceApi } from '@/lib/tauri-api';
+import { queryClient } from '@/lib/queryClient';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Copy,
+  Check,
+  ShieldCheck,
+  AlertTriangle,
+  Activity,
+  User,
+  Lock,
+  Key,
+  Coins,
+  Languages,
+  Menu,
+  LayoutDashboard,
+  Trash2,
+  Bot,
+} from 'lucide-react';
+import { getConsent, setConsent } from '@/lib/analytics';
+import { useTranslation, Trans } from 'react-i18next';
+import { useLanguage } from '@/i18n/I18nProvider';
+import { SUPPORTED_LANGUAGES, LANGUAGE_NAMES, type SupportedLanguage } from '@/i18n/index';
+import { translateApiError } from '@/lib/translate-api-error';
 
 const profileSchema = z.object({
-  name: z.string().min(1, "validation.nameRequired"),
-  surname: z.string().min(1, "validation.surnameRequired"),
-  email: z.string().email("validation.invalidEmail"),
+  name: z.string().min(1, 'validation.nameRequired'),
+  surname: z.string().min(1, 'validation.surnameRequired'),
+  email: z.string().email('validation.invalidEmail'),
 });
 
 type ProfileData = z.infer<typeof profileSchema>;
 
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, "validation.currentPasswordRequired"),
-  newPassword: z.string().min(6, "validation.passwordMinLength6"),
-  confirmPassword: z.string().min(6, "validation.passwordMinLength6"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "validation.passwordMismatch",
-  path: ["confirmPassword"],
-});
-
+const passwordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'validation.currentPasswordRequired'),
+    newPassword: z.string().min(6, 'validation.passwordMinLength6'),
+    confirmPassword: z.string().min(6, 'validation.passwordMinLength6'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'validation.passwordMismatch',
+    path: ['confirmPassword'],
+  });
 
 type PasswordData = z.infer<typeof passwordSchema>;
 
@@ -64,9 +105,9 @@ function ChangePasswordForm() {
   const form = useForm<PasswordData>({
     resolver: zodResolver(passwordSchema),
     defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
     },
   });
 
@@ -94,7 +135,7 @@ function ChangePasswordForm() {
   // Phase 2: Confirm - actually change the password
   const confirmMutation = useMutation({
     mutationFn: async () => {
-      if (!pendingData) throw new Error("No pending password change");
+      if (!pendingData) throw new Error('No pending password change');
       await authApi.confirmChangePassword({
         currentPassword: pendingData.currentPassword,
         newPassword: pendingData.newPassword,
@@ -129,7 +170,10 @@ function ChangePasswordForm() {
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => prepareMutation.mutate(data))} className="space-y-4">
+        <form
+          onSubmit={form.handleSubmit((data) => prepareMutation.mutate(data))}
+          className="space-y-4"
+        >
           <FormField
             control={form.control}
             name="currentPassword"
@@ -199,9 +243,13 @@ function ChangePasswordForm() {
             </div>
             <Button onClick={copyRecoveryKey} className="w-full" variant="outline">
               {copied ? (
-                <><Check className="mr-2 h-4 w-4" /> Copied!</>
+                <>
+                  <Check className="mr-2 h-4 w-4" /> Copied!
+                </>
               ) : (
-                <><Copy className="mr-2 h-4 w-4" /> Copy to Clipboard</>
+                <>
+                  <Copy className="mr-2 h-4 w-4" /> Copy to Clipboard
+                </>
               )}
             </Button>
             <div className="flex gap-2">
@@ -218,12 +266,12 @@ function ChangePasswordForm() {
                 disabled={confirmMutation.isPending}
                 className="flex-1"
               >
-                {confirmMutation.isPending ? "Saving..." : "I've Saved My Recovery Key"}
+                {confirmMutation.isPending ? 'Saving...' : "I've Saved My Recovery Key"}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground text-center">
-              Make sure you've written down or copied your recovery key before confirming.
-              The password change will only happen after you click the button above.
+              Make sure you've written down or copied your recovery key before confirming. The
+              password change will only happen after you click the button above.
             </p>
           </div>
         </DialogContent>
@@ -232,7 +280,6 @@ function ChangePasswordForm() {
   );
 }
 
-
 function ApiKeysCard() {
   const { t } = useTranslation('settings');
   const [showCoingecko, setShowCoingecko] = useState(false);
@@ -240,12 +287,12 @@ function ApiKeysCard() {
   const [editedCoingeckoKey, setEditedCoingeckoKey] = useState<string | undefined>(undefined);
 
   const { data: apiKeys } = useQuery({
-    queryKey: ["api-keys"],
+    queryKey: ['api-keys'],
     queryFn: () => priceApi.getApiKeys(),
   });
 
   // Use edited value if user has made changes, otherwise use fetched value
-  const coingeckoKey = editedCoingeckoKey ?? apiKeys?.coingecko ?? "";
+  const coingeckoKey = editedCoingeckoKey ?? apiKeys?.coingecko ?? '';
 
   const saveApiKeysMutation = useMutation({
     mutationFn: async () => {
@@ -254,7 +301,7 @@ function ApiKeysCard() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
+      queryClient.invalidateQueries({ queryKey: ['api-keys'] });
       toast(t('apiKeys.saved'));
     },
     onError: (error: Error) => {
@@ -269,9 +316,7 @@ function ApiKeysCard() {
           <Key className="h-5 w-5" />
           {t('apiKeys.title')}
         </CardTitle>
-        <CardDescription>
-          {t('apiKeys.description')}
-        </CardDescription>
+        <CardDescription>{t('apiKeys.description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* CoinGecko API Key - For crypto prices */}
@@ -289,7 +334,7 @@ function ApiKeysCard() {
           </label>
           <div className="flex gap-2">
             <Input
-              type={showCoingecko ? "text" : "password"}
+              type={showCoingecko ? 'text' : 'password'}
               value={coingeckoKey}
               onChange={(e) => setEditedCoingeckoKey(e.target.value)}
               placeholder={t('apiKeys.coingecko.placeholder')}
@@ -323,8 +368,8 @@ function McpServerCard({ profile }: { profile: ReturnType<typeof useAuth>['user'
   const setMcpMutation = useMutation({
     mutationFn: (enabled: boolean) => authApi.setMcpServerEnabled(enabled),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
-      queryClient.invalidateQueries({ queryKey: ["mcp-status"] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['mcp-status'] });
     },
     onError: (error: Error) => {
       toast.error(t('mcpServer.updateFailed'), { description: error.message });
@@ -332,7 +377,7 @@ function McpServerCard({ profile }: { profile: ReturnType<typeof useAuth>['user'
   });
 
   const { data: mcpStatus } = useQuery({
-    queryKey: ["mcp-status"],
+    queryKey: ['mcp-status'],
     queryFn: () => authApi.getMcpServerStatus(),
     refetchInterval: 5000,
   });
@@ -344,9 +389,7 @@ function McpServerCard({ profile }: { profile: ReturnType<typeof useAuth>['user'
           <Bot className="h-5 w-5" />
           {t('mcpServer.title')}
         </CardTitle>
-        <CardDescription>
-          {t('mcpServer.description')}
-        </CardDescription>
+        <CardDescription>{t('mcpServer.description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between p-2 border rounded">
@@ -373,18 +416,41 @@ function McpServerCard({ profile }: { profile: ReturnType<typeof useAuth>['user'
             <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
               <li>
                 <Trans i18nKey="mcpServer.setupStep0" t={t}>
-                  Make sure you have <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer" className="underline text-foreground hover:text-primary">Node.js 18+</a> installed.
+                  Make sure you have{' '}
+                  <a
+                    href="https://nodejs.org"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-foreground hover:text-primary"
+                  >
+                    Node.js 18+
+                  </a>{' '}
+                  installed.
                 </Trans>
               </li>
               <li>
                 <Trans i18nKey="mcpServer.setupStep1" t={t}>
-                  Download the MCP server from <a href="https://github.com/fiiles/moony-mcp" target="_blank" rel="noopener noreferrer" className="underline text-foreground hover:text-primary">github.com/fiiles/moony-mcp</a> and run <code>npm install && npm run build</code>.
+                  Download the MCP server from{' '}
+                  <a
+                    href="https://github.com/fiiles/moony-mcp"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline text-foreground hover:text-primary"
+                  >
+                    github.com/fiiles/moony-mcp
+                  </a>{' '}
+                  and run <code>npm install && npm run build</code>.
                 </Trans>
               </li>
-              <li><Trans i18nKey="mcpServer.setupStep2" t={t}>Add the following to your Claude Desktop config (replace paths with <strong>absolute</strong> paths to your actual directories):</Trans></li>
+              <li>
+                <Trans i18nKey="mcpServer.setupStep2" t={t}>
+                  Add the following to your Claude Desktop config (replace paths with{' '}
+                  <strong>absolute</strong> paths to your actual directories):
+                </Trans>
+              </li>
             </ol>
             <pre className="text-xs overflow-auto whitespace-pre-wrap bg-background p-2 border rounded">
-{`{
+              {`{
   "mcpServers": {
     "moony-finance": {
       "command": "node",
@@ -396,9 +462,7 @@ function McpServerCard({ profile }: { profile: ReturnType<typeof useAuth>['user'
   }
 }`}
             </pre>
-            <p className="text-xs text-muted-foreground italic mt-2">
-              {t('mcpServer.setupNote')}
-            </p>
+            <p className="text-xs text-muted-foreground italic mt-2">{t('mcpServer.setupNote')}</p>
           </div>
         )}
       </CardContent>
@@ -417,22 +481,31 @@ export default function SettingsPage() {
   const form = useForm<ProfileData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: user?.name || "",
-      surname: user?.surname || "",
-      email: user?.email || "",
+      name: user?.name || '',
+      surname: user?.surname || '',
+      email: user?.email || '',
     },
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: Partial<ProfileData & { currency?: string; language?: string; excludePersonalRealEstate?: boolean; menuPreferences?: MenuPreferences }>) => {
+    mutationFn: async (
+      data: Partial<
+        ProfileData & {
+          currency?: string;
+          language?: string;
+          excludePersonalRealEstate?: boolean;
+          menuPreferences?: MenuPreferences;
+        }
+      >
+    ) => {
       await authApi.updateProfile(data);
     },
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       // Invalidate portfolio metrics if excludePersonalRealEstate changed
       if (variables && 'excludePersonalRealEstate' in variables) {
-        queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-        queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
+        queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+        queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
       }
       toast(t('toast.profileUpdated'));
     },
@@ -441,13 +514,12 @@ export default function SettingsPage() {
     },
   });
 
-
   const updateMenuMutation = useMutation({
     mutationFn: async (menuPreferences: MenuPreferences) => {
       await authApi.updateProfile({ menuPreferences });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       toast(t('toast.preferencesUpdated'));
     },
     onError: (error: Error) => {
@@ -468,14 +540,14 @@ export default function SettingsPage() {
   });
 
   const menuItems = [
-    { key: "savings", label: t('menuItems.savings') },
-    { key: "loans", label: t('menuItems.loans') },
-    { key: "insurance", label: t('menuItems.insurance') },
-    { key: "investments", label: t('menuItems.investments') },
-    { key: "crypto", label: t('menuItems.crypto') },
-    { key: "bonds", label: t('menuItems.bonds') },
-    { key: "realEstate", label: t('menuItems.realEstate') },
-    { key: "otherAssets", label: t('menuItems.otherAssets') },
+    { key: 'savings', label: t('menuItems.savings') },
+    { key: 'loans', label: t('menuItems.loans') },
+    { key: 'insurance', label: t('menuItems.insurance') },
+    { key: 'investments', label: t('menuItems.investments') },
+    { key: 'crypto', label: t('menuItems.crypto') },
+    { key: 'bonds', label: t('menuItems.bonds') },
+    { key: 'realEstate', label: t('menuItems.realEstate') },
+    { key: 'otherAssets', label: t('menuItems.otherAssets') },
   ];
 
   const handleMenuToggle = (key: string, checked: boolean) => {
@@ -499,7 +571,10 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => updateProfileMutation.mutate(data))} className="space-y-4">
+            <form
+              onSubmit={form.handleSubmit((data) => updateProfileMutation.mutate(data))}
+              className="space-y-4"
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -586,22 +661,26 @@ export default function SettingsPage() {
             className="flex flex-col gap-2"
           >
             {currencies.map((c) => (
-              <div key={c.code} className="flex items-center space-x-3 p-2 rounded hover:bg-accent cursor-pointer" onClick={() => {
-                setCurrency(c.code as CurrencyCode);
-                updateProfileMutation.mutate({ currency: c.code });
-              }}>
+              <div
+                key={c.code}
+                className="flex items-center space-x-3 p-2 rounded hover:bg-accent cursor-pointer"
+                onClick={() => {
+                  setCurrency(c.code as CurrencyCode);
+                  updateProfileMutation.mutate({ currency: c.code });
+                }}
+              >
                 <RadioGroupItem value={c.code} id={c.code} />
                 <div className="flex-1">
                   <div className="text-sm font-medium">{c.label}</div>
                   <div className="text-xs text-muted-foreground">
-                    Example: {c.position === "before" ? `${c.symbol}1,234.56` : `1,234.56 ${c.symbol}`}
+                    Example:{' '}
+                    {c.position === 'before' ? `${c.symbol}1,234.56` : `1,234.56 ${c.symbol}`}
                   </div>
                 </div>
               </div>
             ))}
           </RadioGroup>
         </CardContent>
-
       </Card>
 
       {/* Language Settings */}
@@ -623,14 +702,20 @@ export default function SettingsPage() {
             className="flex flex-col gap-2"
           >
             {SUPPORTED_LANGUAGES.map((lang) => (
-              <div key={lang} className="flex items-center space-x-3 p-2 rounded hover:bg-accent cursor-pointer" onClick={() => {
-                setLanguage(lang);
-                updateProfileMutation.mutate({ language: lang });
-              }}>
+              <div
+                key={lang}
+                className="flex items-center space-x-3 p-2 rounded hover:bg-accent cursor-pointer"
+                onClick={() => {
+                  setLanguage(lang);
+                  updateProfileMutation.mutate({ language: lang });
+                }}
+              >
                 <RadioGroupItem value={lang} id={`lang-${lang}`} />
                 <div className="flex-1">
                   <div className="text-sm font-medium">{LANGUAGE_NAMES[lang].native}</div>
-                  <div className="text-xs text-muted-foreground">{LANGUAGE_NAMES[lang].english}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {LANGUAGE_NAMES[lang].english}
+                  </div>
                 </div>
               </div>
             ))}
@@ -653,7 +738,9 @@ export default function SettingsPage() {
               <div key={item.key} className="flex items-center justify-between p-2 border rounded">
                 <span className="text-sm font-medium">{item.label}</span>
                 <Switch
-                  checked={user?.menuPreferences?.[item.key as keyof typeof user.menuPreferences] ?? true}
+                  checked={
+                    user?.menuPreferences?.[item.key as keyof typeof user.menuPreferences] ?? true
+                  }
                   onCheckedChange={(checked) => handleMenuToggle(item.key, checked)}
                 />
               </div>
@@ -674,8 +761,12 @@ export default function SettingsPage() {
         <CardContent>
           <div className="flex items-center justify-between p-2 border rounded">
             <div>
-              <span className="text-sm font-medium">{t('dashboardPreferences.excludeRealEstate')}</span>
-              <p className="text-xs text-muted-foreground">{t('dashboardPreferences.excludeRealEstateHint')}</p>
+              <span className="text-sm font-medium">
+                {t('dashboardPreferences.excludeRealEstate')}
+              </span>
+              <p className="text-xs text-muted-foreground">
+                {t('dashboardPreferences.excludeRealEstateHint')}
+              </p>
             </div>
             <Switch
               checked={user?.excludePersonalRealEstate ?? false}
@@ -743,7 +834,9 @@ export default function SettingsPage() {
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => deleteAccountMutation.mutate()}
                 >
-                  {deleteAccountMutation.isPending ? t('dangerZone.deleting') : t('dangerZone.deleteAccount')}
+                  {deleteAccountMutation.isPending
+                    ? t('dangerZone.deleting')
+                    : t('dangerZone.deleteAccount')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

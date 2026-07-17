@@ -127,6 +127,7 @@
         "updated": "Cryptocurrency updated successfully",
         "deleted": "Cryptocurrency deleted successfully",
         "pricesRefreshed": "Updated {{count}} crypto prices from CoinGecko",
+        "pricesRefreshedDescription": "Successfully fetched latest prices from CoinGecko",
         "refreshFailed": "Price refresh failed",
         "noResults": "No results",
         "searchFailed": "Search failed",

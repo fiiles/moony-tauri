@@ -1,213 +1,219 @@
-
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { CURRENCIES } from "@shared/currencies";
-import type { CryptoHoldingData } from "@/components/crypto/CryptoTable";
-import { cryptoApi } from "@/lib/tauri-api";
-import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
-import { FormSection } from "@/components/ui/form-section";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { CURRENCIES } from '@shared/currencies';
+import type { CryptoHoldingData } from '@/components/crypto/CryptoTable';
+import { cryptoApi } from '@/lib/tauri-api';
+import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import { FormSection } from '@/components/ui/form-section';
 
 const formSchema = z.object({
-    quantity: z.coerce.number().positive("Quantity must be positive"),
-    pricePerUnit: z.coerce.number().positive("Price must be positive"),
-    currency: z.enum(["USD", "EUR", "CZK", "GBP"]),
-    date: z.string().optional(),
+  quantity: z.coerce.number().positive('Quantity must be positive'),
+  pricePerUnit: z.coerce.number().positive('Price must be positive'),
+  currency: z.enum(['USD', 'EUR', 'CZK', 'GBP']),
+  date: z.string().optional(),
 });
 
 interface SellCryptoModalProps {
-    investment: CryptoHoldingData | null;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
+  investment: CryptoHoldingData | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function SellCryptoModal({ investment, open, onOpenChange }: SellCryptoModalProps) {
-    const { t } = useTranslation('crypto');
-    const { t: tc } = useTranslation('common');
-    const queryClient = useQueryClient();
+  const { t } = useTranslation('crypto');
+  const { t: tc } = useTranslation('common');
+  const queryClient = useQueryClient();
 
-    const form = useForm<z.infer<typeof formSchema>>({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            quantity: 0,
-            pricePerUnit: 0,
-            currency: "USD",
-            date: new Date().toISOString().split("T")[0],
-        },
-    });
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      quantity: 0,
+      pricePerUnit: 0,
+      currency: 'USD',
+      date: new Date().toISOString().split('T')[0],
+    },
+  });
 
-    const sellInvestment = useMutation({
-        mutationFn: async (values: z.infer<typeof formSchema>) => {
-            if (!investment) return;
+  const sellInvestment = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      if (!investment) return;
 
-            const txData = {
-                type: "sell",
-                ticker: investment.ticker,
-                name: investment.name,
-                quantity: values.quantity.toString(),
-                pricePerUnit: values.pricePerUnit.toString(),
-                currency: values.currency,
-                transactionDate: values.date ? Math.floor(new Date(values.date).getTime() / 1000) : Math.floor(Date.now() / 1000),
-            };
+      const txData = {
+        type: 'sell',
+        ticker: investment.ticker,
+        name: investment.name,
+        quantity: values.quantity.toString(),
+        pricePerUnit: values.pricePerUnit.toString(),
+        currency: values.currency,
+        transactionDate: values.date
+          ? Math.floor(new Date(values.date).getTime() / 1000)
+          : Math.floor(Date.now() / 1000),
+      };
 
-            return cryptoApi.createTransaction(investment.id, txData);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["crypto"] });
-            queryClient.invalidateQueries({ queryKey: ["crypto-detail", investment?.id] });
-            queryClient.invalidateQueries({ queryKey: ["crypto-transactions", investment?.id] });
-            queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            queryClient.invalidateQueries({ queryKey: ["all-crypto-transactions"] });
-            onOpenChange(false);
-            form.reset();
-            toast(tc('status.success'));
-        },
-        onError: (error: Error) => {
-            console.error("Failed to sell crypto:", error);
-            toast.error(tc('status.error'), { description: error.message });
-        },
-    });
+      return cryptoApi.createTransaction(investment.id, txData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['crypto'] });
+      queryClient.invalidateQueries({ queryKey: ['crypto-detail', investment?.id] });
+      queryClient.invalidateQueries({ queryKey: ['crypto-transactions', investment?.id] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['all-crypto-transactions'] });
+      onOpenChange(false);
+      form.reset();
+      toast(tc('status.success'));
+    },
+    onError: (error: Error) => {
+      console.error('Failed to sell crypto:', error);
+      toast.error(tc('status.error'), { description: error.message });
+    },
+  });
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        sellInvestment.mutate(values);
-    }
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    sellInvestment.mutate(values);
+  }
 
-    if (!investment) return null;
+  if (!investment) return null;
 
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>{t('modal.sell.title')} {investment.ticker}</DialogTitle>
-                    <DialogDescription>
-                        {t('modal.sell.description')}
-                    </DialogDescription>
-                </DialogHeader>
-                <Form {...form}>
-                    <form id="sell-crypto-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <FormSection title={t('modal.sell.transactionDetails')} first>
-                            <div className="grid gap-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="pricePerUnit"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>{t('modal.sell.pricePerUnit')} *</FormLabel>
-                                                <FormControl>
-                                                    <Input 
-                                                        type="number" 
-                                                        step="0.01" 
-                                                        {...field} 
-                                                        onBlur={(e) => {
-                                                            const value = parseFloat(e.target.value);
-                                                            if (!isNaN(value)) {
-                                                                field.onChange(value.toFixed(2));
-                                                            }
-                                                            field.onBlur();
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="currency"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>{tc('labels.currency')}</FormLabel>
-                                                <Select
-                                                    onValueChange={field.onChange}
-                                                    defaultValue={field.value}
-                                                >
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder={tc('labels.selectCurrency')} />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        {Object.values(CURRENCIES).map((currency) => (
-                                                            <SelectItem key={currency.code} value={currency.code}>
-                                                                {currency.code}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="quantity"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>{t('modal.sell.quantity')} * ({tc('labels.max')}: {investment.quantity.toFixed(8)})</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.00000001" max={investment.quantity} {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="date"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>{tc('labels.date')}</FormLabel>
-                                                <FormControl>
-                                                    <Input type="date" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                        </FormSection>
-                    </form>
-                </Form>
-                <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                        {tc('buttons.cancel')}
-                    </Button>
-                    <Button type="submit" form="sell-crypto-form" disabled={sellInvestment.isPending}>
-                        {sellInvestment.isPending ? tc('status.selling') : t('modal.sell.sellCrypto')}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {t('modal.sell.title')} {investment.ticker}
+          </DialogTitle>
+          <DialogDescription>{t('modal.sell.description')}</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form id="sell-crypto-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormSection title={t('modal.sell.transactionDetails')} first>
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="pricePerUnit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('modal.sell.pricePerUnit')} *</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...field}
+                            onBlur={(e) => {
+                              const value = parseFloat(e.target.value);
+                              if (!isNaN(value)) {
+                                field.onChange(value.toFixed(2));
+                              }
+                              field.onBlur();
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{tc('labels.currency')}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={tc('labels.selectCurrency')} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Object.values(CURRENCIES).map((currency) => (
+                              <SelectItem key={currency.code} value={currency.code}>
+                                {currency.code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="quantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t('modal.sell.quantity')} * ({tc('labels.max')}:{' '}
+                          {investment.quantity.toFixed(8)})
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.00000001"
+                            max={investment.quantity}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{tc('labels.date')}</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            </FormSection>
+          </form>
+        </Form>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            {tc('buttons.cancel')}
+          </Button>
+          <Button type="submit" form="sell-crypto-form" disabled={sellInvestment.isPending}>
+            {sellInvestment.isPending ? tc('status.selling') : t('modal.sell.sellCrypto')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }

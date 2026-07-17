@@ -16,9 +16,7 @@ export function SyncStatusBadge() {
   return (
     <Badge variant="secondary" className="gap-1.5 cursor-default">
       <Loader2 className="w-3 h-3 animate-spin" />
-      <span className="hidden sm:inline">
-        {t('sync.loadingHistorical')}
-      </span>
+      <span className="hidden sm:inline">{t('sync.loadingHistorical')}</span>
     </Badge>
   );
 }

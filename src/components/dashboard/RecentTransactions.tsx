@@ -1,6 +1,6 @@
-import { Card } from "@/components/ui/card";
-import { ShoppingCart, DollarSign, Coffee, Home } from "lucide-react";
-import { useCurrency } from "@/lib/currency";
+import { Card } from '@/components/ui/card';
+import { ShoppingCart, DollarSign, Coffee, Home } from 'lucide-react';
+import { useCurrency } from '@/lib/currency';
 
 interface Transaction {
   id: string;
@@ -30,7 +30,7 @@ export default function RecentTransactions({ transactions, onViewAll }: RecentTr
     <Card className="p-6 border card-hover">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-medium">Recent Transactions</h3>
-        <button 
+        <button
           className="text-sm font-bold text-primary hover:underline"
           onClick={() => {
             onViewAll?.();
@@ -40,12 +40,12 @@ export default function RecentTransactions({ transactions, onViewAll }: RecentTr
           View All
         </button>
       </div>
-      
+
       <div className="space-y-4">
         {transactions.map((transaction) => {
           const Icon = iconMap[transaction.icon];
           const isNegative = transaction.amount < 0;
-          
+
           return (
             <div key={transaction.id} className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -57,8 +57,11 @@ export default function RecentTransactions({ transactions, onViewAll }: RecentTr
                   <p className="text-xs text-muted-foreground">{transaction.date}</p>
                 </div>
               </div>
-              <p className={`text-sm font-semibold ${isNegative ? 'text-negative' : 'text-positive'}`}>
-                {isNegative ? '-' : '+'}{formatCurrency(Math.abs(transaction.amount))}
+              <p
+                className={`text-sm font-semibold ${isNegative ? 'text-negative' : 'text-positive'}`}
+              >
+                {isNegative ? '-' : '+'}
+                {formatCurrency(Math.abs(transaction.amount))}
               </p>
             </div>
           );

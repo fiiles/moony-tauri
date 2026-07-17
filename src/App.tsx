@@ -1,50 +1,50 @@
-import { Switch, Route, useLocation } from "wouter";
-import { useEffect } from "react";
-import { trackEvent, useScreenTracking } from "@/lib/analytics";
-import { AnalyticsConsentModal } from "@/components/common/AnalyticsConsentModal";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/common/app-sidebar";
-import { ThemeProvider } from "@/components/common/theme-provider";
-import NotFound from "@/pages/not-found";
-import Dashboard from "@/pages/Dashboard";
-import AuthPage from "@/pages/auth-page";
-import Accounts from "@/pages/Accounts";
-import Stocks from "@/pages/Stocks";
-import StockDetail from "@/pages/StockDetail";
-import RealEstate from "@/pages/RealEstate";
-import RealEstateDetail from "@/pages/RealEstateDetail";
-import Insurance from "@/pages/Insurance";
-import InsuranceDetail from "@/pages/InsuranceDetail";
-import Loans from "@/pages/Loans";
-import Bonds from "@/pages/Bonds";
-import Crypto from "@/pages/Crypto";
-import CryptoDetail from "@/pages/CryptoDetail";
-import Settings from "@/pages/Settings";
-import OtherAssets from "@/pages/OtherAssets";
-import Cashflow from "@/pages/Cashflow";
-import Projection from "@/pages/Projection";
-import AnnuityCalculator from "@/pages/AnnuityCalculator";
-import EstateCalculator from "@/pages/EstateCalculator";
-import StocksAnalysis from "@/pages/StocksAnalysis";
-import Budgeting from "@/pages/Budgeting";
-import BankAccounts from "@/pages/BankAccounts";
-import BankAccountDetail from "@/pages/BankAccountDetail";
-import CategorizationRules from "@/pages/CategorizationRules";
-import { AuthProvider } from "@/hooks/use-auth";
-import { ProtectedRoute } from "@/lib/protected-route";
-import { CurrencyProvider } from "@/lib/currency";
-import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import { I18nProvider } from "@/i18n/I18nProvider";
-import { UpdateNotification } from "@/components/update-notification";
-import { AboutModal } from "@/components/common/AboutModal";
-import { UpdateStatusBadge } from "@/components/common/UpdateStatusBadge";
-import { SyncStatusBadge } from "@/components/common/SyncStatusBadge";
-import { StalePricesIndicator } from "@/components/common/StalePricesIndicator";
-import { SyncProvider } from "@/hooks/SyncProvider";
+import { Switch, Route, useLocation } from 'wouter';
+import { useEffect } from 'react';
+import { trackEvent, useScreenTracking } from '@/lib/analytics';
+import { AnalyticsConsentModal } from '@/components/common/AnalyticsConsentModal';
+import { queryClient } from './lib/queryClient';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/common/app-sidebar';
+import { ThemeProvider } from '@/components/common/theme-provider';
+import NotFound from '@/pages/not-found';
+import Dashboard from '@/pages/Dashboard';
+import AuthPage from '@/pages/auth-page';
+import Accounts from '@/pages/Accounts';
+import Stocks from '@/pages/Stocks';
+import StockDetail from '@/pages/StockDetail';
+import RealEstate from '@/pages/RealEstate';
+import RealEstateDetail from '@/pages/RealEstateDetail';
+import Insurance from '@/pages/Insurance';
+import InsuranceDetail from '@/pages/InsuranceDetail';
+import Loans from '@/pages/Loans';
+import Bonds from '@/pages/Bonds';
+import Crypto from '@/pages/Crypto';
+import CryptoDetail from '@/pages/CryptoDetail';
+import Settings from '@/pages/Settings';
+import OtherAssets from '@/pages/OtherAssets';
+import Cashflow from '@/pages/Cashflow';
+import Projection from '@/pages/Projection';
+import AnnuityCalculator from '@/pages/AnnuityCalculator';
+import EstateCalculator from '@/pages/EstateCalculator';
+import StocksAnalysis from '@/pages/StocksAnalysis';
+import Budgeting from '@/pages/Budgeting';
+import BankAccounts from '@/pages/BankAccounts';
+import BankAccountDetail from '@/pages/BankAccountDetail';
+import CategorizationRules from '@/pages/CategorizationRules';
+import { AuthProvider } from '@/hooks/use-auth';
+import { ProtectedRoute } from '@/lib/protected-route';
+import { CurrencyProvider } from '@/lib/currency';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { I18nProvider } from '@/i18n/I18nProvider';
+import { UpdateNotification } from '@/components/update-notification';
+import { AboutModal } from '@/components/common/AboutModal';
+import { UpdateStatusBadge } from '@/components/common/UpdateStatusBadge';
+import { SyncStatusBadge } from '@/components/common/SyncStatusBadge';
+import { StalePricesIndicator } from '@/components/common/StalePricesIndicator';
+import { SyncProvider } from '@/hooks/SyncProvider';
 
 function Router() {
   return (
@@ -81,13 +81,13 @@ function AppLayout() {
   const [location] = useLocation();
   useScreenTracking();
 
-  if (location === "/auth") {
+  if (location === '/auth') {
     return <AuthPage />;
   }
 
   const style = {
-    "--sidebar-width": "16rem",
-    "--sidebar-width-icon": "4rem",
+    '--sidebar-width': '16rem',
+    '--sidebar-width-icon': '4rem',
   };
 
   return (
@@ -114,7 +114,7 @@ function AppLayout() {
 
 export default function App() {
   useEffect(() => {
-    trackEvent("app_started");
+    trackEvent('app_started');
   }, []);
 
   return (

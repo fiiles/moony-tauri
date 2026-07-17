@@ -1,16 +1,14 @@
-import { SummaryCard } from "@/components/common/SummaryCard";
-import type { SavingsAccountsMetrics } from "@/hooks/use-savings-accounts";
-import { useCurrency } from "@/lib/currency";
-import { TrendingUp, Percent, Banknote } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { SummaryCard } from '@/components/common/SummaryCard';
+import type { SavingsAccountsMetrics } from '@/hooks/use-savings-accounts';
+import { useCurrency } from '@/lib/currency';
+import { TrendingUp, Percent, Banknote } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface SavingsAccountsSummaryProps {
   metrics: SavingsAccountsMetrics;
 }
 
-export function SavingsAccountsSummary({
-  metrics,
-}: SavingsAccountsSummaryProps) {
+export function SavingsAccountsSummary({ metrics }: SavingsAccountsSummaryProps) {
   const { formatCurrency } = useCurrency();
   const { t } = useTranslation('savings');
 
@@ -36,5 +34,3 @@ export function SavingsAccountsSummary({
     </div>
   );
 }
-
-

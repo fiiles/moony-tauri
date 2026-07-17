@@ -1,19 +1,19 @@
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Plus, CreditCard } from "lucide-react";
-import { useLoans } from "@/hooks/use-loans";
-import { useLoanMutations } from "@/hooks/use-loan-mutations";
-import { toast } from "sonner";
-import { LoanFormDialog } from "@/components/loans/LoanFormDialog";
-import { DeleteLoanDialog } from "@/components/loans/DeleteLoanDialog";
-import { LoansSummary } from "@/components/loans/LoansSummary";
-import { LoansTable } from "@/components/loans/LoansTable";
-import { EmptyState } from "@/components/common/EmptyState";
-import type { Loan, InsertLoan } from "@shared/schema";
-import { useTranslation } from "react-i18next";
-import { ExportButton } from "@/components/common/ExportButton";
-import { exportApi } from "@/lib/tauri-api";
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Plus, CreditCard } from 'lucide-react';
+import { useLoans } from '@/hooks/use-loans';
+import { useLoanMutations } from '@/hooks/use-loan-mutations';
+import { toast } from 'sonner';
+import { LoanFormDialog } from '@/components/loans/LoanFormDialog';
+import { DeleteLoanDialog } from '@/components/loans/DeleteLoanDialog';
+import { LoansSummary } from '@/components/loans/LoansSummary';
+import { LoansTable } from '@/components/loans/LoansTable';
+import { EmptyState } from '@/components/common/EmptyState';
+import type { Loan, InsertLoan } from '@shared/schema';
+import { useTranslation } from 'react-i18next';
+import { ExportButton } from '@/components/common/ExportButton';
+import { exportApi } from '@/lib/tauri-api';
 
 export default function Loans() {
   const { t } = useTranslation('loans');
@@ -31,7 +31,7 @@ export default function Loans() {
   };
 
   const handleAddSubmit = (data: InsertLoan | any) => {
-    if ("id" in data) {
+    if ('id' in data) {
       return;
     }
     createMutation.mutate(data as InsertLoan, {
@@ -47,17 +47,17 @@ export default function Loans() {
   };
 
   const handleEditSubmit = (data: InsertLoan | (Partial<Loan> & { id: string })) => {
-    if (!("id" in data)) {
+    if (!('id' in data)) {
       return;
     }
     updateMutation.mutate({ ...data, id: data.id } as { id: string } & Record<string, unknown>, {
       onSuccess: () => {
         setEditDialogOpen(false);
         setSelectedLoan(null);
-        queryClient.invalidateQueries({ queryKey: ["/api/loans"] });
-        queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-        queryClient.invalidateQueries({ queryKey: ["portfolio-history"] });
-        toast("Success", { description: "Loan updated successfully" });
+        queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
+        queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+        queryClient.invalidateQueries({ queryKey: ['portfolio-history'] });
+        toast('Success', { description: 'Loan updated successfully' });
       },
     });
   };
@@ -119,11 +119,7 @@ export default function Loans() {
           }
         />
       ) : (
-        <LoansTable
-          loans={loans}
-          onEdit={handleEditClick}
-          onDelete={handleDeleteClick}
-        />
+        <LoansTable loans={loans} onEdit={handleEditClick} onDelete={handleDeleteClick} />
       )}
 
       <LoanFormDialog

@@ -1,8 +1,16 @@
-import { Card } from "@/components/ui/card";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { useCurrency } from "@/lib/currency";
-import { useTranslation } from "react-i18next";
-import { useMemo } from "react";
+import { Card } from '@/components/ui/card';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import { useCurrency } from '@/lib/currency';
+import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
 
 interface TrendData {
   date: string;
@@ -28,17 +36,17 @@ export default function NetWorthTrendChart({
   // Calculate dynamic Y-axis domain based on data range
   const yAxisDomain = useMemo((): [number, number] => {
     if (data.length === 0) return [0, 0];
-    
-    const values = data.map(d => d.value);
+
+    const values = data.map((d) => d.value);
     const minValue = Math.min(...values);
     const maxValue = Math.max(...values);
     const range = maxValue - minValue;
-    
+
     // Add 10% padding on each side, but ensure we don't go below 0 for net worth
     const padding = range > 0 ? range * 0.1 : maxValue * 0.05;
     const yMin = Math.max(0, minValue - padding);
     const yMax = maxValue + padding;
-    
+
     return [yMin, yMax];
   }, [data]);
 
@@ -46,12 +54,11 @@ export default function NetWorthTrendChart({
     <Card className="p-6 border h-full flex flex-col card-hover">
       <div className="flex flex-col gap-2 mb-4">
         <p className="text-lg font-medium">{t('charts.netWorthTrend')}</p>
-        <p className="text-4xl font-bold tracking-tight">
-          {formatCurrency(currentValue)}
-        </p>
+        <p className="text-4xl font-bold tracking-tight">{formatCurrency(currentValue)}</p>
         <div className="flex gap-2 items-center">
           <p className={`text-sm font-medium ${isPositive ? 'text-positive' : 'text-negative'}`}>
-            {isPositive ? '+' : ''}{Math.abs(change).toFixed(2)}%
+            {isPositive ? '+' : ''}
+            {Math.abs(change).toFixed(2)}%
           </p>
         </div>
       </div>
@@ -77,7 +84,7 @@ export default function NetWorthTrendChart({
             />
             <YAxis hide domain={yAxisDomain} />
             <Tooltip
-              formatter={(value) => [formatCurrency(value as number ?? 0), t('stats.netWorth')]}
+              formatter={(value) => [formatCurrency((value as number) ?? 0), t('stats.netWorth')]}
               contentStyle={{
                 backgroundColor: 'hsl(var(--popover))',
                 border: '1px solid hsl(var(--border))',
@@ -97,4 +104,3 @@ export default function NetWorthTrendChart({
     </Card>
   );
 }
-

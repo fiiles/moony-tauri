@@ -28,26 +28,29 @@ export async function trackEvent(name: string, props?: Record<string, string | n
     try {
       // Convert booleans to strings for Aptabase compatibility
       const safeProps: Record<string, string | number> | undefined = props
-        ? Object.entries(props).reduce((acc, [key, value]) => {
-            acc[key] = typeof value === 'boolean' ? String(value) : value;
-            return acc;
-          }, {} as Record<string, string | number>)
+        ? Object.entries(props).reduce(
+            (acc, [key, value]) => {
+              acc[key] = typeof value === 'boolean' ? String(value) : value;
+              return acc;
+            },
+            {} as Record<string, string | number>
+          )
         : undefined;
 
       await aptabaseTrack(name, safeProps);
     } catch (error) {
-      console.warn("[APTABASE] Failed to track event:", error);
+      console.warn('[APTABASE] Failed to track event:', error);
     }
   }
 }
 
 // No initialization needed for backend-based plugin
 export async function initAnalytics() {
-    // Placeholder if we need startup logic later
+  // Placeholder if we need startup logic later
 }
 
 const CONSENT_VERSION_KEY = 'moony-analytics-consent-asked-version';
-const CURRENT_ANALYTICS_VERSION = '1';  // Increment when analytics changes require new consent
+const CURRENT_ANALYTICS_VERSION = '1'; // Increment when analytics changes require new consent
 
 export function needsConsentPrompt(): boolean {
   const askedVersion = localStorage.getItem(CONSENT_VERSION_KEY);
@@ -60,7 +63,7 @@ export function markConsentAsked() {
 
 export function useScreenTracking() {
   const [location] = useLocation();
-  
+
   useEffect(() => {
     const screenMap: Record<string, string> = {
       '/': 'dashboard',
@@ -80,21 +83,21 @@ export function useScreenTracking() {
       '/calculators/estate': 'estate_calculator',
       '/settings': 'settings',
     };
-    
+
     // Check for exact match
     let screen = screenMap[location];
-    
+
     // If no exact match, try prefix matching for detail pages
     if (!screen) {
-        if (location.startsWith('/bank-accounts/')) screen = 'bank_account_detail';
-        else if (location.startsWith('/loans/')) screen = 'loan_detail';
-        else if (location.startsWith('/insurance/')) screen = 'insurance_detail';
-        else if (location.startsWith('/stocks/')) screen = 'investment_detail';
-        else if (location.startsWith('/crypto/')) screen = 'crypto_detail';
-        else if (location.startsWith('/real-estate/')) screen = 'real_estate_detail';
-        else if (location.startsWith('/settings/')) screen = 'settings_subpage';
+      if (location.startsWith('/bank-accounts/')) screen = 'bank_account_detail';
+      else if (location.startsWith('/loans/')) screen = 'loan_detail';
+      else if (location.startsWith('/insurance/')) screen = 'insurance_detail';
+      else if (location.startsWith('/stocks/')) screen = 'investment_detail';
+      else if (location.startsWith('/crypto/')) screen = 'crypto_detail';
+      else if (location.startsWith('/real-estate/')) screen = 'real_estate_detail';
+      else if (location.startsWith('/settings/')) screen = 'settings_subpage';
     }
-    
+
     if (screen) {
       trackEvent('screen_view', { screen });
     }

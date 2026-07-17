@@ -127,6 +127,7 @@
         "updated": "Kryptoměna úspěšně aktualizována",
         "deleted": "Kryptoměna úspěšně smazána",
         "pricesRefreshed": "Aktualizováno {{count}} cen kryptoměn z CoinGecko",
+        "pricesRefreshedDescription": "Aktuální ceny úspěšně načteny z CoinGecko",
         "refreshFailed": "Aktualizace cen selhala",
         "noResults": "Žádné výsledky",
         "searchFailed": "Hledání selhalo",

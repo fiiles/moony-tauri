@@ -7,9 +7,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import type { Bond } from "@shared/schema";
-import { useTranslation } from "react-i18next";
+} from '@/components/ui/alert-dialog';
+import type { Bond } from '@shared/schema';
+import { useTranslation } from 'react-i18next';
 
 interface DeleteBondDialogProps {
   open: boolean;
@@ -19,7 +19,13 @@ interface DeleteBondDialogProps {
   isLoading?: boolean;
 }
 
-export function DeleteBondDialog({ open, onOpenChange, bond, onConfirm, isLoading = false }: DeleteBondDialogProps) {
+export function DeleteBondDialog({
+  open,
+  onOpenChange,
+  bond,
+  onConfirm,
+  isLoading = false,
+}: DeleteBondDialogProps) {
   const { t } = useTranslation('bonds');
   const { t: tc } = useTranslation('common');
 
@@ -34,7 +40,11 @@ export function DeleteBondDialog({ open, onOpenChange, bond, onConfirm, isLoadin
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{tc('buttons.cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} disabled={isLoading} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
             {isLoading ? tc('status.deleting') : tc('buttons.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>

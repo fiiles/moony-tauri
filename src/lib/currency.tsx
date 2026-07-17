@@ -1,8 +1,15 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { useQueryClient } from "@tanstack/react-query";
-import { portfolioApi } from "@/lib/tauri-api";
-import { CURRENCIES, CurrencyCode, CurrencyDef, convertFromCzK, convertToCzK, updateExchangeRates } from "@shared/currencies";
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { useQueryClient } from '@tanstack/react-query';
+import { portfolioApi } from '@/lib/tauri-api';
+import {
+  CURRENCIES,
+  CurrencyCode,
+  CurrencyDef,
+  convertFromCzK,
+  convertToCzK,
+  updateExchangeRates,
+} from '@shared/currencies';
 
 export const currencies = Object.values(CURRENCIES);
 
@@ -28,7 +35,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   // Derive currencyCode from user profile - no need for separate state
   const currencyCode = useMemo<CurrencyCode>(() => {
-    return (user?.currency as CurrencyCode) ?? "CZK";
+    return (user?.currency as CurrencyCode) ?? 'CZK';
   }, [user?.currency]);
 
   // Initialize and refresh exchange rates after unlock.
@@ -61,25 +68,26 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         if (freshRates && typeof freshRates === 'object') {
           updateExchangeRates(freshRates);
           setRatesTimestamp(Date.now());
-          queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
+          queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
         }
       } catch (error) {
-        console.warn("[CURRENCY] Failed to fetch ECB rates, using backend rates:", error);
+        console.warn('[CURRENCY] Failed to fetch ECB rates, using backend rates:', error);
       }
     }
     initRates();
   }, [user?.id, queryClient]); // re-runs on unlock (user.id: null → string)
 
-  const currency = (CURRENCIES as Record<CurrencyCode, CurrencyDef | undefined>)[currencyCode] ?? CURRENCIES.CZK;
+  const currency =
+    (CURRENCIES as Record<CurrencyCode, CurrencyDef | undefined>)[currencyCode] ?? CURRENCIES.CZK;
 
   function convert(amount: number, from: CurrencyCode, to: CurrencyCode): number {
     if (from === to) return amount;
     // If converting FROM base (CZK) to target
-    if (from === "CZK") {
+    if (from === 'CZK') {
       return convertFromCzK(amount, to);
     }
     // If converting TO base (CZK) from source
-    if (to === "CZK") {
+    if (to === 'CZK') {
       return convertToCzK(amount, from);
     }
     // Cross conversion: From -> CZK -> To
@@ -88,7 +96,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   }
 
   function formatCurrency(value: number, opts?: Intl.NumberFormatOptions) {
-    if (value === null || value === undefined || Number.isNaN(Number(value))) return "";
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '';
 
     // Convert from base currency (CZK) to display currency
     const convertedValue = convertFromCzK(value, currencyCode);
@@ -100,7 +108,9 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     };
 
     const formatted = convertedValue.toLocaleString(currency.locale, options);
-    return currency.position === "before" ? `${currency.symbol}${formatted}` : `${formatted} ${currency.symbol}`;
+    return currency.position === 'before'
+      ? `${currency.symbol}${formatted}`
+      : `${formatted} ${currency.symbol}`;
   }
 
   /**
@@ -110,7 +120,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
    * - Calculator inputs where user enters in their preferred currency
    */
   function formatCurrencyRaw(value: number, opts?: Intl.NumberFormatOptions) {
-    if (value === null || value === undefined || Number.isNaN(Number(value))) return "";
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '';
 
     const options: Intl.NumberFormatOptions = {
       minimumFractionDigits: opts?.minimumFractionDigits ?? 0,
@@ -119,11 +129,13 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     };
 
     const formatted = value.toLocaleString(currency.locale, options);
-    return currency.position === "before" ? `${currency.symbol}${formatted}` : `${formatted} ${currency.symbol}`;
+    return currency.position === 'before'
+      ? `${currency.symbol}${formatted}`
+      : `${formatted} ${currency.symbol}`;
   }
 
   function formatCurrencyShort(value: number) {
-    if (value === null || value === undefined || Number.isNaN(Number(value))) return "";
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '';
 
     // Convert from base currency (CZK) to display currency
     const convertedValue = convertFromCzK(value, currencyCode);
@@ -131,15 +143,21 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
     const abs = Math.abs(convertedValue);
     if (abs >= 1_000_000_000) {
       const v = (convertedValue / 1_000_000_000).toFixed(0);
-      return currency.position === "before" ? `${currency.symbol}${v}B` : `${v}B ${currency.symbol}`;
+      return currency.position === 'before'
+        ? `${currency.symbol}${v}B`
+        : `${v}B ${currency.symbol}`;
     }
     if (abs >= 1_000_000) {
       const v = (convertedValue / 1_000_000).toFixed(0);
-      return currency.position === "before" ? `${currency.symbol}${v}M` : `${v}M ${currency.symbol}`;
+      return currency.position === 'before'
+        ? `${currency.symbol}${v}M`
+        : `${v}M ${currency.symbol}`;
     }
     if (abs >= 1000) {
       const v = (convertedValue / 1000).toFixed(0);
-      return currency.position === "before" ? `${currency.symbol}${v}k` : `${v}k ${currency.symbol}`;
+      return currency.position === 'before'
+        ? `${currency.symbol}${v}k`
+        : `${v}k ${currency.symbol}`;
     }
     return formatCurrency(value, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
@@ -152,7 +170,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
    */
   function formatPrice(value: number): string {
     const decimals = Math.abs(value) >= 1000 ? 0 : 2;
-    return formatCurrencyRaw(value, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    return formatCurrencyRaw(value, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
   }
 
   // No-op: currency is now derived from user.currency, changes go through profile API
@@ -163,7 +184,17 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CurrencyContext.Provider
-      value={{ currencyCode, currency, setCurrency, formatCurrency, formatCurrencyRaw, formatCurrencyShort, formatPrice, convert, ratesTimestamp }}
+      value={{
+        currencyCode,
+        currency,
+        setCurrency,
+        formatCurrency,
+        formatCurrencyRaw,
+        formatCurrencyShort,
+        formatPrice,
+        convert,
+        ratesTimestamp,
+      }}
     >
       {children}
     </CurrencyContext.Provider>
@@ -172,6 +203,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
 export function useCurrency() {
   const ctx = useContext(CurrencyContext);
-  if (!ctx) throw new Error("useCurrency must be used within CurrencyProvider");
+  if (!ctx) throw new Error('useCurrency must be used within CurrencyProvider');
   return ctx;
 }

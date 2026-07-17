@@ -163,7 +163,9 @@ export const authApi = {
     tauriInvoke<UserProfile>('set_mcp_server_enabled', { enabled }),
 
   getMcpServerStatus: () =>
-    tauriInvoke<{ running: boolean; port: number | null; dataDir: string }>('get_mcp_server_status'),
+    tauriInvoke<{ running: boolean; port: number | null; dataDir: string }>(
+      'get_mcp_server_status'
+    ),
 };
 
 // ============================================================================
@@ -257,9 +259,15 @@ export const investmentsApi = {
     includePortfolio: boolean,
     includeUntagged: boolean,
     fromTs: number,
-    toTs: number,
+    toTs: number
   ) =>
-    tauriInvoke<TwrSeries[]>('get_stock_twr', { tagIds, includePortfolio, includeUntagged, fromTs, toTs }),
+    tauriInvoke<TwrSeries[]>('get_stock_twr', {
+      tagIds,
+      includePortfolio,
+      includeUntagged,
+      fromTs,
+      toTs,
+    }),
 };
 
 // ============================================================================
@@ -520,17 +528,18 @@ export const portfolioApi = {
     tauriInvoke<Record<string, number>>('get_exchange_rates_for_date', { date }),
 
   getExchangeRatesForDateRange: (startDate: number, endDate: number) =>
-    tauriInvoke<Record<number, Record<string, number>>>('get_exchange_rates_for_date_range', { startDate, endDate }),
+    tauriInvoke<Record<number, Record<string, number>>>('get_exchange_rates_for_date_range', {
+      startDate,
+      endDate,
+    }),
 
   getPriceStatus: () => tauriInvoke<PriceStatus>('get_price_status'),
 
   startBackfill: () => tauriInvoke<BackfillResult>('start_snapshot_backfill'),
 
-  recalculateAllHistory: () =>
-    tauriInvoke<BackfillResult>('recalculate_all_portfolio_history'),
+  recalculateAllHistory: () => tauriInvoke<BackfillResult>('recalculate_all_portfolio_history'),
 
-  backfillCurrencyBreakdowns: () =>
-    tauriInvoke<number>('backfill_currency_breakdowns'),
+  backfillCurrencyBreakdowns: () => tauriInvoke<number>('backfill_currency_breakdowns'),
 };
 
 // ============================================================================
@@ -587,7 +596,10 @@ export const priceApi = {
 
   setApiKeys: (keys: ApiKeys) => tauriInvoke<void>('set_api_keys', { keys }),
 
-  refreshStockPrices: (forceRefresh?: boolean) => tauriInvoke<StockPriceRefreshResult>('refresh_stock_prices', { forceRefresh: forceRefresh ?? false }),
+  refreshStockPrices: (forceRefresh?: boolean) =>
+    tauriInvoke<StockPriceRefreshResult>('refresh_stock_prices', {
+      forceRefresh: forceRefresh ?? false,
+    }),
 
   refreshCryptoPrices: () => tauriInvoke<CryptoPriceResult[]>('refresh_crypto_prices'),
 

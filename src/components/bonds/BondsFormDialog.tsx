@@ -1,8 +1,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -10,20 +10,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import type { Bond, InsertBond } from "@shared/schema";
-import { useCurrency } from "@/lib/currency";
-import { currencies } from "@/lib/currency";
-import { CurrencyCode } from "@shared/currencies";
-import { useTranslation } from "react-i18next";
-
+} from '@/components/ui/select';
+import type { Bond, InsertBond } from '@shared/schema';
+import { useCurrency } from '@/lib/currency';
+import { currencies } from '@/lib/currency';
+import { CurrencyCode } from '@shared/currencies';
+import { useTranslation } from 'react-i18next';
 
 type UpdateBondData = {
   id: string;
@@ -41,18 +40,24 @@ interface BondsFormDialogProps {
   isLoading?: boolean;
 }
 
-export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading = false }: BondsFormDialogProps) {
+export function BondsFormDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  bond,
+  isLoading = false,
+}: BondsFormDialogProps) {
   const { t } = useTranslation('bonds');
   const { t: tc } = useTranslation('common');
   const { currencyCode: userCurrency } = useCurrency();
   const isEditMode = !!bond;
 
-  const [name, setName] = useState("");
-  const [isin, setIsin] = useState("");
-  const [couponValue, setCouponValue] = useState("0");
-  const [quantity, setQuantity] = useState("1");
-  const [interestRate, setInterestRate] = useState("0");
-  const [maturityDate, setMaturityDate] = useState<string>("");
+  const [name, setName] = useState('');
+  const [isin, setIsin] = useState('');
+  const [couponValue, setCouponValue] = useState('0');
+  const [quantity, setQuantity] = useState('1');
+  const [interestRate, setInterestRate] = useState('0');
+  const [maturityDate, setMaturityDate] = useState<string>('');
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(userCurrency);
 
   useEffect(() => {
@@ -60,19 +65,21 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
 
     if (bond) {
       setName(bond.name);
-      setIsin(bond.isin || "");
+      setIsin(bond.isin || '');
       setCouponValue(bond.couponValue);
-      setQuantity(bond.quantity || "1");
+      setQuantity(bond.quantity || '1');
       setInterestRate(bond.interestRate.toString());
-      setMaturityDate(bond.maturityDate ? new Date(bond.maturityDate * 1000).toISOString().split('T')[0] : "");
-      setSelectedCurrency((bond.currency as CurrencyCode) || "CZK");
+      setMaturityDate(
+        bond.maturityDate ? new Date(bond.maturityDate * 1000).toISOString().split('T')[0] : ''
+      );
+      setSelectedCurrency((bond.currency as CurrencyCode) || 'CZK');
     } else {
-      setName("");
-      setIsin("");
-      setCouponValue("0");
-      setQuantity("1");
-      setInterestRate("0");
-      setMaturityDate("");
+      setName('');
+      setIsin('');
+      setCouponValue('0');
+      setQuantity('1');
+      setInterestRate('0');
+      setMaturityDate('');
       setSelectedCurrency(userCurrency);
     }
   }, [open, bond, userCurrency]);
@@ -85,13 +92,13 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
       quantity,
       currency: selectedCurrency,
       interestRate,
-      maturityDate: maturityDate ? Math.floor(new Date(maturityDate).getTime() / 1000) : undefined
+      maturityDate: maturityDate ? Math.floor(new Date(maturityDate).getTime() / 1000) : undefined,
     };
 
     if (isEditMode && bond) {
       onSubmit({
         id: bond.id,
-        ...submissionData
+        ...submissionData,
       });
     } else {
       onSubmit(submissionData);
@@ -101,12 +108,12 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
   const handleClose = () => {
     onOpenChange(false);
     if (!isEditMode) {
-      setName("");
-      setIsin("");
-      setCouponValue("0");
-      setQuantity("1");
-      setInterestRate("0");
-      setMaturityDate("");
+      setName('');
+      setIsin('');
+      setCouponValue('0');
+      setQuantity('1');
+      setInterestRate('0');
+      setMaturityDate('');
     }
   };
 
@@ -121,109 +128,109 @@ export function BondsFormDialog({ open, onOpenChange, onSubmit, bond, isLoading 
         </DialogHeader>
 
         <div className="space-y-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">{t('form.name')} *</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t('form.namePlaceholder')}
-                  required
-                />
-              </div>
+          <div className="grid gap-2">
+            <Label htmlFor="name">{t('form.name')} *</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t('form.namePlaceholder')}
+              required
+            />
+          </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="isin">{t('modal.isin')}</Label>
-                <Input
-                  id="isin"
-                  value={isin}
-                  onChange={(e) => setIsin(e.target.value)}
-                  placeholder={t('modal.isinPlaceholder')}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t('modal.isinHelp')}
-                </p>
-              </div>
+          <div className="grid gap-2">
+            <Label htmlFor="isin">{t('modal.isin')}</Label>
+            <Input
+              id="isin"
+              value={isin}
+              onChange={(e) => setIsin(e.target.value)}
+              placeholder={t('modal.isinPlaceholder')}
+            />
+            <p className="text-xs text-muted-foreground">{t('modal.isinHelp')}</p>
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="couponValue">{t('modal.couponValue')} *</Label>
-                  <Input
-                    id="couponValue"
-                    type="number"
-                    step="0.01"
-                    value={couponValue}
-                    onChange={(e) => setCouponValue(e.target.value)}
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="currency">{tc('labels.currency')}</Label>
-                  <Select
-                    value={selectedCurrency}
-                    onValueChange={(v) => setSelectedCurrency(v as CurrencyCode)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {currencies.map((c: { code: string; symbol: string }) => (
-                        <SelectItem key={c.code} value={c.code}>
-                          {c.code} ({c.symbol})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="couponValue">{t('modal.couponValue')} *</Label>
+              <Input
+                id="couponValue"
+                type="number"
+                step="0.01"
+                value={couponValue}
+                onChange={(e) => setCouponValue(e.target.value)}
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="currency">{tc('labels.currency')}</Label>
+              <Select
+                value={selectedCurrency}
+                onValueChange={(v) => setSelectedCurrency(v as CurrencyCode)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {currencies.map((c: { code: string; symbol: string }) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.code} ({c.symbol})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="quantity">{t('modal.quantity')}</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  step="1"
-                  min="1"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="1"
-                />
-              </div>
+          <div className="grid gap-2">
+            <Label htmlFor="quantity">{t('modal.quantity')}</Label>
+            <Input
+              id="quantity"
+              type="number"
+              step="1"
+              min="1"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              placeholder="1"
+            />
+          </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="maturityDate">{t('form.maturityDate')}</Label>
-                <Input
-                  id="maturityDate"
-                  type="date"
-                  value={maturityDate}
-                  onChange={(e) => setMaturityDate(e.target.value)}
-                />
-              </div>
+          <div className="grid gap-2">
+            <Label htmlFor="maturityDate">{t('form.maturityDate')}</Label>
+            <Input
+              id="maturityDate"
+              type="date"
+              value={maturityDate}
+              onChange={(e) => setMaturityDate(e.target.value)}
+            />
+          </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="interestRate">{t('form.interestRate')} *</Label>
-                <Input
-                  id="interestRate"
-                  type="number"
-                  step="0.01"
-                  value={interestRate}
-                  onChange={(e) => setInterestRate(e.target.value)}
-                  placeholder="0.00"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t('modal.apyHelp')}
-                </p>
-              </div>
+          <div className="grid gap-2">
+            <Label htmlFor="interestRate">{t('form.interestRate')} *</Label>
+            <Input
+              id="interestRate"
+              type="number"
+              step="0.01"
+              value={interestRate}
+              onChange={(e) => setInterestRate(e.target.value)}
+              placeholder="0.00"
+              required
+            />
+            <p className="text-xs text-muted-foreground">{t('modal.apyHelp')}</p>
+          </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>{tc('buttons.cancel')}</Button>
+          <Button variant="outline" onClick={handleClose}>
+            {tc('buttons.cancel')}
+          </Button>
           <Button onClick={handleSubmit} disabled={isLoading || !name || !couponValue}>
             {isLoading
               ? tc('status.saving')
-              : (isEditMode ? tc('buttons.saveChanges') : t('addBond'))}
+              : isEditMode
+                ? tc('buttons.saveChanges')
+                : t('addBond')}
           </Button>
         </DialogFooter>
       </DialogContent>

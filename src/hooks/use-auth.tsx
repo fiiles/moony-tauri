@@ -1,320 +1,344 @@
 /**
  * Auth Hook - Tauri Version
  * Supports 2-phase setup, unlock, lock, and recovery flows using Tauri invoke
- * 
+ *
  * 2-Phase Flows:
  * - Setup: prepareSetup() → show recovery key → confirmSetup() → account created
  * - Recovery: prepareRecover() → show new recovery key → confirmRecover() → password changed
  */
-import { createContext, ReactNode, useContext, useState, useEffect } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { authApi, priceApi, categorizationApi } from "../lib/tauri-api";
-import { queryClient } from "../lib/queryClient";
-import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
-import { translateApiError } from "@/lib/translate-api-error";
-import type { UserProfile } from "@shared/schema";
-import type { UseMutationResult } from "@tanstack/react-query";
+import { createContext, ReactNode, useContext, useState, useEffect } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { authApi, priceApi, categorizationApi } from '../lib/tauri-api';
+import { queryClient } from '../lib/queryClient';
+import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import { translateApiError } from '@/lib/translate-api-error';
+import type { UserProfile } from '@shared/schema';
+import type { UseMutationResult } from '@tanstack/react-query';
 
-type AppStatus = "needs_setup" | "locked" | "unlocked";
+type AppStatus = 'needs_setup' | 'locked' | 'unlocked';
 
 // Pending setup data (stored between prepare and confirm phases)
 interface PendingSetup {
-    name: string;
-    surname: string;
-    email: string;
-    password: string;
-    masterKeyHex: string;
-    recoveryKey: string;
-    salt: number[];
-    language?: string;
+  name: string;
+  surname: string;
+  email: string;
+  password: string;
+  masterKeyHex: string;
+  recoveryKey: string;
+  salt: number[];
+  language?: string;
 }
 
 // Pending recovery data (stored between prepare and confirm phases)
 interface PendingRecover {
-    oldRecoveryKey: string;
-    newPassword: string;
-    newRecoveryKey: string;
+  oldRecoveryKey: string;
+  newPassword: string;
+  newRecoveryKey: string;
 }
 
 type AuthContextType = {
-    user: UserProfile | null;
-    appStatus: AppStatus;
-    isLoading: boolean;
-    error: Error | null;
-    setupMutation: UseMutationResult<PendingSetup, Error, { name: string; surname: string; email?: string; password: string; language?: string }>;
-    unlockMutation: UseMutationResult<UserProfile, Error, { password: string }>;
-    lockMutation: UseMutationResult<void, Error, void>;
-    recoverMutation: UseMutationResult<{ recoveryKey: string; newPassword: string; newRecoveryKey: string }, Error, { recoveryKey: string; newPassword: string }>;
-    confirmSetupMutation: UseMutationResult<UserProfile, Error, void>;
-    confirmRecoveryMutation: UseMutationResult<UserProfile, Error, void>;
-    recoveryKey: string | null;
-    clearRecoveryKey: () => void;
-    pendingSetup: PendingSetup | null;
-    pendingRecover: PendingRecover | null;
+  user: UserProfile | null;
+  appStatus: AppStatus;
+  isLoading: boolean;
+  error: Error | null;
+  setupMutation: UseMutationResult<
+    PendingSetup,
+    Error,
+    { name: string; surname: string; email?: string; password: string; language?: string }
+  >;
+  unlockMutation: UseMutationResult<UserProfile, Error, { password: string }>;
+  lockMutation: UseMutationResult<void, Error, void>;
+  recoverMutation: UseMutationResult<
+    { recoveryKey: string; newPassword: string; newRecoveryKey: string },
+    Error,
+    { recoveryKey: string; newPassword: string }
+  >;
+  confirmSetupMutation: UseMutationResult<UserProfile, Error, void>;
+  confirmRecoveryMutation: UseMutationResult<UserProfile, Error, void>;
+  recoveryKey: string | null;
+  clearRecoveryKey: () => void;
+  pendingSetup: PendingSetup | null;
+  pendingRecover: PendingRecover | null;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const { t } = useTranslation('auth');
-    const { t: tc } = useTranslation('common');
-    const [recoveryKey, setRecoveryKey] = useState<string | null>(null);
-    const [pendingSetup, setPendingSetup] = useState<PendingSetup | null>(null);
-    const [pendingRecover, setPendingRecover] = useState<PendingRecover | null>(null);
-    const [appStatus, setAppStatus] = useState<AppStatus>("locked");
-    const [isCheckingStatus, setIsCheckingStatus] = useState(true);
-    const [error, _setError] = useState<Error | null>(null);
+  const { t } = useTranslation('auth');
+  const { t: tc } = useTranslation('common');
+  const [recoveryKey, setRecoveryKey] = useState<string | null>(null);
+  const [pendingSetup, setPendingSetup] = useState<PendingSetup | null>(null);
+  const [pendingRecover, setPendingRecover] = useState<PendingRecover | null>(null);
+  const [appStatus, setAppStatus] = useState<AppStatus>('locked');
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+  const [error, _setError] = useState<Error | null>(null);
 
-    // Fetch user profile automatically when unlocked
-    const { data: user = null, isLoading: isProfileLoading } = useQuery({
-        queryKey: ["user-profile"],
-        queryFn: () => authApi.getProfile(),
-        enabled: appStatus === "unlocked",
-        staleTime: Infinity, // Keep data fresh unless invalidated
-    });
+  // Fetch user profile automatically when unlocked
+  const { data: user = null, isLoading: isProfileLoading } = useQuery({
+    queryKey: ['user-profile'],
+    queryFn: () => authApi.getProfile(),
+    enabled: appStatus === 'unlocked',
+    staleTime: Infinity, // Keep data fresh unless invalidated
+  });
 
-    const isLoading = isCheckingStatus || (appStatus === "unlocked" && isProfileLoading && !user);
+  const isLoading = isCheckingStatus || (appStatus === 'unlocked' && isProfileLoading && !user);
 
-    // Check initial app status
-    useEffect(() => {
-        const checkStatus = async () => {
-            try {
-                setIsCheckingStatus(true);
-                const hasSetup = await authApi.checkSetup();
+  // Check initial app status
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        setIsCheckingStatus(true);
+        const hasSetup = await authApi.checkSetup();
 
-                if (!hasSetup) {
-                    setAppStatus("needs_setup");
-                } else {
-                    // Check if authenticated
-                    const isAuth = await authApi.isAuthenticated();
-                    if (isAuth) {
-                        setAppStatus("unlocked");
-                    } else {
-                        setAppStatus("locked");
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to check app status:", err);
-                setAppStatus("locked");
-            } finally {
-                setIsCheckingStatus(false);
-            }
-        };
-
-        checkStatus();
-    }, []);
-
-    // Phase 1: Prepare setup - generates keys, shows recovery key, but doesn't create account
-    const setupMutation = useMutation({
-        mutationFn: async (data: { name: string; surname: string; email?: string; password: string; language?: string }) => {
-            // Call prepare_setup to get keys
-            const prepared = await authApi.prepareSetup();
-            return {
-                ...data,
-                email: data.email || "",
-                ...prepared,
-            };
-        },
-        onSuccess: (result) => {
-            // Store pending setup data
-            setPendingSetup({
-                name: result.name,
-                surname: result.surname,
-                email: result.email,
-                password: result.password,
-                masterKeyHex: result.masterKeyHex,
-                recoveryKey: result.recoveryKey,
-                salt: result.salt,
-                language: result.language,
-            });
-            // Show recovery key modal
-            setRecoveryKey(result.recoveryKey);
-            toast(t('toast.almostDone'), { description: t('toast.saveRecoveryKey') });
-        },
-        onError: (error: Error) => {
-            toast.error(t('toast.setupFailed'), { description: translateApiError(error, tc) });
-        },
-    });
-
-    // Phase 2: Confirm setup - actually creates the account
-    const confirmSetupMutation = useMutation({
-        mutationFn: async () => {
-            if (!pendingSetup) {
-                throw new Error("No pending setup to confirm");
-            }
-            // Now actually create the account
-            const profile = await authApi.confirmSetup(pendingSetup);
-            return profile;
-        },
-        onSuccess: (profile) => {
-            queryClient.setQueryData(["user-profile"], profile);
-            setAppStatus("unlocked");
-            setPendingSetup(null);
-            // Load learned payees from database
-            categorizationApi.loadFromDb().catch(console.error);
-            // Load user's own IBANs for internal transfer detection
-            categorizationApi.loadOwnIbans().catch(console.error);
-            // Load custom categorization rules from database
-            categorizationApi.loadCustomRulesFromDb().catch(console.error);
-            // Recovery key will be cleared by auth-page when user dismisses modal
-            toast(t('toast.setupComplete'), { description: t('toast.setupCompleteDesc') });
-        },
-        onError: (error: Error) => {
-            toast.error(t('toast.setupFailed'), { description: translateApiError(error, tc) });
-        },
-    });
-
-    // Unlock mutation (login with password)
-    const unlockMutation = useMutation({
-        mutationFn: async (data: { password: string }) => {
-            const profile = await authApi.unlock(data.password);
-            return profile;
-        },
-        onSuccess: (profile) => {
-            queryClient.setQueryData(["user-profile"], profile);
-            setAppStatus("unlocked");
-            
-            // Refresh all prices in background after unlock
-            // Stock prices and dividends (Yahoo Finance)
-            priceApi.refreshStockPrices().then(() => {
-                queryClient.invalidateQueries({ queryKey: ["investments"] });
-                queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            }).catch(console.error);
-            priceApi.refreshDividends().then(() => {
-                queryClient.invalidateQueries({ queryKey: ["investments"] });
-                queryClient.invalidateQueries({ queryKey: ["dividend-summary"] });
-            }).catch(console.error);
-            // Crypto prices (CoinGecko)
-            priceApi.refreshCryptoPrices().then(() => {
-                queryClient.invalidateQueries({ queryKey: ["crypto"] });
-                queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            }).catch(console.error);
-            
-            // Load learned payees from database for categorization
-            categorizationApi.loadFromDb().catch(console.error);
-            // Load user's own IBANs for internal transfer detection
-            categorizationApi.loadOwnIbans().catch(console.error);
-            // Load custom categorization rules from database
-            categorizationApi.loadCustomRulesFromDb().catch(console.error);
-        },
-        onError: (error: Error) => {
-            // Check if this is a password-related error and show a friendly message
-            const errorLower = error.message.toLowerCase();
-            const isPasswordError = errorLower.includes("invalid password") ||
-                                   errorLower.includes("corrupted") ||
-                                   errorLower.includes("decryption failed");
-            toast.error(t('toast.unlockFailed'), { description: isPasswordError
-                    ? t('toast.wrongPassword')
-                    : translateApiError(error, tc) });
-        },
-    });
-
-    // Lock mutation (logout)
-    const lockMutation = useMutation({
-        mutationFn: async () => {
-            await authApi.logout();
-        },
-        onSuccess: () => {
-            queryClient.clear();
-            setAppStatus("locked");
-        },
-        onError: (error: Error) => {
-            toast.error(t('toast.lockFailed'), { description: translateApiError(error, tc) });
-        },
-    });
-
-    // Phase 1: Prepare recovery - verifies old recovery key, generates new one
-    const recoverMutation = useMutation({
-        mutationFn: async (data: { recoveryKey: string; newPassword: string }) => {
-            // Call prepare_recover to verify and get new recovery key
-            const result = await authApi.prepareRecover(data);
-            return { ...data, newRecoveryKey: result.recoveryKey };
-        },
-        onSuccess: (result) => {
-            // Store pending recovery data
-            setPendingRecover({
-                oldRecoveryKey: result.recoveryKey,
-                newPassword: result.newPassword,
-                newRecoveryKey: result.newRecoveryKey,
-            });
-            // Show new recovery key modal
-            setRecoveryKey(result.newRecoveryKey);
-            toast(t('toast.recoveryKeyVerified'), { description: t('toast.saveNewRecoveryKey') });
-        },
-        onError: (error: Error) => {
-            toast.error(t('toast.recoveryFailed'), { description: translateApiError(error, tc) });
-        },
-    });
-
-    // Phase 2: Confirm recovery - actually changes password and recovery key
-    const confirmRecoveryMutation = useMutation({
-        mutationFn: async () => {
-            if (!pendingRecover) {
-                throw new Error("No pending recovery to confirm");
-            }
-            // Now actually change the password
-            const profile = await authApi.confirmRecover(pendingRecover);
-            return profile;
-        },
-        onSuccess: (profile) => {
-            queryClient.setQueryData(["user-profile"], profile);
-            setAppStatus("unlocked");
-            setPendingRecover(null);
-            // Load learned payees from database
-            categorizationApi.loadFromDb().catch(console.error);
-            // Load user's own IBANs for internal transfer detection
-            categorizationApi.loadOwnIbans().catch(console.error);
-            // Load custom categorization rules from database
-            categorizationApi.loadCustomRulesFromDb().catch(console.error);
-            // Recovery key will be cleared by auth-page
-            toast(t('toast.recoverySuccess'), { description: t('toast.newRecoveryKey') });
-        },
-        onError: (error: Error) => {
-            toast.error(t('toast.recoveryFailed'), { description: translateApiError(error, tc) });
-        },
-    });
-
-    const clearRecoveryKey = () => {
-        setRecoveryKey(null);
-        // If user cancels during setup before confirming, clear pending setup
-        if (pendingSetup && appStatus === "needs_setup") {
-            setPendingSetup(null);
+        if (!hasSetup) {
+          setAppStatus('needs_setup');
+        } else {
+          // Check if authenticated
+          const isAuth = await authApi.isAuthenticated();
+          if (isAuth) {
+            setAppStatus('unlocked');
+          } else {
+            setAppStatus('locked');
+          }
         }
-        // If user cancels during recovery before confirming, clear pending recover
-        if (pendingRecover && appStatus === "locked") {
-            setPendingRecover(null);
-        }
+      } catch (err) {
+        console.error('Failed to check app status:', err);
+        setAppStatus('locked');
+      } finally {
+        setIsCheckingStatus(false);
+      }
     };
 
-    return (
-        <AuthContext.Provider
-            value={{
-                user,
-                appStatus,
-                isLoading,
-                error,
-                setupMutation,
-                unlockMutation,
-                lockMutation,
-                recoverMutation,
-                confirmSetupMutation,
-                confirmRecoveryMutation,
-                recoveryKey,
-                clearRecoveryKey,
-                pendingSetup,
-                pendingRecover,
-            }}
-        >
-            {children}
-        </AuthContext.Provider>
-    );
+    checkStatus();
+  }, []);
+
+  // Phase 1: Prepare setup - generates keys, shows recovery key, but doesn't create account
+  const setupMutation = useMutation({
+    mutationFn: async (data: {
+      name: string;
+      surname: string;
+      email?: string;
+      password: string;
+      language?: string;
+    }) => {
+      // Call prepare_setup to get keys
+      const prepared = await authApi.prepareSetup();
+      return {
+        ...data,
+        email: data.email || '',
+        ...prepared,
+      };
+    },
+    onSuccess: (result) => {
+      // Store pending setup data
+      setPendingSetup({
+        name: result.name,
+        surname: result.surname,
+        email: result.email,
+        password: result.password,
+        masterKeyHex: result.masterKeyHex,
+        recoveryKey: result.recoveryKey,
+        salt: result.salt,
+        language: result.language,
+      });
+      // Show recovery key modal
+      setRecoveryKey(result.recoveryKey);
+      toast(t('toast.almostDone'), { description: t('toast.saveRecoveryKey') });
+    },
+    onError: (error: Error) => {
+      toast.error(t('toast.setupFailed'), { description: translateApiError(error, tc) });
+    },
+  });
+
+  // Phase 2: Confirm setup - actually creates the account
+  const confirmSetupMutation = useMutation({
+    mutationFn: async () => {
+      if (!pendingSetup) {
+        throw new Error('No pending setup to confirm');
+      }
+      // Now actually create the account
+      const profile = await authApi.confirmSetup(pendingSetup);
+      return profile;
+    },
+    onSuccess: (profile) => {
+      queryClient.setQueryData(['user-profile'], profile);
+      setAppStatus('unlocked');
+      setPendingSetup(null);
+      // Load learned payees from database
+      categorizationApi.loadFromDb().catch(console.error);
+      // Load user's own IBANs for internal transfer detection
+      categorizationApi.loadOwnIbans().catch(console.error);
+      // Load custom categorization rules from database
+      categorizationApi.loadCustomRulesFromDb().catch(console.error);
+      // Recovery key will be cleared by auth-page when user dismisses modal
+      toast(t('toast.setupComplete'), { description: t('toast.setupCompleteDesc') });
+    },
+    onError: (error: Error) => {
+      toast.error(t('toast.setupFailed'), { description: translateApiError(error, tc) });
+    },
+  });
+
+  // Unlock mutation (login with password)
+  const unlockMutation = useMutation({
+    mutationFn: async (data: { password: string }) => {
+      const profile = await authApi.unlock(data.password);
+      return profile;
+    },
+    onSuccess: (profile) => {
+      queryClient.setQueryData(['user-profile'], profile);
+      setAppStatus('unlocked');
+
+      // Refresh all prices in background after unlock
+      // Stock prices and dividends (Yahoo Finance)
+      priceApi
+        .refreshStockPrices()
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['investments'] });
+          queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+        })
+        .catch(console.error);
+      priceApi
+        .refreshDividends()
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['investments'] });
+          queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
+        })
+        .catch(console.error);
+      // Crypto prices (CoinGecko)
+      priceApi
+        .refreshCryptoPrices()
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ['crypto'] });
+          queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+        })
+        .catch(console.error);
+
+      // Load learned payees from database for categorization
+      categorizationApi.loadFromDb().catch(console.error);
+      // Load user's own IBANs for internal transfer detection
+      categorizationApi.loadOwnIbans().catch(console.error);
+      // Load custom categorization rules from database
+      categorizationApi.loadCustomRulesFromDb().catch(console.error);
+    },
+    onError: (error: Error) => {
+      // Check if this is a password-related error and show a friendly message
+      const errorLower = error.message.toLowerCase();
+      const isPasswordError =
+        errorLower.includes('invalid password') ||
+        errorLower.includes('corrupted') ||
+        errorLower.includes('decryption failed');
+      toast.error(t('toast.unlockFailed'), {
+        description: isPasswordError ? t('toast.wrongPassword') : translateApiError(error, tc),
+      });
+    },
+  });
+
+  // Lock mutation (logout)
+  const lockMutation = useMutation({
+    mutationFn: async () => {
+      await authApi.logout();
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      setAppStatus('locked');
+    },
+    onError: (error: Error) => {
+      toast.error(t('toast.lockFailed'), { description: translateApiError(error, tc) });
+    },
+  });
+
+  // Phase 1: Prepare recovery - verifies old recovery key, generates new one
+  const recoverMutation = useMutation({
+    mutationFn: async (data: { recoveryKey: string; newPassword: string }) => {
+      // Call prepare_recover to verify and get new recovery key
+      const result = await authApi.prepareRecover(data);
+      return { ...data, newRecoveryKey: result.recoveryKey };
+    },
+    onSuccess: (result) => {
+      // Store pending recovery data
+      setPendingRecover({
+        oldRecoveryKey: result.recoveryKey,
+        newPassword: result.newPassword,
+        newRecoveryKey: result.newRecoveryKey,
+      });
+      // Show new recovery key modal
+      setRecoveryKey(result.newRecoveryKey);
+      toast(t('toast.recoveryKeyVerified'), { description: t('toast.saveNewRecoveryKey') });
+    },
+    onError: (error: Error) => {
+      toast.error(t('toast.recoveryFailed'), { description: translateApiError(error, tc) });
+    },
+  });
+
+  // Phase 2: Confirm recovery - actually changes password and recovery key
+  const confirmRecoveryMutation = useMutation({
+    mutationFn: async () => {
+      if (!pendingRecover) {
+        throw new Error('No pending recovery to confirm');
+      }
+      // Now actually change the password
+      const profile = await authApi.confirmRecover(pendingRecover);
+      return profile;
+    },
+    onSuccess: (profile) => {
+      queryClient.setQueryData(['user-profile'], profile);
+      setAppStatus('unlocked');
+      setPendingRecover(null);
+      // Load learned payees from database
+      categorizationApi.loadFromDb().catch(console.error);
+      // Load user's own IBANs for internal transfer detection
+      categorizationApi.loadOwnIbans().catch(console.error);
+      // Load custom categorization rules from database
+      categorizationApi.loadCustomRulesFromDb().catch(console.error);
+      // Recovery key will be cleared by auth-page
+      toast(t('toast.recoverySuccess'), { description: t('toast.newRecoveryKey') });
+    },
+    onError: (error: Error) => {
+      toast.error(t('toast.recoveryFailed'), { description: translateApiError(error, tc) });
+    },
+  });
+
+  const clearRecoveryKey = () => {
+    setRecoveryKey(null);
+    // If user cancels during setup before confirming, clear pending setup
+    if (pendingSetup && appStatus === 'needs_setup') {
+      setPendingSetup(null);
+    }
+    // If user cancels during recovery before confirming, clear pending recover
+    if (pendingRecover && appStatus === 'locked') {
+      setPendingRecover(null);
+    }
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        appStatus,
+        isLoading,
+        error,
+        setupMutation,
+        unlockMutation,
+        lockMutation,
+        recoverMutation,
+        confirmSetupMutation,
+        confirmRecoveryMutation,
+        recoveryKey,
+        clearRecoveryKey,
+        pendingSetup,
+        pendingRecover,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error("useAuth must be used within an AuthProvider");
-    }
-    return context;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }

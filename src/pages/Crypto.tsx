@@ -1,238 +1,237 @@
-
-import { useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Bitcoin, RefreshCw } from "lucide-react";
-import { EmptyState } from "@/components/common/EmptyState";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AddCryptoModal } from "@/components/crypto/AddCryptoModal";
-import { CoinGeckoApiKeyModal } from "@/components/crypto/CoinGeckoApiKeyModal";
-import { CryptoSummary } from "@/components/crypto/CryptoSummary";
-import { CryptoTable, type CryptoHoldingData } from "@/components/crypto/CryptoTable";
-import { cryptoApi, priceApi, exportApi } from "@/lib/tauri-api";
+import { useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Bitcoin, RefreshCw } from 'lucide-react';
+import { EmptyState } from '@/components/common/EmptyState';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AddCryptoModal } from '@/components/crypto/AddCryptoModal';
+import { CoinGeckoApiKeyModal } from '@/components/crypto/CoinGeckoApiKeyModal';
+import { CryptoSummary } from '@/components/crypto/CryptoSummary';
+import { CryptoTable, type CryptoHoldingData } from '@/components/crypto/CryptoTable';
+import { cryptoApi, priceApi, exportApi } from '@/lib/tauri-api';
 import {
-    calculateCryptoPortfolioMetrics,
-    mapCryptoInvestmentToHolding,
-    calculateRealizedGains,
-} from "@shared/calculations";
-import type { CryptoInvestmentWithPrice } from "@shared/types";
-import type { CryptoTransaction } from "@shared/schema";
-import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
-import PortfolioValueTrendChart, { type TransactionMarker } from "@/components/common/PortfolioValueTrendChart";
-import { ExportButton } from "@/components/common/ExportButton";
-import { useCurrency } from "@/lib/currency";
-import type { CurrencyCode } from "@shared/currencies";
+  calculateCryptoPortfolioMetrics,
+  mapCryptoInvestmentToHolding,
+  calculateRealizedGains,
+} from '@shared/calculations';
+import type { CryptoInvestmentWithPrice } from '@shared/types';
+import type { CryptoTransaction } from '@shared/schema';
+import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
+import PortfolioValueTrendChart, {
+  type TransactionMarker,
+} from '@/components/common/PortfolioValueTrendChart';
+import { ExportButton } from '@/components/common/ExportButton';
+import { useCurrency } from '@/lib/currency';
+import type { CurrencyCode } from '@shared/currencies';
 
 export default function Crypto() {
-    const { t } = useTranslation('crypto');
-    const queryClient = useQueryClient();
-    const { convert, currencyCode } = useCurrency();
+  const { t } = useTranslation('crypto');
+  const queryClient = useQueryClient();
+  const { convert, currencyCode } = useCurrency();
 
-    const { data: cryptoInvestments, isLoading } = useQuery<CryptoInvestmentWithPrice[]>({
-        queryKey: ["crypto"],
-        queryFn: () => cryptoApi.getAll(),
-        refetchOnMount: true,
-        staleTime: 60 * 1000,
-    });
+  const { data: cryptoInvestments, isLoading } = useQuery<CryptoInvestmentWithPrice[]>({
+    queryKey: ['crypto'],
+    queryFn: () => cryptoApi.getAll(),
+    refetchOnMount: true,
+    staleTime: 60 * 1000,
+  });
 
-    // Fetch all crypto transactions for chart markers
-    const { data: allTransactions } = useQuery<CryptoTransaction[]>({
-        queryKey: ["all-crypto-transactions"],
-        queryFn: () => cryptoApi.getAllTransactions(),
-        staleTime: 60 * 1000,
-    });
+  // Fetch all crypto transactions for chart markers
+  const { data: allTransactions } = useQuery<CryptoTransaction[]>({
+    queryKey: ['all-crypto-transactions'],
+    queryFn: () => cryptoApi.getAllTransactions(),
+    staleTime: 60 * 1000,
+  });
 
-    // Compute transaction markers grouped by date
-    const transactionMarkers = useMemo((): TransactionMarker[] => {
-        if (!allTransactions || allTransactions.length === 0) return [];
+  // Compute transaction markers grouped by date
+  const transactionMarkers = useMemo((): TransactionMarker[] => {
+    if (!allTransactions || allTransactions.length === 0) return [];
 
-        // Group transactions by date (day granularity)
-        const markersByDate = new Map<number, { buyAmount: number; sellAmount: number; buyTickers: string[]; sellTickers: string[] }>();
+    // Group transactions by date (day granularity)
+    const markersByDate = new Map<
+      number,
+      { buyAmount: number; sellAmount: number; buyTickers: string[]; sellTickers: string[] }
+    >();
 
-        for (const tx of allTransactions) {
-            // Normalize to start of day (in user's timezone)
-            const txDate = new Date(tx.transactionDate * 1000);
-            const dayStart = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime() / 1000;
+    for (const tx of allTransactions) {
+      // Normalize to start of day (in user's timezone)
+      const txDate = new Date(tx.transactionDate * 1000);
+      const dayStart =
+        new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime() / 1000;
 
-            const existing = markersByDate.get(dayStart) || { buyAmount: 0, sellAmount: 0, buyTickers: [], sellTickers: [] };
-            
-            // Calculate total value in CZK (base currency)
-            const quantity = parseFloat(tx.quantity) || 0;
-            const pricePerUnit = parseFloat(tx.pricePerUnit) || 0;
-            const txCurrency = (tx.currency || "CZK") as CurrencyCode;
-            
-            // Convert to CZK for consistency
-            const totalInCzk = convert(quantity * pricePerUnit, txCurrency, "CZK");
+      const existing = markersByDate.get(dayStart) || {
+        buyAmount: 0,
+        sellAmount: 0,
+        buyTickers: [],
+        sellTickers: [],
+      };
 
-            if (tx.type === "buy") {
-                existing.buyAmount += totalInCzk;
-                if (!existing.buyTickers.includes(tx.ticker)) {
-                    existing.buyTickers.push(tx.ticker);
-                }
-            } else if (tx.type === "sell") {
-                existing.sellAmount += totalInCzk;
-                if (!existing.sellTickers.includes(tx.ticker)) {
-                    existing.sellTickers.push(tx.ticker);
-                }
-            }
+      // Calculate total value in CZK (base currency)
+      const quantity = parseFloat(tx.quantity) || 0;
+      const pricePerUnit = parseFloat(tx.pricePerUnit) || 0;
+      const txCurrency = (tx.currency || 'CZK') as CurrencyCode;
 
-            markersByDate.set(dayStart, existing);
+      // Convert to CZK for consistency
+      const totalInCzk = convert(quantity * pricePerUnit, txCurrency, 'CZK');
+
+      if (tx.type === 'buy') {
+        existing.buyAmount += totalInCzk;
+        if (!existing.buyTickers.includes(tx.ticker)) {
+          existing.buyTickers.push(tx.ticker);
         }
+      } else if (tx.type === 'sell') {
+        existing.sellAmount += totalInCzk;
+        if (!existing.sellTickers.includes(tx.ticker)) {
+          existing.sellTickers.push(tx.ticker);
+        }
+      }
 
-        // Convert map to array of TransactionMarker
-        return Array.from(markersByDate.entries()).map(([date, amounts]) => ({
-            date,
-            buyAmount: amounts.buyAmount,
-            sellAmount: amounts.sellAmount,
-            buyTickers: amounts.buyTickers,
-            sellTickers: amounts.sellTickers,
-        }));
-    }, [allTransactions, convert]);
-
-    // Compute realized gains/losses from sell transactions (WAC method)
-    const realizedGain = useMemo(() => {
-        if (!allTransactions || allTransactions.length === 0) return 0;
-        return calculateRealizedGains(allTransactions, convert, currencyCode as CurrencyCode);
-    }, [allTransactions, convert, currencyCode]);
-
-    // Refresh prices mutation - uses CoinGecko API
-    const refreshPricesMutation = useMutation({
-        mutationFn: async () => {
-            return priceApi.refreshCryptoPrices();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["crypto"] });
-            queryClient.invalidateQueries({ queryKey: ["portfolio-metrics"] });
-            toast(t('toast.pricesRefreshed'), { description: t('toast.pricesRefreshed') });
-        },
-        onError: (error: Error) => {
-            toast.error(t('toast.refreshFailed'), { description: error.message });
-        },
-    });
-
-
-
-
-
-
-    // Transform data using shared calculation module
-    const holdings: CryptoHoldingData[] = (cryptoInvestments || []).map((inv) => {
-        const quantity = parseFloat(String(inv.quantity));
-        const avgPriceOriginal = parseFloat(String(inv.averagePrice));
-        const currentPriceInCzk = parseFloat(String(inv.currentPrice)) || 0;
-
-        // Convert prices to preferred currency
-        const preferredCurrency = currencyCode as CurrencyCode;
-        // averagePrice is stored in native currency (from first transaction)
-        const avgPriceCurrency = (inv.averagePriceCurrency || "USD") as CurrencyCode;
-        const averagePrice = convert(avgPriceOriginal, avgPriceCurrency, preferredCurrency);
-        // Use originalPrice (native USD) directly to avoid CZK round-trip rate mismatch
-        const originalCurrentPrice = parseFloat(String(inv.originalPrice)) || 0;
-        const cryptoCurrency = (inv.currency || "USD") as CurrencyCode;
-        const currentPrice = originalCurrentPrice > 0
-            ? convert(originalCurrentPrice, cryptoCurrency, preferredCurrency)
-            : convert(currentPriceInCzk, "CZK", preferredCurrency);
-
-        return mapCryptoInvestmentToHolding(
-            inv.id,
-            inv.ticker,
-            inv.name || inv.ticker,
-            quantity,
-            averagePrice,
-            currentPrice,
-            inv.fetchedAt,
-            inv.isManualPrice,
-            inv.coingeckoId,
-            inv.originalPrice,
-            inv.currency
-        );
-    });
-
-    const metrics = calculateCryptoPortfolioMetrics(holdings);
-
-    if (isLoading) {
-        return (
-            <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto">
-                <div className="mb-6">
-                    <h1 className="text-3xl font-black tracking-tight mb-2">
-                        {t('title')}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {t('loading')}
-                    </p>
-                </div>
-            </div>
-        );
+      markersByDate.set(dayStart, existing);
     }
 
-    return (
-        <>
-        <CoinGeckoApiKeyModal />
-        <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto space-y-8">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="page-title">
-                        {t('title')}
-                    </h1>
-                    <p className="page-subtitle">
-                        {t('subtitle')}
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => refreshPricesMutation.mutate()}
-                        disabled={refreshPricesMutation.isPending}
-                        title={t('refreshPrices')}
-                    >
-                        <RefreshCw className={`h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`} />
-                    </Button>
-                    <ExportButton exportFn={exportApi.cryptoTransactions} />
-                    <AddCryptoModal />
-                </div>
-            </div>
+    // Convert map to array of TransactionMarker
+    return Array.from(markersByDate.entries()).map(([date, amounts]) => ({
+      date,
+      buyAmount: amounts.buyAmount,
+      sellAmount: amounts.sellAmount,
+      buyTickers: amounts.buyTickers,
+      sellTickers: amounts.sellTickers,
+    }));
+  }, [allTransactions, convert]);
 
-            <CryptoSummary
-                metrics={metrics}
-                realizedGain={realizedGain}
-                isLoading={refreshPricesMutation.isPending}
-                latestFetchedAt={holdings.reduce((latest, h) => {
-                    if (!h.fetchedAt) return latest;
-                    // Handle both seconds (Unix timestamp) and ISO strings/Dates
-                    // If it's a number and small (less than year 1973 in ms), assume seconds
-                    const value = h.fetchedAt;
-                    const date = new Date(
-                        typeof value === 'number' && value < 100000000000
-                            ? value * 1000
-                            : value
-                    );
-                    return !latest || date > latest ? date : latest;
-                }, undefined as Date | undefined)}
-            />
+  // Compute realized gains/losses from sell transactions (WAC method)
+  const realizedGain = useMemo(() => {
+    if (!allTransactions || allTransactions.length === 0) return 0;
+    return calculateRealizedGains(allTransactions, convert, currencyCode as CurrencyCode);
+  }, [allTransactions, convert, currencyCode]);
 
-            <PortfolioValueTrendChart
-                type="crypto"
-                currentValue={metrics.totalValue}
-                isRefreshing={refreshPricesMutation.isPending}
-                transactionMarkers={transactionMarkers}
-            />
+  // Refresh prices mutation - uses CoinGecko API
+  const refreshPricesMutation = useMutation({
+    mutationFn: async () => {
+      return priceApi.refreshCryptoPrices();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['crypto'] });
+      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
+      toast(t('toast.pricesRefreshed', { count: result.length }), {
+        description: t('toast.pricesRefreshedDescription'),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(t('toast.refreshFailed'), { description: error.message });
+    },
+  });
 
-            {holdings.length === 0 ? (
-              <EmptyState
-                icon={<Bitcoin className="h-12 w-12" />}
-                title={t('empty.title')}
-                description={t('empty.description')}
-                action={<AddCryptoModal />}
-              />
-            ) : (
-              <CryptoTable
-                holdings={holdings}
-                isLoading={refreshPricesMutation.isPending}
-              />
-            )}
+  // Transform data using shared calculation module
+  const holdings: CryptoHoldingData[] = (cryptoInvestments || []).map((inv) => {
+    const quantity = parseFloat(String(inv.quantity));
+    const avgPriceOriginal = parseFloat(String(inv.averagePrice));
+    const currentPriceInCzk = parseFloat(String(inv.currentPrice)) || 0;
 
-        </div>
-        </>
+    // Convert prices to preferred currency
+    const preferredCurrency = currencyCode as CurrencyCode;
+    // averagePrice is stored in native currency (from first transaction)
+    const avgPriceCurrency = (inv.averagePriceCurrency || 'USD') as CurrencyCode;
+    const averagePrice = convert(avgPriceOriginal, avgPriceCurrency, preferredCurrency);
+    // Use originalPrice (native USD) directly to avoid CZK round-trip rate mismatch
+    const originalCurrentPrice = parseFloat(String(inv.originalPrice)) || 0;
+    const cryptoCurrency = (inv.currency || 'USD') as CurrencyCode;
+    const currentPrice =
+      originalCurrentPrice > 0
+        ? convert(originalCurrentPrice, cryptoCurrency, preferredCurrency)
+        : convert(currentPriceInCzk, 'CZK', preferredCurrency);
+
+    return mapCryptoInvestmentToHolding(
+      inv.id,
+      inv.ticker,
+      inv.name || inv.ticker,
+      quantity,
+      averagePrice,
+      currentPrice,
+      inv.fetchedAt,
+      inv.isManualPrice,
+      inv.coingeckoId,
+      inv.originalPrice,
+      inv.currency
     );
+  });
+
+  const metrics = calculateCryptoPortfolioMetrics(holdings);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-black tracking-tight mb-2">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <CoinGeckoApiKeyModal />
+      <div className="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="page-title">{t('title')}</h1>
+            <p className="page-subtitle">{t('subtitle')}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => refreshPricesMutation.mutate()}
+              disabled={refreshPricesMutation.isPending}
+              title={t('refreshPrices')}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${refreshPricesMutation.isPending ? 'animate-spin' : ''}`}
+              />
+            </Button>
+            <ExportButton exportFn={exportApi.cryptoTransactions} />
+            <AddCryptoModal />
+          </div>
+        </div>
+
+        <CryptoSummary
+          metrics={metrics}
+          realizedGain={realizedGain}
+          isLoading={refreshPricesMutation.isPending}
+          latestFetchedAt={holdings.reduce(
+            (latest, h) => {
+              if (!h.fetchedAt) return latest;
+              // Handle both seconds (Unix timestamp) and ISO strings/Dates
+              // If it's a number and small (less than year 1973 in ms), assume seconds
+              const value = h.fetchedAt;
+              const date = new Date(
+                typeof value === 'number' && value < 100000000000 ? value * 1000 : value
+              );
+              return !latest || date > latest ? date : latest;
+            },
+            undefined as Date | undefined
+          )}
+        />
+
+        <PortfolioValueTrendChart
+          type="crypto"
+          currentValue={metrics.totalValue}
+          isRefreshing={refreshPricesMutation.isPending}
+          transactionMarkers={transactionMarkers}
+        />
+
+        {holdings.length === 0 ? (
+          <EmptyState
+            icon={<Bitcoin className="h-12 w-12" />}
+            title={t('empty.title')}
+            description={t('empty.description')}
+            action={<AddCryptoModal />}
+          />
+        ) : (
+          <CryptoTable holdings={holdings} isLoading={refreshPricesMutation.isPending} />
+        )}
+      </div>
+    </>
+  );
 }

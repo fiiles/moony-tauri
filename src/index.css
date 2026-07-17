@@ -513,8 +513,6 @@ input[type='date']::-moz-placeholder {
   border-bottom-color: hsl(var(--border) / 0.5);
 }
 
-
-
 /* Force date input text to be grey, not blue - more aggressive fix */
 input[type='date'] {
   color: hsl(var(--foreground)) !important;
