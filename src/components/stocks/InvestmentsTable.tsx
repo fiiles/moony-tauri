@@ -33,13 +33,7 @@ export function InvestmentsTable({ holdings, onViewDetail, isLoading }: Investme
 
   // Sorting state
   type SortColumn =
-    | 'name'
-    | 'quantity'
-    | 'avgCost'
-    | 'currentPrice'
-    | 'marketValue'
-    | 'gainLoss'
-    | 'dividend';
+    'name' | 'quantity' | 'avgCost' | 'currentPrice' | 'marketValue' | 'gainLoss' | 'dividend';
   const [sortColumn, setSortColumn] = useState<SortColumn>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 

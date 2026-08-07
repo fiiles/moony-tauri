@@ -139,7 +139,7 @@ export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps
                         </p>
                         {payload.map((entry) => (
                           <div
-                            key={entry.dataKey}
+                            key={entry.dataKey as string}
                             className="flex items-center justify-between gap-4 text-sm"
                           >
                             <span className="flex items-center gap-1.5">

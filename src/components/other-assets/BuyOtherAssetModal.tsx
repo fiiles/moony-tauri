@@ -34,8 +34,8 @@ import { otherAssetsApi } from '@/lib/tauri-api';
 import { useTranslation } from 'react-i18next';
 
 const formSchema = z.object({
-  quantity: z.coerce.number().positive('Quantity must be positive'),
-  pricePerUnit: z.coerce.number().min(0, 'Price must be non-negative'),
+  quantity: z.coerce.number<number>().positive('Quantity must be positive'),
+  pricePerUnit: z.coerce.number<number>().min(0, 'Price must be non-negative'),
   currency: z.enum(['USD', 'EUR', 'CZK', 'GBP']),
   date: z.string().optional(),
 });
@@ -64,7 +64,7 @@ export function BuyOtherAssetModal({ asset, open, onOpenChange }: BuyOtherAssetM
   // Update default currency when asset changes
   useEffect(() => {
     if (asset) {
-      form.setValue('currency', asset.currency as any);
+      form.setValue('currency', asset.currency as z.infer<typeof formSchema>['currency']);
     }
   }, [asset, form]);
 

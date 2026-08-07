@@ -46,7 +46,7 @@ const insuranceFormSchema = z.object({
   provider: z.string().min(1, 'validation.providerRequired'),
   policyName: z.string().min(1, 'validation.policyNameRequired'),
   policyNumber: z.string().optional(),
-  startDate: z.date({ required_error: 'validation.dateRequired' }),
+  startDate: z.date({ error: 'validation.dateRequired' }),
   endDate: z.date().optional().nullable(),
   paymentFrequency: z.string().min(1, 'validation.paymentFrequencyInvalid'),
   oneTimePayment: z.string().optional(),

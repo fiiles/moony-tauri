@@ -13,7 +13,7 @@ use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
 };
-use rand::RngCore;
+use rand::Rng;
 use scrypt::{scrypt, Params};
 use std::fs;
 use std::path::Path;
@@ -30,7 +30,8 @@ const AUTH_TAG_LENGTH: usize = 16;
 pub fn derive_key(secret: &str, salt: &[u8]) -> Result<[u8; KEY_LENGTH]> {
     // scrypt parameters: N=16384 (2^14), r=8, p=1
     // These match Node.js crypto.scrypt defaults
-    let params = Params::new(14, 8, 1, KEY_LENGTH)
+    // Output length is taken from the buffer passed to scrypt() (32 bytes)
+    let params = Params::new(14, 8, 1)
         .map_err(|e| AppError::Encryption(format!("Invalid scrypt params: {}", e)))?;
 
     let mut key = [0u8; KEY_LENGTH];
@@ -64,11 +65,11 @@ pub fn encrypt_with_key(data: &[u8], key: &[u8; KEY_LENGTH]) -> Result<Vec<u8>> 
     // Generate random IV
     let mut iv = [0u8; IV_LENGTH];
     rand::rng().fill_bytes(&mut iv);
-    let nonce = Nonce::from_slice(&iv);
+    let nonce = Nonce::from(iv);
 
     // Encrypt (ciphertext includes auth tag appended by aes-gcm)
     let ciphertext_with_tag = cipher
-        .encrypt(nonce, data)
+        .encrypt(&nonce, data)
         .map_err(|e| AppError::Encryption(format!("Encryption failed: {}", e)))?;
 
     // aes-gcm appends auth tag at the end, we need to reformat to match Node.js:
@@ -106,10 +107,11 @@ pub fn decrypt_with_key(encrypted_data: &[u8], key: &[u8; KEY_LENGTH]) -> Result
     let cipher = Aes256Gcm::new_from_slice(key)
         .map_err(|e| AppError::Encryption(format!("Failed to create cipher: {}", e)))?;
 
-    let nonce = Nonce::from_slice(iv);
+    let nonce =
+        Nonce::try_from(iv).map_err(|_| AppError::Encryption("Invalid IV length".into()))?;
 
     cipher
-        .decrypt(nonce, ciphertext_with_tag.as_ref())
+        .decrypt(&nonce, ciphertext_with_tag.as_ref())
         .map_err(|_| AppError::Auth("Invalid password or corrupted key file".into()))
 }
 

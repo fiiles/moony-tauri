@@ -38,7 +38,7 @@ import { CURRENCIES } from '@shared/currencies';
 
 const formSchema = z.object({
   type: z.enum(['credit', 'debit']),
-  amount: z.coerce.number().positive('validation.amountRequired'),
+  amount: z.coerce.number<number>().positive('validation.amountRequired'),
   currency: z.string().min(1, 'validation.currencyRequired'),
   date: z.string().min(1, 'validation.dateRequired'),
   description: z.string().optional(),

@@ -75,7 +75,7 @@ fn normalize_to_period(amount: f64, original_frequency: &str, target_period: &st
 
 /// Sort items alphabetically by name
 fn sort_items_alphabetically(items: &mut [CashflowReportItem]) {
-    items.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    items.sort_by_key(|item| item.name.to_lowercase());
 }
 
 /// Helper to get user-defined items by category

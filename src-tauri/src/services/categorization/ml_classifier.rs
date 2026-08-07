@@ -58,7 +58,7 @@ impl Vocabulary {
             .into_iter()
             .filter(|(_, freq)| *freq >= min_df)
             .collect();
-        terms.sort_by(|a, b| b.1.cmp(&a.1));
+        terms.sort_by_key(|&(_, freq)| std::cmp::Reverse(freq));
         terms.truncate(max_features);
 
         // Build vocabulary

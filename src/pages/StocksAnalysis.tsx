@@ -945,7 +945,10 @@ export default function StocksAnalysis() {
                             const rawValue = dataItem?.rawValues?.[entry.dataKey as string] || 0;
                             const percent = entry.value as number;
                             return (
-                              <div key={entry.dataKey} className="flex items-center gap-2 text-sm">
+                              <div
+                                key={entry.dataKey as string}
+                                className="flex items-center gap-2 text-sm"
+                              >
                                 <span
                                   className="w-3 h-3 rounded-sm"
                                   style={{ backgroundColor: entry.color }}

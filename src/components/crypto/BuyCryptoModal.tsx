@@ -35,8 +35,8 @@ import type { CryptoHoldingData } from '@/components/crypto/CryptoTable';
 import { useTranslation } from 'react-i18next';
 
 const formSchema = z.object({
-  quantity: z.coerce.number().positive('Quantity must be positive'),
-  pricePerUnit: z.coerce.number().min(0, 'Price must be non-negative'),
+  quantity: z.coerce.number<number>().positive('Quantity must be positive'),
+  pricePerUnit: z.coerce.number<number>().min(0, 'Price must be non-negative'),
   currency: z.enum(['USD', 'EUR', 'CZK', 'GBP']),
   date: z.string().optional(),
 });

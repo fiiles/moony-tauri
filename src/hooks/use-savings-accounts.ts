@@ -51,7 +51,7 @@ export function useSavingsAccounts() {
 
   // Calculate projected yearly earnings in CZK
   const projectedYearlyEarnings = accounts.reduce((sum, account: SavingsAccount) => {
-    let earningsInOriginal = 0;
+    let earningsInOriginal: number;
     // Use pre-calculated earnings if available (for zoned accounts)
     if (account.projectedEarnings !== undefined) {
       earningsInOriginal = account.projectedEarnings;

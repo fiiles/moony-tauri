@@ -30,7 +30,7 @@ impl RuleEngine {
     /// Rules are sorted by priority (higher priority first)
     pub fn new(mut rules: Vec<CategorizationRule>) -> Self {
         // Sort by priority (higher first)
-        rules.sort_by(|a, b| b.priority.cmp(&a.priority));
+        rules.sort_by_key(|rule| std::cmp::Reverse(rule.priority));
 
         // Pre-compile regex patterns
         let compiled_rules = rules

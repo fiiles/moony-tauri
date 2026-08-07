@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
@@ -11,9 +12,14 @@ export default defineConfig(async () => ({
 
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@shared": path.resolve(__dirname, "./shared"),
+      "@": path.resolve(import.meta.dirname, "./src"),
+      "@shared": path.resolve(import.meta.dirname, "./shared"),
     },
+  },
+
+  build: {
+    // Vite 8 defaults to lightningcss, which fails on this project's CSS
+    cssMinify: "esbuild",
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -41,5 +47,8 @@ export default defineConfig(async () => ({
   test: {
     globals: true,
     environment: "node",
+    // Don't run duplicate test files from transient agent worktrees under
+    // .claude or from generated coverage output
+    exclude: [...configDefaults.exclude, "**/.claude/**", "**/coverage/**"],
   },
 }));

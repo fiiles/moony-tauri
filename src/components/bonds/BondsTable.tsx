@@ -36,13 +36,7 @@ export function BondsTable({ bonds, onEdit, onDelete }: BondsTableProps) {
 
   // Sorting state
   type SortColumn =
-    | 'name'
-    | 'isin'
-    | 'couponValue'
-    | 'quantity'
-    | 'totalValue'
-    | 'interestRate'
-    | 'maturityDate';
+    'name' | 'isin' | 'couponValue' | 'quantity' | 'totalValue' | 'interestRate' | 'maturityDate';
   const [sortColumn, setSortColumn] = useState<SortColumn>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 

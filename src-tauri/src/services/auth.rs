@@ -531,6 +531,45 @@ pub fn update_user_profile(db: &Database, updates: UpdateUserProfile) -> Result<
     get_user_profile(db)?.ok_or_else(|| AppError::NotFound("User profile not found".into()))
 }
 
+/// Delete entire account (database and key files)
+pub fn delete_account(db: &Database, db_path: &Path) -> Result<()> {
+    set_authenticated(false);
+    db.close();
+
+    // Delete database file
+    if db_path.exists() {
+        fs::remove_file(db_path)
+            .map_err(|e| AppError::Database(format!("Failed to delete database: {}", e)))?;
+    }
+
+    // Delete key files and resource directories
+    if let Some(data_dir) = db_path.parent() {
+        let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
+
+        // Delete key files
+        for path in [salt_path, key_path, recovery_path] {
+            if path.exists() {
+                let _ = fs::remove_file(path);
+            }
+        }
+
+        // Delete resource directories
+        let resource_dirs = [
+            data_dir.join("real_estate_photos"),
+            data_dir.join("real_estate_documents"),
+            data_dir.join("insurance_documents"),
+        ];
+
+        for dir in resource_dirs {
+            if dir.exists() {
+                let _ = fs::remove_dir_all(dir);
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -579,43 +618,4 @@ mod tests {
         IS_AUTHENTICATED.store(false, Ordering::SeqCst);
         assert!(!is_authenticated());
     }
-}
-
-/// Delete entire account (database and key files)
-pub fn delete_account(db: &Database, db_path: &Path) -> Result<()> {
-    set_authenticated(false);
-    db.close();
-
-    // Delete database file
-    if db_path.exists() {
-        fs::remove_file(db_path)
-            .map_err(|e| AppError::Database(format!("Failed to delete database: {}", e)))?;
-    }
-
-    // Delete key files and resource directories
-    if let Some(data_dir) = db_path.parent() {
-        let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
-
-        // Delete key files
-        for path in [salt_path, key_path, recovery_path] {
-            if path.exists() {
-                let _ = fs::remove_file(path);
-            }
-        }
-
-        // Delete resource directories
-        let resource_dirs = [
-            data_dir.join("real_estate_photos"),
-            data_dir.join("real_estate_documents"),
-            data_dir.join("insurance_documents"),
-        ];
-
-        for dir in resource_dirs {
-            if dir.exists() {
-                let _ = fs::remove_dir_all(dir);
-            }
-        }
-    }
-
-    Ok(())
 }

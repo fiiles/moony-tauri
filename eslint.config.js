@@ -6,8 +6,20 @@ import unusedImports from 'eslint-plugin-unused-imports';
 import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default tseslint.config(
-  // Global ignores - including vendor shadcn ui components
-  { ignores: ['dist', 'node_modules', 'src-tauri/target', 'scripts', 'src/components/ui'] },
+  // Global ignores - including vendor shadcn ui components and transient
+  // agent worktrees under .claude (a second checkout there breaks
+  // typescript-eslint's tsconfigRootDir inference for the whole run)
+  {
+    ignores: [
+      'dist',
+      'node_modules',
+      'src-tauri/target',
+      'scripts',
+      'src/components/ui',
+      '.claude',
+      'coverage',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   eslintConfigPrettier,
@@ -30,7 +42,10 @@ export default tseslint.config(
       // Disable default unused-vars, use plugin instead for auto-fix
       '@typescript-eslint/no-unused-vars': 'off',
       'unused-imports/no-unused-imports': 'warn',
-      'unused-imports/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'unused-imports/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       // React refresh rules for Vite
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       // Allow empty functions (common in event handlers)

@@ -38,12 +38,7 @@ export function LoansTable({ loans, onEdit, onDelete }: LoansTableProps) {
 
   // Sorting state
   type SortColumn =
-    | 'name'
-    | 'principal'
-    | 'interestRate'
-    | 'monthlyPayment'
-    | 'rateValidity'
-    | 'endDate';
+    'name' | 'principal' | 'interestRate' | 'monthlyPayment' | 'rateValidity' | 'endDate';
   const [sortColumn, setSortColumn] = useState<SortColumn>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 

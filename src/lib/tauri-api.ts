@@ -95,7 +95,7 @@ async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): 
   } catch (error) {
     // Convert Tauri errors to match our error handling
     console.error(`Tauri command ${command} failed:`, error);
-    throw new Error(typeof error === 'string' ? error : String(error));
+    throw new Error(typeof error === 'string' ? error : String(error), { cause: error });
   }
 }
 

@@ -33,8 +33,8 @@ import { investmentsApi } from '@/lib/tauri-api';
 import { FormSection } from '@/components/ui/form-section';
 
 const formSchema = z.object({
-  quantity: z.coerce.number().positive('Quantity must be positive'),
-  pricePerUnit: z.coerce.number().positive('Price must be positive'),
+  quantity: z.coerce.number<number>().positive('Quantity must be positive'),
+  pricePerUnit: z.coerce.number<number>().positive('Price must be positive'),
   currency: z.enum(['USD', 'EUR', 'CZK', 'GBP']),
   date: z.string(),
 });
@@ -68,9 +68,9 @@ export function EditTransactionModal({
   useEffect(() => {
     if (transaction) {
       form.reset({
-        quantity: parseFloat(transaction.quantity as any),
-        pricePerUnit: parseFloat(transaction.pricePerUnit as any),
-        currency: transaction.currency as any,
+        quantity: parseFloat(transaction.quantity),
+        pricePerUnit: parseFloat(transaction.pricePerUnit),
+        currency: transaction.currency as z.infer<typeof formSchema>['currency'],
         date: new Date(transaction.transactionDate * 1000).toISOString().split('T')[0],
       });
     }

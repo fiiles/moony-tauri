@@ -34,8 +34,8 @@ import type { HoldingData } from '@/utils/stocks';
 import { useTranslation } from 'react-i18next';
 
 const formSchema = z.object({
-  quantity: z.coerce.number().positive('Quantity must be positive'),
-  pricePerUnit: z.coerce.number().positive('Price must be positive'), // Investments usually valid > 0
+  quantity: z.coerce.number<number>().positive('Quantity must be positive'),
+  pricePerUnit: z.coerce.number<number>().positive('Price must be positive'), // Investments usually valid > 0
   currency: z.enum(['USD', 'EUR', 'CZK', 'GBP']),
   date: z.string().optional(),
 });
@@ -67,9 +67,7 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
     if (investment) {
       // Use avgCostCurrency (investment's locked currency) for transactions
       const investmentCurrency = (investment.avgCostCurrency || investment.currency || 'USD') as
-        | 'USD'
-        | 'EUR'
-        | 'CZK';
+        'USD' | 'EUR' | 'CZK';
       form.setValue('currency', investmentCurrency);
       // Use originalPrice (in stock's currency) for prefill, not currentPrice (which is converted to CZK)
       const priceToShow = Number(investment.originalPrice ?? investment.currentPrice);

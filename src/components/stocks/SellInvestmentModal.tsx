@@ -34,8 +34,8 @@ import { useTranslation } from 'react-i18next';
 import { FormSection } from '@/components/ui/form-section';
 
 const formSchema = z.object({
-  quantity: z.coerce.number().positive('Quantity must be positive'),
-  pricePerUnit: z.coerce.number().positive('Price must be positive'),
+  quantity: z.coerce.number<number>().positive('Quantity must be positive'),
+  pricePerUnit: z.coerce.number<number>().positive('Price must be positive'),
   currency: z.enum(['USD', 'EUR', 'CZK', 'GBP']),
   date: z.string().optional(),
 });
@@ -65,9 +65,7 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
   useEffect(() => {
     if (investment) {
       const investmentCurrency = (investment.avgCostCurrency || investment.currency || 'USD') as
-        | 'USD'
-        | 'EUR'
-        | 'CZK';
+        'USD' | 'EUR' | 'CZK';
       form.setValue('currency', investmentCurrency);
     }
   }, [investment, form]);
