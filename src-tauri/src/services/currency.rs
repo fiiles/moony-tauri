@@ -4,7 +4,7 @@
 //! Base currency is CZK
 
 use lazy_static::lazy_static;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::RwLock;
 
 lazy_static! {
@@ -33,9 +33,52 @@ lazy_static! {
 
     /// Timestamp when exchange rates were last fetched (Unix timestamp in seconds)
     static ref EXCHANGE_RATES_FETCHED_AT: RwLock<Option<i64>> = RwLock::new(None);
+
+    /// Currencies currently missing an exchange rate (audit M2). Doubles as
+    /// the dedup guard so the warning fires only on first occurrence. Cleared
+    /// per-currency by `update_exchange_rates` when a rate arrives. Never
+    /// contains CZK or known currencies.
+    static ref MISSING_CURRENCIES: RwLock<HashSet<String>> = RwLock::new(HashSet::new());
 }
 
-/// Convert an amount from a currency to CZK
+/// Record an unknown currency and warn loudly — once per currency per session.
+/// Returns the documented 1.0 last-resort rate (1 unit = 1 CZK), which is
+/// almost certainly wrong; the recording makes that visible via the console
+/// and `get_missing_currencies()` (surfaced in the UI through `get_price_status`).
+fn record_missing_currency(currency: &str) -> f64 {
+    let currency = currency.to_uppercase();
+    if currency != "CZK" {
+        let mut missing = MISSING_CURRENCIES
+            .write()
+            .expect("Missing currencies lock poisoned");
+        if missing.insert(currency.clone()) {
+            println!(
+                "[CURRENCY] WARNING: no exchange rate known for {currency}; \
+                 falling back to 1 {currency} = 1 CZK — amounts in {currency} \
+                 will be wrong until a rate is available"
+            );
+        }
+    }
+    1.0
+}
+
+/// Currencies currently missing an exchange rate (recorded when a conversion
+/// hit the 1.0 fallback, cleared by `update_exchange_rates` once a rate
+/// arrives), sorted for deterministic output. Surfaced through the
+/// `get_price_status` command so the UI can show a warning badge for 1:1
+/// fallback conversions.
+pub fn get_missing_currencies() -> Vec<String> {
+    let missing = MISSING_CURRENCIES
+        .read()
+        .expect("Missing currencies lock poisoned");
+    let mut list: Vec<String> = missing.iter().cloned().collect();
+    list.sort();
+    list
+}
+
+/// Convert an amount from a currency to CZK.
+/// Unknown currencies fall back to 1.0 as the documented last resort and are
+/// recorded + warned about once per session (see `record_missing_currency`).
 #[allow(dead_code)]
 pub fn convert_to_czk(amount: f64, currency: &str) -> f64 {
     let currency = currency.to_uppercase();
@@ -43,12 +86,17 @@ pub fn convert_to_czk(amount: f64, currency: &str) -> f64 {
         return amount;
     }
 
-    let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
-    let rate = rates.get(&currency).copied().unwrap_or(1.0);
+    let rate = {
+        let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
+        rates.get(&currency).copied()
+    };
+    let rate = rate.unwrap_or_else(|| record_missing_currency(&currency));
     amount * rate
 }
 
-/// Convert an amount from CZK to another currency
+/// Convert an amount from CZK to another currency.
+/// Unknown currencies fall back to 1.0 as the documented last resort and are
+/// recorded + warned about once per session (see `record_missing_currency`).
 #[allow(dead_code)]
 pub fn convert_from_czk(amount: f64, currency: &str) -> f64 {
     let currency = currency.to_uppercase();
@@ -56,8 +104,11 @@ pub fn convert_from_czk(amount: f64, currency: &str) -> f64 {
         return amount;
     }
 
-    let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
-    let rate = rates.get(&currency).copied().unwrap_or(1.0);
+    let rate = {
+        let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
+        rates.get(&currency).copied()
+    };
+    let rate = rate.unwrap_or_else(|| record_missing_currency(&currency));
     if rate == 0.0 {
         return amount;
     }
@@ -81,13 +132,27 @@ pub fn convert_between(amount: f64, from_currency: &str, to_currency: &str) -> f
     convert_from_czk(amount_in_czk, &to)
 }
 
-/// Update exchange rates in memory (called after fetching from ECB or loading from DB)
+/// Update exchange rates in memory (called after fetching from ECB or loading from DB).
+/// Currencies that now have a rate are cleared from the missing set, so
+/// `get_missing_currencies()` reflects current state; if a currency later goes
+/// missing again it is re-recorded (and warned about again).
 pub fn update_exchange_rates(new_rates: HashMap<String, f64>) {
-    let mut rates = EXCHANGE_RATES
+    {
+        let mut rates = EXCHANGE_RATES
+            .write()
+            .expect("Exchange rates lock poisoned");
+        for (currency, rate) in &new_rates {
+            rates.insert(currency.clone(), *rate);
+        }
+    }
+
+    // Rates inserted first, missing set cleared second: a concurrent conversion
+    // between the two steps finds the new rate and cannot re-record the currency.
+    let mut missing = MISSING_CURRENCIES
         .write()
-        .expect("Exchange rates lock poisoned");
-    for (currency, rate) in new_rates {
-        rates.insert(currency, rate);
+        .expect("Missing currencies lock poisoned");
+    for currency in new_rates.keys() {
+        missing.remove(&currency.to_uppercase());
     }
 }
 
@@ -107,11 +172,17 @@ pub fn get_exchange_rates_fetched_at() -> Option<i64> {
     *fetched_at
 }
 
-/// Get current exchange rate for a currency (to CZK)
+/// Get current exchange rate for a currency (to CZK).
+/// Unknown currencies fall back to 1.0 as the documented last resort and are
+/// recorded + warned about once per session (see `record_missing_currency`).
 #[allow(dead_code)]
 pub fn get_exchange_rate(currency: &str) -> f64 {
-    let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
-    rates.get(currency).copied().unwrap_or(1.0)
+    let currency = currency.to_uppercase();
+    let rate = {
+        let rates = EXCHANGE_RATES.read().expect("Exchange rates lock poisoned");
+        rates.get(&currency).copied()
+    };
+    rate.unwrap_or_else(|| record_missing_currency(&currency))
 }
 
 /// Get all current exchange rates
@@ -438,6 +509,43 @@ pub fn get_rates_for_date_range(
     result
 }
 
+/// Convert an amount to CZK using a prefetched rates map (e.g. one day's snapshot from
+/// `get_rates_for_date`). Falls back to the current in-memory rate when `currency` is
+/// missing from the map, and to 1.0 as the last resort — mirroring `convert_to_czk`'s
+/// fallback semantics. The 1.0 last resort (via `get_exchange_rate`) records the
+/// currency and warns once per session (see `record_missing_currency`).
+pub fn convert_to_czk_with_rates(amount: f64, currency: &str, rates: &HashMap<String, f64>) -> f64 {
+    let currency = currency.to_uppercase();
+    if currency == "CZK" {
+        return amount;
+    }
+
+    let rate = rates
+        .get(&currency)
+        .copied()
+        .unwrap_or_else(|| get_exchange_rate(&currency));
+    amount * rate
+}
+
+/// Convert an amount to CZK using a specific day's exchange rate.
+/// Reads `exchange_rate_history` for the day (closest date ≤ day, walking back up to 10
+/// days to cover weekends/holidays), falling back to the current in-memory rates when no
+/// history exists for that day at all. This is the composition of `get_rates_for_date` +
+/// `convert_to_czk_with_rates`.
+///
+/// Note: this queries the database on every call. Callers converting several amounts for
+/// the same day should call `get_rates_for_date` once and reuse `convert_to_czk_with_rates`
+/// instead.
+pub fn convert_to_czk_at(
+    conn: &rusqlite::Connection,
+    amount: f64,
+    currency: &str,
+    day_ts: i64,
+) -> f64 {
+    let rates = get_rates_for_date(conn, day_ts);
+    convert_to_czk_with_rates(amount, currency, &rates)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -574,5 +682,212 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert!((result[&base]["EUR"] - 25.0).abs() < 0.001);
         assert!((result[&(base + 86400)]["EUR"] - 25.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_convert_to_czk_at_uses_exact_day_rate() {
+        let conn = setup_history_db();
+        let day: i64 = 1_700_000_000 / 86400 * 86400;
+        conn.execute(
+            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 24.0)",
+            [day],
+        )
+        .expect("insert");
+
+        let result = convert_to_czk_at(&conn, 10.0, "EUR", day);
+        assert!((result - 240.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_convert_to_czk_at_falls_back_to_closest_earlier_day() {
+        let conn = setup_history_db();
+        let day: i64 = 1_700_000_000 / 86400 * 86400;
+        let earlier_day = day - 3 * 86400;
+        conn.execute(
+            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 24.0)",
+            [earlier_day],
+        )
+        .expect("insert");
+
+        // Query on `day` — no exact-day row, should fall back to the row 3 days earlier.
+        let result = convert_to_czk_at(&conn, 10.0, "EUR", day);
+        assert!((result - 240.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_convert_to_czk_at_falls_back_to_current_rates_when_no_history() {
+        let conn = setup_history_db(); // empty table, no history at all
+        update_exchange_rates([("NOK".to_string(), 21.0)].into_iter().collect());
+
+        let result = convert_to_czk_at(&conn, 5.0, "NOK", 1_700_000_000);
+        assert!((result - 105.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_convert_to_czk_at_czk_identity() {
+        let conn = setup_history_db();
+        let result = convert_to_czk_at(&conn, 500.0, "CZK", 1_700_000_000);
+        assert_eq!(result, 500.0);
+    }
+
+    #[test]
+    fn test_convert_to_czk_at_missing_currency_in_days_map_falls_back_to_current_rate() {
+        let conn = setup_history_db();
+        let day: i64 = 1_700_000_000 / 86400 * 86400;
+        // The day has history, but only for EUR — NOK is absent from that day's map.
+        conn.execute(
+            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 24.0)",
+            [day],
+        )
+        .expect("insert");
+        update_exchange_rates([("NOK".to_string(), 21.0)].into_iter().collect());
+
+        let result = convert_to_czk_at(&conn, 5.0, "NOK", day);
+        assert!((result - 105.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_convert_to_czk_at_case_insensitive() {
+        let conn = setup_history_db();
+        let day: i64 = 1_700_000_000 / 86400 * 86400;
+        conn.execute(
+            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'EUR', 24.0)",
+            [day],
+        )
+        .expect("insert");
+
+        let upper = convert_to_czk_at(&conn, 10.0, "EUR", day);
+        let lower = convert_to_czk_at(&conn, 10.0, "eur", day);
+        assert!((upper - lower).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_convert_to_czk_with_rates_uses_provided_map() {
+        let rates: HashMap<String, f64> = [("EUR".to_string(), 24.0)].into_iter().collect();
+        let result = convert_to_czk_with_rates(10.0, "EUR", &rates);
+        assert!((result - 240.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_convert_to_czk_with_rates_missing_currency_falls_back_to_current_rate() {
+        update_exchange_rates([("NOK".to_string(), 21.0)].into_iter().collect());
+        let rates: HashMap<String, f64> = [("EUR".to_string(), 24.0)].into_iter().collect();
+
+        let result = convert_to_czk_with_rates(5.0, "NOK", &rates);
+        assert!((result - 105.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_convert_to_czk_with_rates_czk_identity() {
+        let rates: HashMap<String, f64> = HashMap::new();
+        let result = convert_to_czk_with_rates(100.0, "CZK", &rates);
+        assert_eq!(result, 100.0);
+    }
+
+    // ------------------------------------------------------------------
+    // Unknown-currency recording (audit M2). Tests run in parallel and the
+    // missing-currency set is global, so each test uses unique fake codes.
+    // ------------------------------------------------------------------
+
+    #[test]
+    fn test_unknown_currency_is_recorded_as_missing() {
+        let _ = convert_to_czk(10.0, "ZZA1");
+        assert!(get_missing_currencies().contains(&"ZZA1".to_string()));
+    }
+
+    #[test]
+    fn test_known_currency_is_not_recorded_as_missing() {
+        update_exchange_rates([("ZZB2".to_string(), 5.0)].into_iter().collect());
+        let result = convert_to_czk(10.0, "ZZB2");
+        assert!((result - 50.0).abs() < 0.001);
+        assert!(!get_missing_currencies().contains(&"ZZB2".to_string()));
+    }
+
+    #[test]
+    fn test_czk_is_never_recorded_as_missing() {
+        let _ = convert_to_czk(10.0, "CZK");
+        let _ = convert_from_czk(10.0, "czk");
+        let _ = get_exchange_rate("CZK");
+        assert!(!get_missing_currencies().contains(&"CZK".to_string()));
+    }
+
+    #[test]
+    fn test_unknown_currency_recorded_once_per_session() {
+        let _ = convert_to_czk(1.0, "ZZC3");
+        let _ = convert_to_czk(2.0, "ZZC3");
+        let _ = convert_from_czk(3.0, "ZZC3");
+        let count = get_missing_currencies()
+            .iter()
+            .filter(|c| c.as_str() == "ZZC3")
+            .count();
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_unknown_currency_conversion_still_falls_back_to_1_to_1() {
+        assert_eq!(convert_to_czk(42.0, "ZZD4"), 42.0);
+        assert_eq!(convert_from_czk(42.0, "ZZD4"), 42.0);
+    }
+
+    #[test]
+    fn test_convert_from_czk_unknown_currency_is_recorded() {
+        let _ = convert_from_czk(10.0, "ZZE5");
+        assert!(get_missing_currencies().contains(&"ZZE5".to_string()));
+    }
+
+    #[test]
+    fn test_get_exchange_rate_unknown_currency_is_recorded() {
+        let rate = get_exchange_rate("ZZF6");
+        assert_eq!(rate, 1.0);
+        assert!(get_missing_currencies().contains(&"ZZF6".to_string()));
+    }
+
+    #[test]
+    fn test_get_exchange_rate_lowercase_known_currency_not_recorded() {
+        update_exchange_rates([("ZZG7".to_string(), 4.0)].into_iter().collect());
+        let rate = get_exchange_rate("zzg7");
+        assert!((rate - 4.0).abs() < 0.001);
+        assert!(!get_missing_currencies().contains(&"ZZG7".to_string()));
+    }
+
+    #[test]
+    fn test_missing_currency_recorded_uppercase_for_lowercase_input() {
+        let _ = convert_to_czk(1.0, "zzh8");
+        let missing = get_missing_currencies();
+        assert!(missing.contains(&"ZZH8".to_string()));
+        assert!(!missing.contains(&"zzh8".to_string()));
+    }
+
+    #[test]
+    fn test_convert_to_czk_with_rates_fully_unknown_is_recorded() {
+        let rates: HashMap<String, f64> = HashMap::new();
+        let result = convert_to_czk_with_rates(7.0, "ZZJ9", &rates);
+        assert_eq!(result, 7.0);
+        assert!(get_missing_currencies().contains(&"ZZJ9".to_string()));
+    }
+
+    #[test]
+    fn test_update_exchange_rates_clears_resolved_missing_currency() {
+        // Record a fake currency as missing via the 1.0 fallback path
+        let _ = convert_to_czk(10.0, "ZZK0");
+        assert!(get_missing_currencies().contains(&"ZZK0".to_string()));
+
+        // A rate arrives (e.g. ECB fetch) — the currency is no longer missing
+        update_exchange_rates([("ZZK0".to_string(), 3.0)].into_iter().collect());
+        assert!(!get_missing_currencies().contains(&"ZZK0".to_string()));
+
+        // Conversion now uses the real rate
+        let result = convert_to_czk(10.0, "ZZK0");
+        assert!((result - 30.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_get_missing_currencies_is_sorted() {
+        let _ = convert_to_czk(1.0, "ZZZB");
+        let _ = convert_to_czk(1.0, "ZZZA");
+        let missing = get_missing_currencies();
+        let mut sorted = missing.clone();
+        sorted.sort();
+        assert_eq!(missing, sorted);
     }
 }

@@ -282,8 +282,9 @@ fn get_current_portfolio_values(
     exclude_personal_real_estate: bool,
 ) -> Result<CurrentValues> {
     // Calculate savings
-    let mut savings_stmt =
-        conn.prepare("SELECT balance, currency, interest_rate FROM bank_accounts")?;
+    let mut savings_stmt = conn.prepare(
+        "SELECT balance, currency, interest_rate FROM bank_accounts WHERE exclude_from_balance = 0",
+    )?;
     let savings_data: Vec<(f64, f64)> = savings_stmt
         .query_map([], |row| {
             let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);

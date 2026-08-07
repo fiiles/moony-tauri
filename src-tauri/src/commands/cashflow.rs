@@ -404,7 +404,7 @@ pub async fn get_cashflow_report(
         // 1. Interest Income (Savings)
         let mut savings_items: Vec<CashflowReportItem> = Vec::new();
         let mut savings_stmt = conn.prepare(
-            "SELECT id, name, balance, currency, interest_rate, has_zone_designation FROM bank_accounts WHERE account_type = 'savings'"
+            "SELECT id, name, balance, currency, interest_rate, has_zone_designation FROM bank_accounts WHERE account_type = 'savings' AND exclude_from_balance = 0"
         )?;
         let savings_rows = savings_stmt.query_map([], |row| {
             Ok((

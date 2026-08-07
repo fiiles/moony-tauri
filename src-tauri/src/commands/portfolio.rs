@@ -4,6 +4,7 @@ use crate::db::Database;
 use crate::error::Result;
 use crate::models::PortfolioMetricsHistory;
 use crate::services::currency::convert_to_czk;
+use crate::services::parsing::parse_money;
 use serde::Serialize;
 use specta::Type;
 use tauri::State;
@@ -50,10 +51,13 @@ fn calculate_portfolio_metrics(
     db.with_conn(|conn| {
         // --- Savings ---
         let mut savings_by_currency: HashMap<String, f64> = HashMap::new();
-        let mut bank_stmt = conn.prepare("SELECT balance, currency FROM bank_accounts")?;
+        let mut bank_stmt = conn.prepare(
+            "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
+        )?;
         let total_savings: f64 = bank_stmt
             .query_map([], |row| {
-                let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                let balance: f64 =
+                    parse_money(&row.get::<_, String>(0)?, 0.0, "bank_accounts.balance");
                 let currency: String = row.get(1)?;
                 Ok((balance, currency))
             })?
@@ -69,8 +73,8 @@ fn calculate_portfolio_metrics(
         let mut bonds_stmt = conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
         let total_bonds: f64 = bonds_stmt
             .query_map([], |row| {
-                let value: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
-                let quantity: f64 = row.get::<_, String>(1)?.parse().unwrap_or(1.0);
+                let value: f64 = parse_money(&row.get::<_, String>(0)?, 0.0, "bonds.coupon_value");
+                let quantity: f64 = parse_money(&row.get::<_, String>(1)?, 1.0, "bonds.quantity");
                 let currency: String = row.get(2)?;
                 Ok((value, quantity, currency))
             })?
@@ -86,7 +90,7 @@ fn calculate_portfolio_metrics(
         let mut loans_stmt = conn.prepare("SELECT principal, currency FROM loans")?;
         let total_liabilities: f64 = loans_stmt
             .query_map([], |row| {
-                let principal: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                let principal: f64 = parse_money(&row.get::<_, String>(0)?, 0.0, "loans.principal");
                 let currency: String = row.get(1)?;
                 Ok((principal, currency))
             })?
@@ -113,11 +117,17 @@ fn calculate_portfolio_metrics(
         })?;
 
         for row in rows.filter_map(|r| r.ok()) {
-            let price: f64 = row.1.parse().unwrap_or(0.0);
+            let price: f64 = parse_money(&row.1, 0.0, "real_estate.market_price");
             let currency = row.2.clone();
             let price_czk = convert_to_czk(price, &currency);
-            *real_estate_by_currency.entry(currency).or_insert(0.0) += price;
-            if row.0 == "personal" {
+            let is_personal = row.0 == "personal";
+            // Breakdown must sum (in CZK terms) to total_real_estate, which excludes
+            // personal properties when exclude_personal_real_estate is set. Personal
+            // properties still count into total_re_personal below (always reported).
+            if !(exclude_personal_real_estate && is_personal) {
+                *real_estate_by_currency.entry(currency).or_insert(0.0) += price;
+            }
+            if is_personal {
                 total_re_personal += price_czk;
             } else {
                 total_re_investment += price_czk;
@@ -134,10 +144,14 @@ fn calculate_portfolio_metrics(
             .collect();
 
         for inv in investments {
-            let qty: f64 = inv.1.parse().unwrap_or(0.0);
+            let qty: f64 = parse_money(&inv.1, 0.0, "stock_investments.quantity");
             if let Some(resolved) = crate::services::pricing::resolve_stock_price(conn, &inv.0) {
                 total_investments += resolved.price_czk * qty;
-                let native_price: f64 = resolved.original_price.parse().unwrap_or(0.0);
+                let native_price: f64 = parse_money(
+                    &resolved.original_price,
+                    0.0,
+                    "resolved stock price (original_price)",
+                );
                 *investments_by_currency
                     .entry(resolved.currency.clone())
                     .or_insert(0.0) += native_price * qty;
@@ -154,11 +168,15 @@ fn calculate_portfolio_metrics(
             .collect();
 
         for crypto in cryptos {
-            let qty: f64 = crypto.1.parse().unwrap_or(0.0);
+            let qty: f64 = parse_money(&crypto.1, 0.0, "crypto_investments.quantity");
             if let Some(resolved) = crate::services::pricing::resolve_crypto_price(conn, &crypto.0)
             {
                 total_crypto += resolved.price_czk * qty;
-                let native_price: f64 = resolved.original_price.parse().unwrap_or(0.0);
+                let native_price: f64 = parse_money(
+                    &resolved.original_price,
+                    0.0,
+                    "resolved crypto price (original_price)",
+                );
                 *crypto_by_currency
                     .entry(resolved.currency.clone())
                     .or_insert(0.0) += native_price * qty;
@@ -176,8 +194,8 @@ fn calculate_portfolio_metrics(
             .collect();
 
         for asset in other_assets {
-            let qty: f64 = asset.0.parse().unwrap_or(0.0);
-            let price: f64 = asset.1.parse().unwrap_or(0.0);
+            let qty: f64 = parse_money(&asset.0, 0.0, "other_assets.quantity");
+            let price: f64 = parse_money(&asset.1, 0.0, "other_assets.market_price");
             let currency = asset.2;
             *other_assets_by_currency
                 .entry(currency.clone())
@@ -584,6 +602,9 @@ pub struct PriceStatus {
     pub stocks_missing_price: i32,
     /// Number of cryptos without any price data
     pub crypto_missing_price: i32,
+    /// Currency codes encountered this session with no known exchange rate
+    /// (converted 1:1 to CZK as a last resort — values are wrong; audit M2)
+    pub missing_currencies: Vec<String>,
 }
 
 /// Staleness thresholds in hours
@@ -686,6 +707,7 @@ pub fn get_price_status(db: State<'_, Database>) -> Result<PriceStatus> {
             exchange_rates_age_hours,
             stocks_missing_price: stocks_missing,
             crypto_missing_price: crypto_missing,
+            missing_currencies: crate::services::currency::get_missing_currencies(),
         })
     })
 }
@@ -782,16 +804,23 @@ fn calculate_metrics_for_day(
     last_known_stock_prices: &mut HashMap<String, (f64, String)>,
     last_known_crypto_prices: &mut HashMap<String, (f64, String)>,
 ) -> Result<PortfolioMetrics> {
-    use crate::services::currency::convert_to_czk;
+    use crate::services::currency::{convert_to_czk_with_rates, get_rates_for_date};
 
     db.with_conn(|conn| {
+        // Fetch this day's exchange rates once and reuse for every conversion below
+        // (avoids querying exchange_rate_history once per converted amount).
+        let rates = get_rates_for_date(conn, day_timestamp);
+
         // Calculate total savings from bank_accounts
-        let mut bank_stmt = conn.prepare("SELECT balance, currency FROM bank_accounts")?;
+        let mut bank_stmt = conn.prepare(
+            "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
+        )?;
         let total_savings: f64 = bank_stmt
             .query_map([], |row| {
-                let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                let balance: f64 =
+                    parse_money(&row.get::<_, String>(0)?, 0.0, "bank_accounts.balance");
                 let currency: String = row.get(1)?;
-                Ok(convert_to_czk(balance, &currency))
+                Ok(convert_to_czk_with_rates(balance, &currency, &rates))
             })?
             .filter_map(|r| r.ok())
             .sum();
@@ -800,10 +829,14 @@ fn calculate_metrics_for_day(
         let mut bonds_stmt = conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
         let total_bonds: f64 = bonds_stmt
             .query_map([], |row| {
-                let value: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
-                let quantity: f64 = row.get::<_, String>(1)?.parse().unwrap_or(1.0);
+                let value: f64 = parse_money(&row.get::<_, String>(0)?, 0.0, "bonds.coupon_value");
+                let quantity: f64 = parse_money(&row.get::<_, String>(1)?, 1.0, "bonds.quantity");
                 let currency: String = row.get(2)?;
-                Ok(convert_to_czk(value * quantity, &currency))
+                Ok(convert_to_czk_with_rates(
+                    value * quantity,
+                    &currency,
+                    &rates,
+                ))
             })?
             .filter_map(|r| r.ok())
             .sum();
@@ -812,9 +845,9 @@ fn calculate_metrics_for_day(
         let mut loans_stmt = conn.prepare("SELECT principal, currency FROM loans")?;
         let total_liabilities: f64 = loans_stmt
             .query_map([], |row| {
-                let principal: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                let principal: f64 = parse_money(&row.get::<_, String>(0)?, 0.0, "loans.principal");
                 let currency: String = row.get(1)?;
-                Ok(convert_to_czk(principal, &currency))
+                Ok(convert_to_czk_with_rates(principal, &currency, &rates))
             })?
             .filter_map(|r| r.ok())
             .sum();
@@ -834,8 +867,8 @@ fn calculate_metrics_for_day(
         })?;
 
         for row in re_rows.filter_map(|r| r.ok()) {
-            let price: f64 = row.1.parse().unwrap_or(0.0);
-            let price_czk = convert_to_czk(price, &row.2);
+            let price: f64 = parse_money(&row.1, 0.0, "real_estate.market_price");
+            let price_czk = convert_to_czk_with_rates(price, &row.2, &rates);
             if row.0 == "personal" {
                 total_re_personal += price_czk;
             } else {
@@ -848,10 +881,11 @@ fn calculate_metrics_for_day(
             conn.prepare("SELECT quantity, market_price, currency FROM other_assets")?;
         let total_other_assets: f64 = other_stmt
             .query_map([], |row| {
-                let qty: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
-                let price: f64 = row.get::<_, String>(1)?.parse().unwrap_or(0.0);
+                let qty: f64 = parse_money(&row.get::<_, String>(0)?, 0.0, "other_assets.quantity");
+                let price: f64 =
+                    parse_money(&row.get::<_, String>(1)?, 0.0, "other_assets.market_price");
                 let currency = row.get::<_, String>(2)?;
-                Ok(convert_to_czk(qty * price, &currency))
+                Ok(convert_to_czk_with_rates(qty * price, &currency, &rates))
             })?
             .filter_map(|r| r.ok())
             .sum();
@@ -862,7 +896,8 @@ fn calculate_metrics_for_day(
         let investments: Vec<(String, f64)> = inv_stmt
             .query_map([], |row| {
                 let ticker: String = row.get(0)?;
-                let qty: f64 = row.get::<_, String>(1)?.parse().unwrap_or(0.0);
+                let qty: f64 =
+                    parse_money(&row.get::<_, String>(1)?, 0.0, "stock_investments.quantity");
                 Ok((ticker, qty))
             })?
             .filter_map(|r| r.ok())
@@ -887,7 +922,7 @@ fn calculate_metrics_for_day(
             };
 
             if price > 0.0 {
-                let value_in_czk = convert_to_czk(price * qty, currency);
+                let value_in_czk = convert_to_czk_with_rates(price * qty, currency, &rates);
                 total_investments += value_in_czk;
             }
         }
@@ -898,7 +933,11 @@ fn calculate_metrics_for_day(
         let cryptos: Vec<(String, f64)> = crypto_stmt
             .query_map([], |row| {
                 let ticker: String = row.get(0)?;
-                let qty: f64 = row.get::<_, String>(1)?.parse().unwrap_or(0.0);
+                let qty: f64 = parse_money(
+                    &row.get::<_, String>(1)?,
+                    0.0,
+                    "crypto_investments.quantity",
+                );
                 Ok((ticker, qty))
             })?
             .filter_map(|r| r.ok())
@@ -924,7 +963,7 @@ fn calculate_metrics_for_day(
             };
 
             if price > 0.0 {
-                let value_in_czk = convert_to_czk(price * qty, currency);
+                let value_in_czk = convert_to_czk_with_rates(price * qty, currency, &rates);
                 total_crypto += value_in_czk;
             }
         }
@@ -1700,18 +1739,23 @@ fn calculate_metrics_for_day_historical(
     stock_prices: &HashMap<String, Vec<HistoricalPrice>>,
     crypto_prices: &HashMap<String, Vec<HistoricalPrice>>,
 ) -> Result<PortfolioMetrics> {
-    use crate::services::currency::convert_to_czk;
+    use crate::services::currency::{convert_to_czk_with_rates, get_rates_for_date};
 
     db.with_conn(|conn| {
+        // Fetch this day's exchange rates once and reuse for every conversion below
+        // (avoids querying exchange_rate_history once per converted amount).
+        let rates = get_rates_for_date(conn, day_timestamp);
+
         // Calculate total savings from bank_accounts (current values - static)
         let mut bank_stmt = conn.prepare(
             "SELECT balance, currency FROM bank_accounts WHERE exclude_from_balance = 0",
         )?;
         let total_savings: f64 = bank_stmt
             .query_map([], |row| {
-                let balance: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                let balance: f64 =
+                    parse_money(&row.get::<_, String>(0)?, 0.0, "bank_accounts.balance");
                 let currency: String = row.get(1)?;
-                Ok(convert_to_czk(balance, &currency))
+                Ok(convert_to_czk_with_rates(balance, &currency, &rates))
             })?
             .filter_map(|r| r.ok())
             .sum();
@@ -1720,10 +1764,14 @@ fn calculate_metrics_for_day_historical(
         let mut bonds_stmt = conn.prepare("SELECT coupon_value, quantity, currency FROM bonds")?;
         let total_bonds: f64 = bonds_stmt
             .query_map([], |row| {
-                let value: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
-                let quantity: f64 = row.get::<_, String>(1)?.parse().unwrap_or(1.0);
+                let value: f64 = parse_money(&row.get::<_, String>(0)?, 0.0, "bonds.coupon_value");
+                let quantity: f64 = parse_money(&row.get::<_, String>(1)?, 1.0, "bonds.quantity");
                 let currency: String = row.get(2)?;
-                Ok(convert_to_czk(value * quantity, &currency))
+                Ok(convert_to_czk_with_rates(
+                    value * quantity,
+                    &currency,
+                    &rates,
+                ))
             })?
             .filter_map(|r| r.ok())
             .sum();
@@ -1732,9 +1780,9 @@ fn calculate_metrics_for_day_historical(
         let mut loans_stmt = conn.prepare("SELECT principal, currency FROM loans")?;
         let total_liabilities: f64 = loans_stmt
             .query_map([], |row| {
-                let principal: f64 = row.get::<_, String>(0)?.parse().unwrap_or(0.0);
+                let principal: f64 = parse_money(&row.get::<_, String>(0)?, 0.0, "loans.principal");
                 let currency: String = row.get(1)?;
-                Ok(convert_to_czk(principal, &currency))
+                Ok(convert_to_czk_with_rates(principal, &currency, &rates))
             })?
             .filter_map(|r| r.ok())
             .sum();
@@ -1754,8 +1802,8 @@ fn calculate_metrics_for_day_historical(
         })?;
 
         for row in re_rows.filter_map(|r| r.ok()) {
-            let price: f64 = row.1.parse().unwrap_or(0.0);
-            let price_czk = convert_to_czk(price, &row.2);
+            let price: f64 = parse_money(&row.1, 0.0, "real_estate.market_price");
+            let price_czk = convert_to_czk_with_rates(price, &row.2, &rates);
             if row.0 == "personal" {
                 total_re_personal += price_czk;
             } else {
@@ -1770,7 +1818,7 @@ fn calculate_metrics_for_day_historical(
             .query_map([], |row| {
                 Ok((
                     row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?.parse().unwrap_or(0.0),
+                    parse_money(&row.get::<_, String>(1)?, 0.0, "other_assets.market_price"),
                     row.get::<_, String>(2)?,
                 ))
             })?
@@ -1779,7 +1827,7 @@ fn calculate_metrics_for_day_historical(
 
         for (asset_id, price, currency) in other_rows {
             let qty = get_other_asset_quantity_at_date(conn, &asset_id, day_timestamp);
-            total_other_assets += convert_to_czk(qty * price, &currency);
+            total_other_assets += convert_to_czk_with_rates(qty * price, &currency, &rates);
         }
 
         // Calculate investments using HISTORICAL quantities and prices
@@ -1795,7 +1843,8 @@ fn calculate_metrics_for_day_historical(
             if qty > 0.0 {
                 if let Some(prices) = stock_prices.get(&ticker) {
                     if let Some(price) = find_closest_price(prices, day_timestamp) {
-                        let value_in_czk = convert_to_czk(price.price * qty, &price.currency);
+                        let value_in_czk =
+                            convert_to_czk_with_rates(price.price * qty, &price.currency, &rates);
                         total_investments += value_in_czk;
                     }
                 }
@@ -1815,7 +1864,8 @@ fn calculate_metrics_for_day_historical(
             if qty > 0.0 {
                 if let Some(prices) = crypto_prices.get(&ticker) {
                     if let Some(price) = find_closest_price(prices, day_timestamp) {
-                        let value_in_czk = convert_to_czk(price.price * qty, &price.currency);
+                        let value_in_czk =
+                            convert_to_czk_with_rates(price.price * qty, &price.currency, &rates);
                         total_crypto += value_in_czk;
                     }
                 }

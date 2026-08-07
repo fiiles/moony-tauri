@@ -19,10 +19,16 @@ export function StalePricesIndicator() {
     staleTime: 30000,
   });
 
-  // Check if anything is stale
+  // Currencies with no known exchange rate (converted 1:1 to CZK — values are wrong)
+  const missingCurrencies = priceStatus?.missingCurrencies ?? [];
+
+  // Check if anything is stale or a currency has no known exchange rate
   const isStale =
     priceStatus &&
-    (priceStatus.stocksStale || priceStatus.cryptoStale || priceStatus.exchangeRatesStale);
+    (priceStatus.stocksStale ||
+      priceStatus.cryptoStale ||
+      priceStatus.exchangeRatesStale ||
+      missingCurrencies.length > 0);
 
   // Handle refresh button click
   const handleRefresh = async () => {
@@ -143,6 +149,13 @@ export function StalePricesIndicator() {
                 )}
               </span>
             </div>
+
+            {/* Currencies with no known exchange rate */}
+            {missingCurrencies.length > 0 && (
+              <p className="text-xs text-amber-500">
+                {t('priceStatus.unknownRates', { currencies: missingCurrencies.join(', ') })}
+              </p>
+            )}
           </div>
 
           <Button

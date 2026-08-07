@@ -293,6 +293,7 @@
         "daysAgo": "{{count}} days ago",
         "daysAgo_one": "1 day ago",
         "refresh": "Refresh Prices",
-        "refreshing": "Refreshing..."
+        "refreshing": "Refreshing...",
+        "unknownRates": "Unknown exchange rate for: {{currencies}} — values counted 1:1 to CZK"
     }
 }

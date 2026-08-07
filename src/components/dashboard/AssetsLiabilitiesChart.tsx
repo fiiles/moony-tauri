@@ -29,7 +29,10 @@ export default function AssetsLiabilitiesChart({
   totalAssets,
   totalLiabilities,
 }: AssetsLiabilitiesChartProps) {
-  const { formatCurrency } = useCurrency();
+  // Values arrive already converted to the display currency (per-day
+  // historical rates, see useHistoricalDisplayValues) — format only,
+  // formatCurrency would convert CZK -> display a second time.
+  const { formatCurrencyRaw } = useCurrency();
   const { t } = useTranslation('dashboard');
 
   // Calculate percentage of assets to liabilities
@@ -96,7 +99,7 @@ export default function AssetsLiabilitiesChart({
               <YAxis hide domain={yAxisDomain} />
               <Tooltip
                 formatter={(value, name) => [
-                  formatCurrency((value as number) ?? 0, {
+                  formatCurrencyRaw((value as number) ?? 0, {
                     minimumFractionDigits: 0,
                     maximumFractionDigits: 0,
                   }),

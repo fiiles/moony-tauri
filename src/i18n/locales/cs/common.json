@@ -293,6 +293,7 @@
         "daysAgo": "Před {{count}} dny",
         "daysAgo_one": "Před 1 dnem",
         "refresh": "Aktualizovat ceny",
-        "refreshing": "Aktualizuji..."
+        "refreshing": "Aktualizuji...",
+        "unknownRates": "Neznámý směnný kurz pro: {{currencies}} — hodnoty se počítají 1:1 vůči CZK"
     }
 }

@@ -39,7 +39,10 @@ const ASSET_COLORS = {
 type AssetKey = keyof typeof ASSET_COLORS;
 
 export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps) {
-  const { formatCurrency } = useCurrency();
+  // Values arrive already converted to the display currency (per-day
+  // historical rates, see useHistoricalDisplayValues) — format only,
+  // formatCurrency would convert CZK -> display a second time.
+  const { formatCurrencyRaw } = useCurrency();
   const { t } = useTranslation('dashboard');
 
   // Track which series are visible (all visible by default)
@@ -152,7 +155,7 @@ export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps
                               </span>
                             </span>
                             <span style={{ color: 'hsl(var(--foreground))' }}>
-                              {formatCurrency((entry.value as number) ?? 0, {
+                              {formatCurrencyRaw((entry.value as number) ?? 0, {
                                 minimumFractionDigits: 0,
                                 maximumFractionDigits: 0,
                               })}
@@ -168,7 +171,7 @@ export default function AssetClassTrendChart({ data }: AssetClassTrendChartProps
                         >
                           <span>{t('common:total', 'Total')}</span>
                           <span>
-                            {formatCurrency(total, {
+                            {formatCurrencyRaw(total, {
                               minimumFractionDigits: 0,
                               maximumFractionDigits: 0,
                             })}

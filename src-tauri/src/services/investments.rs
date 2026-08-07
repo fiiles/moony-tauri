@@ -15,22 +15,25 @@ use uuid::Uuid;
 /// Recalculate investment quantity and average price from transactions
 /// SINGLE SOURCE OF TRUTH for investment metrics calculation
 /// NOTE: Average price is calculated in the investment's native currency (set by first transaction)
+/// Uses a moving average: buys add to the cost basis, sells remove cost basis proportionally
+/// (at the average cost, not the sale price) — mirrors `recalculate_crypto_metrics`, minus
+/// currency conversion (stocks enforce a single currency per investment, so none is needed).
 pub fn recalculate_investment_metrics(
     conn: &rusqlite::Connection,
     investment_id: &str,
 ) -> Result<()> {
-    // Get all transactions for this investment
+    // Get all transactions for this investment, ordered chronologically
     let mut stmt = conn.prepare(
-        "SELECT type, quantity, price_per_unit, currency FROM investment_transactions WHERE investment_id = ?1"
+        "SELECT type, quantity, price_per_unit FROM investment_transactions WHERE investment_id = ?1 ORDER BY transaction_date ASC, created_at ASC"
     )?;
 
-    let txs: Vec<(String, f64, f64, String)> = stmt
+    let txs: Vec<(String, f64, f64)> = stmt
         .query_map([investment_id], |row| {
             let type_: String = row.get(0)?;
             let qty_str: String = row.get(1)?;
             let price_str: String = row.get(2)?;
-            let currency: String = row.get(3)?;
 
+            // Tolerant parsing: legacy data may contain suffixes (e.g. a unit string)
             let qty = qty_str
                 .split_whitespace()
                 .next()
@@ -44,29 +47,47 @@ pub fn recalculate_investment_metrics(
                 .parse::<f64>()
                 .unwrap_or(0.0);
 
-            Ok((type_, qty, price, currency))
+            Ok((type_, qty, price))
         })?
         .filter_map(|r| r.ok())
         .collect();
 
-    let mut total_quantity = 0.0;
-    let mut weighted_buy_sum = 0.0;
-    let mut weighted_buy_qty = 0.0;
+    // No transactions yet (e.g. a manually-created position entered with a starting
+    // quantity/average_price but no transaction history) — leave the stored values as-is
+    // instead of zeroing them out.
+    if txs.is_empty() {
+        return Ok(());
+    }
 
-    // Calculate average price in native currency (no conversion)
-    // All transactions for an investment should have the same currency
-    for (tx_type, qty, price, _currency) in txs {
+    let mut total_qty = 0.0f64;
+    let mut total_cost = 0.0f64;
+
+    // All transactions for an investment share the same currency (enforced at write time),
+    // so no conversion is needed here.
+    for (tx_type, qty, price) in txs {
         if tx_type == "buy" {
-            total_quantity += qty;
-            weighted_buy_sum += qty * price;
-            weighted_buy_qty += qty;
-        } else {
-            total_quantity -= qty;
+            total_cost += qty * price;
+            total_qty += qty;
+        } else if tx_type == "sell" {
+            // Reduce quantity, adjust cost basis proportionally at the current average cost
+            if total_qty > 0.0 {
+                let avg_cost = total_cost / total_qty;
+                total_cost -= qty * avg_cost;
+            }
+            total_qty -= qty;
         }
     }
 
-    let average_price = if weighted_buy_qty > 0.0 {
-        weighted_buy_sum / weighted_buy_qty
+    // Prevent negative values
+    if total_qty < 0.0 {
+        total_qty = 0.0;
+    }
+    if total_cost < 0.0 {
+        total_cost = 0.0;
+    }
+
+    let average_price = if total_qty > 0.0 {
+        total_cost / total_qty
     } else {
         0.0
     };
@@ -74,11 +95,37 @@ pub fn recalculate_investment_metrics(
     conn.execute(
         "UPDATE stock_investments SET quantity = ?1, average_price = ?2 WHERE id = ?3",
         rusqlite::params![
-            total_quantity.to_string(),
+            total_qty.to_string(),
             average_price.to_string(),
             investment_id
         ],
     )?;
+
+    Ok(())
+}
+
+/// Recalculate quantity and average price for every stock investment
+/// Idempotent self-heal that runs on every database open: corrects any stale `average_price`
+/// left over from the old lifetime-average calculation without waiting for each investment's
+/// next transaction. Investments with no transactions are left untouched (see the early
+/// return in `recalculate_investment_metrics`), so manually-entered positions survive.
+/// Never aborts on a single investment's failure — logs and continues, so one bad row can't
+/// block the database from opening.
+pub fn recalculate_all_investment_metrics(conn: &rusqlite::Connection) -> Result<()> {
+    let mut stmt = conn.prepare("SELECT id FROM stock_investments")?;
+    let ids: Vec<String> = stmt
+        .query_map([], |row| row.get(0))?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    for id in ids {
+        if let Err(e) = recalculate_investment_metrics(conn, &id) {
+            println!(
+                "[Investments] Warning: Failed to recalculate metrics for investment {}: {}",
+                id, e
+            );
+        }
+    }
 
     Ok(())
 }
@@ -777,6 +824,233 @@ mod tests {
         assert_eq!(qty, 12.0);
         let avg: f64 = inv.average_price.parse().unwrap();
         assert!((avg - 200.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_recalculate_metrics_sell_then_rebuy() {
+        // buy 10@100, sell 10, buy 10@200 -> average should reset to 200, not blend with the past
+        let conn = setup_test_db();
+        let investment_id = get_or_create_investment(&conn, "SNAP", "Snap Inc.", "USD", None, None)
+            .expect("create");
+
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx1', ?1, 'buy', 'SNAP', 'Snap Inc.', '10', '100', 'USD', 0, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx2', ?1, 'sell', 'SNAP', 'Snap Inc.', '10', '150', 'USD', 1, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx3', ?1, 'buy', 'SNAP', 'Snap Inc.', '10', '200', 'USD', 2, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+
+        recalculate_investment_metrics(&conn, &investment_id).expect("recalc");
+
+        let inv = get_investment_by_id(&conn, &investment_id).expect("get");
+        let qty: f64 = inv.quantity.parse().unwrap();
+        let avg: f64 = inv.average_price.parse().unwrap();
+        assert_eq!(qty, 10.0);
+        assert!((avg - 200.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_recalculate_metrics_uses_transaction_date_not_insertion_order() {
+        // Same buy/sell/buy sequence as test_recalculate_metrics_sell_then_rebuy (qty 10,
+        // avg 200), but the rows are INSERTed out of chronological order. If the ORDER BY
+        // clause were dropped, the query would fall back to insertion (rowid) order and
+        // produce a different (wrong) result — this exercises that the ORDER BY is load-bearing.
+        let conn = setup_test_db();
+        let investment_id = get_or_create_investment(&conn, "SNAP", "Snap Inc.", "USD", None, None)
+            .expect("create");
+
+        // Inserted first, but chronologically last (transaction_date = 2)
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx3', ?1, 'buy', 'SNAP', 'Snap Inc.', '10', '200', 'USD', 2, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+        // Inserted second, but chronologically first (transaction_date = 0)
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx1', ?1, 'buy', 'SNAP', 'Snap Inc.', '10', '100', 'USD', 0, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+        // Inserted third, but chronologically in the middle (transaction_date = 1)
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx2', ?1, 'sell', 'SNAP', 'Snap Inc.', '10', '150', 'USD', 1, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+
+        recalculate_investment_metrics(&conn, &investment_id).expect("recalc");
+
+        let inv = get_investment_by_id(&conn, &investment_id).expect("get");
+        let qty: f64 = inv.quantity.parse().unwrap();
+        let avg: f64 = inv.average_price.parse().unwrap();
+        assert_eq!(qty, 10.0);
+        assert!(
+            (avg - 200.0).abs() < 0.01,
+            "expected avg 200 from chronological ordering, got {avg} — ORDER BY may be missing"
+        );
+    }
+
+    #[test]
+    fn test_recalculate_metrics_partial_sell() {
+        // buy 10@100, sell 5, buy 5@200 -> average should be a moving average: 150
+        let conn = setup_test_db();
+        let investment_id =
+            get_or_create_investment(&conn, "AMZN", "Amazon", "USD", None, None).expect("create");
+
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx1', ?1, 'buy', 'AMZN', 'Amazon', '10', '100', 'USD', 0, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx2', ?1, 'sell', 'AMZN', 'Amazon', '5', '150', 'USD', 1, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx3', ?1, 'buy', 'AMZN', 'Amazon', '5', '200', 'USD', 2, 0)",
+            [&investment_id],
+        )
+        .unwrap();
+
+        recalculate_investment_metrics(&conn, &investment_id).expect("recalc");
+
+        let inv = get_investment_by_id(&conn, &investment_id).expect("get");
+        let qty: f64 = inv.quantity.parse().unwrap();
+        let avg: f64 = inv.average_price.parse().unwrap();
+        assert_eq!(qty, 10.0);
+        assert!((avg - 150.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_recalculate_all_investment_metrics_corrects_all_investments() {
+        // Two investments, both seeded with stale/incorrect stored metrics (as the old
+        // lifetime-average bug would have left behind). A one-time recalculation over
+        // all stock_investments should self-heal both from their transaction history.
+        let conn = setup_test_db();
+
+        let inv1 = get_or_create_investment(&conn, "SNAP", "Snap Inc.", "USD", None, None)
+            .expect("create inv1");
+        let inv2 = get_or_create_investment(&conn, "AMZN", "Amazon", "USD", None, None)
+            .expect("create inv2");
+
+        conn.execute(
+            "UPDATE stock_investments SET quantity = '999', average_price = '999' WHERE id = ?1",
+            [&inv1],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE stock_investments SET quantity = '999', average_price = '999' WHERE id = ?1",
+            [&inv2],
+        )
+        .unwrap();
+
+        // inv1: sell-then-rebuy -> qty 10, avg 200
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx1', ?1, 'buy', 'SNAP', 'Snap Inc.', '10', '100', 'USD', 0, 0)",
+            [&inv1],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx2', ?1, 'sell', 'SNAP', 'Snap Inc.', '10', '150', 'USD', 1, 0)",
+            [&inv1],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx3', ?1, 'buy', 'SNAP', 'Snap Inc.', '10', '200', 'USD', 2, 0)",
+            [&inv1],
+        )
+        .unwrap();
+
+        // inv2: partial-sell -> qty 10, avg 150
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx4', ?1, 'buy', 'AMZN', 'Amazon', '10', '100', 'USD', 0, 0)",
+            [&inv2],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx5', ?1, 'sell', 'AMZN', 'Amazon', '5', '150', 'USD', 1, 0)",
+            [&inv2],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at)
+             VALUES ('tx6', ?1, 'buy', 'AMZN', 'Amazon', '5', '200', 'USD', 2, 0)",
+            [&inv2],
+        )
+        .unwrap();
+
+        recalculate_all_investment_metrics(&conn).expect("recalc all");
+
+        let got1 = get_investment_by_id(&conn, &inv1).expect("get inv1");
+        let qty1: f64 = got1.quantity.parse().unwrap();
+        let avg1: f64 = got1.average_price.parse().unwrap();
+        assert_eq!(qty1, 10.0);
+        assert!((avg1 - 200.0).abs() < 0.01);
+
+        let got2 = get_investment_by_id(&conn, &inv2).expect("get inv2");
+        let qty2: f64 = got2.quantity.parse().unwrap();
+        let avg2: f64 = got2.average_price.parse().unwrap();
+        assert_eq!(qty2, 10.0);
+        assert!((avg2 - 150.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_recalculate_all_investment_metrics_preserves_transaction_less_investment() {
+        // A manually-created position (e.g. via create_investment with an initial
+        // quantity/average_price but no initial_transaction) has stored metrics but zero
+        // rows in investment_transactions. The startup sweep runs on every DB open, so it
+        // must leave such a position untouched rather than zeroing it out.
+        let conn = setup_test_db();
+        let investment_id =
+            get_or_create_investment(&conn, "IBM", "IBM", "USD", Some("42"), Some("321"))
+                .expect("create");
+
+        recalculate_all_investment_metrics(&conn).expect("recalc all");
+
+        let inv = get_investment_by_id(&conn, &investment_id).expect("get");
+        let qty: f64 = inv.quantity.parse().unwrap();
+        let avg: f64 = inv.average_price.parse().unwrap();
+        assert_eq!(qty, 42.0);
+        assert_eq!(avg, 321.0);
     }
 
     #[test]

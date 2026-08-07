@@ -24,6 +24,7 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '@/i18n/I18nProvider';
 import { useCurrency } from '@/lib/currency';
+import { useHistoricalDisplayValues } from '@/hooks/use-historical-display-values';
 
 export default function Dashboard() {
   const { t } = useTranslation('dashboard');
@@ -89,56 +90,101 @@ export default function Dashboard() {
   const totalLiabilities = portfolioMetrics?.totalLiabilities || 0;
   const netWorth = portfolioMetrics?.netWorth || 0;
 
-  // Calculate changes from historical data
-  // History is returned in descending order (Newest -> Oldest)
-  const oldestSnapshot = portfolioHistory?.[portfolioHistory.length - 1];
+  // Per-day display-currency conversion shared by all history-fed charts
+  const { convertPoint, convertCzkPoint, convertCzkToday } =
+    useHistoricalDisplayValues(portfolioHistory);
+
+  // History rows converted to the display currency using each day's rates,
+  // in chronological order (Oldest -> Newest; the query returns DESC).
+  //
+  // Real-estate caveat: history rows only store a COMBINED realEstateByCurrency
+  // breakdown, while the CZK totals split personal vs investment. When personal
+  // real estate is excluded, the breakdown does not match the wanted total (it
+  // still includes the personal part), so that portion converts via the CZK
+  // total instead: investment-only CZK total at the day's display rate,
+  // falling back to today's rate.
+  const convertedHistory = useMemo(() => {
+    const excludePersonal = user?.excludePersonalRealEstate || false;
+    return [...(portfolioHistory || [])].reverse().map((h) => {
+      const savings = convertPoint(h.recordedAt, h.savingsByCurrency, Number(h.totalSavings));
+      const investments = convertPoint(
+        h.recordedAt,
+        h.investmentsByCurrency,
+        Number(h.totalInvestments)
+      );
+      const bonds = convertPoint(h.recordedAt, h.bondsByCurrency, Number(h.totalBonds));
+      const crypto = convertPoint(h.recordedAt, h.cryptoByCurrency, Number(h.totalCrypto || 0));
+      const otherAssets = convertPoint(
+        h.recordedAt,
+        h.otherAssetsByCurrency,
+        Number(h.totalOtherAssets || 0)
+      );
+      const realEstate = excludePersonal
+        ? convertCzkPoint(h.recordedAt, Number(h.totalRealEstateInvestment))
+        : convertPoint(
+            h.recordedAt,
+            h.realEstateByCurrency,
+            Number(h.totalRealEstatePersonal) + Number(h.totalRealEstateInvestment)
+          );
+      const liabilities = convertPoint(
+        h.recordedAt,
+        h.loansByCurrency,
+        Number(h.totalLoansPrincipal)
+      );
+      const assets = savings + investments + bonds + realEstate + crypto + otherAssets;
+      return {
+        recordedAt: h.recordedAt,
+        savings,
+        investments,
+        bonds,
+        crypto,
+        otherAssets,
+        realEstate,
+        assets,
+        liabilities,
+        netWorth: assets - liabilities,
+      };
+    });
+  }, [portfolioHistory, convertPoint, convertCzkPoint, user?.excludePersonalRealEstate]);
+
+  // Live "today" values converted at today's rates. These match what the stat
+  // cards show via formatCurrency for the same CZK inputs, so the last chart
+  // point always equals the summary values.
+  const displayNetWorth = convertCzkToday(netWorth);
+  const displayTotalAssets = convertCzkToday(totalAssets);
+  const displayTotalLiabilities = convertCzkToday(totalLiabilities);
+  const displayTotalSavings = convertCzkToday(totalSavings);
+  const displayTotalInvestments = convertCzkToday(totalInvestments);
+  const displayTotalBonds = convertCzkToday(totalBonds);
+  const displayTotalRealEstate = convertCzkToday(totalRealEstate);
+  const displayTotalCrypto = convertCzkToday(totalCrypto);
+  const displayTotalOtherAssets = convertCzkToday(totalOtherAssets);
+
+  // Calculate changes from historical data: oldest converted point vs today's
+  // converted live value, both in display currency (identical to the previous
+  // CZK-based numbers when the display currency is CZK)
+  const oldestConverted = convertedHistory[0];
 
   const netWorthChange = useMemo(() => {
-    if (!oldestSnapshot) return 0;
-
-    // Calculate oldest snapshot's net worth
-    const oldAssets =
-      Number(oldestSnapshot.totalSavings) +
-      Number(oldestSnapshot.totalInvestments) +
-      Number(oldestSnapshot.totalBonds) +
-      (user?.excludePersonalRealEstate ? 0 : Number(oldestSnapshot.totalRealEstatePersonal)) +
-      Number(oldestSnapshot.totalRealEstateInvestment) +
-      Number(oldestSnapshot.totalCrypto || 0) +
-      Number(oldestSnapshot.totalOtherAssets || 0);
-    const oldLiabilities = Number(oldestSnapshot.totalLoansPrincipal);
-    const oldNetWorth = oldAssets - oldLiabilities;
-
-    // Compare with current net worth
-    if (oldNetWorth === 0) return 0;
-    const change = ((netWorth - oldNetWorth) / Math.abs(oldNetWorth)) * 100;
-    return change;
-  }, [oldestSnapshot, netWorth, user?.excludePersonalRealEstate]);
+    if (!oldestConverted || oldestConverted.netWorth === 0) return 0;
+    return (
+      ((displayNetWorth - oldestConverted.netWorth) / Math.abs(oldestConverted.netWorth)) * 100
+    );
+  }, [oldestConverted, displayNetWorth]);
 
   const assetsChange = useMemo(() => {
-    if (!oldestSnapshot) return 0;
-
-    const oldAssets =
-      Number(oldestSnapshot.totalSavings) +
-      Number(oldestSnapshot.totalInvestments) +
-      Number(oldestSnapshot.totalBonds) +
-      (user?.excludePersonalRealEstate ? 0 : Number(oldestSnapshot.totalRealEstatePersonal)) +
-      Number(oldestSnapshot.totalRealEstateInvestment) +
-      Number(oldestSnapshot.totalCrypto || 0) +
-      Number(oldestSnapshot.totalOtherAssets || 0);
-
-    if (oldAssets === 0) return 0;
-    const change = ((totalAssets - oldAssets) / Math.abs(oldAssets)) * 100;
-    return change;
-  }, [oldestSnapshot, totalAssets, user?.excludePersonalRealEstate]);
+    if (!oldestConverted || oldestConverted.assets === 0) return 0;
+    return ((displayTotalAssets - oldestConverted.assets) / Math.abs(oldestConverted.assets)) * 100;
+  }, [oldestConverted, displayTotalAssets]);
 
   const liabilitiesChange = useMemo(() => {
-    if (!oldestSnapshot) return 0;
-
-    const oldLiabilities = Number(oldestSnapshot.totalLoansPrincipal);
-    if (oldLiabilities === 0) return 0;
-    const change = ((totalLiabilities - oldLiabilities) / Math.abs(oldLiabilities)) * 100;
-    return change;
-  }, [oldestSnapshot, totalLiabilities]);
+    if (!oldestConverted || oldestConverted.liabilities === 0) return 0;
+    return (
+      ((displayTotalLiabilities - oldestConverted.liabilities) /
+        Math.abs(oldestConverted.liabilities)) *
+      100
+    );
+  }, [oldestConverted, displayTotalLiabilities]);
 
   // Using shadcn chart tokens for consistent theming
   const allocationColors = {
@@ -202,8 +248,6 @@ export default function Dashboard() {
       {/* Net Worth Trend - Full Width */}
       <NetWorthTrendChart
         data={(() => {
-          // Reverse history to get chronological order (Oldest -> Newest)
-          // portfolioHistory is DESC (Newest -> Oldest)
           // Include year in date format for multi-year periods
           const includeYear =
             selectedPeriod === '1Y' || selectedPeriod === '5Y' || selectedPeriod === 'All';
@@ -211,21 +255,10 @@ export default function Dashboard() {
             ? { month: 'short' as const, day: 'numeric' as const, year: '2-digit' as const }
             : { month: 'short' as const, day: 'numeric' as const };
 
-          const historyData = [...(portfolioHistory || [])].reverse().map((h) => {
-            const assets =
-              Number(h.totalSavings) +
-              Number(h.totalInvestments) +
-              Number(h.totalBonds) +
-              (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
-              Number(h.totalRealEstateInvestment) +
-              Number(h.totalCrypto || 0) +
-              Number(h.totalOtherAssets || 0);
-            const liabilities = Number(h.totalLoansPrincipal);
-            return {
-              date: formatDate(new Date(h.recordedAt * 1000), dateOptions),
-              value: assets - liabilities,
-            };
-          });
+          const historyData = convertedHistory.map((h) => ({
+            date: formatDate(new Date(h.recordedAt * 1000), dateOptions),
+            value: h.netWorth,
+          }));
 
           // Append or update with current live net worth
           // This ensures the chart ends with the exact value shown in the summary
@@ -233,17 +266,17 @@ export default function Dashboard() {
           const lastPoint = historyData[historyData.length - 1];
 
           if (lastPoint && lastPoint.date === todayStr) {
-            lastPoint.value = netWorth;
+            lastPoint.value = displayNetWorth;
           } else {
             historyData.push({
               date: todayStr,
-              value: netWorth,
+              value: displayNetWorth,
             });
           }
 
           return historyData;
         })()}
-        currentValue={netWorth}
+        currentValue={displayNetWorth}
         change={netWorthChange}
         period={selectedPeriod}
       />
@@ -275,8 +308,6 @@ export default function Dashboard() {
         <div className="lg:col-span-2 min-h-[450px]">
           <AssetsLiabilitiesChart
             data={(() => {
-              // Reverse history to get chronological order (Oldest -> Newest)
-              // portfolioHistory is DESC (Newest -> Oldest)
               // Include year in date format for multi-year periods
               const includeYear =
                 selectedPeriod === '1Y' || selectedPeriod === '5Y' || selectedPeriod === 'All';
@@ -284,42 +315,31 @@ export default function Dashboard() {
                 ? { month: 'short' as const, day: 'numeric' as const, year: '2-digit' as const }
                 : { month: 'short' as const, day: 'numeric' as const };
 
-              const chartData = [...(portfolioHistory || [])].reverse().map((h) => {
-                const assets =
-                  Number(h.totalSavings) +
-                  Number(h.totalInvestments) +
-                  Number(h.totalBonds) +
-                  (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
-                  Number(h.totalRealEstateInvestment) +
-                  Number(h.totalCrypto || 0) +
-                  Number(h.totalOtherAssets || 0);
-                const liabilities = Number(h.totalLoansPrincipal);
-                return {
-                  date: formatDate(new Date(h.recordedAt * 1000), dateOptions),
-                  assets,
-                  liabilities,
-                };
-              });
+              const chartData = convertedHistory.map((h) => ({
+                date: formatDate(new Date(h.recordedAt * 1000), dateOptions),
+                assets: h.assets,
+                liabilities: h.liabilities,
+              }));
 
               // Append or update with current live values
               const todayStr = formatDate(new Date(), dateOptions);
               const lastPoint = chartData[chartData.length - 1];
 
               if (lastPoint && lastPoint.date === todayStr) {
-                lastPoint.assets = totalAssets;
-                lastPoint.liabilities = totalLiabilities;
+                lastPoint.assets = displayTotalAssets;
+                lastPoint.liabilities = displayTotalLiabilities;
               } else {
                 chartData.push({
                   date: todayStr,
-                  assets: totalAssets,
-                  liabilities: totalLiabilities,
+                  assets: displayTotalAssets,
+                  liabilities: displayTotalLiabilities,
                 });
               }
 
               return chartData;
             })()}
-            totalAssets={totalAssets}
-            totalLiabilities={totalLiabilities}
+            totalAssets={displayTotalAssets}
+            totalLiabilities={displayTotalLiabilities}
           />
         </div>
         <AssetAllocationDonut data={allocationData} />
@@ -368,7 +388,6 @@ export default function Dashboard() {
       {/* Asset Class Trend Chart - Full Width */}
       <AssetClassTrendChart
         data={(() => {
-          // Reverse history to get chronological order (Oldest -> Newest)
           // Include year in date format for multi-year periods
           const includeYear =
             selectedPeriod === '1Y' || selectedPeriod === '5Y' || selectedPeriod === 'All';
@@ -376,16 +395,14 @@ export default function Dashboard() {
             ? { month: 'short' as const, day: 'numeric' as const, year: '2-digit' as const }
             : { month: 'short' as const, day: 'numeric' as const };
 
-          const chartData = [...(portfolioHistory || [])].reverse().map((h) => ({
+          const chartData = convertedHistory.map((h) => ({
             date: formatDate(new Date(h.recordedAt * 1000), dateOptions),
-            investments: Number(h.totalInvestments),
-            savings: Number(h.totalSavings),
-            bonds: Number(h.totalBonds),
-            realEstate:
-              (user?.excludePersonalRealEstate ? 0 : Number(h.totalRealEstatePersonal)) +
-              Number(h.totalRealEstateInvestment),
-            crypto: Number(h.totalCrypto || 0),
-            otherAssets: Number(h.totalOtherAssets || 0),
+            investments: h.investments,
+            savings: h.savings,
+            bonds: h.bonds,
+            realEstate: h.realEstate,
+            crypto: h.crypto,
+            otherAssets: h.otherAssets,
           }));
 
           // Append or update with current live values
@@ -393,21 +410,21 @@ export default function Dashboard() {
           const lastPoint = chartData[chartData.length - 1];
 
           if (lastPoint && lastPoint.date === todayStr) {
-            lastPoint.investments = totalInvestments;
-            lastPoint.savings = totalSavings;
-            lastPoint.bonds = totalBonds;
-            lastPoint.realEstate = totalRealEstate;
-            lastPoint.crypto = totalCrypto;
-            lastPoint.otherAssets = totalOtherAssets;
+            lastPoint.investments = displayTotalInvestments;
+            lastPoint.savings = displayTotalSavings;
+            lastPoint.bonds = displayTotalBonds;
+            lastPoint.realEstate = displayTotalRealEstate;
+            lastPoint.crypto = displayTotalCrypto;
+            lastPoint.otherAssets = displayTotalOtherAssets;
           } else {
             chartData.push({
               date: todayStr,
-              investments: totalInvestments,
-              savings: totalSavings,
-              bonds: totalBonds,
-              realEstate: totalRealEstate,
-              crypto: totalCrypto,
-              otherAssets: totalOtherAssets,
+              investments: displayTotalInvestments,
+              savings: displayTotalSavings,
+              bonds: displayTotalBonds,
+              realEstate: displayTotalRealEstate,
+              crypto: displayTotalCrypto,
+              otherAssets: displayTotalOtherAssets,
             });
           }
 

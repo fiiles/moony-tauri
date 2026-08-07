@@ -290,6 +290,20 @@ export interface PortfolioMetrics {
     otherAssetsByCurrency: Record<string, number>;
 }
 
+/** Freshness of prices and exchange rates (stale-prices indicator). */
+export interface PriceStatus {
+    stocksStale: boolean;
+    cryptoStale: boolean;
+    exchangeRatesStale: boolean;
+    oldestStockPriceAgeHours: number | null;
+    oldestCryptoPriceAgeHours: number | null;
+    exchangeRatesAgeHours: number | null;
+    stocksMissingPrice: number;
+    cryptoMissingPrice: number;
+    /** Currency codes with no known exchange rate this session (converted 1:1 to CZK) */
+    missingCurrencies: string[];
+}
+
 export interface PortfolioMetricsHistory {
     id: string;
     totalSavings: string;

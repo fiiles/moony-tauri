@@ -19,6 +19,7 @@ import TimePeriodSelector, { type Period } from '@/components/cashflow/TimePerio
 import type { PortfolioMetricsHistory } from '@shared/schema';
 import { useLanguage } from '@/i18n/I18nProvider';
 import { useSyncStatus } from '@/hooks/sync-context';
+import { useHistoricalDisplayValues } from '@/hooks/use-historical-display-values';
 import { listen } from '@tauri-apps/api/event';
 
 interface TrendData {
@@ -210,9 +211,6 @@ export default function PortfolioValueTrendChart({
   }, [selectedPeriod, transactionMarkers]);
 
   // Fetch portfolio history
-  const startTs = dateRange.start ? Math.floor(dateRange.start.getTime() / 1000) : 0;
-  const endTs = Math.floor(dateRange.end.getTime() / 1000);
-
   const { data: portfolioHistory } = useQuery<PortfolioMetricsHistory[]>({
     queryKey: ['portfolio-history', dateRange.start?.toISOString(), dateRange.end.toISOString()],
     queryFn: async () => {
@@ -224,13 +222,9 @@ export default function PortfolioValueTrendChart({
     refetchOnMount: 'always',
   });
 
-  // Fetch historical exchange rates for the displayed date range (non-CZK display only)
-  const { data: historicalRates } = useQuery<Record<number, Record<string, number>>>({
-    queryKey: ['exchange-rates-range', startTs, endTs],
-    queryFn: () => portfolioApi.getExchangeRatesForDateRange(startTs, endTs),
-    enabled: !!portfolioHistory && currencyCode !== 'CZK',
-    staleTime: 60 * 60 * 1000,
-  });
+  // Shared per-day display-currency conversion (fetches historical rates for
+  // the history's date range; no-op passthrough for CZK display)
+  const { convertPoint } = useHistoricalDisplayValues(portfolioHistory);
 
   // Create a map of transaction markers by day-start timestamp for quick lookup
   // Using timestamps instead of date strings to correctly distinguish between different years
@@ -263,50 +257,15 @@ export default function PortfolioValueTrendChart({
 
   // Extract value based on type and calculate chart data
   const { data, change } = useMemo(() => {
-    // Convert native breakdown using historical rates for this date,
-    // falling back to CZK total if breakdown is empty or rates unavailable.
-    function valueFromBreakdown(
-      breakdownJson: string,
-      czkFallback: number,
-      rates: Record<string, number> | undefined
-    ): number {
-      let breakdown: Record<string, number> = {};
-      try {
-        breakdown = JSON.parse(breakdownJson);
-      } catch {
-        /* ignore */
-      }
-
-      const hasBreakdown = Object.keys(breakdown).length > 0;
-      if (!hasBreakdown || !rates || currencyCode === 'CZK') {
-        return convert(czkFallback, 'CZK', currencyCode);
-      }
-
-      // Sum each native bucket converted to display currency via CZK pivot
-      return Object.entries(breakdown).reduce((sum, [cur, amount]) => {
-        const toCzk = (rates[cur] ?? 1) * amount;
-        const displayRate = rates[currencyCode] ?? 1;
-        return sum + toCzk / displayRate;
-      }, 0);
-    }
-
     // Reverse history to get chronological order (Oldest -> Newest)
     // portfolioHistory is DESC (Newest -> Oldest)
     const historyData: TrendData[] = [...(portfolioHistory || [])].reverse().map((h) => {
-      // Find the closest historical rate snapshot for this chart point
-      const dayKey = Math.floor(h.recordedAt / 86400) * 86400;
-      const ratesForDay = historicalRates?.[dayKey];
-
-      let value: number;
-      if (type === 'investments') {
-        value = valueFromBreakdown(
-          h.investmentsByCurrency,
-          Number(h.totalInvestments),
-          ratesForDay
-        );
-      } else {
-        value = valueFromBreakdown(h.cryptoByCurrency, Number(h.totalCrypto || 0), ratesForDay);
-      }
+      // Convert the native breakdown at the rates of the recorded day
+      // (closest earlier day, then today's rates as last resort)
+      const value =
+        type === 'investments'
+          ? convertPoint(h.recordedAt, h.investmentsByCurrency, Number(h.totalInvestments))
+          : convertPoint(h.recordedAt, h.cryptoByCurrency, Number(h.totalCrypto || 0));
 
       // Include year in date format for multi-year periods
       const includeYear =
@@ -406,7 +365,7 @@ export default function PortfolioValueTrendChart({
     return { data: historyData, change: changePercent };
   }, [
     portfolioHistory,
-    historicalRates,
+    convertPoint,
     currentValue,
     type,
     formatDate,

@@ -230,12 +230,54 @@ export type OtherAssetTransaction = { id: string; assetId: string; type: string;
 /**
  * Current portfolio metrics
  */
-export type PortfolioMetrics = { totalSavings: number; totalInvestments: number; totalCrypto: number; totalBonds: number; totalRealEstatePersonal: number; totalRealEstateInvestment: number; totalRealEstate: number; totalOtherAssets: number; totalLiabilities: number; totalAssets: number; netWorth: number }
+export type PortfolioMetrics = { totalSavings: number; totalInvestments: number; totalCrypto: number; totalBonds: number; totalRealEstatePersonal: number; totalRealEstateInvestment: number; totalRealEstate: number; totalOtherAssets: number; totalLiabilities: number; totalAssets: number; netWorth: number; savingsByCurrency: Partial<{ [key in string]: number }>; investmentsByCurrency: Partial<{ [key in string]: number }>; cryptoByCurrency: Partial<{ [key in string]: number }>; bondsByCurrency: Partial<{ [key in string]: number }>; realEstateByCurrency: Partial<{ [key in string]: number }>; loansByCurrency: Partial<{ [key in string]: number }>; otherAssetsByCurrency: Partial<{ [key in string]: number }> }
 
 /**
  * Portfolio metrics history entry
  */
-export type PortfolioMetricsHistory = { id: string; totalSavings: string; totalLoansPrincipal: string; totalInvestments: string; totalCrypto: string; totalBonds: string; totalRealEstatePersonal: string; totalRealEstateInvestment: string; totalOtherAssets: string; recordedAt: number }
+export type PortfolioMetricsHistory = { id: string; totalSavings: string; totalLoansPrincipal: string; totalInvestments: string; totalCrypto: string; totalBonds: string; totalRealEstatePersonal: string; totalRealEstateInvestment: string; totalOtherAssets: string; recordedAt: number; investmentsByCurrency: string; cryptoByCurrency: string; savingsByCurrency: string; bondsByCurrency: string; realEstateByCurrency: string; loansByCurrency: string; otherAssetsByCurrency: string }
+
+/**
+ * Status of prices and exchange rates freshness
+ */
+export type PriceStatus = { 
+/**
+ * Are any stock prices considered stale (older than 24 hours)?
+ */
+stocksStale: boolean; 
+/**
+ * Are any crypto prices considered stale (older than 12 hours)?
+ */
+cryptoStale: boolean; 
+/**
+ * Are exchange rates considered stale (older than 48 hours)?
+ */
+exchangeRatesStale: boolean; 
+/**
+ * Age of oldest stock price in hours (None if no stocks)
+ */
+oldestStockPriceAgeHours: number | null; 
+/**
+ * Age of oldest crypto price in hours (None if no crypto)
+ */
+oldestCryptoPriceAgeHours: number | null; 
+/**
+ * Age of exchange rates in hours (None if never fetched)
+ */
+exchangeRatesAgeHours: number | null; 
+/**
+ * Number of stocks without any price data
+ */
+stocksMissingPrice: number; 
+/**
+ * Number of cryptos without any price data
+ */
+cryptoMissingPrice: number; 
+/**
+ * Currency codes encountered this session with no known exchange rate
+ * (converted 1:1 to CZK as a last resort — values are wrong; audit M2)
+ */
+missingCurrencies: string[] }
 
 /**
  * Projection settings for a specific asset type

@@ -34,6 +34,7 @@ import type {
   InsertOtherAssetTransaction,
   PortfolioMetrics,
   PortfolioMetricsHistory,
+  PriceStatus,
   CashflowReport,
   CashflowItem,
   ProjectionSettings,
@@ -498,17 +499,6 @@ export interface BackfillResult {
   total_days: number;
   completed: boolean;
   message: string;
-}
-
-export interface PriceStatus {
-  stocksStale: boolean;
-  cryptoStale: boolean;
-  exchangeRatesStale: boolean;
-  oldestStockPriceAgeHours: number | null;
-  oldestCryptoPriceAgeHours: number | null;
-  exchangeRatesAgeHours: number | null;
-  stocksMissingPrice: number;
-  cryptoMissingPrice: number;
 }
 
 export const portfolioApi = {

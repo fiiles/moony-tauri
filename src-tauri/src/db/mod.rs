@@ -64,6 +64,16 @@ impl Database {
             println!("[DB] Warning: Failed to load exchange rates: {}", e);
         }
 
+        // Idempotent self-heal that runs on every open: corrects any stale investment
+        // average_price values left over from the old lifetime-average calculation
+        // (never blocks DB open on failure)
+        if let Err(e) = crate::services::investments::recalculate_all_investment_metrics(&conn) {
+            println!(
+                "[DB] Warning: Failed to recalculate investment metrics: {}",
+                e
+            );
+        }
+
         // Store connection and path
         *self
             .conn
@@ -98,6 +108,16 @@ impl Database {
         // Load exchange rates from database for offline use
         if let Err(e) = crate::services::currency::load_rates_from_db(&conn) {
             println!("[DB] Warning: Failed to load exchange rates: {}", e);
+        }
+
+        // Idempotent self-heal that runs on every open: corrects any stale investment
+        // average_price values left over from the old lifetime-average calculation
+        // (never blocks DB open on failure)
+        if let Err(e) = crate::services::investments::recalculate_all_investment_metrics(&conn) {
+            println!(
+                "[DB] Warning: Failed to recalculate investment metrics: {}",
+                e
+            );
         }
 
         // Store connection and path

@@ -30,7 +30,10 @@ export default function NetWorthTrendChart({
   change,
 }: NetWorthTrendChartProps) {
   const isPositive = change >= 0;
-  const { formatCurrency } = useCurrency();
+  // Values arrive already converted to the display currency (per-day
+  // historical rates, see useHistoricalDisplayValues) — format only,
+  // formatCurrency would convert CZK -> display a second time.
+  const { formatCurrencyRaw } = useCurrency();
   const { t } = useTranslation('dashboard');
 
   // Calculate dynamic Y-axis domain based on data range
@@ -54,7 +57,7 @@ export default function NetWorthTrendChart({
     <Card className="p-6 border h-full flex flex-col card-hover">
       <div className="flex flex-col gap-2 mb-4">
         <p className="text-lg font-medium">{t('charts.netWorthTrend')}</p>
-        <p className="text-4xl font-bold tracking-tight">{formatCurrency(currentValue)}</p>
+        <p className="text-4xl font-bold tracking-tight">{formatCurrencyRaw(currentValue)}</p>
         <div className="flex gap-2 items-center">
           <p className={`text-sm font-medium ${isPositive ? 'text-positive' : 'text-negative'}`}>
             {isPositive ? '+' : ''}
@@ -84,7 +87,10 @@ export default function NetWorthTrendChart({
             />
             <YAxis hide domain={yAxisDomain} />
             <Tooltip
-              formatter={(value) => [formatCurrency((value as number) ?? 0), t('stats.netWorth')]}
+              formatter={(value) => [
+                formatCurrencyRaw((value as number) ?? 0),
+                t('stats.netWorth'),
+              ]}
               contentStyle={{
                 backgroundColor: 'hsl(var(--popover))',
                 border: '1px solid hsl(var(--border))',
