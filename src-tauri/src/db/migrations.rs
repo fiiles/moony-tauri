@@ -1,9 +1,26 @@
 //! Database migrations for Moony
 //!
-//! Creates all tables matching the schema from schema.ts
+//! The schema was squashed to a single baseline on 2026-08-06 (see
+//! docs/plans/2026-08-06-migration-squash.md). The baseline reproduces the
+//! exact schema of the historical 37-migration chain (verified against
+//! `golden_schema.snapshot` by tests below).
+//!
+//! Rules (docs/playbooks/add-db-migration.md):
+//! - Migrations are append-only from the baseline: next number + Vec entry.
+//! - Never edit an applied migration, including the baseline.
+//!
+//! Legacy databases created by Moony <= 1.3.0 (pre-squash chain) are detected
+//! by their `_migrations` entries. A fully migrated legacy database has a
+//! schema identical to the baseline, so it is stamped as baseline without
+//! executing any DDL. Partially migrated legacy databases must be opened with
+//! Moony 1.3.0 once to finish the old chain first.
 
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use rusqlite::Connection;
+
+const BASELINE_NAME: &str = "001_baseline";
+/// Final migration of the pre-squash chain (Moony <= 1.3.0)
+const LEGACY_FINAL_MIGRATION: &str = "037_multicurrency";
 
 /// Run all database migrations
 pub fn run_migrations(conn: &Connection) -> Result<()> {
@@ -17,56 +34,48 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         [],
     )?;
 
-    // Check which migrations have been applied
     let applied: Vec<String> = {
         let mut stmt = conn.prepare("SELECT name FROM _migrations")?;
         let rows = stmt.query_map([], |row| row.get(0))?;
         rows.filter_map(|r| r.ok()).collect()
     };
 
-    // Apply migrations in order
-    let migrations: Vec<(&str, &str)> = vec![
-        ("001_initial_schema", MIGRATION_001),
-        ("002_add_bond_currency", MIGRATION_002),
-        ("003_add_other_assets_history", MIGRATION_003),
-        ("004_add_photo_batches", MIGRATION_004),
-        ("005_add_insurance_documents", MIGRATION_005),
-        ("006_add_savings_termination_date", MIGRATION_006),
-        ("007_add_cashflow_items", MIGRATION_007),
-        ("008_add_cashflow_category", MIGRATION_008),
-        ("009_add_projection_settings", MIGRATION_009),
-        ("010_add_real_estate_documents", MIGRATION_010),
-        ("011_add_bond_quantity", MIGRATION_011),
-        ("012_add_user_language", MIGRATION_012),
-        ("013_add_stock_metadata", MIGRATION_013),
-        ("014_add_crypto_manual_price", MIGRATION_014),
-        ("015_add_bank_accounts", MIGRATION_015),
-        ("016_add_import_batches", MIGRATION_016),
-        ("017_add_stock_tags", MIGRATION_017),
-        ("018_add_stock_tag_groups", MIGRATION_018),
-        ("019_add_ticker_history", MIGRATION_019),
-        ("020_add_investment_currency", MIGRATION_020),
-        ("021_add_categorization", MIGRATION_021),
-        ("022_add_new_categories", MIGRATION_022),
-        ("023_add_insurance_loan_categories", MIGRATION_023),
-        ("024_fix_missing_taxes", MIGRATION_024),
-        ("025_add_budget_goals", MIGRATION_025),
-        ("026_hierarchical_payee_matching", MIGRATION_026),
-        ("027_nullable_payee_columns", MIGRATION_027),
-        (
-            "028_remove_variable_symbol_from_learned_payees",
-            MIGRATION_028,
-        ),
-        ("029_update_investments_icon", MIGRATION_029),
-        ("030_add_iban_vs_to_rules", MIGRATION_030),
-        ("031_make_bond_isin_optional", MIGRATION_031),
-        ("032_bank_account_zones_fix", MIGRATION_032),
-        ("033_add_coingecko_modal_dismissed", MIGRATION_033),
-        ("034_add_exchange_rates_table", MIGRATION_034),
-        ("035_add_stale_data_columns", MIGRATION_035),
-        ("036_add_mcp_server_enabled", MIGRATION_036),
-        ("037_multicurrency", MIGRATION_037),
-    ];
+    let migrations: Vec<(&str, &str)> = vec![(BASELINE_NAME, MIGRATION_001)];
+
+    // Legacy chain handling (databases created by Moony <= 1.3.0)
+    let legacy_names: Vec<&String> = applied
+        .iter()
+        .filter(|name| !migrations.iter().any(|(n, _)| n == *name))
+        .collect();
+    if !legacy_names.is_empty() {
+        if applied.iter().any(|n| n == LEGACY_FINAL_MIGRATION) {
+            // Fully migrated legacy database: schema is identical to the
+            // baseline by construction, so stamp it instead of executing DDL.
+            if !applied.iter().any(|n| n == BASELINE_NAME) {
+                println!("[MIGRATION] Legacy database detected; stamping {BASELINE_NAME}");
+                conn.execute(
+                    "INSERT INTO _migrations (name) VALUES (?1)",
+                    [BASELINE_NAME],
+                )?;
+            }
+        } else {
+            return Err(AppError::Database(format!(
+                "This database was created by an older Moony version and is only \
+                 migrated up to {:?}. Open it with Moony 1.3.0 once to finish the \
+                 legacy migrations, then upgrade.",
+                legacy_names
+                    .last()
+                    .map(|s| s.as_str())
+                    .unwrap_or("<unknown>")
+            )));
+        }
+    }
+
+    let applied: Vec<String> = {
+        let mut stmt = conn.prepare("SELECT name FROM _migrations")?;
+        let rows = stmt.query_map([], |row| row.get(0))?;
+        rows.filter_map(|r| r.ok()).collect()
+    };
 
     for (name, sql) in migrations {
         if !applied.contains(&name.to_string()) {
@@ -77,238 +86,118 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         }
     }
 
-    // Fix for migration 014 that may have been recorded but table wasn't created
-    let table_exists: bool = conn
-        .query_row(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='crypto_price_overrides'",
-            [],
-            |row| row.get::<_, i32>(0),
-        )
-        .map(|count| count > 0)
-        .unwrap_or(false);
-
-    if !table_exists {
-        println!("[MIGRATION] Fixing: crypto_price_overrides table missing, creating it now");
-        conn.execute_batch(MIGRATION_014)?;
-        println!("[MIGRATION] Fixed: crypto_price_overrides table created");
-    }
-
-    println!("[MIGRATION] Already applied: {:?}", applied);
     Ok(())
 }
 
-/// Initial schema migration - creates all tables
+/// Baseline schema — squashed from the historical migrations 001-037.
+/// Generated from golden_schema.snapshot; do not edit (append a new migration instead).
 const MIGRATION_001: &str = r#"
--- App configuration - stores app settings and recovery key hash
+-- Tables
 CREATE TABLE IF NOT EXISTS app_config (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
 
--- User profile - stores user info
-CREATE TABLE IF NOT EXISTS user_profile (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    surname TEXT NOT NULL,
-    email TEXT NOT NULL,
-    menu_preferences TEXT DEFAULT '{"savings":true,"loans":true,"insurance":true,"investments":true,"bonds":true,"realEstate":true}',
-    currency TEXT NOT NULL DEFAULT 'CZK',
-    exclude_personal_real_estate INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Portfolio metrics history
-CREATE TABLE IF NOT EXISTS portfolio_metrics_history (
+CREATE TABLE IF NOT EXISTS bank_account_zones (
     id TEXT PRIMARY KEY,
-    total_savings TEXT NOT NULL,
-    total_loans_principal TEXT NOT NULL,
-    total_investments TEXT NOT NULL,
-    total_crypto TEXT NOT NULL DEFAULT '0',
-    total_bonds TEXT NOT NULL,
-    total_real_estate_personal TEXT NOT NULL,
-    total_real_estate_investment TEXT NOT NULL,
-    recorded_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Entity History
-CREATE TABLE IF NOT EXISTS entity_history (
-    id TEXT PRIMARY KEY,
-    entity_type TEXT NOT NULL,
-    entity_id TEXT NOT NULL,
-    value TEXT NOT NULL,
-    recorded_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Savings Accounts
-CREATE TABLE IF NOT EXISTS savings_accounts (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    balance TEXT NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'CZK',
-    interest_rate TEXT NOT NULL DEFAULT '0',
-    has_zone_designation INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
-CREATE TABLE IF NOT EXISTS savings_account_zones (
-    id TEXT PRIMARY KEY,
-    savings_account_id TEXT NOT NULL REFERENCES savings_accounts(id) ON DELETE CASCADE,
+    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
     from_amount TEXT NOT NULL,
     to_amount TEXT,
     interest_rate TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
--- Bonds
-CREATE TABLE IF NOT EXISTS bonds (
+CREATE TABLE IF NOT EXISTS bank_accounts (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    isin TEXT NOT NULL,
+    account_type TEXT NOT NULL DEFAULT 'checking',
+    iban TEXT,
+    bban TEXT,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    balance TEXT NOT NULL DEFAULT '0',
+    institution_id TEXT REFERENCES institutions(id),
+    external_account_id TEXT,
+    data_source TEXT NOT NULL DEFAULT 'manual',
+    last_synced_at INTEGER,
+    interest_rate TEXT,
+    has_zone_designation INTEGER NOT NULL DEFAULT 0,
+    termination_date INTEGER,
+    exclude_from_balance INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS bank_transactions (
+    id TEXT PRIMARY KEY,
+    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
+    transaction_id TEXT,
+    tx_type TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    description TEXT,
+    counterparty_name TEXT,
+    counterparty_iban TEXT,
+    booking_date INTEGER NOT NULL,
+    value_date INTEGER,
+    category_id TEXT REFERENCES transaction_categories(id),
+    merchant_category_code TEXT,
+    remittance_info TEXT,
+    variable_symbol TEXT,
+    status TEXT NOT NULL DEFAULT 'booked',
+    data_source TEXT NOT NULL DEFAULT 'manual',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()), import_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE CASCADE, categorization_source TEXT,
+    UNIQUE(bank_account_id, transaction_id)
+);
+
+CREATE TABLE IF NOT EXISTS "bonds" (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    isin TEXT,
     coupon_value TEXT NOT NULL,
     interest_rate TEXT NOT NULL DEFAULT '0',
     maturity_date INTEGER,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Loans
-CREATE TABLE IF NOT EXISTS loans (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    principal TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'CZK',
-    interest_rate TEXT NOT NULL DEFAULT '0',
-    interest_rate_validity_date INTEGER,
-    monthly_payment TEXT NOT NULL DEFAULT '0',
-    start_date INTEGER NOT NULL DEFAULT (unixepoch()),
-    end_date INTEGER,
+    quantity TEXT NOT NULL DEFAULT '1',
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
--- Stock Investments
-CREATE TABLE IF NOT EXISTS stock_investments (
+CREATE TABLE IF NOT EXISTS budget_goals (
     id TEXT PRIMARY KEY,
-    ticker TEXT NOT NULL UNIQUE,
-    company_name TEXT NOT NULL,
-    quantity TEXT NOT NULL,
-    average_price TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS investment_transactions (
-    id TEXT PRIMARY KEY,
-    investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
-    type TEXT NOT NULL,
-    ticker TEXT NOT NULL,
-    company_name TEXT NOT NULL,
-    quantity TEXT NOT NULL,
-    price_per_unit TEXT NOT NULL,
-    currency TEXT NOT NULL,
-    transaction_date INTEGER NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Real Estate
-CREATE TABLE IF NOT EXISTS real_estate (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    address TEXT NOT NULL,
-    type TEXT NOT NULL,
-    purchase_price TEXT NOT NULL DEFAULT '0',
-    purchase_price_currency TEXT NOT NULL DEFAULT 'CZK',
-    market_price TEXT NOT NULL DEFAULT '0',
-    market_price_currency TEXT NOT NULL DEFAULT 'CZK',
-    monthly_rent TEXT,
-    monthly_rent_currency TEXT DEFAULT 'CZK',
-    recurring_costs TEXT DEFAULT '[]',
-    photos TEXT DEFAULT '[]',
-    notes TEXT,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
-CREATE TABLE IF NOT EXISTS real_estate_one_time_costs (
-    id TEXT PRIMARY KEY,
-    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    description TEXT,
+    category_id TEXT NOT NULL REFERENCES transaction_categories(id) ON DELETE CASCADE,
+    timeframe TEXT NOT NULL, -- 'monthly', 'quarterly', 'yearly'
     amount TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'CZK',
-    date INTEGER NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    UNIQUE(category_id, timeframe)
 );
 
-CREATE TABLE IF NOT EXISTS real_estate_loans (
-    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
-    loan_id TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
-    PRIMARY KEY (real_estate_id, loan_id)
-);
-
--- Stock Prices
-CREATE TABLE IF NOT EXISTS stock_prices (
+CREATE TABLE IF NOT EXISTS cashflow_items (
     id TEXT PRIMARY KEY,
-    ticker TEXT NOT NULL UNIQUE,
-    original_price TEXT NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'USD',
-    price_date INTEGER NOT NULL,
-    fetched_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
-CREATE TABLE IF NOT EXISTS stock_price_overrides (
-    id TEXT PRIMARY KEY,
-    ticker TEXT NOT NULL UNIQUE,
-    price TEXT NOT NULL,
+    name TEXT NOT NULL,
+    amount TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'CZK',
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Dividend Data
-CREATE TABLE IF NOT EXISTS dividend_data (
-    id TEXT PRIMARY KEY,
-    ticker TEXT NOT NULL UNIQUE,
-    yearly_dividend_sum TEXT NOT NULL DEFAULT '0',
-    currency TEXT NOT NULL DEFAULT 'USD',
-    last_fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
-CREATE TABLE IF NOT EXISTS dividend_overrides (
-    id TEXT PRIMARY KEY,
-    ticker TEXT NOT NULL UNIQUE,
-    yearly_dividend_sum TEXT NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'CZK',
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Insurance Policies
-CREATE TABLE IF NOT EXISTS insurance_policies (
-    id TEXT PRIMARY KEY,
-    type TEXT NOT NULL,
-    provider TEXT NOT NULL,
-    policy_name TEXT NOT NULL,
-    policy_number TEXT NOT NULL,
-    start_date INTEGER NOT NULL,
-    end_date INTEGER,
-    payment_frequency TEXT NOT NULL,
-    one_time_payment TEXT,
-    one_time_payment_currency TEXT DEFAULT 'CZK',
-    regular_payment TEXT NOT NULL DEFAULT '0',
-    regular_payment_currency TEXT NOT NULL DEFAULT 'CZK',
-    limits TEXT DEFAULT '[]',
-    notes TEXT,
-    status TEXT NOT NULL DEFAULT 'active',
+    frequency TEXT NOT NULL,
+    item_type TEXT NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+, category TEXT NOT NULL DEFAULT 'income');
+
+CREATE TABLE IF NOT EXISTS categorization_rules (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    rule_type TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    category_id TEXT NOT NULL,
+    priority INTEGER NOT NULL DEFAULT 50,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    stop_processing INTEGER NOT NULL DEFAULT 0,
+    is_system INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()), iban_pattern TEXT, variable_symbol TEXT,
+    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
 );
 
-CREATE TABLE IF NOT EXISTS real_estate_insurances (
-    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
-    insurance_id TEXT NOT NULL REFERENCES insurance_policies(id) ON DELETE CASCADE,
-    PRIMARY KEY (real_estate_id, insurance_id)
-);
-
--- Crypto
 CREATE TABLE IF NOT EXISTS crypto_investments (
     id TEXT PRIMARY KEY,
     ticker TEXT NOT NULL UNIQUE,
@@ -316,6 +205,14 @@ CREATE TABLE IF NOT EXISTS crypto_investments (
     name TEXT NOT NULL,
     quantity TEXT NOT NULL,
     average_price TEXT NOT NULL
+, currency TEXT NOT NULL DEFAULT 'CZK');
+
+CREATE TABLE IF NOT EXISTS crypto_price_overrides (
+    id TEXT PRIMARY KEY,
+    symbol TEXT NOT NULL UNIQUE,
+    price TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
 CREATE TABLE IF NOT EXISTS crypto_prices (
@@ -340,285 +237,27 @@ CREATE TABLE IF NOT EXISTS crypto_transactions (
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
--- Other Assets
-CREATE TABLE IF NOT EXISTS other_assets (
+CREATE TABLE IF NOT EXISTS crypto_value_history (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    quantity TEXT NOT NULL DEFAULT '0',
-    market_price TEXT NOT NULL DEFAULT '0',
-    currency TEXT NOT NULL DEFAULT 'CZK',
-    average_purchase_price TEXT NOT NULL DEFAULT '0',
-    yield_type TEXT NOT NULL DEFAULT 'none',
-    yield_value TEXT,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
-CREATE TABLE IF NOT EXISTS other_asset_transactions (
-    id TEXT PRIMARY KEY,
-    asset_id TEXT NOT NULL REFERENCES other_assets(id) ON DELETE CASCADE,
-    type TEXT NOT NULL,
+    ticker TEXT NOT NULL,
+    recorded_at INTEGER NOT NULL,
+    value_czk TEXT NOT NULL,
     quantity TEXT NOT NULL,
-    price_per_unit TEXT NOT NULL,
-    currency TEXT NOT NULL,
-    transaction_date INTEGER NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Instruments (legacy, kept for compatibility)
-CREATE TABLE IF NOT EXISTS instruments (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    code TEXT NOT NULL,
-    type TEXT NOT NULL,
-    current_price TEXT NOT NULL DEFAULT '0',
-    previous_price TEXT
-);
-
-CREATE TABLE IF NOT EXISTS purchases (
-    id TEXT PRIMARY KEY,
-    instrument_id TEXT NOT NULL REFERENCES instruments(id),
-    purchase_date INTEGER NOT NULL,
-    quantity TEXT NOT NULL,
-    price_per_unit TEXT NOT NULL,
-    fees TEXT NOT NULL DEFAULT '0',
-    note TEXT
-);
-"#;
-
-/// Migration 002: Add currency to bonds
-const MIGRATION_002: &str = r#"
-ALTER TABLE bonds ADD COLUMN currency TEXT NOT NULL DEFAULT 'CZK';
-"#;
-
-/// Migration 003: Add total_other_assets to portfolio metrics history
-const MIGRATION_003: &str = r#"
-ALTER TABLE portfolio_metrics_history ADD COLUMN total_other_assets TEXT NOT NULL DEFAULT '0';
-"#;
-
-/// Migration 004: Add photo batches and photos for real estate
-const MIGRATION_004: &str = r#"
--- Photo batches (date + description grouping)
-CREATE TABLE IF NOT EXISTS real_estate_photo_batches (
-    id TEXT PRIMARY KEY,
-    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
-    photo_date INTEGER NOT NULL,
-    description TEXT,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Individual photos within batches
-CREATE TABLE IF NOT EXISTS real_estate_photos (
-    id TEXT PRIMARY KEY,
-    batch_id TEXT NOT NULL REFERENCES real_estate_photo_batches(id) ON DELETE CASCADE,
-    file_path TEXT NOT NULL,
-    thumbnail_path TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
-CREATE INDEX IF NOT EXISTS idx_batches_real_estate ON real_estate_photo_batches(real_estate_id);
-CREATE INDEX IF NOT EXISTS idx_photos_batch ON real_estate_photos(batch_id);
-"#;
-
-/// Migration 005: Add insurance documents table
-const MIGRATION_005: &str = r#"
--- Insurance documents (contracts, certificates, claims, etc.)
-CREATE TABLE IF NOT EXISTS insurance_documents (
-    id TEXT PRIMARY KEY,
-    insurance_id TEXT NOT NULL REFERENCES insurance_policies(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    description TEXT,
-    file_path TEXT NOT NULL,
-    file_type TEXT NOT NULL DEFAULT 'other',
-    file_size INTEGER,
-    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
-CREATE INDEX IF NOT EXISTS idx_insurance_documents ON insurance_documents(insurance_id);
-"#;
-
-/// Migration 006: Add termination date to savings accounts
-const MIGRATION_006: &str = r#"
-ALTER TABLE savings_accounts ADD COLUMN termination_date INTEGER;
-"#;
-
-/// Migration 007: Add cashflow_items table for user-defined income/expense items
-const MIGRATION_007: &str = r#"
-CREATE TABLE IF NOT EXISTS cashflow_items (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    amount TEXT NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'CZK',
-    frequency TEXT NOT NULL,
-    item_type TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-"#;
-
-/// Migration 008: Add category column to cashflow_items
-const MIGRATION_008: &str = r#"
-ALTER TABLE cashflow_items ADD COLUMN category TEXT NOT NULL DEFAULT 'income';
-"#;
-
-/// Migration 009: Add projection_settings table for portfolio projections
-const MIGRATION_009: &str = r#"
-CREATE TABLE IF NOT EXISTS projection_settings (
-    id TEXT PRIMARY KEY,
-    asset_type TEXT NOT NULL UNIQUE,
-    yearly_growth_rate TEXT NOT NULL DEFAULT '0',
-    monthly_contribution TEXT NOT NULL DEFAULT '0',
-    contribution_currency TEXT NOT NULL DEFAULT 'CZK',
-    enabled INTEGER NOT NULL DEFAULT 1,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-"#;
-
-/// Migration 010: Add real estate documents table
-const MIGRATION_010: &str = r#"
--- Real estate documents (contracts, deeds, etc.)
-CREATE TABLE IF NOT EXISTS real_estate_documents (
-    id TEXT PRIMARY KEY,
-    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    description TEXT,
-    file_path TEXT NOT NULL,
-    file_type TEXT NOT NULL DEFAULT 'other',
-    file_size INTEGER,
-    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
-CREATE INDEX IF NOT EXISTS idx_real_estate_documents ON real_estate_documents(real_estate_id);
-"#;
-
-/// Migration 011: Add quantity to bonds
-const MIGRATION_011: &str = r#"
-ALTER TABLE bonds ADD COLUMN quantity TEXT NOT NULL DEFAULT '1';
-"#;
-
-/// Migration 012: Add language preference to user_profile
-const MIGRATION_012: &str = r#"
-ALTER TABLE user_profile ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
-"#;
-
-/// Migration 013: Add metadata columns to stock_prices and rename to stock_data
-const MIGRATION_013: &str = r#"
--- Add Yahoo Finance metadata columns to stock_prices
-ALTER TABLE stock_prices ADD COLUMN short_name TEXT;
-ALTER TABLE stock_prices ADD COLUMN long_name TEXT;
-ALTER TABLE stock_prices ADD COLUMN sector TEXT;
-ALTER TABLE stock_prices ADD COLUMN industry TEXT;
-ALTER TABLE stock_prices ADD COLUMN pe_ratio TEXT;
-ALTER TABLE stock_prices ADD COLUMN forward_pe TEXT;
-ALTER TABLE stock_prices ADD COLUMN market_cap TEXT;
-ALTER TABLE stock_prices ADD COLUMN beta TEXT;
-ALTER TABLE stock_prices ADD COLUMN fifty_two_week_high TEXT;
-ALTER TABLE stock_prices ADD COLUMN fifty_two_week_low TEXT;
-ALTER TABLE stock_prices ADD COLUMN trailing_dividend_rate TEXT;
-ALTER TABLE stock_prices ADD COLUMN trailing_dividend_yield TEXT;
-ALTER TABLE stock_prices ADD COLUMN ex_dividend_date INTEGER;
-ALTER TABLE stock_prices ADD COLUMN description TEXT;
-ALTER TABLE stock_prices ADD COLUMN exchange TEXT;
-ALTER TABLE stock_prices ADD COLUMN quote_type TEXT;
-ALTER TABLE stock_prices ADD COLUMN metadata_fetched_at INTEGER;
-
--- Rename table for clarity
-ALTER TABLE stock_prices RENAME TO stock_data;
-"#;
-
-/// Migration 014: Add crypto_price_overrides table for manual price overrides (same pattern as stocks)
-const MIGRATION_014: &str = r#"
-CREATE TABLE IF NOT EXISTS crypto_price_overrides (
-    id TEXT PRIMARY KEY,
-    symbol TEXT NOT NULL UNIQUE,
     price TEXT NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'USD',
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-"#;
-
-/// Migration 015: Add bank accounts, transactions, and categories system
-const MIGRATION_015: &str = r#"
--- Institutions table (banks, financial institutions)
-CREATE TABLE IF NOT EXISTS institutions (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    bic TEXT,
-    country TEXT,
-    logo_url TEXT,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    currency TEXT NOT NULL, is_stale INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(ticker, recorded_at)
 );
 
--- Bank accounts table (extends/replaces savings_accounts)
-CREATE TABLE IF NOT EXISTS bank_accounts (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    account_type TEXT NOT NULL DEFAULT 'checking',
-    iban TEXT,
-    bban TEXT,
-    currency TEXT NOT NULL DEFAULT 'CZK',
-    balance TEXT NOT NULL DEFAULT '0',
-    institution_id TEXT REFERENCES institutions(id),
-    external_account_id TEXT,
-    data_source TEXT NOT NULL DEFAULT 'manual',
-    last_synced_at INTEGER,
-    interest_rate TEXT,
-    has_zone_designation INTEGER NOT NULL DEFAULT 0,
-    termination_date INTEGER,
-    exclude_from_balance INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Transaction categories
-CREATE TABLE IF NOT EXISTS transaction_categories (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    icon TEXT,
-    color TEXT,
-    parent_id TEXT REFERENCES transaction_categories(id),
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    is_system INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Bank transactions table
-CREATE TABLE IF NOT EXISTS bank_transactions (
+CREATE TABLE IF NOT EXISTS csv_import_batches (
     id TEXT PRIMARY KEY,
     bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
-    transaction_id TEXT,
-    tx_type TEXT NOT NULL,
-    amount TEXT NOT NULL,
-    currency TEXT NOT NULL,
-    description TEXT,
-    counterparty_name TEXT,
-    counterparty_iban TEXT,
-    booking_date INTEGER NOT NULL,
-    value_date INTEGER,
-    category_id TEXT REFERENCES transaction_categories(id),
-    merchant_category_code TEXT,
-    remittance_info TEXT,
-    variable_symbol TEXT,
-    status TEXT NOT NULL DEFAULT 'booked',
-    data_source TEXT NOT NULL DEFAULT 'manual',
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    UNIQUE(bank_account_id, transaction_id)
+    file_name TEXT NOT NULL,
+    imported_count INTEGER NOT NULL DEFAULT 0,
+    duplicate_count INTEGER NOT NULL DEFAULT 0,
+    error_count INTEGER NOT NULL DEFAULT 0,
+    imported_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
--- Transaction categorization rules
-CREATE TABLE IF NOT EXISTS transaction_rules (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    rule_type TEXT NOT NULL,
-    pattern TEXT NOT NULL,
-    category_id TEXT NOT NULL REFERENCES transaction_categories(id),
-    priority INTEGER NOT NULL DEFAULT 0,
-    is_active INTEGER NOT NULL DEFAULT 1,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- CSV import presets
 CREATE TABLE IF NOT EXISTS csv_import_presets (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -636,94 +275,285 @@ CREATE TABLE IF NOT EXISTS csv_import_presets (
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
--- Migrate existing savings accounts to bank_accounts (preserving IDs)
-INSERT OR IGNORE INTO bank_accounts (
-    id, name, account_type, currency, balance,
-    interest_rate, has_zone_designation, termination_date,
-    data_source, created_at, updated_at
-)
-SELECT
-    id, name, 'savings', currency, balance,
-    interest_rate, has_zone_designation, termination_date,
-    'manual', created_at, updated_at
-FROM savings_accounts;
-
--- Insert default categories
-INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, sort_order, is_system) VALUES
-    ('cat_groceries', 'Groceries', 'shopping-cart', '#4CAF50', 1, 1),
-    ('cat_dining', 'Dining & Restaurants', 'utensils', '#FF9800', 2, 1),
-    ('cat_transport', 'Transportation', 'car', '#2196F3', 3, 1),
-    ('cat_utilities', 'Utilities', 'zap', '#9C27B0', 4, 1),
-    ('cat_entertainment', 'Entertainment', 'film', '#E91E63', 5, 1),
-    ('cat_shopping', 'Shopping', 'shopping-bag', '#00BCD4', 6, 1),
-    ('cat_health', 'Health & Medical', 'heart', '#F44336', 7, 1),
-    ('cat_travel', 'Travel', 'plane', '#3F51B5', 8, 1),
-    ('cat_income', 'Income', 'trending-up', '#8BC34A', 9, 1),
-    ('cat_transfer', 'Transfers', 'repeat', '#607D8B', 10, 1),
-    ('cat_other', 'Other', 'more-horizontal', '#9E9E9E', 99, 1);
-
--- Pre-populate Czech banks with logos
-INSERT OR IGNORE INTO institutions (id, name, bic, country, logo_url) VALUES
-    ('inst_ceska_sporitelna', 'Česká spořitelna', 'GIBACZPX', 'CZ', '/bank-logos/ceska-sporitelna.svg'),
-    ('inst_csob', 'ČSOB', 'CEKOCZPP', 'CZ', '/bank-logos/csob.svg'),
-    ('inst_komercni_banka', 'Komerční banka', 'KOMBCZPP', 'CZ', '/bank-logos/komercni-banka.svg'),
-    ('inst_moneta', 'MONETA Money Bank', 'AGBACZPP', 'CZ', '/bank-logos/moneta.svg'),
-    ('inst_raiffeisenbank', 'Raiffeisenbank', 'RZBCCZPP', 'CZ', '/bank-logos/raiffeisenbank.svg'),
-    ('inst_unicredit', 'UniCredit Bank', 'BACXCZPP', 'CZ', '/bank-logos/unicredit.svg'),
-    ('inst_fio', 'Fio banka', 'FIOBCZPP', 'CZ', '/bank-logos/fio.svg'),
-    ('inst_air_bank', 'Air Bank', 'AIRACZPP', 'CZ', '/bank-logos/air-bank.svg'),
-    ('inst_creditas', 'Banka CREDITAS', 'CTASCZ22', 'CZ', '/bank-logos/creditas.svg'),
-    ('inst_ing', 'ING Bank', 'INGBCZPP', 'CZ', '/bank-logos/ing.svg'),
-    ('inst_jt_banka', 'J&T Banka', 'JTBPCZPP', 'CZ', '/bank-logos/jt-banka.svg'),
-    ('inst_max_banka', 'MAX banka', 'EXPNCZPP', 'CZ', '/bank-logos/max-banka.svg'),
-    ('inst_ppf', 'PPF banka', 'PMBPCZPP', 'CZ', '/bank-logos/ppf.svg'),
-    ('inst_trinity', 'Trinity Bank', 'MCEKCZPP', 'CZ', '/bank-logos/trinity.svg'),
-    ('inst_nrb', 'Národní rozvojová banka', 'NROZCZPP', 'CZ', '/bank-logos/nrb.svg'),
-    ('inst_revolut', 'Revolut', 'REVOGB21', 'GB', '/bank-logos/revolut.svg'),
-    ('inst_wise', 'Wise', 'TRWIBEB1XXX', 'BE', '/bank-logos/wise.svg'),
-    ('inst_other', 'Other', NULL, NULL, NULL);
-
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_bank_accounts_institution ON bank_accounts(institution_id);
-CREATE INDEX IF NOT EXISTS idx_bank_accounts_type ON bank_accounts(account_type);
-CREATE INDEX IF NOT EXISTS idx_bank_transactions_account ON bank_transactions(bank_account_id);
-CREATE INDEX IF NOT EXISTS idx_bank_transactions_date ON bank_transactions(booking_date);
-CREATE INDEX IF NOT EXISTS idx_bank_transactions_category ON bank_transactions(category_id);
-CREATE INDEX IF NOT EXISTS idx_transaction_rules_category ON transaction_rules(category_id);
-"#;
-
-/// Migration 016: Add CSV import batches for tracking imports
-const MIGRATION_016: &str = r#"
--- CSV import batches - tracks each CSV upload
-CREATE TABLE IF NOT EXISTS csv_import_batches (
+CREATE TABLE IF NOT EXISTS dividend_data (
     id TEXT PRIMARY KEY,
-    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
-    file_name TEXT NOT NULL,
-    imported_count INTEGER NOT NULL DEFAULT 0,
-    duplicate_count INTEGER NOT NULL DEFAULT 0,
-    error_count INTEGER NOT NULL DEFAULT 0,
-    imported_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
-
--- Add import_batch_id to bank_transactions to link transactions to their import batch
-ALTER TABLE bank_transactions ADD COLUMN import_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE CASCADE;
-
--- Create index for faster batch lookups
-CREATE INDEX IF NOT EXISTS idx_csv_import_batches_account ON csv_import_batches(bank_account_id);
-CREATE INDEX IF NOT EXISTS idx_bank_transactions_batch ON bank_transactions(import_batch_id);
-"#;
-
-/// Migration 017: Add stock tags for analysis grouping
-const MIGRATION_017: &str = r#"
--- Stock tags for categorizing investments (e.g., Growth, Value, Dividend)
-CREATE TABLE IF NOT EXISTS stock_tags (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    color TEXT,
+    ticker TEXT NOT NULL UNIQUE,
+    yearly_dividend_sum TEXT NOT NULL DEFAULT '0',
+    currency TEXT NOT NULL DEFAULT 'USD',
+    last_fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
--- Junction table for many-to-many relationship between investments and tags
+CREATE TABLE IF NOT EXISTS dividend_overrides (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    yearly_dividend_sum TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS entity_history (
+    id TEXT PRIMARY KEY,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    value TEXT NOT NULL,
+    recorded_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS exchange_rate_history (
+    date     INTEGER NOT NULL,
+    currency TEXT NOT NULL,
+    rate     REAL NOT NULL,
+    PRIMARY KEY (date, currency)
+);
+
+CREATE TABLE IF NOT EXISTS exchange_rates (
+    currency TEXT PRIMARY KEY,
+    rate REAL NOT NULL,
+    fetched_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS institutions (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    bic TEXT,
+    country TEXT,
+    logo_url TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS instruments (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL,
+    type TEXT NOT NULL,
+    current_price TEXT NOT NULL DEFAULT '0',
+    previous_price TEXT
+);
+
+CREATE TABLE IF NOT EXISTS insurance_documents (
+    id TEXT PRIMARY KEY,
+    insurance_id TEXT NOT NULL REFERENCES insurance_policies(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    file_path TEXT NOT NULL,
+    file_type TEXT NOT NULL DEFAULT 'other',
+    file_size INTEGER,
+    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS insurance_policies (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    policy_name TEXT NOT NULL,
+    policy_number TEXT NOT NULL,
+    start_date INTEGER NOT NULL,
+    end_date INTEGER,
+    payment_frequency TEXT NOT NULL,
+    one_time_payment TEXT,
+    one_time_payment_currency TEXT DEFAULT 'CZK',
+    regular_payment TEXT NOT NULL DEFAULT '0',
+    regular_payment_currency TEXT NOT NULL DEFAULT 'CZK',
+    limits TEXT DEFAULT '[]',
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS investment_transactions (
+    id TEXT PRIMARY KEY,
+    investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    ticker TEXT NOT NULL,
+    company_name TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    price_per_unit TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    transaction_date INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS "learned_payees" (
+    id TEXT PRIMARY KEY,
+    normalized_payee TEXT,
+    original_payee TEXT,
+    counterparty_iban TEXT,
+    category_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
+);
+
+CREATE TABLE IF NOT EXISTS loans (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    principal TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    interest_rate TEXT NOT NULL DEFAULT '0',
+    interest_rate_validity_date INTEGER,
+    monthly_payment TEXT NOT NULL DEFAULT '0',
+    start_date INTEGER NOT NULL DEFAULT (unixepoch()),
+    end_date INTEGER,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS other_asset_transactions (
+    id TEXT PRIMARY KEY,
+    asset_id TEXT NOT NULL REFERENCES other_assets(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    price_per_unit TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    transaction_date INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS other_assets (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    quantity TEXT NOT NULL DEFAULT '0',
+    market_price TEXT NOT NULL DEFAULT '0',
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    average_purchase_price TEXT NOT NULL DEFAULT '0',
+    yield_type TEXT NOT NULL DEFAULT 'none',
+    yield_value TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS portfolio_metrics_history (
+    id TEXT PRIMARY KEY,
+    total_savings TEXT NOT NULL,
+    total_loans_principal TEXT NOT NULL,
+    total_investments TEXT NOT NULL,
+    total_crypto TEXT NOT NULL DEFAULT '0',
+    total_bonds TEXT NOT NULL,
+    total_real_estate_personal TEXT NOT NULL,
+    total_real_estate_investment TEXT NOT NULL,
+    recorded_at INTEGER NOT NULL DEFAULT (unixepoch())
+, total_other_assets TEXT NOT NULL DEFAULT '0', is_stale INTEGER NOT NULL DEFAULT 0, investments_by_currency  TEXT NOT NULL DEFAULT '{}', crypto_by_currency       TEXT NOT NULL DEFAULT '{}', savings_by_currency      TEXT NOT NULL DEFAULT '{}', bonds_by_currency        TEXT NOT NULL DEFAULT '{}', real_estate_by_currency  TEXT NOT NULL DEFAULT '{}', loans_by_currency        TEXT NOT NULL DEFAULT '{}', other_assets_by_currency TEXT NOT NULL DEFAULT '{}');
+
+CREATE TABLE IF NOT EXISTS projection_settings (
+    id TEXT PRIMARY KEY,
+    asset_type TEXT NOT NULL UNIQUE,
+    yearly_growth_rate TEXT NOT NULL DEFAULT '0',
+    monthly_contribution TEXT NOT NULL DEFAULT '0',
+    contribution_currency TEXT NOT NULL DEFAULT 'CZK',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS purchases (
+    id TEXT PRIMARY KEY,
+    instrument_id TEXT NOT NULL REFERENCES instruments(id),
+    purchase_date INTEGER NOT NULL,
+    quantity TEXT NOT NULL,
+    price_per_unit TEXT NOT NULL,
+    fees TEXT NOT NULL DEFAULT '0',
+    note TEXT
+);
+
+CREATE TABLE IF NOT EXISTS real_estate (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    address TEXT NOT NULL,
+    type TEXT NOT NULL,
+    purchase_price TEXT NOT NULL DEFAULT '0',
+    purchase_price_currency TEXT NOT NULL DEFAULT 'CZK',
+    market_price TEXT NOT NULL DEFAULT '0',
+    market_price_currency TEXT NOT NULL DEFAULT 'CZK',
+    monthly_rent TEXT,
+    monthly_rent_currency TEXT DEFAULT 'CZK',
+    recurring_costs TEXT DEFAULT '[]',
+    photos TEXT DEFAULT '[]',
+    notes TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS real_estate_documents (
+    id TEXT PRIMARY KEY,
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    file_path TEXT NOT NULL,
+    file_type TEXT NOT NULL DEFAULT 'other',
+    file_size INTEGER,
+    uploaded_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS real_estate_insurances (
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    insurance_id TEXT NOT NULL REFERENCES insurance_policies(id) ON DELETE CASCADE,
+    PRIMARY KEY (real_estate_id, insurance_id)
+);
+
+CREATE TABLE IF NOT EXISTS real_estate_loans (
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    loan_id TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
+    PRIMARY KEY (real_estate_id, loan_id)
+);
+
+CREATE TABLE IF NOT EXISTS real_estate_one_time_costs (
+    id TEXT PRIMARY KEY,
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    date INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS real_estate_photo_batches (
+    id TEXT PRIMARY KEY,
+    real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+    photo_date INTEGER NOT NULL,
+    description TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS real_estate_photos (
+    id TEXT PRIMARY KEY,
+    batch_id TEXT NOT NULL REFERENCES real_estate_photo_batches(id) ON DELETE CASCADE,
+    file_path TEXT NOT NULL,
+    thumbnail_path TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS savings_account_zones (
+    id TEXT PRIMARY KEY,
+    savings_account_id TEXT NOT NULL REFERENCES savings_accounts(id) ON DELETE CASCADE,
+    from_amount TEXT NOT NULL,
+    to_amount TEXT,
+    interest_rate TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE TABLE IF NOT EXISTS savings_accounts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    balance TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    interest_rate TEXT NOT NULL DEFAULT '0',
+    has_zone_designation INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+, termination_date INTEGER);
+
+CREATE TABLE IF NOT EXISTS "stock_data" (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    original_price TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD',
+    price_date INTEGER NOT NULL,
+    fetched_at INTEGER NOT NULL DEFAULT (unixepoch())
+, short_name TEXT, long_name TEXT, sector TEXT, industry TEXT, pe_ratio TEXT, forward_pe TEXT, market_cap TEXT, beta TEXT, fifty_two_week_high TEXT, fifty_two_week_low TEXT, trailing_dividend_rate TEXT, trailing_dividend_yield TEXT, ex_dividend_date INTEGER, description TEXT, exchange TEXT, quote_type TEXT, metadata_fetched_at INTEGER);
+
 CREATE TABLE IF NOT EXISTS stock_investment_tags (
     investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
     tag_id TEXT NOT NULL REFERENCES stock_tags(id) ON DELETE CASCADE,
@@ -731,14 +561,22 @@ CREATE TABLE IF NOT EXISTS stock_investment_tags (
     PRIMARY KEY (investment_id, tag_id)
 );
 
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_stock_investment_tags_investment ON stock_investment_tags(investment_id);
-CREATE INDEX IF NOT EXISTS idx_stock_investment_tags_tag ON stock_investment_tags(tag_id);
-"#;
+CREATE TABLE IF NOT EXISTS stock_investments (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    company_name TEXT NOT NULL,
+    quantity TEXT NOT NULL,
+    average_price TEXT NOT NULL
+, currency TEXT NOT NULL DEFAULT 'CZK');
 
-/// Migration 018: Add stock tag groups for organizing tags
-const MIGRATION_018: &str = r#"
--- Tag groups for organizing tags (e.g., "Strategy", "Sector", "Risk Level")
+CREATE TABLE IF NOT EXISTS stock_price_overrides (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL UNIQUE,
+    price TEXT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'CZK',
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
 CREATE TABLE IF NOT EXISTS stock_tag_groups (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
@@ -746,16 +584,13 @@ CREATE TABLE IF NOT EXISTS stock_tag_groups (
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
--- Add group_id to stock_tags (optional, tag can belong to 0 or 1 groups)
-ALTER TABLE stock_tags ADD COLUMN group_id TEXT REFERENCES stock_tag_groups(id) ON DELETE SET NULL;
+CREATE TABLE IF NOT EXISTS stock_tags (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    color TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+, group_id TEXT REFERENCES stock_tag_groups(id) ON DELETE SET NULL);
 
--- Create index for performance
-CREATE INDEX IF NOT EXISTS idx_stock_tags_group ON stock_tags(group_id);
-"#;
-
-/// Migration 019: Add per-ticker value history tables for efficient recalculation
-const MIGRATION_019: &str = r#"
--- Stock value history per ticker per day
 CREATE TABLE IF NOT EXISTS stock_value_history (
     id TEXT PRIMARY KEY,
     ticker TEXT NOT NULL,
@@ -763,427 +598,392 @@ CREATE TABLE IF NOT EXISTS stock_value_history (
     value_czk TEXT NOT NULL,
     quantity TEXT NOT NULL,
     price TEXT NOT NULL,
-    currency TEXT NOT NULL,
+    currency TEXT NOT NULL, is_stale INTEGER NOT NULL DEFAULT 0,
     UNIQUE(ticker, recorded_at)
 );
 
--- Crypto value history per ticker per day
-CREATE TABLE IF NOT EXISTS crypto_value_history (
+CREATE TABLE IF NOT EXISTS transaction_categories (
     id TEXT PRIMARY KEY,
-    ticker TEXT NOT NULL,
-    recorded_at INTEGER NOT NULL,
-    value_czk TEXT NOT NULL,
-    quantity TEXT NOT NULL,
-    price TEXT NOT NULL,
-    currency TEXT NOT NULL,
-    UNIQUE(ticker, recorded_at)
+    name TEXT NOT NULL,
+    icon TEXT,
+    color TEXT,
+    parent_id TEXT REFERENCES transaction_categories(id),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_system INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_stock_value_history_ticker ON stock_value_history(ticker);
-CREATE INDEX IF NOT EXISTS idx_stock_value_history_date ON stock_value_history(recorded_at);
-CREATE INDEX IF NOT EXISTS idx_stock_value_history_ticker_date ON stock_value_history(ticker, recorded_at);
-CREATE INDEX IF NOT EXISTS idx_crypto_value_history_ticker ON crypto_value_history(ticker);
-CREATE INDEX IF NOT EXISTS idx_crypto_value_history_date ON crypto_value_history(recorded_at);
-CREATE INDEX IF NOT EXISTS idx_crypto_value_history_ticker_date ON crypto_value_history(ticker, recorded_at);
-"#;
-/// Migration 020: Add currency column to stock_investments and crypto_investments
-/// This allows storing the average price in the investment's native currency
-const MIGRATION_020: &str = r#"
--- Add currency column to stock_investments (defaults to CZK for existing)
-ALTER TABLE stock_investments ADD COLUMN currency TEXT NOT NULL DEFAULT 'CZK';
-
--- Add currency column to crypto_investments (defaults to CZK for existing)
-ALTER TABLE crypto_investments ADD COLUMN currency TEXT NOT NULL DEFAULT 'CZK';
-
--- Update stock investments currency based on first transaction
-UPDATE stock_investments
-SET currency = (
-    SELECT it.currency 
-    FROM investment_transactions it 
-    WHERE it.investment_id = stock_investments.id 
-    ORDER BY it.transaction_date ASC 
-    LIMIT 1
-)
-WHERE EXISTS (
-    SELECT 1 FROM investment_transactions WHERE investment_id = stock_investments.id
-);
-
--- Update crypto investments currency based on first transaction
-UPDATE crypto_investments
-SET currency = (
-    SELECT ct.currency 
-    FROM crypto_transactions ct 
-    WHERE ct.investment_id = crypto_investments.id 
-    ORDER BY ct.transaction_date ASC 
-    LIMIT 1
-)
-WHERE EXISTS (
-    SELECT 1 FROM crypto_transactions WHERE investment_id = crypto_investments.id
-);
-"#;
-
-/// Migration 021: Add categorization tables and columns
-/// - learned_payees: Stores user-learned payee → category mappings
-/// - categorization_source: Tracks how a transaction was categorized
-/// - stop_processing: Flag for rules to stop waterfall on match
-const MIGRATION_021: &str = r#"
--- Learned payees for exact match categorization
-CREATE TABLE IF NOT EXISTS learned_payees (
-    id TEXT PRIMARY KEY,
-    normalized_payee TEXT NOT NULL UNIQUE,
-    original_payee TEXT NOT NULL,
-    category_id TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
-);
-
--- Index for fast lookup
-CREATE INDEX IF NOT EXISTS idx_learned_payees_normalized ON learned_payees(normalized_payee);
-
--- Add categorization_source to bank_transactions
--- Values: 'manual', 'rule', 'exact_match', 'ml'
-ALTER TABLE bank_transactions ADD COLUMN categorization_source TEXT;
-
--- Add stop_processing to transaction_rules
-ALTER TABLE transaction_rules ADD COLUMN stop_processing INTEGER NOT NULL DEFAULT 0;
-
--- Create categorization rules table (enhanced from transaction_rules)
-CREATE TABLE IF NOT EXISTS categorization_rules (
+CREATE TABLE IF NOT EXISTS transaction_rules (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     rule_type TEXT NOT NULL,
     pattern TEXT NOT NULL,
-    category_id TEXT NOT NULL,
-    priority INTEGER NOT NULL DEFAULT 50,
+    category_id TEXT NOT NULL REFERENCES transaction_categories(id),
+    priority INTEGER NOT NULL DEFAULT 0,
     is_active INTEGER NOT NULL DEFAULT 1,
-    stop_processing INTEGER NOT NULL DEFAULT 0,
-    is_system INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
-);
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+, stop_processing INTEGER NOT NULL DEFAULT 0);
 
--- Index for priority-based lookup
-CREATE INDEX IF NOT EXISTS idx_categorization_rules_priority ON categorization_rules(priority DESC, is_active);
-"#;
-
-/// Migration 022: Add new transaction categories - Investments, Savings, Internal Transfers, Housing
-const MIGRATION_022: &str = r#"
--- Add new categories for better transaction organization
-INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, sort_order, is_system) VALUES
-    ('cat_investments', 'Investments', 'trending-up', '#6366F1', 11, 1),
-    ('cat_savings', 'Savings', 'piggy-bank', '#22C55E', 12, 1),
-    ('cat_internal_transfers', 'Internal Transfers', 'arrows-right-left', '#94A3B8', 13, 1),
-    ('cat_housing', 'Housing', 'home', '#F59E0B', 14, 1),
-    ('cat_taxes', 'Taxes', 'landmark', '#DC2626', 15, 1);
-"#;
-
-/// Migration 023: Add Insurance and Loan Payments categories, fix missing Taxes, remove Transfers
-const MIGRATION_023: &str = r#"
--- Add new categories for Taxes, Insurance and Loan Payments
--- Using INSERT OR IGNORE to handle both new DBs (already have taxes) and existing DBs (may be missing)
-INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, sort_order, is_system) VALUES
-    ('cat_taxes', 'Taxes', 'landmark', '#DC2626', 15, 1),
-    ('cat_insurance', 'Insurance', 'shield', '#8B5CF6', 16, 1),
-    ('cat_loan_payments', 'Loan Payments', 'credit-card', '#EF4444', 17, 1);
-
--- Remove Transfers category (keep Internal Transfers)
-DELETE FROM transaction_categories WHERE id = 'cat_transfer';
-"#;
-
-/// Migration 024: Fix missing Taxes category (for databases that ran 023 before taxes was added)
-const MIGRATION_024: &str = r#"
--- Add Taxes category if missing (INSERT OR IGNORE for safety)
-INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, sort_order, is_system) VALUES
-    ('cat_taxes', 'Taxes', 'landmark', '#DC2626', 15, 1);
-"#;
-
-/// Migration 025: Add budget goals table for tracking spending limits per category
-const MIGRATION_025: &str = r#"
--- Budget goals for setting spending limits per category per timeframe
-CREATE TABLE IF NOT EXISTS budget_goals (
-    id TEXT PRIMARY KEY,
-    category_id TEXT NOT NULL REFERENCES transaction_categories(id) ON DELETE CASCADE,
-    timeframe TEXT NOT NULL, -- 'monthly', 'quarterly', 'yearly'
-    amount TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS user_profile (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    surname TEXT NOT NULL,
+    email TEXT NOT NULL,
+    menu_preferences TEXT DEFAULT '{"savings":true,"loans":true,"insurance":true,"investments":true,"bonds":true,"realEstate":true}',
     currency TEXT NOT NULL DEFAULT 'CZK',
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    UNIQUE(category_id, timeframe)
-);
+    exclude_personal_real_estate INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+, language TEXT NOT NULL DEFAULT 'en', coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0, mcp_server_enabled INTEGER NOT NULL DEFAULT 0);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_institution ON bank_accounts(institution_id);
+
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_type ON bank_accounts(account_type);
+
+CREATE INDEX IF NOT EXISTS idx_bank_transactions_account ON bank_transactions(bank_account_id);
+
+CREATE INDEX IF NOT EXISTS idx_bank_transactions_batch ON bank_transactions(import_batch_id);
+
+CREATE INDEX IF NOT EXISTS idx_bank_transactions_category ON bank_transactions(category_id);
+
+CREATE INDEX IF NOT EXISTS idx_bank_transactions_date ON bank_transactions(booking_date);
+
+CREATE INDEX IF NOT EXISTS idx_batches_real_estate ON real_estate_photo_batches(real_estate_id);
 
 CREATE INDEX IF NOT EXISTS idx_budget_goals_category ON budget_goals(category_id);
+
 CREATE INDEX IF NOT EXISTS idx_budget_goals_timeframe ON budget_goals(timeframe);
-"#;
 
-/// Migration 026: Add hierarchical payee matching with counterparty_iban and variable_symbol
-/// This enables cascading default rules: exact -> iban default -> payee default -> partial suggestion
-const MIGRATION_026: &str = r#"
--- Add new columns for hierarchical matching
-ALTER TABLE learned_payees ADD COLUMN counterparty_iban TEXT;
-ALTER TABLE learned_payees ADD COLUMN variable_symbol TEXT;
+CREATE INDEX IF NOT EXISTS idx_categorization_rules_iban ON categorization_rules(iban_pattern) WHERE iban_pattern IS NOT NULL;
 
--- Drop old simple index
-DROP INDEX IF EXISTS idx_learned_payees_normalized;
+CREATE INDEX IF NOT EXISTS idx_categorization_rules_priority ON categorization_rules(priority DESC, is_active);
 
--- Create composite unique index for exact matching
-CREATE UNIQUE INDEX IF NOT EXISTS idx_learned_payees_composite 
-ON learned_payees(normalized_payee, counterparty_iban, variable_symbol);
+CREATE INDEX IF NOT EXISTS idx_crypto_value_history_date ON crypto_value_history(recorded_at);
 
--- Index for IBAN default lookups (payee + iban where vs is null)
-CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_default 
-ON learned_payees(normalized_payee, counterparty_iban) WHERE variable_symbol IS NULL;
+CREATE INDEX IF NOT EXISTS idx_crypto_value_history_ticker ON crypto_value_history(ticker);
 
--- Index for payee default lookups (payee only where iban + vs are null)
-CREATE INDEX IF NOT EXISTS idx_learned_payees_payee_default 
-ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL AND variable_symbol IS NULL;
+CREATE INDEX IF NOT EXISTS idx_crypto_value_history_ticker_date ON crypto_value_history(ticker, recorded_at);
 
--- Index for partial IBAN matching (for suggestions)
-CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_partial ON learned_payees(counterparty_iban);
-"#;
+CREATE INDEX IF NOT EXISTS idx_csv_import_batches_account ON csv_import_batches(bank_account_id);
 
-/// Migration 027: Make normalized_payee and original_payee nullable
-/// This enables IBAN-only rules where no payee name is available
-const MIGRATION_027: &str = r#"
--- SQLite doesn't support ALTER COLUMN, so we recreate the table
--- First, create the new table with nullable payee columns
-CREATE TABLE learned_payees_new (
-    id TEXT PRIMARY KEY,
-    normalized_payee TEXT,
-    original_payee TEXT,
-    counterparty_iban TEXT,
-    variable_symbol TEXT,
-    category_id TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
-);
+CREATE INDEX IF NOT EXISTS idx_erh_currency_date ON exchange_rate_history(currency, date);
 
--- Copy existing data
-INSERT INTO learned_payees_new (id, normalized_payee, original_payee, counterparty_iban, variable_symbol, category_id, created_at, updated_at)
-SELECT id, normalized_payee, original_payee, counterparty_iban, variable_symbol, category_id, created_at, updated_at FROM learned_payees;
+CREATE INDEX IF NOT EXISTS idx_insurance_documents ON insurance_documents(insurance_id);
 
--- Drop old table and indexes
-DROP INDEX IF EXISTS idx_learned_payees_composite;
-DROP INDEX IF EXISTS idx_learned_payees_iban_default;
-DROP INDEX IF EXISTS idx_learned_payees_payee_default;
-DROP INDEX IF EXISTS idx_learned_payees_iban_partial;
-DROP TABLE learned_payees;
-
--- Rename new table
-ALTER TABLE learned_payees_new RENAME TO learned_payees;
-
--- Recreate indexes with updated logic for nullable payee
-CREATE UNIQUE INDEX IF NOT EXISTS idx_learned_payees_composite 
-ON learned_payees(normalized_payee, counterparty_iban, variable_symbol);
-
--- Index for IBAN default lookups (payee + iban where vs is null)
-CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_default 
-ON learned_payees(normalized_payee, counterparty_iban) WHERE variable_symbol IS NULL;
-
--- Index for payee default lookups (payee only where iban + vs are null)
-CREATE INDEX IF NOT EXISTS idx_learned_payees_payee_default 
-ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL AND variable_symbol IS NULL;
-
--- Index for partial IBAN matching (for suggestions) - critical for IBAN-only rules
-CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_partial ON learned_payees(counterparty_iban);
-
--- Index for IBAN-only rules (where payee is null)
-CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_only 
-ON learned_payees(counterparty_iban) WHERE normalized_payee IS NULL;
-"#;
-
-/// Migration 028: Remove variable_symbol from learned_payees
-///
-/// This simplifies the hierarchical matching system from 5 levels to 3 levels:
-/// - iban_only_default: IBAN only
-/// - payee_default: payee only  
-/// - iban_partial: IBAN (for suggestions)
-///
-/// VS-specific rules are merged into their generic counterparts (latest updated_at wins)
-const MIGRATION_028: &str = r#"
--- Create new table without variable_symbol
-CREATE TABLE learned_payees_new (
-    id TEXT PRIMARY KEY,
-    normalized_payee TEXT,
-    original_payee TEXT,
-    counterparty_iban TEXT,
-    category_id TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    FOREIGN KEY (category_id) REFERENCES transaction_categories(id)
-);
-
--- Migrate data, merging VS-specific rules into generic ones
--- Use GROUP BY to collapse VS variants, keeping the most recently updated rule
-INSERT INTO learned_payees_new (id, normalized_payee, original_payee, counterparty_iban, category_id, created_at, updated_at)
-SELECT 
-    id,
-    normalized_payee,
-    original_payee,
-    counterparty_iban,
-    category_id,
-    created_at,
-    updated_at
-FROM (
-    SELECT *,
-           ROW_NUMBER() OVER (
-               PARTITION BY 
-                   COALESCE(normalized_payee, ''),
-                   COALESCE(counterparty_iban, '')
-               ORDER BY updated_at DESC
-           ) AS rn
-    FROM learned_payees
-) WHERE rn = 1;
-
--- Drop old table and indexes
-DROP INDEX IF EXISTS idx_learned_payees_composite;
-DROP INDEX IF EXISTS idx_learned_payees_iban_default;
-DROP INDEX IF EXISTS idx_learned_payees_payee_default;
-DROP INDEX IF EXISTS idx_learned_payees_iban_partial;
-DROP INDEX IF EXISTS idx_learned_payees_iban_only;
-DROP TABLE learned_payees;
-
--- Rename new table
-ALTER TABLE learned_payees_new RENAME TO learned_payees;
-
--- Create simplified indexes for 3-level matching
--- Composite unique index (payee + iban)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_learned_payees_composite 
 ON learned_payees(normalized_payee, counterparty_iban);
 
--- Index for IBAN-only default lookups (no payee)
 CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_only 
 ON learned_payees(counterparty_iban) WHERE normalized_payee IS NULL;
 
--- Index for payee default lookups (no iban)
+CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_partial ON learned_payees(counterparty_iban);
+
 CREATE INDEX IF NOT EXISTS idx_learned_payees_payee_default 
 ON learned_payees(normalized_payee) WHERE counterparty_iban IS NULL;
 
--- Index for partial IBAN matching (for suggestions)
-CREATE INDEX IF NOT EXISTS idx_learned_payees_iban_partial ON learned_payees(counterparty_iban);
+CREATE INDEX IF NOT EXISTS idx_photos_batch ON real_estate_photos(batch_id);
+
+CREATE INDEX IF NOT EXISTS idx_real_estate_documents ON real_estate_documents(real_estate_id);
+
+CREATE INDEX IF NOT EXISTS idx_stock_investment_tags_investment ON stock_investment_tags(investment_id);
+
+CREATE INDEX IF NOT EXISTS idx_stock_investment_tags_tag ON stock_investment_tags(tag_id);
+
+CREATE INDEX IF NOT EXISTS idx_stock_tags_group ON stock_tags(group_id);
+
+CREATE INDEX IF NOT EXISTS idx_stock_value_history_date ON stock_value_history(recorded_at);
+
+CREATE INDEX IF NOT EXISTS idx_stock_value_history_ticker ON stock_value_history(ticker);
+
+CREATE INDEX IF NOT EXISTS idx_stock_value_history_ticker_date ON stock_value_history(ticker, recorded_at);
+
+CREATE INDEX IF NOT EXISTS idx_transaction_rules_category ON transaction_rules(category_id);
+
+-- Seed data
+INSERT OR IGNORE INTO transaction_categories (id, name, icon, color, parent_id, sort_order, is_system) VALUES
+    ('cat_dining', 'Dining & Restaurants', 'utensils', '#FF9800', NULL, '2', '1'),
+    ('cat_entertainment', 'Entertainment', 'film', '#E91E63', NULL, '5', '1'),
+    ('cat_groceries', 'Groceries', 'shopping-cart', '#4CAF50', NULL, '1', '1'),
+    ('cat_health', 'Health & Medical', 'heart', '#F44336', NULL, '7', '1'),
+    ('cat_housing', 'Housing', 'home', '#F59E0B', NULL, '14', '1'),
+    ('cat_income', 'Income', 'trending-up', '#8BC34A', NULL, '9', '1'),
+    ('cat_insurance', 'Insurance', 'shield', '#8B5CF6', NULL, '16', '1'),
+    ('cat_internal_transfers', 'Internal Transfers', 'arrows-right-left', '#94A3B8', NULL, '13', '1'),
+    ('cat_investments', 'Investments', 'line-chart', '#6366F1', NULL, '11', '1'),
+    ('cat_loan_payments', 'Loan Payments', 'credit-card', '#EF4444', NULL, '17', '1'),
+    ('cat_other', 'Other', 'more-horizontal', '#9E9E9E', NULL, '99', '1'),
+    ('cat_savings', 'Savings', 'piggy-bank', '#22C55E', NULL, '12', '1'),
+    ('cat_shopping', 'Shopping', 'shopping-bag', '#00BCD4', NULL, '6', '1'),
+    ('cat_taxes', 'Taxes', 'landmark', '#DC2626', NULL, '15', '1'),
+    ('cat_transport', 'Transportation', 'car', '#2196F3', NULL, '3', '1'),
+    ('cat_travel', 'Travel', 'plane', '#3F51B5', NULL, '8', '1'),
+    ('cat_utilities', 'Utilities', 'zap', '#9C27B0', NULL, '4', '1');
+
+INSERT OR IGNORE INTO institutions (id, name, bic, country, logo_url) VALUES
+    ('inst_air_bank', 'Air Bank', 'AIRACZPP', 'CZ', '/bank-logos/air-bank.svg'),
+    ('inst_ceska_sporitelna', 'Česká spořitelna', 'GIBACZPX', 'CZ', '/bank-logos/ceska-sporitelna.svg'),
+    ('inst_creditas', 'Banka CREDITAS', 'CTASCZ22', 'CZ', '/bank-logos/creditas.svg'),
+    ('inst_csob', 'ČSOB', 'CEKOCZPP', 'CZ', '/bank-logos/csob.svg'),
+    ('inst_fio', 'Fio banka', 'FIOBCZPP', 'CZ', '/bank-logos/fio.svg'),
+    ('inst_ing', 'ING Bank', 'INGBCZPP', 'CZ', '/bank-logos/ing.svg'),
+    ('inst_jt_banka', 'J&T Banka', 'JTBPCZPP', 'CZ', '/bank-logos/jt-banka.svg'),
+    ('inst_komercni_banka', 'Komerční banka', 'KOMBCZPP', 'CZ', '/bank-logos/komercni-banka.svg'),
+    ('inst_max_banka', 'MAX banka', 'EXPNCZPP', 'CZ', '/bank-logos/max-banka.svg'),
+    ('inst_moneta', 'MONETA Money Bank', 'AGBACZPP', 'CZ', '/bank-logos/moneta.svg'),
+    ('inst_nrb', 'Národní rozvojová banka', 'NROZCZPP', 'CZ', '/bank-logos/nrb.svg'),
+    ('inst_other', 'Other', NULL, NULL, NULL),
+    ('inst_ppf', 'PPF banka', 'PMBPCZPP', 'CZ', '/bank-logos/ppf.svg'),
+    ('inst_raiffeisenbank', 'Raiffeisenbank', 'RZBCCZPP', 'CZ', '/bank-logos/raiffeisenbank.svg'),
+    ('inst_revolut', 'Revolut', 'REVOGB21', 'GB', '/bank-logos/revolut.svg'),
+    ('inst_trinity', 'Trinity Bank', 'MCEKCZPP', 'CZ', '/bank-logos/trinity.svg'),
+    ('inst_unicredit', 'UniCredit Bank', 'BACXCZPP', 'CZ', '/bank-logos/unicredit.svg'),
+    ('inst_wise', 'Wise', 'TRWIBEB1XXX', 'BE', '/bank-logos/wise.svg');
+
 "#;
 
-/// Migration 029: Update Investments category icon to differentiate from Income
-const MIGRATION_029: &str = r#"
--- Update Investments category icon to line-chart (was trending-up, same as Income)
-UPDATE transaction_categories 
-SET icon = 'line-chart' 
-WHERE id = 'cat_investments';
-"#;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-/// Migration 030: Add IBAN pattern and Variable Symbol fields to categorization_rules
-/// This enables compound matching rules (e.g., match IBAN + VS combination)
-const MIGRATION_030: &str = r#"
--- Add iban_pattern column for matching against counterparty IBAN
-ALTER TABLE categorization_rules ADD COLUMN iban_pattern TEXT;
+    /// Path to the golden schema fixture, relative to src-tauri/
+    const GOLDEN_PATH: &str = "src/db/golden_schema.snapshot";
 
--- Add variable_symbol column for exact VS matching
-ALTER TABLE categorization_rules ADD COLUMN variable_symbol TEXT;
+    /// All migration names of the pre-squash chain (Moony <= 1.3.0),
+    /// used to simulate legacy databases in tests.
+    const LEGACY_CHAIN: [&str; 37] = [
+        "001_initial_schema",
+        "002_add_bond_currency",
+        "003_add_other_assets_history",
+        "004_add_photo_batches",
+        "005_add_insurance_documents",
+        "006_add_savings_termination_date",
+        "007_add_cashflow_items",
+        "008_add_cashflow_category",
+        "009_add_projection_settings",
+        "010_add_real_estate_documents",
+        "011_add_bond_quantity",
+        "012_add_user_language",
+        "013_add_stock_metadata",
+        "014_add_crypto_manual_price",
+        "015_add_bank_accounts",
+        "016_add_import_batches",
+        "017_add_stock_tags",
+        "018_add_stock_tag_groups",
+        "019_add_ticker_history",
+        "020_add_investment_currency",
+        "021_add_categorization",
+        "022_add_new_categories",
+        "023_add_insurance_loan_categories",
+        "024_fix_missing_taxes",
+        "025_add_budget_goals",
+        "026_hierarchical_payee_matching",
+        "027_nullable_payee_columns",
+        "028_remove_variable_symbol_from_learned_payees",
+        "029_update_investments_icon",
+        "030_add_iban_vs_to_rules",
+        "031_make_bond_isin_optional",
+        "032_bank_account_zones_fix",
+        "033_add_coingecko_modal_dismissed",
+        "034_add_exchange_rates_table",
+        "035_add_stale_data_columns",
+        "036_add_mcp_server_enabled",
+        "037_multicurrency",
+    ];
 
--- Create index for IBAN pattern lookups
-CREATE INDEX IF NOT EXISTS idx_categorization_rules_iban ON categorization_rules(iban_pattern) WHERE iban_pattern IS NOT NULL;
-"#;
+    /// Dump the complete schema and seeded data of a migrated database
+    /// in a stable, comparable text form.
+    fn dump_schema_and_seed_data(conn: &Connection) -> String {
+        let mut out = String::new();
 
-/// Migration 031: Make bond ISIN field optional
-/// SQLite doesn't support ALTER COLUMN, so we need to recreate the table
-const MIGRATION_031: &str = r#"
--- Create new bonds table with nullable ISIN
-CREATE TABLE bonds_new (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    isin TEXT,
-    coupon_value TEXT NOT NULL,
-    interest_rate TEXT NOT NULL DEFAULT '0',
-    maturity_date INTEGER,
-    currency TEXT NOT NULL DEFAULT 'CZK',
-    quantity TEXT NOT NULL DEFAULT '1',
-    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
+        let mut stmt = conn
+            .prepare(
+                "SELECT type, name, COALESCE(sql, '') FROM sqlite_master
+                 WHERE name NOT LIKE 'sqlite_%' AND name != '_migrations'
+                 ORDER BY type, name",
+            )
+            .expect("prepare sqlite_master query");
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            })
+            .expect("query sqlite_master");
+        for row in rows {
+            let (obj_type, name, sql) = row.expect("read sqlite_master row");
+            out.push_str(&format!("== {} {} ==\n{}\n\n", obj_type, name, sql.trim()));
+        }
 
--- Copy data from old table
-INSERT INTO bonds_new (id, name, isin, coupon_value, interest_rate, maturity_date, currency, quantity, created_at, updated_at)
-SELECT id, name, isin, coupon_value, interest_rate, maturity_date, currency, quantity, created_at, updated_at
-FROM bonds;
+        // Seeded data (stable columns only — created_at is insert-time volatile)
+        for (table, cols) in [
+            (
+                "transaction_categories",
+                "id, name, icon, color, parent_id, sort_order, is_system",
+            ),
+            ("institutions", "id, name, bic, country, logo_url"),
+        ] {
+            out.push_str(&format!("== data {} ==\n", table));
+            let mut stmt = conn
+                .prepare(&format!("SELECT {} FROM {} ORDER BY id", cols, table))
+                .expect("prepare data query");
+            let col_count = stmt.column_count();
+            let rows = stmt
+                .query_map([], move |row| {
+                    let mut vals = Vec::with_capacity(col_count);
+                    for i in 0..col_count {
+                        let v: rusqlite::types::Value = row.get(i)?;
+                        vals.push(match v {
+                            rusqlite::types::Value::Null => "NULL".to_string(),
+                            rusqlite::types::Value::Integer(n) => n.to_string(),
+                            rusqlite::types::Value::Real(f) => f.to_string(),
+                            rusqlite::types::Value::Text(s) => s,
+                            rusqlite::types::Value::Blob(b) => format!("<blob {} bytes>", b.len()),
+                        });
+                    }
+                    Ok(vals.join(" | "))
+                })
+                .expect("query data");
+            for row in rows {
+                out.push_str(&row.expect("read data row"));
+                out.push('\n');
+            }
+            out.push('\n');
+        }
 
--- Drop old table
-DROP TABLE bonds;
+        out
+    }
 
--- Rename new table
-ALTER TABLE bonds_new RENAME TO bonds;
-"#;
+    /// One-time generator kept for intentional schema changes via new
+    /// migrations: cargo test regenerate_golden_schema -- --ignored
+    #[test]
+    #[ignore]
+    fn regenerate_golden_schema() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_migrations(&conn).expect("run migrations");
+        let dump = dump_schema_and_seed_data(&conn);
+        std::fs::write(GOLDEN_PATH, &dump).expect("write golden fixture");
+        println!("Golden schema fixture written to {}", GOLDEN_PATH);
+    }
 
-/// Migration 032: Fix bank account zones FK constraint
-/// Creates bank_account_zones table and migrates valid zones from savings_account_zones
-const MIGRATION_032: &str = r#"
-CREATE TABLE IF NOT EXISTS bank_account_zones (
-    id TEXT PRIMARY KEY,
-    bank_account_id TEXT NOT NULL REFERENCES bank_accounts(id) ON DELETE CASCADE,
-    from_amount TEXT NOT NULL,
-    to_amount TEXT,
-    interest_rate TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
-);
+    /// The baseline must always produce exactly the golden schema, which is
+    /// what the historical 37-migration chain produced.
+    #[test]
+    fn migrations_match_golden_schema() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_migrations(&conn).expect("run migrations");
+        let dump = dump_schema_and_seed_data(&conn);
+        let golden = std::fs::read_to_string(GOLDEN_PATH).expect("read golden fixture");
+        assert_eq!(
+            dump, golden,
+            "Migrated schema differs from golden fixture. If this change is intentional, regenerate with: cargo test regenerate_golden_schema -- --ignored"
+        );
+    }
 
--- Copy existing data where the account exists in bank_accounts
-INSERT INTO bank_account_zones (id, bank_account_id, from_amount, to_amount, interest_rate, created_at)
-SELECT id, savings_account_id, from_amount, to_amount, interest_rate, created_at
-FROM savings_account_zones
-WHERE savings_account_id IN (SELECT id FROM bank_accounts);
-"#;
+    /// Build a database that looks exactly like a fully migrated legacy
+    /// (Moony 1.3.0) database: final schema + legacy `_migrations` entries.
+    fn setup_legacy_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        // The baseline reproduces the legacy final schema (proven by
+        // migrations_match_golden_schema), so use it to build the schema...
+        run_migrations(&conn).expect("initial migration");
+        // ...then rewrite the bookkeeping to the legacy chain's entries.
+        conn.execute("DELETE FROM _migrations", [])
+            .expect("clear migrations bookkeeping");
+        for name in LEGACY_CHAIN {
+            conn.execute("INSERT INTO _migrations (name) VALUES (?1)", [name])
+                .expect("insert legacy migration row");
+        }
+        conn
+    }
 
-/// Migration 033: Add coingecko_modal_dismissed to user_profile
-/// Tracks if user has dismissed the CoinGecko API key recommendation modal
-const MIGRATION_033: &str = r#"
-ALTER TABLE user_profile ADD COLUMN coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0;
-"#;
+    #[test]
+    fn legacy_database_is_stamped_without_ddl() {
+        let conn = setup_legacy_db();
 
-/// Migration 034: Add exchange_rates table to persist rates for offline use
-/// Stores the last downloaded exchange rates so they're available when offline
-const MIGRATION_034: &str = r#"
-CREATE TABLE IF NOT EXISTS exchange_rates (
-    currency TEXT PRIMARY KEY,
-    rate REAL NOT NULL,
-    fetched_at INTEGER NOT NULL
-);
-"#;
+        // Simulate user data, including a deleted system category — stamping
+        // must not resurrect it, modify data, or touch the schema.
+        conn.execute(
+            "INSERT INTO bank_accounts (id, name, account_type, currency, balance, data_source, created_at, updated_at)
+             VALUES ('acc1', 'My account', 'checking', 'CZK', '1234.56', 'manual', 1700000000, 1700000000)",
+            [],
+        )
+        .expect("insert sentinel account");
+        conn.execute(
+            "DELETE FROM transaction_categories WHERE id = 'cat_travel'",
+            [],
+        )
+        .expect("delete a system category");
+        let schema_before = {
+            let mut s = dump_schema_and_seed_data(&conn);
+            s.truncate(s.find("== data ").unwrap());
+            s
+        };
 
-/// Migration 035: Add is_stale columns to track data created from fallback prices
-/// Stale entries can be retried on startup to get fresh prices
-const MIGRATION_035: &str = r#"
--- Add is_stale to portfolio metrics history
-ALTER TABLE portfolio_metrics_history ADD COLUMN is_stale INTEGER NOT NULL DEFAULT 0;
+        run_migrations(&conn).expect("legacy upgrade must succeed");
 
--- Add is_stale to stock value history
-ALTER TABLE stock_value_history ADD COLUMN is_stale INTEGER NOT NULL DEFAULT 0;
+        // Baseline stamped
+        let stamped: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM _migrations WHERE name = ?1",
+                [BASELINE_NAME],
+                |row| row.get(0),
+            )
+            .expect("check stamp");
+        assert_eq!(stamped, 1, "baseline must be stamped exactly once");
 
--- Add is_stale to crypto value history
-ALTER TABLE crypto_value_history ADD COLUMN is_stale INTEGER NOT NULL DEFAULT 0;
-"#;
+        // Data untouched
+        let balance: String = conn
+            .query_row(
+                "SELECT balance FROM bank_accounts WHERE id = 'acc1'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("sentinel account still present");
+        assert_eq!(balance, "1234.56");
+        let travel_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM transaction_categories WHERE id = 'cat_travel'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("count deleted category");
+        assert_eq!(
+            travel_count, 0,
+            "stamping must not resurrect deleted categories"
+        );
 
-/// Migration 036: Add mcp_server_enabled to user_profile
-/// Controls whether the local HTTP API server starts on unlock
-const MIGRATION_036: &str = r#"
-ALTER TABLE user_profile ADD COLUMN mcp_server_enabled INTEGER NOT NULL DEFAULT 0;
-"#;
+        // Schema untouched
+        let schema_after = {
+            let mut s = dump_schema_and_seed_data(&conn);
+            s.truncate(s.find("== data ").unwrap());
+            s
+        };
+        assert_eq!(schema_before, schema_after);
 
-/// Migration 037: Exchange rate history + currency breakdowns in portfolio snapshots
-const MIGRATION_037: &str = r#"
-CREATE TABLE IF NOT EXISTS exchange_rate_history (
-    date     INTEGER NOT NULL,
-    currency TEXT NOT NULL,
-    rate     REAL NOT NULL,
-    PRIMARY KEY (date, currency)
-);
-CREATE INDEX IF NOT EXISTS idx_erh_currency_date ON exchange_rate_history(currency, date);
+        // Idempotent on second run
+        run_migrations(&conn).expect("second run must be a no-op");
+    }
 
-ALTER TABLE portfolio_metrics_history ADD COLUMN investments_by_currency  TEXT NOT NULL DEFAULT '{}';
-ALTER TABLE portfolio_metrics_history ADD COLUMN crypto_by_currency       TEXT NOT NULL DEFAULT '{}';
-ALTER TABLE portfolio_metrics_history ADD COLUMN savings_by_currency      TEXT NOT NULL DEFAULT '{}';
-ALTER TABLE portfolio_metrics_history ADD COLUMN bonds_by_currency        TEXT NOT NULL DEFAULT '{}';
-ALTER TABLE portfolio_metrics_history ADD COLUMN real_estate_by_currency  TEXT NOT NULL DEFAULT '{}';
-ALTER TABLE portfolio_metrics_history ADD COLUMN loans_by_currency        TEXT NOT NULL DEFAULT '{}';
-ALTER TABLE portfolio_metrics_history ADD COLUMN other_assets_by_currency TEXT NOT NULL DEFAULT '{}';
-"#;
+    #[test]
+    fn partially_migrated_legacy_database_errors() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            "CREATE TABLE _migrations (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                applied_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            INSERT INTO _migrations (name) VALUES ('001_initial_schema'), ('002_add_bond_currency');",
+        )
+        .expect("simulate partially migrated legacy db");
+
+        let err = run_migrations(&conn).expect_err("must refuse partially migrated legacy db");
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("Moony 1.3.0"),
+            "error must point to Moony 1.3.0, got: {msg}"
+        );
+    }
+}

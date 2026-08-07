@@ -1,35 +1,38 @@
 # Database Schema Reference
 
 The single SQLCipher-encrypted SQLite database behind Moony. Schema is defined
-entirely by the append-only migrations in `src-tauri/src/db/migrations.rs`
-(MIGRATION_001–037). Domain grouping below follows the domain map in
-`docs/architecture/overview.md`.
+entirely by the append-only migrations in `src-tauri/src/db/migrations.rs`,
+starting from the squashed baseline `MIGRATION_001` ("001_baseline",
+2026-08-06 — see `docs/plans/2026-08-06-migration-squash.md`). Domain grouping
+below follows the domain map in `docs/architecture/overview.md`.
 
 ## How Migrations Work
 
 - Migrations are **append-only inline SQL string consts** in
   `src-tauri/src/db/migrations.rs`. There are no `.sql` files.
-- To add one: define `const MIGRATION_038: &str = r#"..."#;` and append a
-  `("038_short_name", MIGRATION_038)` entry to the `Vec` in `run_migrations()`.
-  Numbers are zero-padded, sequential, and never reused.
+- To add one: define `const MIGRATION_002: &str = r#"..."#;` (next free
+  number) and append a `("002_short_name", MIGRATION_002)` entry to the `Vec`
+  in `run_migrations()`. Numbers are zero-padded, sequential, never reused.
 - Applied migrations are tracked by name in the `_migrations` table. On every
   DB open, `run_migrations()` executes any entry whose name is not yet
   recorded there — no manual step, no CLI.
-- **Never edit a migration that has shipped.** Existing databases will not
-  re-run it; the fix is always a new migration.
+- **Never edit a migration that has shipped**, including the baseline.
+  Existing databases will not re-run it; the fix is always a new migration.
+- The baseline is guarded by `golden_schema.snapshot` (same directory): a test
+  asserts the migrated schema matches the fixture byte-for-byte. When a new
+  migration intentionally changes the schema, regenerate the fixture with
+  `cargo test regenerate_golden_schema -- --ignored` and commit it alongside.
+- Databases created by Moony <= 1.3.0 (the historical 37-migration chain) are
+  recognized by their `_migrations` entries: fully migrated ones are stamped
+  as `001_baseline` without executing DDL; partially migrated ones get an
+  error directing the user to open the DB with Moony 1.3.0 once first.
 - SQLite has no `ALTER COLUMN` (can't change nullability, drop a column with
   constraints, etc.). The established workaround is
   **create-new → copy → drop → rename**: create `table_new` with the desired
   shape, `INSERT INTO ... SELECT` the data across, drop the old table (and its
-  indexes), rename `table_new` back, recreate indexes. See migrations **027**
-  (nullable payee columns on `learned_payees`), **028** (drop
-  `variable_symbol` from `learned_payees`), and **031** (nullable `isin` on
-  `bonds`) for working examples.
-- Cautionary tale: `migrations.rs:80-94` contains an out-of-band repair that
-  re-runs MIGRATION_014's SQL if `crypto_price_overrides` is missing — a fix
-  for databases where migration 014 was recorded as applied but the table was
-  never created. It exists for historical damage control only. **Do not add
-  new out-of-band checks like this**; write a proper numbered migration.
+  indexes), rename `table_new` back, recreate indexes. (The pre-squash chain
+  used this in its migrations 027, 028, and 031 — see git history for worked
+  examples.)
 
 ## Storage Conventions
 
