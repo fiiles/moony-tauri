@@ -235,7 +235,10 @@
         "description": "Moony je aplikace pro správu osobních financí, která vám pomáhá sledovat vaše investice, spoření, nemovitosti a další. Všechna vaše data jsou uložena lokálně a bezpečně na vašem zařízení.",
         "viewOnGithub": "Zobrazit na GitHubu",
         "madeWith": "Vytvořeno s",
-        "byAuthor": "od Filipa Krále"
+        "byAuthor": "od Filipa Krále",
+        "copyright": "Copyright © 2024-2026 Filip Král",
+        "licenseNotice": "Moony je svobodný software licencovaný pod GNU Affero General Public License v3.0. Je poskytován ZCELA BEZ ZÁRUKY. Můžete jej dále šířit za podmínek této licence.",
+        "viewLicense": "Zobrazit licenci (AGPL-3.0)"
     },
     "update": {
         "checking": "Kontrola...",

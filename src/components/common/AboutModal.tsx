@@ -155,6 +155,23 @@ export function AboutModal() {
           </div>
         </DialogContent>
       </Dialog>
+            {/* License notice — AGPL-3.0 §5(d) Appropriate Legal Notices */}
+            <div className="rounded-lg border bg-card/50 p-3 space-y-2">
+              <p className="text-xs text-muted-foreground">{t('about.copyright')}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {t('about.licenseNotice')}
+              </p>
+              <button
+                onClick={() =>
+                  handleOpenLink('https://github.com/fiiles/moony-tauri/blob/main/LICENSE')
+                }
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                {t('about.viewLicense')}
+                <ExternalLink className="w-3 h-3 opacity-50" />
+              </button>
+            </div>
+
     </>
   );
 }

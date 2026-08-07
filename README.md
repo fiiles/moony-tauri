@@ -269,14 +269,24 @@ moony-tauri/
 
 ## License
 
-Copyright © 2025-2026 Filip Král. All rights reserved.
+Copyright © 2024-2026 Filip Král
 
-This software is **open source for non-commercial use only**:
-- ✅ Free for personal use
-- ✅ Source code viewable and modifiable for learning
-- ❌ Commercial use strictly prohibited without permission
+Moony is free software: you can redistribute it and/or modify it under the terms of the
+**GNU Affero General Public License v3.0** as published by the Free Software Foundation.
 
-See [LICENSE](./LICENSE) for full terms.
+- ✅ Free to use, study, modify, and share
+- ✅ Forks and derivative works are allowed — including commercially
+- ⚠️ **Copyleft:** anything you distribute (or make available over a network) that is based on
+  Moony must be released in full under the AGPL-3.0 as well, with complete source code
+- ❌ No closed-source or proprietary forks
+
+Moony is distributed WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See [LICENSE](./LICENSE) for the full text, or <https://www.gnu.org/licenses/agpl-3.0.html>.
+
+Want to use Moony under terms other than the AGPL? Contact the copyright holder about a
+commercial license.
 
 ---
 

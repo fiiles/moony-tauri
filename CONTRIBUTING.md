@@ -43,6 +43,22 @@ open a pull request against `main`. Describe what changed, why, and how you
 tested it — there is no required template. Your change must pass the same gates
 listed above (CI runs them on every PR).
 
+## Licensing of Contributions
+
+Moony is licensed under the **GNU Affero General Public License v3.0** (see
+[LICENSE](./LICENSE)). By submitting a contribution you agree that:
+
+1. Your contribution is licensed under the AGPL-3.0, the same terms as the rest
+   of the project.
+2. You additionally grant Filip Král a perpetual, worldwide, non-exclusive,
+   royalty-free, irrevocable license to use, modify, and redistribute your
+   contribution **under other license terms as well**, including proprietary or
+   commercial licenses.
+
+Point 2 keeps dual licensing possible — without it, every past contributor would
+have to be asked for permission before Moony could ever be offered under terms
+other than the AGPL.
+
 ## Development Setup
 
 ### Prerequisites
