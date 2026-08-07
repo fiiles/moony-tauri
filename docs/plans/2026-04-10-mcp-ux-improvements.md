@@ -119,7 +119,7 @@ with:
 - [ ] **Step 2: Verify TypeScript compiles**
 
 ```bash
-cd /Users/<user>/Documents/Programování/FinanceApp/Moony-tauri && npm run typecheck
+npm run typecheck
 ```
 
 Expected: no errors.
@@ -314,7 +314,7 @@ with:
 - [ ] **Step 5: Verify TypeScript compiles**
 
 ```bash
-cd /Users/<user>/Documents/Programování/FinanceApp/Moony-tauri && npm run typecheck
+npm run typecheck
 ```
 
 Expected: no errors.

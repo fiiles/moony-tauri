@@ -1,7 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Read(//Users/<user>/.cargo/registry/src/**)",
       "Bash(cargo check)",
       "Bash(gtimeout 15 npm run dev)",
       "Bash(pkill -f \"cargo\")"

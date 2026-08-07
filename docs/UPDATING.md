@@ -72,7 +72,7 @@ Open `src-tauri/tauri.conf.json` and update the `plugins.updater` section:
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbT...YOUR_ACTUAL_PUBLIC_KEY_HERE...==",
       "endpoints": [
-        "https://github.com/filipkral/Moony/releases/latest/download/latest.json"
+        "https://github.com/YOUR_USERNAME/YOUR_REPO/releases/latest/download/latest.json"
       ]
     }
   }
@@ -81,7 +81,7 @@ Open `src-tauri/tauri.conf.json` and update the `plugins.updater` section:
 
 Replace:
 - `YOUR_ACTUAL_PUBLIC_KEY_HERE` with your generated public key
-- `filipkral/Moony` with your actual GitHub username/repo
+- `YOUR_USERNAME/YOUR_REPO` with your actual GitHub username/repo (this repo uses `fiiles/moony-tauri`)
 
 ### Step 3: Add Secrets to GitHub Repository
 
