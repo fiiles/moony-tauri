@@ -97,9 +97,13 @@ Pattern of `seed_demo.rs`; prompts for the DB password (SQLCipher), takes
    as native × rate(day). Apply the pence correction here if confirmed.
 3. **Snapshot rebuild.** For every day oldest→today:
    - `backfill` rows (and missing days): stocks/crypto breakdowns from the
-     per-ticker sums; static classes carried forward from the nearest earlier
-     `live` row (replaces today's "current balances for all history" — fixes
-     audit M3 for savings); totals derived at day rates via the single writer.
+     per-ticker sums — a day with **no** per-ticker coverage for a class
+     carries that class forward from the nearest earlier `live` row instead
+     of zeroing it (an empty class would zero the day's total and draw teeth
+     into the charts, e.g. crypto days without a CoinGecko key); static
+     classes carried forward from the nearest earlier `live` row (replaces
+     today's "current balances for all history" — fixes audit M3 for
+     savings); totals derived at day rates via the single writer.
    - `live` rows: breakdowns kept; totals recomputed only when they diverge
      from breakdown × day-rate beyond `BREAKDOWN_CONSISTENCY_TOLERANCE`
      (logged).
