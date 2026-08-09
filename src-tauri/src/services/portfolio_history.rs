@@ -217,40 +217,53 @@ pub struct StaticBreakdowns {
     pub real_estate_investment: HashMap<String, f64>,
 }
 
-/// Static classes for a reconstructed day, carried forward from the nearest
-/// earlier live snapshot (spec decision: a past live record beats today's
-/// balances). Real estate is carried from the live row's split CZK totals —
-/// the stored breakdown is combined, so the split survives only in CZK terms.
-/// Returns None when no live row precedes `before_ts` (caller falls back to
-/// current table values).
+/// Static classes for a reconstructed day, carried from the nearest live
+/// snapshot (spec decision: a live record beats today's balances). The
+/// nearest **earlier** live row wins; days that precede every live row carry
+/// **backward** from the earliest one instead — the first authentic record is
+/// still a better statics estimate than nothing (zeroed savings/loans would
+/// cliff the net-worth chart at the live boundary). Real estate is carried
+/// from the live row's split CZK totals — the stored breakdown is combined,
+/// so the split survives only in CZK terms. Returns None only when no live
+/// row exists at all (caller falls back to current table values).
 pub fn carried_statics_from_nearest_live(
     conn: &Connection,
     before_ts: i64,
 ) -> Result<Option<StaticBreakdowns>> {
     use crate::services::currency::breakdown_from_json;
 
-    let row: Option<(String, String, String, String, f64, f64)> = conn
-        .query_row(
-            "SELECT savings_by_currency, bonds_by_currency, loans_by_currency,
+    const COLUMNS: &str = "savings_by_currency, bonds_by_currency, loans_by_currency,
                     other_assets_by_currency,
                     CAST(total_real_estate_personal AS REAL),
-                    CAST(total_real_estate_investment AS REAL)
-             FROM portfolio_metrics_history
-             WHERE recorded_at < ?1 AND source = 'live'
-             ORDER BY recorded_at DESC LIMIT 1",
-            [before_ts],
-            |r| {
-                Ok((
-                    r.get(0)?,
-                    r.get(1)?,
-                    r.get(2)?,
-                    r.get(3)?,
-                    r.get(4)?,
-                    r.get(5)?,
-                ))
-            },
-        )
-        .ok();
+                    CAST(total_real_estate_investment AS REAL)";
+
+    type StaticsRow = (String, String, String, String, f64, f64);
+    let fetch = |sql: String| -> Option<StaticsRow> {
+        conn.query_row(&sql, [before_ts], |r| {
+            Ok((
+                r.get(0)?,
+                r.get(1)?,
+                r.get(2)?,
+                r.get(3)?,
+                r.get(4)?,
+                r.get(5)?,
+            ))
+        })
+        .ok()
+    };
+
+    let row = fetch(format!(
+        "SELECT {COLUMNS} FROM portfolio_metrics_history
+         WHERE recorded_at < ?1 AND source = 'live'
+         ORDER BY recorded_at DESC LIMIT 1"
+    ))
+    .or_else(|| {
+        fetch(format!(
+            "SELECT {COLUMNS} FROM portfolio_metrics_history
+             WHERE recorded_at >= ?1 AND source = 'live'
+             ORDER BY recorded_at ASC LIMIT 1"
+        ))
+    });
 
     Ok(row.map(
         |(savings, bonds, loans, other, re_personal, re_investment)| {
@@ -596,7 +609,34 @@ mod tests {
     }
 
     #[test]
-    fn carried_statics_none_without_earlier_live_row() {
+    fn carried_statics_fall_back_to_the_earliest_later_live_row() {
+        let conn = setup_test_db();
+        // History starts with reconstructed days; the first live row comes
+        // later. Days before it must carry from that first authentic record —
+        // not from nothing (which would zero savings/loans and cliff the
+        // net-worth chart at the live boundary).
+        let first_live = ClassBreakdowns {
+            savings: map(&[("CZK", 2500.0)]),
+            loans: map(&[("CZK", 12000.0)]),
+            ..Default::default()
+        };
+        upsert_snapshot(
+            &conn,
+            TEST_DAY + 5 * DAY + 700,
+            SnapshotSource::Live,
+            &first_live,
+        )
+        .expect("live");
+
+        let statics = carried_statics_from_nearest_live(&conn, TEST_DAY)
+            .expect("query")
+            .expect("later live row exists");
+        assert!((statics.savings["CZK"] - 2500.0).abs() < 1e-9);
+        assert!((statics.loans["CZK"] - 12000.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn carried_statics_none_without_any_live_row() {
         let conn = setup_test_db();
         let backfill = ClassBreakdowns {
             savings: map(&[("CZK", 1.0)]),

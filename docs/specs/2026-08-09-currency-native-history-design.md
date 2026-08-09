@@ -101,9 +101,11 @@ Pattern of `seed_demo.rs`; prompts for the DB password (SQLCipher), takes
      carries that class forward from the nearest earlier `live` row instead
      of zeroing it (an empty class would zero the day's total and draw teeth
      into the charts, e.g. crypto days without a CoinGecko key); static
-     classes carried forward from the nearest earlier `live` row (replaces
-     today's "current balances for all history" — fixes audit M3 for
-     savings); totals derived at day rates via the single writer.
+     classes carried from the nearest `live` row — earlier preferred, else
+     the earliest later one, so days preceding all live records inherit the
+     first authentic snapshot instead of zeroes (replaces today's "current
+     balances for all history" — fixes audit M3 for savings); totals derived
+     at day rates via the single writer.
    - `live` rows: breakdowns kept; totals recomputed only when they diverge
      from breakdown × day-rate beyond `BREAKDOWN_CONSISTENCY_TOLERANCE`
      (logged).
