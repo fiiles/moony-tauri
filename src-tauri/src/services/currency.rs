@@ -546,6 +546,92 @@ pub fn convert_to_czk_at(
     convert_to_czk_with_rates(amount, currency, &rates)
 }
 
+/// Maximum relative difference tolerated between a per-currency breakdown's CZK
+/// equivalent and the CZK total stored alongside it. Rate drift between the two
+/// sources is a few percent at most; a larger gap means the breakdown does not
+/// cover the whole asset class (e.g. it was derived from incomplete per-ticker
+/// history). Mirrors BREAKDOWN_CONSISTENCY_TOLERANCE in src/utils/historical-rates.ts.
+pub const BREAKDOWN_CONSISTENCY_TOLERANCE: f64 = 0.25;
+
+/// Parse a `*_by_currency` JSON column ({"USD": 123.4, ...}) into a map.
+/// Invalid JSON, non-object values, and non-numeric entries yield an empty
+/// map / are skipped — mirroring the frontend's parseBreakdown.
+pub fn breakdown_from_json(json: &str) -> HashMap<String, f64> {
+    let parsed: serde_json::Value = match serde_json::from_str(json) {
+        Ok(v) => v,
+        Err(_) => return HashMap::new(),
+    };
+    let Some(object) = parsed.as_object() else {
+        return HashMap::new();
+    };
+    object
+        .iter()
+        .filter_map(|(currency, value)| {
+            value
+                .as_f64()
+                .filter(|v| v.is_finite())
+                .map(|v| (currency.clone(), v))
+        })
+        .collect()
+}
+
+/// CZK equivalent of a breakdown at the given day's rates, or None when any
+/// bucket currency lacks a usable (finite, positive) rate — in which case the
+/// breakdown cannot be valued like-for-like against a stored CZK total.
+pub fn breakdown_czk_at_rates(
+    breakdown: &HashMap<String, f64>,
+    rates: &HashMap<String, f64>,
+) -> Option<f64> {
+    let mut sum = 0.0;
+    for (currency, amount) in breakdown {
+        let rate = rates.get(currency).copied()?;
+        if !rate.is_finite() || rate <= 0.0 {
+            return None;
+        }
+        sum += amount * rate;
+    }
+    Some(sum)
+}
+
+/// True when a breakdown's CZK sum is close enough to the stored CZK total for
+/// the breakdown to represent the whole asset class (see the tolerance above).
+pub fn breakdown_covers_total(czk_sum: f64, czk_total: f64) -> bool {
+    if czk_total <= 0.0 {
+        return czk_sum.abs() <= f64::EPSILON;
+    }
+    ((czk_sum - czk_total) / czk_total).abs() <= BREAKDOWN_CONSISTENCY_TOLERANCE
+}
+
+/// Repair policy for a stored `*_by_currency` column checked against its CZK
+/// total: an empty breakdown with a non-zero total needs repair, a valuable
+/// breakdown that does not cover the total needs repair, and a breakdown that
+/// cannot be valued at the day's rates is kept (nothing better is available).
+pub fn needs_breakdown_repair(
+    json: &str,
+    czk_total: f64,
+    rates: Option<&HashMap<String, f64>>,
+) -> bool {
+    let breakdown = breakdown_from_json(json);
+    if breakdown.is_empty() {
+        return czk_total != 0.0;
+    }
+    match rates.and_then(|r| breakdown_czk_at_rates(&breakdown, r)) {
+        Some(czk_sum) => !breakdown_covers_total(czk_sum, czk_total),
+        None => false,
+    }
+}
+
+/// Resolve rates for a day from a prefetched `get_rates_for_date_range` map:
+/// the exact day, else the closest earlier day within a 10-day walk-back
+/// (weekends + holidays) — the in-memory mirror of `get_rates_for_date`.
+pub fn resolve_rates_for_day_from_range(
+    rates_by_day: &HashMap<i64, HashMap<String, f64>>,
+    day: i64,
+) -> Option<&HashMap<String, f64>> {
+    let day = (day / 86400) * 86400;
+    (0..=10i64).find_map(|offset| rates_by_day.get(&(day - offset * 86400)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -889,5 +975,119 @@ mod tests {
         let mut sorted = missing.clone();
         sorted.sort();
         assert_eq!(missing, sorted);
+    }
+
+    #[test]
+    fn test_breakdown_from_json_parses_valid_map() {
+        let bd = breakdown_from_json("{\"USD\":100.5,\"CZK\":200}");
+        assert_eq!(bd.len(), 2);
+        assert!((bd["USD"] - 100.5).abs() < 0.001);
+        assert!((bd["CZK"] - 200.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_breakdown_from_json_invalid_or_empty_yields_empty_map() {
+        assert!(breakdown_from_json("{}").is_empty());
+        assert!(breakdown_from_json("not json").is_empty());
+        assert!(breakdown_from_json("").is_empty());
+        assert!(breakdown_from_json("[1,2]").is_empty());
+    }
+
+    #[test]
+    fn test_breakdown_from_json_skips_non_numeric_entries() {
+        let bd = breakdown_from_json("{\"USD\":\"bad\",\"EUR\":10}");
+        assert_eq!(bd.len(), 1);
+        assert!((bd["EUR"] - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_breakdown_czk_at_rates_sums_all_buckets() {
+        let bd: HashMap<String, f64> = [("USD".to_string(), 100.0), ("CZK".to_string(), 500.0)]
+            .into_iter()
+            .collect();
+        let rates: HashMap<String, f64> = [("CZK".to_string(), 1.0), ("USD".to_string(), 20.0)]
+            .into_iter()
+            .collect();
+        let czk = breakdown_czk_at_rates(&bd, &rates).expect("all rates present");
+        assert!((czk - 2500.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_breakdown_czk_at_rates_missing_or_unusable_rate_yields_none() {
+        let bd: HashMap<String, f64> = [("GBP".to_string(), 10.0)].into_iter().collect();
+        let rates: HashMap<String, f64> = [("CZK".to_string(), 1.0)].into_iter().collect();
+        assert!(breakdown_czk_at_rates(&bd, &rates).is_none());
+
+        let zero_rate: HashMap<String, f64> = [("GBP".to_string(), 0.0)].into_iter().collect();
+        assert!(breakdown_czk_at_rates(&bd, &zero_rate).is_none());
+    }
+
+    #[test]
+    fn test_breakdown_covers_total_within_tolerance() {
+        assert!(breakdown_covers_total(2000.0, 2100.0)); // ~5% off
+        assert!(!breakdown_covers_total(2000.0, 10000.0)); // fragment
+        assert!(!breakdown_covers_total(0.0, 10000.0)); // nothing derived
+    }
+
+    #[test]
+    fn test_breakdown_covers_total_zero_total_requires_zero_sum() {
+        assert!(breakdown_covers_total(0.0, 0.0));
+        assert!(!breakdown_covers_total(500.0, 0.0));
+    }
+
+    #[test]
+    fn test_needs_breakdown_repair_policy() {
+        let rates: HashMap<String, f64> = [("CZK".to_string(), 1.0), ("USD".to_string(), 20.0)]
+            .into_iter()
+            .collect();
+
+        // Empty breakdown with a non-zero total needs repair; with a zero total it does not.
+        assert!(needs_breakdown_repair("{}", 1000.0, Some(&rates)));
+        assert!(!needs_breakdown_repair("{}", 0.0, Some(&rates)));
+
+        // Consistent breakdown is kept.
+        assert!(!needs_breakdown_repair(
+            "{\"USD\":100}",
+            2000.0,
+            Some(&rates)
+        ));
+
+        // Fragment breakdown (covers 20% of the total) needs repair.
+        assert!(needs_breakdown_repair(
+            "{\"USD\":100}",
+            10000.0,
+            Some(&rates)
+        ));
+
+        // Unverifiable breakdowns are kept: no day rates, or a bucket currency
+        // missing from the day map.
+        assert!(!needs_breakdown_repair("{\"USD\":100}", 10000.0, None));
+        assert!(!needs_breakdown_repair(
+            "{\"GBP\":100}",
+            10000.0,
+            Some(&rates)
+        ));
+    }
+
+    #[test]
+    fn test_resolve_rates_for_day_from_range_exact_then_walk_back() {
+        let day = 86400 * 100;
+        let mut by_day: HashMap<i64, HashMap<String, f64>> = HashMap::new();
+        by_day.insert(day, [("USD".to_string(), 20.0)].into_iter().collect());
+        by_day.insert(
+            day - 3 * 86400,
+            [("USD".to_string(), 21.0)].into_iter().collect(),
+        );
+
+        // Exact day wins
+        let exact = resolve_rates_for_day_from_range(&by_day, day).expect("exact");
+        assert!((exact["USD"] - 20.0).abs() < 0.001);
+
+        // Missing day walks back to the closest earlier snapshot (weekends/holidays)
+        let walked = resolve_rates_for_day_from_range(&by_day, day - 86400).expect("walk back");
+        assert!((walked["USD"] - 21.0).abs() < 0.001);
+
+        // Beyond the 10-day walk-back window there is no match
+        assert!(resolve_rates_for_day_from_range(&by_day, day + 20 * 86400).is_none());
     }
 }

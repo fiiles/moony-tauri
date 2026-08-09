@@ -176,7 +176,7 @@ migration that introduced the table.
 
 | Table | Since | Purpose | Notable columns / constraints |
 |---|---|---|---|
-| `portfolio_metrics_history` | 001 | Daily net-worth snapshots per asset class | Totals as CZK TEXT (`total_savings`, `total_loans_principal`, …, `total_other_assets` added 003); `is_stale` (035); seven `*_by_currency` JSON TEXT `DEFAULT '{}'` (037) |
+| `portfolio_metrics_history` | 001 | Daily net-worth snapshots per asset class | Totals as CZK TEXT (`total_savings`, `total_loans_principal`, …, `total_other_assets` added 003); `is_stale` (035); seven `*_by_currency` JSON TEXT `DEFAULT '{}'` (037); `source` TEXT `'live'`/`'backfill'` provenance (002 post-squash — live rows are authentic records, backfill rows may be rebuilt) |
 | `entity_history` | 001 | Generic per-entity value history (`entity_type` + `entity_id`) — **orphaned: no code reads or writes it** (see Deprecated section) | `value` TEXT, `recorded_at` |
 
 (`stock_value_history` and `crypto_value_history` above also feed this domain's trend charts.)

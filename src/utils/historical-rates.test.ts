@@ -63,7 +63,7 @@ describe('convertBreakdownAtDay', () => {
     // (100 USD * 20 + 500 CZK * 1) / 25 CZK-per-EUR = 100 EUR
     const result = convertBreakdownAtDay(
       '{"USD":100,"CZK":500}',
-      99999,
+      2500,
       dayRates,
       'EUR',
       convertToday
@@ -135,6 +135,52 @@ describe('convertBreakdownAtDay', () => {
     const convertToday = vi.fn().mockReturnValue(42);
     expect(convertBreakdownAtDay('{"USD":"bad"}', 1000, dayRates, 'EUR', convertToday)).toBe(42);
     expect(convertToday).toHaveBeenCalledWith(1000, 'CZK');
+  });
+
+  // Guard against partial/corrupt breakdowns: rows written by the snapshot
+  // backfill can carry a breakdown covering only part of the portfolio while
+  // the stored CZK total is complete. Such rows must render via the CZK total,
+  // not the fragment (they used to render as deep dips in non-CZK display).
+  describe('consistency guard (breakdown vs stored CZK total)', () => {
+    it('falls back to the CZK total when the breakdown covers only part of it', () => {
+      const convertToday = vi.fn().mockReturnValue(42);
+      // Breakdown is 100 USD * 20 = 2000 CZK, but the stored total is 10000 CZK
+      // (breakdown covers 20% of the portfolio) -> inconsistent -> fallback.
+      const result = convertBreakdownAtDay('{"USD":100}', 10000, dayRates, 'EUR', convertToday);
+      expect(result).toBe(42);
+      expect(convertToday).toHaveBeenCalledWith(10000, 'CZK');
+    });
+
+    it('keeps the breakdown conversion when it matches the total within tolerance', () => {
+      const convertToday = vi.fn();
+      // 100 USD * 20 = 2000 CZK vs stored 2100 CZK (~5% off, within tolerance)
+      const result = convertBreakdownAtDay('{"USD":100}', 2100, dayRates, 'EUR', convertToday);
+      expect(result).toBeCloseTo(80, 10);
+      expect(convertToday).not.toHaveBeenCalled();
+    });
+
+    it('keeps the breakdown conversion when the stored total is zero', () => {
+      const convertToday = vi.fn();
+      const result = convertBreakdownAtDay('{"USD":100}', 0, dayRates, 'EUR', convertToday);
+      expect(result).toBeCloseTo(80, 10);
+      expect(convertToday).not.toHaveBeenCalled();
+    });
+
+    it('skips the check when a bucket currency has no usable day rate', () => {
+      const convertToday = vi.fn().mockReturnValue(7);
+      // GBP has no day rate, so the breakdown's CZK equivalent cannot be
+      // computed like-for-like -> no consistency check, per-bucket fallback only.
+      const result = convertBreakdownAtDay(
+        '{"USD":100,"GBP":10}',
+        99999,
+        dayRates,
+        'EUR',
+        convertToday
+      );
+      expect(result).toBeCloseTo(87, 10);
+      expect(convertToday).toHaveBeenCalledTimes(1);
+      expect(convertToday).toHaveBeenCalledWith(10, 'GBP');
+    });
   });
 });
 

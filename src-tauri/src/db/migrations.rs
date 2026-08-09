@@ -40,7 +40,10 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         rows.filter_map(|r| r.ok()).collect()
     };
 
-    let migrations: Vec<(&str, &str)> = vec![(BASELINE_NAME, MIGRATION_001)];
+    let migrations: Vec<(&str, &str)> = vec![
+        (BASELINE_NAME, MIGRATION_001),
+        ("002_snapshot_provenance", MIGRATION_002),
+    ];
 
     // Legacy chain handling (databases created by Moony <= 1.3.0)
     let legacy_names: Vec<&String> = applied
@@ -741,6 +744,18 @@ INSERT OR IGNORE INTO institutions (id, name, bic, country, logo_url) VALUES
 
 "#;
 
+/// Migration 002: snapshot provenance (spec 2026-08-09-currency-native-history-design)
+/// Distinguishes live-recorded portfolio snapshots from reconstructed
+/// (gap-backfilled / recalculated) rows: live rows are authentic records that
+/// repairs must not re-derive; backfill rows may be rebuilt freely.
+/// Reconstructed rows written before this migration are exactly the
+/// midnight-stamped ones (insert_snapshot_for_day / update_or_insert_snapshot
+/// always wrote recorded_at = day start).
+const MIGRATION_002: &str = r#"
+ALTER TABLE portfolio_metrics_history ADD COLUMN source TEXT NOT NULL DEFAULT 'live';
+UPDATE portfolio_metrics_history SET source = 'backfill' WHERE recorded_at % 86400 = 0;
+"#;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -882,15 +897,22 @@ mod tests {
     }
 
     /// Build a database that looks exactly like a fully migrated legacy
-    /// (Moony 1.3.0) database: final schema + legacy `_migrations` entries.
+    /// (Moony 1.3.0) database: the baseline schema (which reproduces the
+    /// legacy final schema, proven by migrations_match_golden_schema) plus
+    /// legacy `_migrations` entries — and nothing newer.
     fn setup_legacy_db() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
-        // The baseline reproduces the legacy final schema (proven by
-        // migrations_match_golden_schema), so use it to build the schema...
-        run_migrations(&conn).expect("initial migration");
-        // ...then rewrite the bookkeeping to the legacy chain's entries.
-        conn.execute("DELETE FROM _migrations", [])
-            .expect("clear migrations bookkeeping");
+        conn.execute(
+            "CREATE TABLE _migrations (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                applied_at INTEGER NOT NULL DEFAULT (unixepoch())
+            )",
+            [],
+        )
+        .expect("create migrations bookkeeping");
+        conn.execute_batch(MIGRATION_001)
+            .expect("apply baseline schema");
         for name in LEGACY_CHAIN {
             conn.execute("INSERT INTO _migrations (name) VALUES (?1)", [name])
                 .expect("insert legacy migration row");
@@ -903,7 +925,8 @@ mod tests {
         let conn = setup_legacy_db();
 
         // Simulate user data, including a deleted system category — stamping
-        // must not resurrect it, modify data, or touch the schema.
+        // must not resurrect it or modify data. History rows probe migration
+        // 002: the midnight-stamped one was written by the old backfill.
         conn.execute(
             "INSERT INTO bank_accounts (id, name, account_type, currency, balance, data_source, created_at, updated_at)
              VALUES ('acc1', 'My account', 'checking', 'CZK', '1234.56', 'manual', 1700000000, 1700000000)",
@@ -911,15 +934,19 @@ mod tests {
         )
         .expect("insert sentinel account");
         conn.execute(
+            "INSERT INTO portfolio_metrics_history
+             (id, total_savings, total_loans_principal, total_investments, total_crypto,
+              total_bonds, total_real_estate_personal, total_real_estate_investment, recorded_at)
+             VALUES ('h_live', '1', '0', '0', '0', '0', '0', '0', 1700000123),
+                    ('h_backfill', '1', '0', '0', '0', '0', '0', '0', 1699920000)",
+            [],
+        )
+        .expect("insert sentinel history rows");
+        conn.execute(
             "DELETE FROM transaction_categories WHERE id = 'cat_travel'",
             [],
         )
         .expect("delete a system category");
-        let schema_before = {
-            let mut s = dump_schema_and_seed_data(&conn);
-            s.truncate(s.find("== data ").unwrap());
-            s
-        };
 
         run_migrations(&conn).expect("legacy upgrade must succeed");
 
@@ -954,13 +981,33 @@ mod tests {
             "stamping must not resurrect deleted categories"
         );
 
-        // Schema untouched
+        // Post-baseline migrations run on legacy databases too: the upgraded
+        // schema must equal a freshly migrated one.
         let schema_after = {
             let mut s = dump_schema_and_seed_data(&conn);
             s.truncate(s.find("== data ").unwrap());
             s
         };
-        assert_eq!(schema_before, schema_after);
+        let fresh_schema = {
+            let fresh = Connection::open_in_memory().expect("in-memory db");
+            run_migrations(&fresh).expect("fresh migration");
+            let mut s = dump_schema_and_seed_data(&fresh);
+            s.truncate(s.find("== data ").unwrap());
+            s
+        };
+        assert_eq!(schema_after, fresh_schema);
+
+        // Migration 002 stamps provenance from the midnight convention.
+        let source_of = |id: &str| -> String {
+            conn.query_row(
+                "SELECT source FROM portfolio_metrics_history WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .expect("sentinel history row")
+        };
+        assert_eq!(source_of("h_live"), "live");
+        assert_eq!(source_of("h_backfill"), "backfill");
 
         // Idempotent on second run
         run_migrations(&conn).expect("second run must be a no-op");

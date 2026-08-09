@@ -8,11 +8,15 @@
  * row that day. Days without any snapshot (weekends/holidays) have no entry.
  *
  * Fallback chain per data point (spec 2026-08-06-calculation-fixes §3):
- *   1. Native breakdown converted with that day's rates (closest earlier day).
+ *   1. Native breakdown converted with that day's rates (closest earlier day),
+ *      but only when the breakdown is consistent with the stored CZK total
+ *      (snapshot backfill used to write partial breakdowns; those rows render
+ *      via the CZK total instead of the fragment).
  *   2. A bucket currency missing from the day map -> that bucket converts at
- *      today's rates.
- *   3. No usable day rates (or no breakdown) -> stored CZK total converted at
- *      today's rates (previous behavior, graceful degradation).
+ *      today's rates (the consistency check is skipped, it cannot be computed
+ *      like-for-like).
+ *   3. No usable day rates (or no breakdown, or an inconsistent breakdown) ->
+ *      stored CZK total converted at today's rates (graceful degradation).
  *   CZK display always returns the stored CZK total untouched.
  *
  * Framework-free on purpose so it stays unit-testable (see testing policy).
@@ -99,6 +103,14 @@ function isUsableRate(rate: number | undefined): rate is number {
 }
 
 /**
+ * Maximum relative difference tolerated between a breakdown's CZK equivalent
+ * (at that day's rates) and the stored CZK total (at snapshot-time rates).
+ * Rate drift between the two sources is a few percent at most; a larger gap
+ * means the breakdown does not cover the whole portfolio.
+ */
+export const BREAKDOWN_CONSISTENCY_TOLERANCE = 0.25;
+
+/**
  * Convert one history data point (native breakdown + stored CZK total) into
  * the display currency using that day's rates, per the fallback chain above.
  */
@@ -115,6 +127,28 @@ export function convertBreakdownAtDay(
   const displayRate = dayRates?.[displayCurrency];
   if (Object.keys(breakdown).length === 0 || !dayRates || !isUsableRate(displayRate)) {
     // No breakdown or no usable day rates: stored CZK total at today's rates.
+    return convertToday(czkTotal, 'CZK');
+  }
+
+  // Consistency guard: when every bucket has a usable day rate, the breakdown's
+  // CZK equivalent must roughly match the stored CZK total. A large gap means a
+  // partial breakdown (e.g. written by the snapshot backfill from incomplete
+  // per-ticker history) — render via the CZK total instead.
+  let czkEquivalent = 0;
+  let allBucketsHaveDayRates = true;
+  for (const [currency, amount] of Object.entries(breakdown)) {
+    const rate = dayRates[currency];
+    if (isUsableRate(rate)) {
+      czkEquivalent += amount * rate;
+    } else {
+      allBucketsHaveDayRates = false;
+    }
+  }
+  if (
+    allBucketsHaveDayRates &&
+    czkTotal > 0 &&
+    Math.abs(czkEquivalent - czkTotal) / czkTotal > BREAKDOWN_CONSISTENCY_TOLERANCE
+  ) {
     return convertToday(czkTotal, 'CZK');
   }
 
