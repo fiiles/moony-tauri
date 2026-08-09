@@ -77,9 +77,9 @@ generated-types).
 5. **Ticker currency from quote metadata.** `get_currency_from_ticker`'s
    suffix map is replaced by Yahoo's `meta.currency`, normalizing pence
    (`GBp`/`GBX` → GBP, price ÷ 100), falling back to the suffix map offline.
-   ⚠ Needs owner confirmation: EWG.L shows `109.00 GBP`; if the true quote is
-   109 GBp (~£1.09), the position is stored 100× too high and phase 2 of the
-   migration must divide its price history by 100.
+   An LSE ticker quoted in pence but labeled GBP would be stored 100× too
+   high; the owner verified the existing `.L` data is quoted in GBP, so the
+   migration needs no retroactive correction.
 
 ## One-time migration (CLI: `src-tauri/src/bin/migrate_history.rs`)
 
@@ -113,13 +113,12 @@ Pattern of `seed_demo.rs`; prompts for the DB password (SQLCipher), takes
    total| ≤ tolerance; print per-day diffs, unresolvable days (no price data),
    and counts. Dry-run prints the same report without writing.
 
-## Open decisions (owner)
+## Open decisions (owner — all resolved)
 
-1. EWG.L pence confirmation (drives the ÷100 correction in phase 2).
-2. Migration vehicle: CLI binary with password prompt (recommended; it is
-   "the script") vs. hidden in-app maintenance command.
-3. Static classes on reconstructed days: carry-forward from nearest earlier
-   live row (recommended) vs. current behavior (today's balances).
+1. LSE pence check: existing `.L` data confirmed quoted in GBP; no ÷100
+   correction in phase 2.
+2. Migration vehicle: CLI binary with password prompt (it is "the script").
+3. Static classes on reconstructed days: carried from the nearest live row.
 
 ## Testing
 
