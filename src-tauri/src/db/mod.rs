@@ -32,11 +32,18 @@ impl Database {
         }
     }
 
+    // Mutex poisoning note: a panic inside any closure holding these locks used
+    // to poison them, making every later `.expect()` panic too — the app then
+    // appeared frozen on every screen until restart. The SQLite connection
+    // itself stays valid across a Rust panic (no explicit transactions are
+    // held open), so recovering the guard is safe and one bad command no
+    // longer bricks the whole app.
+
     /// Check if the database is currently open/unlocked
     pub fn is_open(&self) -> bool {
         self.conn
             .lock()
-            .expect("Database connection mutex poisoned")
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .is_some()
     }
 
@@ -78,8 +85,11 @@ impl Database {
         *self
             .conn
             .lock()
-            .expect("Database connection mutex poisoned") = Some(conn);
-        *self.db_path.lock().expect("Database path mutex poisoned") = Some(path);
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(conn);
+        *self
+            .db_path
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(path);
 
         Ok(())
     }
@@ -124,8 +134,11 @@ impl Database {
         *self
             .conn
             .lock()
-            .expect("Database connection mutex poisoned") = Some(conn);
-        *self.db_path.lock().expect("Database path mutex poisoned") = Some(path);
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(conn);
+        *self
+            .db_path
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(path);
 
         Ok(())
     }
@@ -155,8 +168,11 @@ impl Database {
         *self
             .conn
             .lock()
-            .expect("Database connection mutex poisoned") = Some(conn);
-        *self.db_path.lock().expect("Database path mutex poisoned") = Some(path);
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(conn);
+        *self
+            .db_path
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(path);
 
         Ok(())
     }
@@ -189,8 +205,11 @@ impl Database {
         *self
             .conn
             .lock()
-            .expect("Database connection mutex poisoned") = Some(conn);
-        *self.db_path.lock().expect("Database path mutex poisoned") = Some(path);
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(conn);
+        *self
+            .db_path
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(path);
 
         Ok(())
     }
@@ -200,7 +219,7 @@ impl Database {
         *self
             .conn
             .lock()
-            .expect("Database connection mutex poisoned") = None;
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
     }
 
     /// Execute a function with the database connection
@@ -212,7 +231,7 @@ impl Database {
         let guard = self
             .conn
             .lock()
-            .expect("Database connection mutex poisoned");
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let conn = guard
             .as_ref()
             .ok_or_else(|| AppError::Auth("Database is locked".into()))?;
@@ -227,7 +246,7 @@ impl Database {
         let mut guard = self
             .conn
             .lock()
-            .expect("Database connection mutex poisoned");
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let conn = guard
             .as_mut()
             .ok_or_else(|| AppError::Auth("Database is locked".into()))?;
@@ -251,7 +270,7 @@ impl Database {
         let path = self
             .db_path
             .lock()
-            .expect("Database path mutex poisoned")
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .take();
 
         if let Some(path) = path {
@@ -266,7 +285,7 @@ impl Database {
     pub fn get_path(&self) -> Option<PathBuf> {
         self.db_path
             .lock()
-            .expect("Database path mutex poisoned")
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
 }
