@@ -165,7 +165,9 @@ export default function StocksAnalysis() {
         dateToTs(twrFrom),
         dateToTs(twrTo)
       ),
-    enabled: !!twrFrom && !!twrTo && twrFrom <= twrTo,
+    // Year floor: date inputs fire per keystroke, so typing "2024" passes
+    // through transient years like 0002 — don't query until the date is sane.
+    enabled: !!twrFrom && !!twrTo && twrFrom <= twrTo && twrFrom >= '1990-01-01',
   });
 
   const twrSeriesKey = (s: TwrSeries) => s.tag?.id ?? (s.isUntagged ? '__untagged__' : 'portfolio');

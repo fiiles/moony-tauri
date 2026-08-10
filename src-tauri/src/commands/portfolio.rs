@@ -2226,6 +2226,11 @@ pub async fn recalculate_asset_history_from_date(
     Ok(())
 }
 
+/// Earliest date the retrospective recalculation walks back to. A typo'd
+/// transaction date (year 202 instead of 2024) must not trigger a
+/// hundreds-of-thousands-of-days rebuild holding the global DB mutex.
+const RECALC_FLOOR_TS: i64 = 946_684_800; // 2000-01-01
+
 /// Trigger historical recalculation for a specific asset type
 /// Only triggers if transaction_date is before today
 pub async fn trigger_historical_recalculation_for_asset(
@@ -2233,6 +2238,7 @@ pub async fn trigger_historical_recalculation_for_asset(
     transaction_date: i64,
     asset_type: AssetType,
 ) -> Result<()> {
+    let transaction_date = transaction_date.max(RECALC_FLOOR_TS);
     let now = chrono::Utc::now().timestamp();
     let today_start = (now / 86400) * 86400;
     let tx_day = (transaction_date / 86400) * 86400;
@@ -2251,6 +2257,7 @@ pub async fn trigger_historical_recalculation_for_asset(
 
 /// Legacy function - recalculates all asset types (kept for backward compatibility)
 pub async fn trigger_historical_recalculation(db: &Database, transaction_date: i64) -> Result<()> {
+    let transaction_date = transaction_date.max(RECALC_FLOOR_TS);
     let now = chrono::Utc::now().timestamp();
     let today_start = (now / 86400) * 86400;
     let tx_day = (transaction_date / 86400) * 86400;

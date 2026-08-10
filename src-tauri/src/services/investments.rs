@@ -594,6 +594,28 @@ pub fn compute_twr_for_tickers(
         }
     }
 
+    // Date inputs fire per keystroke, so transient absurd ranges reach this
+    // function (typing "2024" passes through year 0002 → from_ts ≈ -62e9).
+    // Clamp the loop to the actual data span: nothing exists to chain-link
+    // before the first known row or after the last one, and an unclamped loop
+    // runs for millions of iterations while holding the global DB mutex.
+    let earliest = history
+        .values()
+        .filter_map(|rows| rows.first().map(|(ts, _, _)| *ts))
+        .min();
+    let latest = history
+        .values()
+        .filter_map(|rows| rows.last().map(|(ts, _, _)| *ts))
+        .max();
+    let (Some(earliest), Some(latest)) = (earliest, latest) else {
+        return Ok(vec![crate::models::TwrDataPoint {
+            date: ts_to_date_str(from_ts),
+            twr: 0.0,
+        }]);
+    };
+    let from_ts = from_ts.max(earliest);
+    let to_ts = to_ts.min(latest).max(from_ts);
+
     // Determine emit interval so we never return more than MAX_POINTS data points.
     // Chain-linking still runs every day for accuracy; we just skip emitting most points.
     const MAX_POINTS: i64 = 300;
@@ -1175,6 +1197,58 @@ mod tests {
         let day0: i64 = 1_700_400_000 / 86400 * 86400;
         let day1 = day0 + 86400;
         let result = compute_twr_for_tickers(&conn, &[], day0, day1).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].twr, 0.0);
+    }
+
+    // Date inputs fire per keystroke, so the command receives transient
+    // absurd ranges (year 0002 while typing "2024" → from_ts ≈ -62e9). The
+    // day loop must be clamped to the actual data span, or it runs for
+    // ~738 000 iterations per keystroke while holding the global DB mutex —
+    // the observed app-wide freeze.
+    #[test]
+    fn test_twr_range_is_clamped_to_data_span() {
+        let conn = setup_twr_db();
+        let day0: i64 = 1_700_000_000 / 86400 * 86400;
+        let day1 = day0 + 86400;
+        let day2 = day0 + 2 * 86400;
+        conn.execute_batch(&format!(
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, value_czk, quantity, price, currency) VALUES
+             ('a', 'AAPL', {day0}, '1000.0', '10.0', '100.0', 'USD'),
+             ('b', 'AAPL', {day1}, '1050.0', '10.0', '105.0', 'USD'),
+             ('c', 'AAPL', {day2}, '1100.0', '10.0', '110.0', 'USD');"
+        ))
+        .unwrap();
+
+        // Year ~0002 to year ~4064: without clamping this loop would run
+        // ~24 million days. The result must start at the data span instead.
+        let absurd_from: i64 = -62_000_000_000;
+        let absurd_to: i64 = 66_000_000_000;
+        let result =
+            compute_twr_for_tickers(&conn, &["AAPL".to_string()], absurd_from, absurd_to).unwrap();
+
+        assert_eq!(result[0].date, ts_to_date_str(day0), "starts at first data");
+        let last = result.last().unwrap();
+        assert!(
+            (last.twr - 10.0).abs() < 0.5,
+            "final TWR equals the in-range computation, got {}",
+            last.twr
+        );
+        assert!(result.len() <= 301);
+    }
+
+    #[test]
+    fn test_twr_no_history_rows_returns_single_flat_point() {
+        let conn = setup_twr_db();
+        // Ticker exists but has no value-history rows in or before the range:
+        // no loop, one flat point (nothing can be computed).
+        let result = compute_twr_for_tickers(
+            &conn,
+            &["AAPL".to_string()],
+            -62_000_000_000,
+            66_000_000_000,
+        )
+        .unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].twr, 0.0);
     }
